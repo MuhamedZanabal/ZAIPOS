@@ -59,6 +59,7 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
+- [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -1166,3 +1167,7 @@ You may obtain a copy of the License at
 ## Acknowledgments
 
 Built by the POS S360T contributors. Originally developed by Soluciones 360 Tech.
+
+This project would not be possible without the many open-source libraries that power it. See [NOTICE.md](NOTICE.md) for a list of major third-party dependencies and their licenses.
+
+Special thanks to the teams behind React, Vite, Supabase, Tailwind CSS, Radix UI, shadcn/ui, Electron, and TanStack Query.
