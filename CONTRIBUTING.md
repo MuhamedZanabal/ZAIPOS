@@ -1,6 +1,6 @@
 # Contributing to POS S360T
 
-Thank you for your interest in contributing! This project is released under the Apache 2.0 License.
+Thank you for your interest in contributing! This project is released under the MIT License.
 
 ## How to Contribute
 

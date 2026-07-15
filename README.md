@@ -1,6 +1,6 @@
 # POS S360T — AI-Powered, Offline-First Point of Sale
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite)](https://vitejs.dev)
@@ -74,7 +74,7 @@ Small and medium businesses in Latin America and beyond often juggle multiple to
 3. **Multi-tenant & multi-branch** — Run one codebase for many businesses, each with their own branches, users, and data isolation.
 4. **AI-ready** — Conversational ordering, invoice OCR, and knowledge-base answers out of the box.
 5. **Hardware support** — Thermal printers, cash drawers, and barcode scanners through the Electron desktop app.
-6. **Open source** — Apache 2.0 license. Self-host, customize, and contribute.
+6. **Open source** — MIT license. Self-host, customize, and contribute.
 
 ---
 
@@ -1150,16 +1150,30 @@ For detailed docs, see the [`docs/`](docs/) folder:
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
 
 ```text
-Copyright 2026 POS S360T Contributors
+MIT License
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Copyright (c) 2026 POS S360T Contributors
 
-    http://www.apache.org/licenses/LICENSE-2.0
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ---

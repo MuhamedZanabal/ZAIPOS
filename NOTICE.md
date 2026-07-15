@@ -103,7 +103,7 @@ Some UI components in `src/components/ui/` are based on patterns from **shadcn/u
 
 ## License of This Project
 
-POS S360T itself is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for the full text.
+POS S360T itself is licensed under the MIT License. See [LICENSE](LICENSE) for the full text.
 
 ## Notice
 
