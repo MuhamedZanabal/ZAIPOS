@@ -516,8 +516,8 @@ export default function Tables() {
     let free = 0,
       occupied = 0,
       ready = 0,
-      inCashier = 0,
-      serving = 0;
+      inCashier = 0;
+    const serving = 0;
     (tables ?? []).forEach((t) => {
       const order = orderByTable[t.id];
       if (!order) {
