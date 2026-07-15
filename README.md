@@ -109,15 +109,37 @@ Small and medium businesses in Latin America and beyond often juggle multiple to
 
 ## Screenshots
 
-> Replace the placeholders below with your own screenshots by dropping images into `docs/screenshots/` and updating the paths.
+### Dashboard & POS
 
-| Dashboard | POS Terminal | Inventory |
-|-----------|--------------|-----------|
-| ![Dashboard](docs/screenshots/dashboard-placeholder.png) | ![POS](docs/screenshots/pos-placeholder.png) | ![Inventory](docs/screenshots/inventory-placeholder.png) |
+| Dashboard (Desktop) | POS Terminal | Inventory |
+|---------------------|--------------|-----------|
+| ![Dashboard](docs/screenshots/dashboard-desktop.png) | ![POS](docs/screenshots/pos-desktop.png) | ![Inventory](docs/screenshots/inventory.png) |
 
-| Tables & KDS | WhatsApp AI Agent | Reports |
-|--------------|-------------------|---------|
-| ![Tables](docs/screenshots/tables-placeholder.png) | ![AI Agent](docs/screenshots/ai-agent-placeholder.png) | ![Reports](docs/screenshots/reports-placeholder.png) |
+### Service & Kitchen
+
+| Tables / Salon Plan | KDS / Kitchen | Production |
+|---------------------|---------------|------------|
+| ![Tables](docs/screenshots/tables.png) | ![KDS](docs/screenshots/kds.png) | ![Production](docs/screenshots/production.png) |
+
+### AI Agent
+
+| AI Agent (Desktop) | AI Agent (Mobile) |
+|--------------------|-------------------|
+| ![AI Agent Desktop](docs/screenshots/ai-agent-desktop.png) | ![AI Agent Mobile](docs/screenshots/ai-agent-mobile.png) |
+
+### Responsive Views
+
+| Dashboard (Tablet) | Dashboard (Mobile) | POS (Mobile) |
+|--------------------|--------------------|--------------|
+| ![Tablet Dashboard](docs/screenshots/dashboard-tablet.png) | ![Mobile Dashboard](docs/screenshots/dashboard-mobile.png) | ![Mobile POS](docs/screenshots/pos-mobile.png) |
+
+### Settings & Landing
+
+| Settings | Landing |
+|----------|---------|
+| ![Settings](docs/screenshots/settings.png) | ![Landing](docs/screenshots/landing.png) |
+
+All screenshots are stored in [`docs/screenshots/`](docs/screenshots/).
 
 ---
 
