@@ -33,17 +33,17 @@ export default defineConfig(async ({ mode }) => {
           enabled: false,
         },
         manifest: {
-          name: "POS S360T",
-          short_name: "POS S360T",
+          name: "ZAIPOS",
+          short_name: "ZAIPOS",
           description:
-            "Multi-branch POS system. Sales, cash register, inventory, production, and reports.",
+            "ZAIPOS multi-branch POS system. Sales, cash register, inventory, production, and reports.",
           theme_color: "#1469A1",
           background_color: "#ffffff",
           display: "standalone",
           orientation: "any",
           scope: "/",
           start_url: "/",
-          lang: "es",
+          lang: "en",
           icons: [
             {
               src: "/pwa-192x192.png",
