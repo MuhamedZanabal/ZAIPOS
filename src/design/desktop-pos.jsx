@@ -19,11 +19,11 @@ function DesktopPOS() {
   ];
 
   const channels = [
-    { l: "Local",  v: 2.4, c: "#007BFF", pct: 58 },
+    { l: "In-store",  v: 2.4, c: "#007BFF", pct: 58 },
     { l: "Rappi",  v: 1.1, c: "#FF441F", pct: 26 },
     { l: "DiDi",   v: 0.4, c: "#FAD400", pct: 10 },
     { l: "Uber",   v: 0.18, c: "#06D6A0", pct: 4 },
-    { l: "Domicilio", v: 0.08, c: "#7C3AED", pct: 2 },
+    { l: "Delivery", v: 0.08, c: "#7C3AED", pct: 2 },
   ];
 
   const top = [
@@ -35,11 +35,11 @@ function DesktopPOS() {
   ];
 
   const feed = [
-    { t: "15:42", ch: "Local",  id: "A-1284", who: "Camila R.",  amt: 86200,  pay: "Cash", dot: "green" },
+    { t: "15:42", ch: "In-store",  id: "A-1284", who: "Camila R.",  amt: 86200,  pay: "Cash", dot: "green" },
     { t: "15:41", ch: "Rappi",  id: "RP-99812", who: "WebHook",  amt: 64900,  pay: "Plataforma", dot: "blue" },
     { t: "15:39", ch: "DiDi",   id: "DD-44128", who: "WebHook",  amt: 142400, pay: "Plataforma", dot: "blue" },
     { t: "15:38", ch: "Table 8", id: "M-08-A",   who: "Mauricio A.", amt: 312500, pay: "Card", dot: "green" },
-    { t: "15:36", ch: "Local",  id: "A-1283",   who: "Camila R.",  amt: 22500,  pay: "QR Nequi", dot: "green" },
+    { t: "15:36", ch: "In-store",  id: "A-1283",   who: "Camila R.",  amt: 22500,  pay: "QR Nequi", dot: "green" },
     { t: "15:34", ch: "Delivery", id: "DM-441",  who: "Andrés M.", amt: 96400, pay: "Mixed", dot: "amber" },
     { t: "15:30", ch: "Uber",   id: "UE-5512",  who: "WebHook", amt: 38900, pay: "Plataforma", dot: "blue" },
   ];
@@ -166,7 +166,7 @@ function DesktopPOS() {
                   <div>
                     <Eyebrow color="blue">CHANNEL MIX · TODAY</Eyebrow>
                     <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, marginTop: 2 }}>
-                      Local domina · plataformas digitales 42%
+                      In-store leads · digital platforms 42%
                     </div>
                   </div>
                   <Pill kind="mute">Last 8h</Pill>
@@ -286,7 +286,7 @@ function DesktopPOS() {
                 ))}
               </div>
               <div style={{ marginTop: 8, fontSize: 11, color: "#64748b", display: "flex", justifyContent: "space-between" }}>
-                <span>63 movimientos hoy</span>
+                <span>63 movements today</span>
                 <button className="btn-link" title="Ver historial completo de movimientos" style={{ background: "transparent", border: 0, color: "#7AB6FF", cursor: "pointer", fontSize: 11 }}>
                   Ver historial →
                 </button>
@@ -294,11 +294,11 @@ function DesktopPOS() {
             </div>
 
             <div className="s-glass inventory-alerts-card">
-              <Eyebrow color="blue">INVENTARIO · ALERTAS</Eyebrow>
+              <Eyebrow color="blue">INVENTORY · ALERTS</Eyebrow>
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
                   { n: "Pizza Cuatro Quesos", st: 6,  min: 12, hue: "amber" },
-                  { n: "Cheesecake Maracuyá", st: 9,  min: 15, hue: "violet" },
+                  { n: "Passion Fruit Cheesecake", st: 9,  min: 15, hue: "violet" },
                   { n: "Pizza Hawaiana 30cm", st: 10, min: 14, hue: "amber" },
                 ].map((it, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10,
@@ -310,7 +310,7 @@ function DesktopPOS() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{it.n}</div>
-                      <div style={{ fontSize: 10, color: "#FCD34D" }}>Quedan {it.st} · mín {it.min}</div>
+                      <div style={{ fontSize: 10, color: "#FCD34D" }}>{it.st} left · min {it.min}</div>
                     </div>
                     <button className="btn btn-ghost" title={`Reabastecer ${it.n}`} style={{ padding: "4px 10px", fontSize: 11 }}>
                       Reabastecer
@@ -329,7 +329,7 @@ function DesktopPOS() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
                   {[
-                    { l: "Eventos hoy", v: "318" },
+                    { l: "Events today", v: "318" },
                     { l: "Aceptadas", v: "26" },
                     { l: "Rechazadas", v: "0" },
                   ].map((s, i) => (

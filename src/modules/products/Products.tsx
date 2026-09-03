@@ -250,11 +250,11 @@ export default function Products() {
         <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileSelect} title="Import CSV file" aria-label="Import CSV file" />
 
         <button type="button" className="g-btn g-btn-ghost" onClick={() => fileInputRef.current?.click()} title="Import CSV">
-          <Upload className="h-4 w-4" /> Importar
+          <Upload className="h-4 w-4" /> Import
         </button>
 
         <button type="button" className="g-btn g-btn-ghost" onClick={handleDownloadTemplate} title="Download CSV template">
-          <FileDown className="h-4 w-4" /> Plantilla
+          <FileDown className="h-4 w-4" /> Template
         </button>
 
         <button
@@ -263,13 +263,13 @@ export default function Products() {
           onClick={() => exportToCsv(`products_${tenantId}.csv`, filtered)}
           title="Export filtered results to CSV"
         >
-          <Download className="h-4 w-4" /> Exportar
+          <Download className="h-4 w-4" /> Export
         </button>
 
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
             <button type="button" className="g-btn g-btn-primary" onClick={() => setEditing(null)}>
-              <Plus className="h-4 w-4" />Nuevo
+              <Plus className="h-4 w-4" />New
             </button>
           </DialogTrigger>
           <ProductForm

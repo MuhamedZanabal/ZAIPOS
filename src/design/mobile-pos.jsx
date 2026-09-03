@@ -77,7 +77,7 @@ function MobilePOS() {
       <div className="quick-actions-grid">
         {[
           { ic: I.Plus, l: "New", kind: "blue", title: "New sale" },
-          { ic: I.Bike, l: "Delivery", kind: "green", title: "Registrar domicilio" },
+          { ic: I.Bike, l: "Delivery", kind: "green", title: "Register delivery" },
           { ic: I.Scan, l: "Scan", kind: "purple", title: "Scan EAN code" },
           { ic: I.Receipt, l: "Charge", kind: "amber", title: "Charge order" },
         ].map((a) => {

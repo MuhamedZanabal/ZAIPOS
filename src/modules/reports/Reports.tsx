@@ -147,7 +147,7 @@ export default function Reports() {
               onClick={() => exportCSV('days')}
               disabled={!data?.days.length}
             >
-              <Download size={13} className="mr-1" /> Exportar
+              <Download size={13} className="mr-1" /> Export
             </button>
           </div>
           {/* Header */}
@@ -190,7 +190,7 @@ export default function Reports() {
               onClick={() => exportCSV('products')}
               disabled={!data?.top.length}
             >
-              <Download size={13} className="mr-1" /> Exportar
+              <Download size={13} className="mr-1" /> Export
             </button>
           </div>
           <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">

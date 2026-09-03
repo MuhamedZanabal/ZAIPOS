@@ -132,7 +132,7 @@ function TabletPOS() {
         <Eyebrow>SALES CHANNEL</Eyebrow>
         <div style={{ display: "flex", gap: 6 }}>
           {[
-            { id: "local",  label: "Local",   ic: I.Cart, title: "In-store sale" },
+            { id: "local",  label: "In-store",   ic: I.Cart, title: "In-store sale" },
             { id: "rappi",  label: "Rappi",   ic: I.Bike, title: "Rappi sale" },
             { id: "didi",   label: "DiDi",    ic: I.Bike, title: "DiDi Food sale" },
             { id: "ubr",    label: "Uber",    ic: I.Bike, title: "Uber Eats sale" },
@@ -172,7 +172,7 @@ function TabletPOS() {
               <span className="kbd">F2</span>
             </div>
             <button className="btn btn-ghost" title="Scan barcode" style={{ height: 46, padding: "0 16px" }}>
-              <I.Scan size={18} /> Escanear EAN
+              <I.Scan size={18} /> Scan EAN
             </button>
             <button className="btn btn-ghost" title="Assign customer to order" style={{ height: 46, padding: "0 16px" }}>
               <I.User size={18} /> Customer
@@ -211,7 +211,7 @@ function TabletPOS() {
                 </span>
               </div>
               <div className="ticket-meta" style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-                15:42 · Mostrador · Local
+                15:42 · Counter · In-store
               </div>
             </div>
             <button className="btn btn-ghost" title="Hold order" style={{ padding: "6px 12px", fontSize: 11 }}>
@@ -255,27 +255,27 @@ function TabletPOS() {
           {/* Totals */}
           <div className="pos-aside-foot" style={{ padding: "12px 18px" }}>
             <div className="totals-row" style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", padding: "4px 0" }}>
-              <span>Subtotal · {itemCount} ítems</span><span>{COP(subtotal)}</span>
+              <span>Subtotal · {itemCount} items</span><span>{COP(subtotal)}</span>
             </div>
             <div className="totals-row" style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", padding: "4px 0" }}>
               <span>IVA 8%</span><span>{COP(iva)}</span>
             </div>
             <div className="totals-row is-disc" style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10B981", padding: "4px 0" }}>
-              <span>Descuento aplicado</span><span>— $ 0</span>
+              <span>Discount applied</span><span>— $ 0</span>
             </div>
             <Divider />
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", margin: "12px 0 6px" }}>
-              <Eyebrow>TOTAL A COBRAR</Eyebrow>
+              <Eyebrow>TOTAL DUE</Eyebrow>
               <div className="big-number" style={{ fontSize: 44 }}>{COP(total)}</div>
             </div>
 
             {/* Payment row */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 8 }}>
               {[
-                { ic: I.Cash,   l: "Efectivo", title: "Pago en efectivo" },
-                { ic: I.Card,   l: "Tarjeta", title: "Pago con tarjeta" },
-                { ic: I.Qr,     l: "QR / Nequi", title: "Pago por QR / Nequi" },
-                { ic: I.Wallet, l: "Mixto", title: "Pago combinado" },
+                { ic: I.Cash,   l: "Cash", title: "Cash payment" },
+                { ic: I.Card,   l: "Card", title: "Card payment" },
+                { ic: I.Qr,     l: "QR / Nequi", title: "QR / Nequi payment" },
+                { ic: I.Wallet, l: "Mixed", title: "Split payment" },
               ].map((m, i) => {
                 const Ico = m.ic;
                 return (
@@ -287,11 +287,11 @@ function TabletPOS() {
               })}
             </div>
 
-            <button className="btn btn-success" title={`Cobrar ${COP(total)} (F12)`} style={{ width: "100%", marginTop: 10, height: 56, fontSize: 16 }}>
-              <I.Check size={20} /> Cobrar {COP(total)} <span className="kbd" style={{ marginLeft: 6 }}>F12</span>
+            <button className="btn btn-success" title={`Charge ${COP(total)} (F12)`} style={{ width: "100%", marginTop: 10, height: 56, fontSize: 16 }}>
+              <I.Check size={20} /> Charge {COP(total)} <span className="kbd" style={{ marginLeft: 6 }}>F12</span>
             </button>
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button className="btn btn-ghost" title="Aplicar descuento manual" style={{ flex: 1 }}><I.Tag size={14} /> Descuento</button>
+              <button className="btn btn-ghost" title="Apply manual discount" style={{ flex: 1 }}><I.Tag size={14} /> Discount</button>
               <button className="btn btn-ghost" title="Imprimir pre-cuenta" style={{ flex: 1 }}><I.Print size={14} /> Pre-cuenta</button>
               <button className="btn btn-danger" title="Vaciar carrito" style={{ width: 44 }}><I.Trash size={14} /></button>
             </div>
