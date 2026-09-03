@@ -1,15 +1,15 @@
 {
-  "name": "poss360t",
-  "productName": "POS S360T",
+  "name": "zaipos",
+  "productName": "ZAIPOS",
   "description": "Open-source, AI-powered, offline-first point of sale for retail and restaurants.",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "author": "POS S360T Contributors",
+  "author": "ZAIPOS Contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mateopiza/ai-point-of-sale.git"
+    "url": "https://github.com/MuhamedZanabal/ZAIPOS.git"
   },
   "keywords": [
     "pos",
