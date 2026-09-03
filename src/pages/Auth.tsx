@@ -33,7 +33,7 @@ export default function Auth() {
   const [loading,  setLoading]  = useState(false);
 
   useEffect(() => {
-    document.title = "Sign in | POS S360T";
+    document.title = "Sign in | ZAIPOS";
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -54,7 +54,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex bg-background">
 
-      {/* ── Panel izquierdo: branding S360T ── */}
+      {/* ── Left panel: ZAIPOS branding ── */}
       <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col relative overflow-hidden auth-panel-left">
         <div className="absolute inset-0 s-grid-texture pointer-events-none opacity-50" />
         <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full pointer-events-none auth-glow-blue" />
@@ -69,9 +69,7 @@ export default function Auth() {
             <div className="flex items-center gap-3">
               <GearMark size={34} />
               <div>
-                <div className="auth-lockup-title">
-                  POS<span className="c-blue">360</span><span className="c-green">T</span>
-                </div>
+                <div className="auth-lockup-title">ZAIPOS</div>
                 <div className="auth-lockup-sub">Open Source POS</div>
               </div>
             </div>
@@ -123,7 +121,7 @@ export default function Auth() {
           </div>
 
           <div className="text-[11px] text-sidebar-foreground/25 tracking-wider">
-            © 2026 POS S360T Contributors · Apache 2.0
+            © 2026 ZAIPOS Contributors · MIT
           </div>
         </div>
       </div>
@@ -136,9 +134,7 @@ export default function Auth() {
           <div className="flex items-center justify-between lg:hidden">
             <div className="flex items-center gap-2.5">
               <GearMark size={28} />
-              <div className="auth-lockup-title">
-                POS<span className="c-blue">360</span><span className="c-green">T</span>
-              </div>
+              <div className="auth-lockup-title">ZAIPOS</div>
             </div>
             <Link to="/" className="auth-back-link">
               <ArrowLeft className="h-3.5 w-3.5" /> Inicio
