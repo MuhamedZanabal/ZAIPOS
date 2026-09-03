@@ -9,7 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY = "pwa-install-dismissed-at";
-const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 días
+const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 function isStandalone() {
   if (typeof window === "undefined") return false;
@@ -37,9 +37,9 @@ export function PWAInstallPrompt() {
       const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) ?? 0);
       if (dismissedAt && Date.now() - dismissedAt < DISMISS_TTL_MS) return;
 
-      toast("Instala POS Pro", {
+      toast("Install ZAIPOS", {
         description:
-          "Install it on this device to open it as an app and work offline.",
+          "Install ZAIPOS on this device to open it as an app and work offline.",
         duration: Infinity,
         icon: <Download className="h-4 w-4" />,
         action: {
@@ -50,13 +50,13 @@ export function PWAInstallPrompt() {
             await promptEvent.prompt();
             const choice = await promptEvent.userChoice;
             if (choice.outcome === "accepted") {
-              toast.success("App installed!");
+              toast.success("ZAIPOS installed!");
             }
             deferredPromptRef.current = null;
           },
         },
         cancel: {
-          label: "Ahora no",
+          label: "Not now",
           onClick: () => {
             localStorage.setItem(DISMISS_KEY, String(Date.now()));
           },
@@ -67,11 +67,11 @@ export function PWAInstallPrompt() {
     const onInstalled = () => {
       deferredPromptRef.current = null;
       localStorage.removeItem(DISMISS_KEY);
-      toast.success("POS Pro instalado correctamente");
+      toast.success("ZAIPOS installed successfully");
     };
 
     const onUpdateAvailable = () => {
-      toast("New version available", {
+      toast("New ZAIPOS version available", {
         description: "Update to get the latest improvements.",
         duration: Infinity,
         icon: <RefreshCw className="h-4 w-4" />,
@@ -85,7 +85,7 @@ export function PWAInstallPrompt() {
     };
 
     const onOfflineReady = () => {
-      toast.success("Ready to work offline");
+      toast.success("ZAIPOS is ready to work offline");
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
