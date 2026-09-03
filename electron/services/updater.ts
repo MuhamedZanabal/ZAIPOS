@@ -96,11 +96,11 @@ export async function setupUpdater(mainWindow: BrowserWindow): Promise<void> {
   ipcMain.handle(IPC_HANDLERS.INSTALL_UPDATE, async () => {
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'question',
-      buttons: ['Instalar y reiniciar', 'Cancelar'],
+      buttons: ['Install and restart', 'Cancel'],
       defaultId: 0,
-      title: 'Actualización lista',
-      message: 'La actualización está lista para instalar.',
-      detail: 'La aplicación se reiniciará para completar la instalación.',
+      title: 'Update ready',
+      message: 'The update is ready to install.',
+      detail: 'The application will restart to complete the installation.',
     });
 
     if (result.response === 0) {

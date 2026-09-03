@@ -83,7 +83,7 @@ export default function RappiSettings() {
         ? await supabase.from("rappi_integrations").update(payload).eq("id", integ.id)
         : await supabase.from("rappi_integrations").insert(payload);
       if (error) throw error;
-      toast.success("Integración guardada");
+      toast.success("Integration saved");
       qc.invalidateQueries({ queryKey: ["rappi-integration"] });
     } catch (e: any) {
       toast.error(e.message);
@@ -98,8 +98,8 @@ export default function RappiSettings() {
         body: { branch_id: branchId, store_id: storeId || integ?.store_id },
       });
       if (error) throw error;
-      if (data?.ok) toast.success("Conexión OK con Rappi");
-      else toast.error(`Falló: ${data?.error ?? "verifica credenciales"}`);
+      if (data?.ok) toast.success("Rappi connection OK");
+      else toast.error(`Failed: ${data?.error ?? "check credentials"}`);
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(null); }
   };
@@ -112,8 +112,8 @@ export default function RappiSettings() {
         body: { branch_id: branchId },
       });
       if (error) throw error;
-      if (data?.ok) toast.success(`Menú enviado · ${data.items} ítems`);
-      else toast.error(`Error: ${data?.error ?? "no se pudo enviar"}`);
+      if (data?.ok) toast.success(`Menu sent · ${data.items} items`);
+      else toast.error(`Error: ${data?.error ?? "could not send"}`);
       qc.invalidateQueries({ queryKey: ["rappi-integration"] });
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(null); }
@@ -124,7 +124,7 @@ export default function RappiSettings() {
     toast.success("URL del webhook copiada");
   };
 
-  if (isLoading) return <div className="text-muted-foreground">Cargando…</div>;
+  if (isLoading) return <div className="text-muted-foreground">Loading…</div>;
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
@@ -132,7 +132,7 @@ export default function RappiSettings() {
         <div>
           <div className="flex items-center gap-2">
             <PlugZap className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Integración con Rappi</h2>
+            <h2 className="text-lg font-bold">Rappi Integration</h2>
             {integ && (
               <Badge variant={status === "active" ? "default" : "outline"}>
                 {status === "active" ? "Activa" : "Pausada"}
@@ -140,7 +140,7 @@ export default function RappiSettings() {
             )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Sucursal: <strong>{branchName}</strong>. Cada sucursal usa su propio Store ID de Rappi Partners.
+            Branch: <strong>{branchName}</strong>. Each branch uses its own Rappi Partners Store ID.
           </p>
         </div>
 
@@ -150,7 +150,7 @@ export default function RappiSettings() {
             <Input value={storeId} onChange={(e) => setStoreId(e.target.value)} placeholder="Ej. 900123" />
           </div>
           <div>
-            <Label>Tiempo de preparación (min)</Label>
+            <Label>Preparation time (min)</Label>
             <Input
               type="number" min="1" max="120"
               value={prepTime}
@@ -158,7 +158,7 @@ export default function RappiSettings() {
             />
           </div>
           <div>
-            <Label>Estado</Label>
+            <Label>Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -175,26 +175,26 @@ export default function RappiSettings() {
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={save} disabled={busy === "save"}>
-            {busy === "save" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Guardar
+            {busy === "save" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Save
           </Button>
           <Button variant="outline" onClick={test} disabled={busy === "test"}>
-            {busy === "test" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Probar conexión
+            {busy === "test" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Test connection
           </Button>
           <Button variant="outline" onClick={syncMenu} disabled={busy === "sync" || !integ}>
             {busy === "sync" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-            Sincronizar menú
+            Sync menu
           </Button>
           <a
             href="https://dev-portal.rappi.com/api/es/" target="_blank" rel="noreferrer"
             className="inline-flex items-center text-sm text-primary hover:underline ml-auto"
           >
-            <BookOpen className="h-4 w-4 mr-1" /> Documentación
+            <BookOpen className="h-4 w-4 mr-1" /> Documentation
           </a>
         </div>
 
         {integ?.last_menu_sync_at && (
           <p className="text-xs text-muted-foreground">
-            Último envío de menú: {formatDate(integ.last_menu_sync_at)}
+            Last menu sync: {formatDate(integ.last_menu_sync_at)}
           </p>
         )}
 
@@ -205,15 +205,15 @@ export default function RappiSettings() {
             <Button variant="outline" size="icon" onClick={copyWebhook}><Copy className="h-4 w-4" /></Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Pega esta URL en el Partner Portal de Rappi como destino de eventos (nuevos pedidos, cambios de estado).
+            Paste this URL into the Rappi Partner Portal as the event destination (new orders, status changes).
           </p>
         </div>
       </div>
 
       <div className="glass p-4">
-        <div className="text-sm font-semibold mb-3">Últimos eventos recibidos</div>
+        <div className="text-sm font-semibold mb-3">Latest received events</div>
         {(logs ?? []).length === 0 ? (
-          <div className="text-xs text-muted-foreground">Aún no hay eventos.</div>
+          <div className="text-xs text-muted-foreground">No events yet.</div>
         ) : (
           <div className="space-y-2 max-h-[480px] overflow-auto">
             {logs!.map((l) => (
@@ -225,7 +225,7 @@ export default function RappiSettings() {
                   </Badge>
                 </div>
                 <div className="text-muted-foreground">{formatDate(l.created_at)}</div>
-                {l.rappi_order_id && <div>Pedido: {l.rappi_order_id}</div>}
+                {l.rappi_order_id && <div>Order: {l.rappi_order_id}</div>}
                 {l.error && <div className="text-destructive truncate">{l.error}</div>}
               </div>
             ))}

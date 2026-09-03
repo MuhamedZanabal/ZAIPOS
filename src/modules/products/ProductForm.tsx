@@ -19,14 +19,14 @@ import { ScanBarcode, Loader2, Globe, Plus, Trash2, GripVertical, ImagePlus, X }
 const TYPES = ["simple", "composite", "production", "combo", "ingredient", "modifier"] as const;
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
-  composite: "Compuesto (Receta)",
-  production: "Producción / Insumo",
+  composite: "Composite (Recipe)",
+  production: "Production / Input",
   combo: "Combo / Paquete",
-  ingredient: "Ingrediente / Materia Prima",
+  ingredient: "Ingredient / Raw Material",
   modifier: "Modificador / Extra"
 };
 const COMPOUND = new Set(["composite", "production", "combo"]);
-const KDS_STATIONS = ["Cocina", "Bar", "Parrilla", "Frío", "Postres"];
+const KDS_STATIONS = ["Kitchen", "Bar", "Grill", "Cold", "Desserts"];
 
 interface Props { tenantId: string; categories: any[]; editing: any; onClose: () => void }
 
@@ -104,7 +104,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
               <GripVertical className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium text-sm">{g.name}</span>
               {g.required && <span className="g-pill g-pill-bad g-pill-h22">Obligatorio</span>}
-              <span className="g-pill g-pill-ghost g-pill-h22">máx {g.max_selections}</span>
+              <span className="g-pill g-pill-ghost g-pill-h22">max {g.max_selections}</span>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
               onClick={() => deleteGroup(g.id)}>
@@ -134,7 +134,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             {addingOption === g.id ? (
               <div className="flex gap-2 mt-1">
                 <Input
-                  placeholder="Nombre opción"
+                  placeholder="Option name"
                   value={optionName}
                   onChange={e => setOptionName(e.target.value)}
                   className="h-7 text-sm"
@@ -143,7 +143,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
                 />
                 <Input
                   type="number"
-                  placeholder="+ precio"
+                  placeholder="+ price"
                   value={optionPrice}
                   onChange={e => setOptionPrice(e.target.value)}
                   className="h-7 text-sm w-24"
@@ -155,7 +155,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             ) : (
               <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground"
                 onClick={() => setAddingOption(g.id)}>
-                <Plus className="h-3 w-3 mr-1" /> Agregar opción
+                <Plus className="h-3 w-3 mr-1" /> Add option
               </Button>
             )}
           </div>
@@ -167,7 +167,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
         <p className="text-xs font-medium text-muted-foreground">Nuevo grupo de modificadores</p>
         <div className="flex gap-2">
           <Input
-            placeholder="Nombre del grupo (ej. Adiciones)"
+            placeholder="Group name (e.g. Add-ons)"
             value={newGroupName}
             onChange={e => setNewGroupName(e.target.value)}
             className="h-8 text-sm"
@@ -179,7 +179,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             value={newMax}
             onChange={e => setNewMax(Number(e.target.value))}
             className="h-8 text-sm w-20"
-            title="Máximo de selecciones"
+            title="Maximum selections"
           />
         </div>
         <div className="flex items-center justify-between">
@@ -242,11 +242,11 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Cuando se agrega este producto al carrito, el POS sugerirá estos complementarios.
+        When this product is added to the cart, the POS will suggest these complementary products.
       </p>
       <div className="space-y-1.5">
-        <Label className="text-xs">Buscar producto para agregar</Label>
-        <Input placeholder="Nombre del producto..." value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
+        <Label className="text-xs">Search product to add</Label>
+        <Input placeholder="Product name..." value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
         {searchResults.length > 0 && (
           <div className="border rounded-lg divide-y">
             {searchResults.map((p: any) => (
@@ -299,7 +299,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const handleImageUpload = async (file: File) => {
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      return toast.error("Solo se permiten imágenes JPEG, PNG o WebP");
+      return toast.error("Only JPEG, PNG, or WebP images are allowed");
     }
     if (file.size > 5 * 1024 * 1024) {
       return toast.error("La imagen no puede superar 5 MB");
@@ -374,11 +374,11 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       if (editing) {
         const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
         if (error) throw error;
-        toast.success("Producto actualizado");
+        toast.success("Product updated");
       } else {
         const { error } = await supabase.from("products").insert(payload);
         if (error) throw error;
-        toast.success("Producto creado. Vuelve a editarlo para añadir receta y modificadores.");
+        toast.success("Product created. Edit it again to add a recipe and modifiers.");
       }
       onClose();
     } catch (err: any) { toast.error(err.message); } finally { setSaving(false); }
@@ -386,37 +386,37 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
 
   return (
     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle>{editing ? "Editar producto" : "Nuevo producto"}</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle></DialogHeader>
 
       <Tabs defaultValue="basic">
         <TabsList>
-          <TabsTrigger value="basic">Información</TabsTrigger>
-          {showRecipe && <TabsTrigger value="recipe">Receta</TabsTrigger>}
+          <TabsTrigger value="basic">Information</TabsTrigger>
+          {showRecipe && <TabsTrigger value="recipe">Recipe</TabsTrigger>}
           {showModifiers && <TabsTrigger value="modifiers">Modificadores</TabsTrigger>}
           {showComplementaries && <TabsTrigger value="complementaries">Upselling</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="basic" className="mt-4">
           <form onSubmit={submit} className="space-y-3">
-            <div className="space-y-1.5"><Label>Nombre</Label>
+            <div className="space-y-1.5"><Label>Name</Label>
               <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
 
-            {/* Foto del producto */}
+            {/* Product photo */}
             <div className="space-y-1.5">
-              <Label>Foto del producto</Label>
+              <Label>Product photo</Label>
               <input
                 ref={imageInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="hidden"
-                aria-label="Subir foto del producto"
-                title="Subir foto del producto"
+                aria-label="Upload product photo"
+                title="Upload product photo"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
               />
               {form.image_url ? (
                 <div className="relative w-full h-40 rounded-lg overflow-hidden border bg-muted">
-                  <img src={form.image_url} alt="Foto del producto" className="w-full h-full object-cover" />
+                  <img src={form.image_url} alt="Product photo" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setForm((f: any) => ({ ...f, image_url: null }))}
@@ -437,7 +437,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                     ? <Loader2 className="h-6 w-6 animate-spin" />
                     : <ImagePlus className="h-6 w-6" />}
                   <span className="text-sm">{uploadingImage ? "Subiendo…" : "Clic para subir foto"}</span>
-                  <span className="text-xs">JPEG, PNG o WebP · máx. 5 MB</span>
+                  <span className="text-xs">JPEG, PNG o WebP · max. 5 MB</span>
                 </button>
               )}
               {form.image_url && (
@@ -448,9 +448,9 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               )}
             </div>
 
-            {/* Descripción para el menú */}
+            {/* Description para el menú */}
             <div className="space-y-1.5">
-              <Label>Descripción <span className="text-muted-foreground font-normal">(visible en el menú QR)</span></Label>
+              <Label>Description <span className="text-muted-foreground font-normal">(visible in the QR menu)</span></Label>
               <Textarea
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -460,9 +460,9 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Categoría</Label>
+                <Label>Category</Label>
                 <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v || null })}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                   <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -475,10 +475,10 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5"><Label>Precio</Label>
+              <div className="space-y-1.5"><Label>Price</Label>
                 <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               </div>
-              <div className="space-y-1.5"><Label>Costo</Label>
+              <div className="space-y-1.5"><Label>Cost</Label>
                 <Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
               </div>
               <div className="space-y-1.5"><Label>Imp. %</Label>
@@ -489,32 +489,32 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               <div className="space-y-1.5"><Label>SKU</Label>
                 <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
               </div>
-              <div className="space-y-1.5"><Label>Stock mínimo</Label>
+              <div className="space-y-1.5"><Label>Minimum stock</Label>
                 <Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
               </div>
             </div>
-            {/* Estación KDS */}
+            {/* KDS station */}
             <div className="space-y-1.5">
-              <Label>Estación KDS</Label>
+              <Label>KDS station</Label>
               <Select value={form.station ?? "none"} onValueChange={(v) => setForm({ ...form, station: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Sin asignar (Cocina por defecto)" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Unassigned (Kitchen by default)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
+                  <SelectItem value="none">Unassigned</SelectItem>
                   {KDS_STATIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Código de barras (EAN)</Label>
+              <Label>Barcode (EAN)</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Escribe o escanea el código..."
+                  placeholder="Type or scan the code..."
                   value={form.barcode ?? ""}
                   onChange={(e) => setForm({ ...form, barcode: e.target.value })}
                   className="font-mono"
                 />
                 <Button type="button" variant="outline" size="icon"
-                  onClick={fetchFromAPI} disabled={lookingUp || !form.barcode?.trim()} title="Buscar info por EAN">
+                  onClick={fetchFromAPI} disabled={lookingUp || !form.barcode?.trim()} title="Look up information by EAN">
                   {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
                 </Button>
                 <Button type="button" variant={scanning ? "default" : "outline"} size="icon"

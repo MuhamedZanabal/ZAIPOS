@@ -14,16 +14,16 @@ import {
 
 /* ── Left panel features ── */
 const FEATURES = [
-  { icon: Zap,           text: "Táctil y rápido · Tiles con glow al pulsar" },
-  { icon: Wifi,          text: "Offline-first · Sync automático al reconectar" },
-  { icon: Shield,        text: "Multi-sucursal · Roles y canales granulares" },
+  { icon: Zap,           text: "Touch-first and fast · Tiles glow on press" },
+  { icon: Wifi,          text: "Offline-first · Automatic sync on reconnect" },
+  { icon: Shield,        text: "Multi-branch · Granular roles and channels" },
 ];
 
 /* ── Social proof stats ── */
 const PROOF = [
-  { icon: ShoppingCart,   label: "Ventas procesadas",  value: "Sin límite" },
+  { icon: ShoppingCart,   label: "Sales processed",  value: "Unlimited" },
   { icon: UtensilsCrossed, label: "Canales integrados",  value: "5+"         },
-  { icon: BarChart3,      label: "Reportes en tiempo real", value: "Siempre"   },
+  { icon: BarChart3,      label: "Real-time reports", value: "Always"   },
 ];
 
 export default function Auth() {
@@ -33,7 +33,7 @@ export default function Auth() {
   const [loading,  setLoading]  = useState(false);
 
   useEffect(() => {
-    document.title = "Iniciar sesión | POS S360T";
+    document.title = "Sign in | POS S360T";
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -45,7 +45,7 @@ export default function Auth() {
       toast.success("Bienvenido de vuelta");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
-      toast.error(err.message ?? "Error de autenticación");
+      toast.error(err.message ?? "Authentication error");
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export default function Auth() {
               </div>
             </div>
             <Link to="/" className="auth-back-link">
-              <ArrowLeft className="h-3.5 w-3.5" /> Volver al inicio
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to home
             </Link>
           </div>
 
@@ -94,8 +94,8 @@ export default function Auth() {
               <span className="gradient-text">sistema operativo.</span>
             </h1>
             <p className="auth-hero-sub">
-              Multi-canal · Multi-sucursal · Offline-first.<br />
-              Del mostrador al repartidor, del salón al dashboard.
+              Multi-channel · Multi-branch · Offline-first.<br />
+              From the counter to the courier, from the dining room to the dashboard.
             </p>
 
             {/* Features */}
@@ -149,7 +149,7 @@ export default function Auth() {
           <div className="glass p-7 rounded-3xl">
             <div className="mb-6">
               <div className="h-label g-auth-eyebrow mb-2">ACCESO OPERATIVO</div>
-              <div className="h-display g-auth-title">Iniciar sesión</div>
+              <div className="h-display g-auth-title">Sign in</div>
               <div className="h-meta mt-1">Ingresa con tu cuenta de usuario autorizado.</div>
             </div>
 
@@ -166,7 +166,7 @@ export default function Auth() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pwd" className="text-sm font-medium">Contraseña</Label>
+                <Label htmlFor="pwd" className="text-sm font-medium">Password</Label>
                 <Input
                   id="pwd" type="password" required minLength={6}
                   autoComplete="current-password"

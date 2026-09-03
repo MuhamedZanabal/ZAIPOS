@@ -81,7 +81,7 @@ export default function QRMenu() {
     if (!branchId) return;
     supabase.rpc("get_branch_menu", { _branch_id: branchId } as any)
       .then(({ data, error }) => {
-        if (error || !data) { toast.error("No se pudo cargar el menú"); setLoading(false); return; }
+        if (error || !data) { toast.error("Could not load the menu"); setLoading(false); return; }
         const parsed = data as any;
         const activeCats = (parsed.categories ?? []).filter((c: Category) => isCatActive(c) && c.products.length > 0);
         setMenu({ branch: parsed.branch, categories: activeCats });
@@ -92,7 +92,7 @@ export default function QRMenu() {
 
   useEffect(() => {
     if (menu?.branch) {
-      document.title = `${menu.branch.tenant_name} - ${menu.branch.name} | Menú Digital`;
+      document.title = `${menu.branch.tenant_name} - ${menu.branch.name} | Digital Menu`;
     }
   }, [menu]);
 
@@ -175,7 +175,7 @@ export default function QRMenu() {
 
   if (!menu) return (
     <div className="min-h-screen flex items-center justify-center text-muted-foreground p-6 text-center">
-      <p>Menú no disponible. Escanea de nuevo el código QR.</p>
+      <p>Menu unavailable. Scan the QR code again.</p>
     </div>
   );
 
@@ -183,9 +183,9 @@ export default function QRMenu() {
   if (tableId && tableStatus === "cashier") return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-background">
       <AlertCircle className="h-16 w-16 text-amber-500" />
-      <h1 className="text-2xl font-bold">Mesa con pedido pendiente</h1>
+      <h1 className="text-2xl font-bold">Table with a pending order</h1>
       <p className="text-muted-foreground max-w-xs">
-        Ya hay un pedido en curso y pendiente de pago en esta mesa. Por favor solicita la cuenta a tu mesero.
+        There is already an open order awaiting payment at this table. Please ask your waiter for the bill.
       </p>
     </div>
   );
@@ -193,10 +193,10 @@ export default function QRMenu() {
   if (done) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-background">
       <CheckCircle2 className="h-16 w-16" {...({ style: { color: brandColor } } as any)} />
-      <h1 className="text-2xl font-bold">¡Pedido recibido!</h1>
-      <p className="text-muted-foreground">Pedido <span className="font-mono font-bold">#{done}</span></p>
-      <p className="text-sm text-muted-foreground">El equipo está preparando tu orden. ¡Gracias!</p>
-      <Button onClick={() => setDone(null)} variant="outline">Hacer otro pedido</Button>
+      <h1 className="text-2xl font-bold">Order received!</h1>
+      <p className="text-muted-foreground">Order <span className="font-mono font-bold">#{done}</span></p>
+      <p className="text-sm text-muted-foreground">The team is preparing your order. Thank you!</p>
+      <Button onClick={() => setDone(null)} variant="outline">Place another order</Button>
     </div>
   );
 
@@ -224,7 +224,7 @@ export default function QRMenu() {
           <div className="min-w-0">
             <h1 className="font-bold text-base leading-tight truncate">{menu.branch.tenant_name}</h1>
             <p className="text-xs text-muted-foreground truncate">
-              {menu.branch.name}{tableId ? " · Mesa QR" : ""}
+              {menu.branch.name}{tableId ? " · QR Table" : ""}
             </p>
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function QRMenu() {
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              Hay un pedido abierto en esta mesa. Tus items se agregarán al pedido en curso.
+              There is an open order at this table. Your items will be added to the current order.
             </p>
           </div>
         )}
@@ -263,7 +263,7 @@ export default function QRMenu() {
         {activeCategory && (
           <>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              {activeCategory.name} · {activeCategory.products.length} productos
+              {activeCategory.name} · {activeCategory.products.length} products
             </p>
             <div className="space-y-3">
               {activeCategory.products.map(p => {
@@ -317,7 +317,7 @@ export default function QRMenu() {
                         </p>
                         {p.requires_detail && (
                           <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                            * Requiere detalle al agregar
+                            * Requires details when adding
                           </p>
                         )}
                       </div>
@@ -332,7 +332,7 @@ export default function QRMenu() {
                               type="button"
                               className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
                               onClick={() => updateQty(p.id, -1)}
-                              aria-label="Reducir cantidad"
+                              aria-label="Decrease quantity"
                             >
                               <Minus className="h-3 w-3" />
                             </button>
@@ -342,7 +342,7 @@ export default function QRMenu() {
                               className="h-7 w-7 rounded-full text-white flex items-center justify-center transition-opacity hover:opacity-80"
                               {...({ style: { backgroundColor: brandColor } } as any)}
                               onClick={() => updateQty(p.id, 1)}
-                              aria-label="Aumentar cantidad"
+                              aria-label="Increase quantity"
                             >
                               <Plus className="h-3 w-3" />
                             </button>
@@ -353,7 +353,7 @@ export default function QRMenu() {
                             className="h-8 w-8 rounded-full text-white flex items-center justify-center transition-opacity hover:opacity-80"
                             {...({ style: { backgroundColor: brandColor } } as any)}
                             onClick={() => addToCart(p)}
-                            aria-label={`Agregar ${p.name}`}
+                            aria-label={`Add ${p.name}`}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -374,7 +374,7 @@ export default function QRMenu() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />
-              <span className="font-semibold text-sm">{cartCount} ítem{cartCount !== 1 ? "s" : ""}</span>
+              <span className="font-semibold text-sm">{cartCount} item{cartCount !== 1 ? "s" : ""}</span>
             </div>
             <span className="font-bold">{formatCurrency(cartTotal)}</span>
           </div>
@@ -386,14 +386,14 @@ export default function QRMenu() {
                   <span>{i.quantity}× {i.product.name}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{formatCurrency(i.product.price * i.quantity)}</span>
-                    <button type="button" onClick={() => updateQty(i.product.id, -i.quantity)} className="text-muted-foreground hover:text-destructive" aria-label="Eliminar">
+                    <button type="button" onClick={() => updateQty(i.product.id, -i.quantity)} className="text-muted-foreground hover:text-destructive" aria-label="Remove">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
                 {i.product.requires_detail && (
                   <Input
-                    placeholder="Detalle requerido (ej: término, sin cebolla…)"
+                    placeholder="Required details (e.g. doneness, no onion…)"
                     value={i.notes ?? ""}
                     onChange={e => updateItemNotes(i.product.id, e.target.value)}
                     className="h-7 text-xs"
@@ -403,8 +403,8 @@ export default function QRMenu() {
             ))}
           </div>
 
-          <Input placeholder="Tu nombre (opcional)" value={customerName} onChange={e => setCustomerName(e.target.value)} className="h-9 text-sm" />
-          <Textarea placeholder="Notas generales para la cocina (opcional)" value={notes} onChange={e => setNotes(e.target.value)} className="text-sm min-h-0 h-9 resize-none" />
+          <Input placeholder="Your name (optional)" value={customerName} onChange={e => setCustomerName(e.target.value)} className="h-9 text-sm" />
+          <Textarea placeholder="General notes for the kitchen (optional)" value={notes} onChange={e => setNotes(e.target.value)} className="text-sm min-h-0 h-9 resize-none" />
 
           <Button
             className="w-full text-white"
@@ -413,7 +413,7 @@ export default function QRMenu() {
             disabled={submitting}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
-            Enviar pedido · {formatCurrency(cartTotal)}
+            Send order · {formatCurrency(cartTotal)}
           </Button>
         </div>
       )}

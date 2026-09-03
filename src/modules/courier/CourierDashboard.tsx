@@ -19,15 +19,15 @@ const STATUS_META: Record<DeliveryStatus, { label: string; pillClass: string }> 
   received:   { label: "Recibido",          pillClass: "g-pill-ghost" },
   preparing:  { label: "Preparando",        pillClass: "g-pill-warn" },
   ready:      { label: "Listo para recoger",pillClass: "g-pill-sky" },
-  assigned:   { label: "Asignado a mí",     pillClass: "g-pill-brand" },
+  assigned:   { label: "Assigned to me",     pillClass: "g-pill-brand" },
   on_way:     { label: "En camino",         pillClass: "g-pill-brand" },
   delivered:  { label: "Entregado",         pillClass: "g-pill-ok" },
   cancelled:  { label: "Cancelado",         pillClass: "g-pill-bad" },
 };
 
 const PAY_METHODS: { id: PayMethod; label: string; icon: any }[] = [
-  { id: "cash",     label: "Efectivo",      icon: Banknote },
-  { id: "card",     label: "Datáfono",      icon: CreditCard },
+  { id: "cash",     label: "Cash",      icon: Banknote },
+  { id: "card",     label: "Card terminal",      icon: CreditCard },
   { id: "transfer", label: "Transferencia", icon: Smartphone },
   { id: "qr",       label: "QR",            icon: QrCode },
 ];
@@ -86,14 +86,14 @@ export default function CourierDashboard() {
   }, [orders]);
 
   if (!user || !tenantId || !branchId) {
-    return <div className="p-6 h-meta">Cargando...</div>;
+    return <div className="p-6 h-meta">Loading...</div>;
   }
 
   if (!isSuperAdmin && !employee) {
     return (
       <div className="p-6">
         <div className="glass rounded-2xl p-8 text-center h-meta">
-          Tu usuario no está vinculado a un empleado en esta sucursal. Pide al administrador que te registre como domiciliario.
+          Your user is not linked to an employee at this branch. Ask an administrator to register you as a courier.
         </div>
       </div>
     );
@@ -121,7 +121,7 @@ export default function CourierDashboard() {
   const confirmPayment = async () => {
     if (!payOrder) return;
     const amount = Number(payOrder.sales?.total ?? 0) + Number(payOrder.delivery_fee ?? 0);
-    if (amount <= 0) return toast.error("Monto inválido");
+    if (amount <= 0) return toast.error("Invalid amount");
     setSubmitting(true);
     try {
       const { error } = await supabase.rpc("register_delivery_payment", {
@@ -152,7 +152,7 @@ export default function CourierDashboard() {
       <div key={o.id} className="glass rounded-2xl p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="font-bold leading-tight truncate text-[var(--ink-900)]">{o.customer_name || "Sin nombre"}</div>
+            <div className="font-bold leading-tight truncate text-[var(--ink-900)]">{o.customer_name || "No name"}</div>
             <div className="h-meta">{formatDate(o.created_at)}</div>
           </div>
           <span className={cn("g-pill g-pill-h22 whitespace-nowrap", meta.pillClass)}>{meta.label}</span>
@@ -202,7 +202,7 @@ export default function CourierDashboard() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        eyebrow="OPERACIÓN · DOMICILIOS"
+        eyebrow="OPERATIONS · DELIVERY"
         title="Panel del domiciliario"
         description={`${employee?.full_name ?? (isSuperAdmin ? "Super Admin" : "—")} · ${branchName}`}
       />
@@ -218,7 +218,7 @@ export default function CourierDashboard() {
           <div className="h-num text-2xl">{grouped.active.filter((o: any) => o.status === "on_way").length}</div>
         </div>
         <div className="glass g-kpi">
-          <div className="h-label uppercase tracking-wider">Entregados hoy</div>
+          <div className="h-label uppercase tracking-wider">Delivered today</div>
           <div className="h-num text-2xl text-[var(--g-ok)]">
             {grouped.done.filter((o: any) => {
               const d = new Date(o.delivered_at ?? o.updated_at);
@@ -244,7 +244,7 @@ export default function CourierDashboard() {
 
         <TabsContent value="active" className="mt-4">
           {isLoading ? (
-            <div className="h-meta">Cargando…</div>
+            <div className="h-meta">Loading…</div>
           ) : grouped.active.length === 0 ? (
             <div className="glass rounded-2xl p-8 text-center h-meta">
               No tienes pedidos asignados.
@@ -276,7 +276,7 @@ export default function CourierDashboard() {
           {payOrder && (
             <div className="space-y-4">
               <div className="glass rounded-xl p-3 space-y-0.5">
-                <div className="h-label">Cliente</div>
+                <div className="h-label">Customer</div>
                 <div className="font-semibold text-[var(--ink-900)]">{payOrder.customer_name}</div>
                 <div className="h-meta">{payOrder.address}</div>
               </div>
@@ -287,7 +287,7 @@ export default function CourierDashboard() {
                 </span>
               </div>
               <div>
-                <div className="h-label mb-2">Método de pago</div>
+                <div className="h-label mb-2">Payment method</div>
                 <div className="grid grid-cols-2 gap-2">
                   {PAY_METHODS.map((m) => {
                     const Icon = m.icon;
@@ -313,10 +313,10 @@ export default function CourierDashboard() {
             </div>
           )}
           <DialogFooter>
-            <button type="button" className="g-btn g-btn-ghost" onClick={() => setPayOrder(null)} disabled={submitting}>Cancelar</button>
+            <button type="button" className="g-btn g-btn-ghost" onClick={() => setPayOrder(null)} disabled={submitting}>Cancel</button>
             <button type="button" className="g-btn g-btn-primary" onClick={confirmPayment} disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Confirmar entrega
+              Confirm delivery
             </button>
           </DialogFooter>
         </DialogContent>

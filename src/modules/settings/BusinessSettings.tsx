@@ -48,7 +48,7 @@ export default function BusinessSettings() {
 
   const save = async () => {
     if (!tenantId) return;
-    if (!form.name.trim()) return toast.error("El nombre es requerido");
+    if (!form.name.trim()) return toast.error("Name is required");
     const { error } = await supabase
       .from("tenants")
       .update({
@@ -63,13 +63,13 @@ export default function BusinessSettings() {
     qc.invalidateQueries({ queryKey: ["my-roles"] });
   };
 
-  if (isLoading) return <div className="h-meta">Cargando…</div>;
+  if (isLoading) return <div className="h-meta">Loading…</div>;
 
   return (
     <div className="space-y-6">
       <div className="glass p-6 rounded-2xl max-w-2xl space-y-5">
         <div className="space-y-1.5">
-          <Label>Nombre del bar</Label>
+          <Label>Business name</Label>
           <Input
             placeholder="Mi Bar"
             value={form.name}
@@ -95,7 +95,7 @@ export default function BusinessSettings() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>IVA por defecto (%)</Label>
+            <Label>Default VAT (%)</Label>
             <Input
               type="number"
               min={0}
@@ -111,12 +111,12 @@ export default function BusinessSettings() {
         {canEdit ? (
           <div className="pt-2">
             <button type="button" className="g-btn g-btn-primary" onClick={save}>
-              <Save className="h-4 w-4" /> Guardar cambios
+              <Save className="h-4 w-4" /> Save changes
             </button>
           </div>
         ) : (
           <p className="h-meta">
-            Solo el dueño o administradores pueden editar estos datos.
+            Only the owner or administrators can edit this information.
           </p>
         )}
       </div>
@@ -132,8 +132,8 @@ export default function BusinessSettings() {
               <div className="space-y-1">
                 <p className="font-semibold text-sm text-ink-900">Modo desarrollo</p>
                 <p className="h-meta max-w-sm">
-                  Permite registrar ventas y órdenes sin importar el stock disponible.
-                  Útil para pruebas y demostraciones. Un banner naranja avisa cuando está activo.
+                  Allows sales and orders to be recorded regardless of available stock.
+                  Useful for testing and demonstrations. An orange banner indicates when it is active.
                 </p>
               </div>
             </div>

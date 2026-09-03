@@ -38,10 +38,10 @@ function TableDrawer({ table, order, items, onClose, onNavigate }: {
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <div className="eyebrow eyebrow-blue">MESA</div>
+            <div className="eyebrow eyebrow-blue">TABLE</div>
             <div className="font-bold text-2xl">{table.name}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {table.capacity} pax · {order?.status === "open" ? "Orden abierta" : "Enviado a caja"}
+              {table.capacity} pax · {order?.status === "open" ? "Open order" : "Sent to register"}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -52,7 +52,7 @@ function TableDrawer({ table, order, items, onClose, onNavigate }: {
             )}
             <button
               type="button"
-              aria-label="Cerrar detalle de mesa"
+              aria-label="Close table details"
               onClick={onClose}
               className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -89,7 +89,7 @@ function TableDrawer({ table, order, items, onClose, onNavigate }: {
               const c = countByStatus(items);
               return (
                 <>
-                  {c.pending > 0   && <span className="s-pill s-pill-mute">{c.pending} pendiente{c.pending !== 1 ? "s" : ""}</span>}
+                  {c.pending > 0   && <span className="s-pill s-pill-mute">{c.pending} pending</span>}
                   {c.preparing > 0 && <span className="s-pill s-pill-warn">{c.preparing} preparando</span>}
                   {c.ready > 0     && <span className="s-pill s-pill-blue">{c.ready} listo{c.ready !== 1 ? "s" : ""}</span>}
                   {c.dispatched > 0 && <span className="s-pill s-pill-green">{c.dispatched} servido{c.dispatched !== 1 ? "s" : ""}</span>}
@@ -144,7 +144,7 @@ function TableCard({ table, order, items, isMine, onOpen }: {
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Mesa ${table.name}${occupied ? " – ocupada" : " – libre"}`}
+      aria-label={`Mesa ${table.name}${occupied ? " – occupied" : " – available"}`}
       className={cn(
         "relative rounded-2xl border-2 p-3.5 text-left transition-all active:scale-95 flex flex-col gap-1.5 min-h-[120px] w-full",
         cardClass,
@@ -152,7 +152,7 @@ function TableCard({ table, order, items, isMine, onOpen }: {
     >
       {/* Top row */}
       <div className="flex items-start justify-between gap-1">
-        <div className="waiter-eyebrow-xs">MESA</div>
+        <div className="waiter-eyebrow-xs">TABLE</div>
         {occupied && state === "ready"     && <span className="live-dot live-dot-blue" />}
         {occupied && state === "preparing" && <span className="live-dot live-dot-amber" />}
         {!occupied && isMine              && <span className="live-dot" />}
@@ -164,7 +164,7 @@ function TableCard({ table, order, items, isMine, onOpen }: {
       {/* Status */}
       {!occupied ? (
         <div className="mt-auto text-[10px] text-muted-foreground uppercase tracking-wider">
-          {isMine ? "Asignada · Libre" : "Disponible"}
+          {isMine ? "Assigned · Available" : "Available"}
         </div>
       ) : (
         <div className="mt-auto space-y-1">
@@ -187,7 +187,7 @@ function TableCard({ table, order, items, isMine, onOpen }: {
 
 /* ─── Quick action config ─────────────────────────────────────── */
 const QUICK_ACTIONS = [
-  { icon: Plus,     label: "Nueva",     scClass: "sc-blue",   to: "/tables"   },
+  { icon: Plus,     label: "New",     scClass: "sc-blue",   to: "/tables"   },
   { icon: Bike,     label: "Domicilio", scClass: "sc-green",  to: "/delivery" },
   { icon: ScanLine, label: "Escanear",  scClass: "sc-purple", to: "/pos"      },
   { icon: Receipt,  label: "Cobrar",    scClass: "sc-amber",  to: "/cash"     },
@@ -261,7 +261,7 @@ export default function WaiterDashboard() {
   if (!tenantId || !branchId || !user) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-        Cargando panel…
+        Loading dashboard…
       </div>
     );
   }
@@ -304,16 +304,16 @@ export default function WaiterDashboard() {
             <GearMark size={96} />
           </div>
 
-          <div className="eyebrow eyebrow-blue mb-1">TURNO ACTIVO · {branchName}</div>
+          <div className="eyebrow eyebrow-blue mb-1">ACTIVE SHIFT · {branchName}</div>
           <div className="waiter-hero-font font-bold text-lg">
             Hola, <span className="gradient-text">{user.email?.split("@")[0] ?? "Mesero"}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mt-3">
             {[
-              { label: "MIS MESAS", value: String(myTables.length),    color: "text-foreground" },
+              { label: "MIS TABLES", value: String(myTables.length),    color: "text-foreground" },
               { label: "OCUPADAS",  value: String(occupiedCount),       color: "text-primary"    },
-              { label: "ATENCIÓN",  value: String(attentionCount),      color: "text-amber-500"  },
+              { label: "ATTENTION",  value: String(attentionCount),      color: "text-amber-500"  },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="waiter-eyebrow-xs">{stat.label}</div>
@@ -324,7 +324,7 @@ export default function WaiterDashboard() {
 
           {totalMyRevenue > 0 && (
             <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
-              <span className="waiter-eyebrow-xs">TOTAL EN MIS MESAS</span>
+              <span className="waiter-eyebrow-xs">TOTAL EN MIS TABLES</span>
               <span className="big-number waiter-big-order">{formatCurrency(totalMyRevenue)}</span>
             </div>
           )}
@@ -350,7 +350,7 @@ export default function WaiterDashboard() {
       {/* ── Tab selector ─────────────────────────────────── */}
       <div className="px-4 pb-2 flex gap-2">
         {[
-          { id: "mesas",    label: "Mesas",    count: (tables ?? []).length },
+          { id: "mesas",    label: "Tables",    count: (tables ?? []).length },
           { id: "comandas", label: "Comandas", count: myOrders.length },
         ].map(({ id, label, count }) => (
           <button
@@ -380,19 +380,19 @@ export default function WaiterDashboard() {
       {/* ── Content ──────────────────────────────────────── */}
       <div className="flex-1 px-4 pb-6 overflow-y-auto">
 
-        {/* MESAS tab */}
+        {/* TABLES tab */}
         {activeTab === "mesas" && (
           <>
             <div className="flex items-center justify-between mb-3">
               <div className="waiter-eyebrow-sm">
-                {(tables ?? []).length} MESAS · SALÓN
+                {(tables ?? []).length} TABLES · SALÓN
               </div>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1"><LiveDot />{occupiedCount} ocupadas</span>
                 {attentionCount > 0 && (
                   <span className="flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3 text-amber-500" />
-                    {attentionCount} atención
+                    {attentionCount} attention
                   </span>
                 )}
               </div>
@@ -401,7 +401,7 @@ export default function WaiterDashboard() {
             {(tables ?? []).length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                 <UtensilsCrossed className="h-10 w-10 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">No hay mesas configuradas</p>
+                <p className="text-sm text-muted-foreground">No tables configured</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
@@ -442,7 +442,7 @@ export default function WaiterDashboard() {
                 <button
                   key={o.id}
                   type="button"
-                  aria-label={`Abrir comanda de ${o.tables?.name ?? "Mesa"}`}
+                  aria-label={`Open order for ${o.tables?.name ?? "Table"}`}
                   onClick={() => navigate(`/tables/${o.id}`)}
                   className="w-full rounded-2xl border border-border bg-card p-4 text-left flex items-center gap-3 hover:border-primary/30 active:scale-[0.99] transition-all"
                 >
@@ -450,12 +450,12 @@ export default function WaiterDashboard() {
                     <UtensilsCrossed className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-base">{o.tables?.name ?? "Mesa"}</div>
+                    <div className="font-bold text-base">{o.tables?.name ?? "Table"}</div>
                     <div className="text-xs text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
                       {c.pending   > 0 && <span>{c.pending} pend.</span>}
                       {c.preparing > 0 && <span className="text-amber-500">{c.preparing} prep.</span>}
                       {c.ready     > 0 && <span className="text-sky-500">{c.ready} listo{c.ready !== 1 ? "s" : ""}</span>}
-                      {items.length === 0 && <span>Sin ítems</span>}
+                      {items.length === 0 && <span>No items</span>}
                     </div>
                     {meta && <div className={cn("text-[10px] font-semibold mt-1", meta.tone)}>{meta.label}</div>}
                   </div>

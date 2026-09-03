@@ -28,8 +28,8 @@ type ShiftTab = "week" | "list" | "attendance";
 const STATUS_MAP: Record<string, { label: string; pill: string }> = {
   scheduled:   { label: "Programado", pill: "g-pill g-pill-ghost" },
   in_progress: { label: "En curso",   pill: "g-pill g-pill-brand" },
-  completed:   { label: "Completado", pill: "g-pill g-pill-ok" },
-  missed:      { label: "No asistió", pill: "g-pill g-pill-bad" },
+  completed:   { label: "Completed", pill: "g-pill g-pill-ok" },
+  missed:      { label: "No-show", pill: "g-pill g-pill-bad" },
 };
 
 export default function Shifts() {
@@ -87,7 +87,7 @@ export default function Shifts() {
   });
 
   if (!tenantId || !user) {
-    return <div className="h-meta py-16 text-center">Cargando turnos…</div>;
+    return <div className="h-meta py-16 text-center">Loading shifts…</div>;
   }
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -153,9 +153,9 @@ export default function Shifts() {
           </div>
           <div>
             <div className="h-meta g-page-subtitle text-ink-400">NEGOCIO · TURNOS</div>
-            <h1 className="h-display g-page-title">Programación de turnos</h1>
+            <h1 className="h-display g-page-title">Shift scheduling</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
-              {shiftList.length} turno{shiftList.length !== 1 ? "s" : ""} esta semana
+              {shiftList.length} shift{shiftList.length !== 1 ? "s" : ""} this week
             </div>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function Shifts() {
           <Select value={scopeBranch} onValueChange={setScopeBranch}>
             <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Todas las sucursales</SelectItem>
+              <SelectItem value="__all__">All branches</SelectItem>
               {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -171,7 +171,7 @@ export default function Shifts() {
             <DialogTrigger asChild>
               <button type="button" className="g-btn g-btn-primary">
                 <Plus className="h-4 w-4" />
-                Nuevo turno
+                New shift
               </button>
             </DialogTrigger>
             <ShiftForm
@@ -205,7 +205,7 @@ export default function Shifts() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(-1)}>← Anterior</button>
-              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => setWeekStart(startOfWeek())}>Hoy</button>
+              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => setWeekStart(startOfWeek())}>Today</button>
               <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(1)}>Siguiente →</button>
             </div>
             <div className="h-meta text-sm text-ink-500">
@@ -255,17 +255,17 @@ export default function Shifts() {
               <Calendar className="h-7 w-7" />
             </div>
             <h2 className="h-display font-semibold text-lg">Sin turnos</h2>
-            <p className="h-meta g-page-subtitle text-ink-500 mt-1">Crea el primer turno de la semana.</p>
+            <p className="h-meta g-page-subtitle text-ink-500 mt-1">Create the first shift of the week.</p>
           </div>
         ) : (
           <div className="glass rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[2fr_1.5fr_1.5fr_1fr_1fr_100px_120px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-              <span>Empleado</span>
+              <span>Employee</span>
               <span>Inicio</span>
               <span>Fin</span>
               <span>Entrada</span>
               <span>Salida</span>
-              <span>Estado</span>
+              <span>Status</span>
               <span className="text-right">Acciones</span>
             </div>
             {shiftList.map((s: any, idx: number) => {
@@ -318,13 +318,13 @@ export default function Shifts() {
               <Clock className="h-7 w-7" />
             </div>
             <h2 className="h-display font-semibold text-lg">Sin registros</h2>
-            <p className="h-meta g-page-subtitle text-ink-500 mt-1">No hay registros de asistencia todavía.</p>
+            <p className="h-meta g-page-subtitle text-ink-500 mt-1">No attendance records yet.</p>
           </div>
         ) : (
           <div className="glass rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[2fr_2fr_120px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
               <span>Fecha</span>
-              <span>Empleado</span>
+              <span>Employee</span>
               <span>Tipo</span>
             </div>
             {attendanceList.map((a: any, idx: number) => (
@@ -370,7 +370,7 @@ function ShiftForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.employee_id || !form.branch_id) return toast.error("Empleado y sucursal son obligatorios");
+    if (!form.employee_id || !form.branch_id) return toast.error("Employee and branch are required");
     if (new Date(form.scheduled_end) <= new Date(form.scheduled_start)) {
       return toast.error("El fin debe ser posterior al inicio");
     }
@@ -385,28 +385,28 @@ function ShiftForm({
     });
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Turno creado");
+    toast.success("Shift created");
     onClose();
   };
 
   return (
     <DialogContent className="max-w-md">
-      <DialogHeader><DialogTitle>Nuevo turno</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>New shift</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-1.5">
-          <Label>Empleado</Label>
+          <Label>Employee</Label>
           <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}>
-            <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
-              {employees.length === 0 && <div className="p-2 text-xs text-ink-500">Sin empleados activos</div>}
+              {employees.length === 0 && <div className="p-2 text-xs text-ink-500">No active employees</div>}
               {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Sucursal</Label>
+          <Label>Branch</Label>
           <Select value={form.branch_id} onValueChange={(v) => setForm({ ...form, branch_id: v })}>
-            <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
               {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
             </SelectContent>
@@ -425,7 +425,7 @@ function ShiftForm({
           </div>
         </div>
         <button type="submit" className="g-btn g-btn-primary w-full g-btn-touch" disabled={saving}>
-          {saving ? "Guardando..." : "Crear turno"}
+          {saving ? "Saving..." : "Create shift"}
         </button>
       </form>
     </DialogContent>

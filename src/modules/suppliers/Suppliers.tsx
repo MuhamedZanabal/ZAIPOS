@@ -88,7 +88,7 @@ export default function Suppliers() {
       }
     },
     onSuccess: () => {
-      toast.success(editingSupplier ? "Proveedor actualizado" : "Proveedor creado");
+      toast.success(editingSupplier ? "Supplier updated" : "Supplier created");
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       setSupplierOpen(false); setEditingSupplier(null); setSupplierForm(emptySupplier);
     },
@@ -100,7 +100,7 @@ export default function Suppliers() {
       const { error } = await supabase.from("suppliers").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Proveedor eliminado"); qc.invalidateQueries({ queryKey: ["suppliers"] }); },
+    onSuccess: () => { toast.success("Supplier deleted"); qc.invalidateQueries({ queryKey: ["suppliers"] }); },
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
@@ -143,7 +143,7 @@ export default function Suppliers() {
       }
     },
     onSuccess: () => {
-      toast.success("Orden recibida · Inventario actualizado");
+      toast.success("Order received · Inventory updated");
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
     },
@@ -176,10 +176,10 @@ export default function Suppliers() {
             <Truck className="h-5 w-5" />
           </div>
           <div>
-            <div className="h-meta g-page-subtitle text-ink-400">INVENTARIO · PROVEEDORES</div>
-            <h1 className="h-display g-page-title">Proveedores</h1>
+            <div className="h-meta g-page-subtitle text-ink-400">INVENTORY · SUPPLIERS</div>
+            <h1 className="h-display g-page-title">Suppliers</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
-              {suppliers.length} proveedor{suppliers.length !== 1 ? "es" : ""}
+              {suppliers.length} supplier{suppliers.length !== 1 ? "s" : ""}
             </div>
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function Suppliers() {
             onClick={() => { setOrderOpen(true); setTab("orders"); }}
           >
             <ShoppingBag className="h-4 w-4" />
-            Nueva orden de compra
+            New purchase order
           </button>
           <button
             type="button"
@@ -198,7 +198,7 @@ export default function Suppliers() {
             onClick={() => { setEditingSupplier(null); setSupplierForm(emptySupplier); setSupplierOpen(true); }}
           >
             <Plus className="h-4 w-4" />
-            Nuevo proveedor
+            New supplier
           </button>
         </div>
       </div>
@@ -217,7 +217,7 @@ export default function Suppliers() {
           className={`g-btn ${tab === "orders" ? "g-btn-primary" : "g-btn-ghost"} g-btn-sm`}
           onClick={() => setTab("orders")}
         >
-          Órdenes de compra
+          Purchase orders
         </button>
       </div>
 
@@ -226,7 +226,7 @@ export default function Suppliers() {
         <div className="space-y-4">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
-            <Input className="pl-9" placeholder="Buscar proveedor..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input className="pl-9" placeholder="Search supplier..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
 
           {filteredSuppliers.length === 0 ? (
@@ -234,19 +234,19 @@ export default function Suppliers() {
               <div className="orb mx-auto mb-4">
                 <Truck className="h-7 w-7" />
               </div>
-              <h2 className="h-display font-semibold text-lg">Sin proveedores</h2>
+              <h2 className="h-display font-semibold text-lg">No suppliers</h2>
               <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-                Registra tus proveedores para gestionar compras e inventario.
+                Register suppliers to manage purchasing and inventory.
               </p>
             </div>
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_72px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-                <span>Nombre</span>
+                <span>Name</span>
                 <span>NIT</span>
                 <span>Contacto</span>
-                <span>Teléfono</span>
-                <span>Condición de pago</span>
+                <span>Phone</span>
+                <span>Payment terms</span>
                 <span />
               </div>
               {filteredSuppliers.map((s, idx) => (
@@ -262,7 +262,7 @@ export default function Suppliers() {
                   <div className="flex gap-1 justify-end">
                     <button
                       type="button"
-                      aria-label="Editar proveedor"
+                      aria-label="Edit supplier"
                       className="g-btn g-btn-ghost h-8 w-8 p-0 flex items-center justify-center"
                       onClick={() => {
                         setEditingSupplier(s);
@@ -274,9 +274,9 @@ export default function Suppliers() {
                     </button>
                     <button
                       type="button"
-                      aria-label="Eliminar proveedor"
+                      aria-label="Delete supplier"
                       className="g-btn g-btn-ghost h-8 w-8 p-0 flex items-center justify-center text-g-bad"
-                      onClick={() => { if (confirm("¿Eliminar proveedor?")) removeSupplier.mutate(s.id); }}
+                      onClick={() => { if (confirm("Delete supplier?")) removeSupplier.mutate(s.id); }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -295,18 +295,18 @@ export default function Suppliers() {
             <div className="orb mx-auto mb-4">
               <ShoppingBag className="h-7 w-7" />
             </div>
-            <h2 className="h-display font-semibold text-lg">Sin órdenes de compra</h2>
+            <h2 className="h-display font-semibold text-lg">No purchase orders</h2>
             <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-              Crea órdenes de compra para registrar tus compras a proveedores.
+              Create purchase orders to record purchases from suppliers.
             </p>
           </div>
         ) : (
           <div className="glass rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[1fr_2fr_100px_2fr_120px_100px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
               <span>Fecha</span>
-              <span>Proveedor</span>
-              <span>Estado</span>
-              <span>Notas</span>
+              <span>Supplier</span>
+              <span>Status</span>
+              <span>Notes</span>
               <span className="text-right">Total</span>
               <span />
             </div>
@@ -316,7 +316,7 @@ export default function Suppliers() {
                 className={`grid grid-cols-[1fr_2fr_100px_2fr_120px_100px] gap-3 px-4 py-3 items-center hover:bg-white/5 transition-colors${idx < orders.length - 1 ? " border-b border-white/10" : ""}`}
               >
                 <span className="text-sm tabular-nums text-ink-500">{new Date(o.created_at).toLocaleDateString("es-CO")}</span>
-                <span className="font-medium text-sm text-ink-900">{o.suppliers?.name ?? "Sin proveedor"}</span>
+                <span className="font-medium text-sm text-ink-900">{o.suppliers?.name ?? "No supplier"}</span>
                 <span>
                   {o.status === "received" && <span className="g-pill g-pill-ok">Recibida</span>}
                   {o.status === "cancelled" && <span className="g-pill g-pill-bad">Cancelada</span>}
@@ -329,7 +329,7 @@ export default function Suppliers() {
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-sm flex items-center gap-1"
-                      onClick={() => { if (confirm("¿Marcar como recibida? Esto actualizará el inventario.")) receiveOrder.mutate(o); }}
+                      onClick={() => { if (confirm("Mark as received? This will update inventory.")) receiveOrder.mutate(o); }}
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       Recibir
@@ -345,10 +345,10 @@ export default function Suppliers() {
       {/* Supplier form dialog */}
       <Dialog open={supplierOpen} onOpenChange={(v) => { setSupplierOpen(v); if (!v) { setEditingSupplier(null); setSupplierForm(emptySupplier); } }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editingSupplier ? "Editar proveedor" : "Nuevo proveedor"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingSupplier ? "Edit supplier" : "New supplier"}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label>Nombre / Razón social *</Label>
+              <Label>Name / Legal name *</Label>
               <Input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))} placeholder="Distribuidora XYZ" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -357,7 +357,7 @@ export default function Suppliers() {
                 <Input value={supplierForm.tax_id} onChange={(e) => setSupplierForm((f) => ({ ...f, tax_id: e.target.value }))} placeholder="900000000-1" />
               </div>
               <div className="space-y-1.5">
-                <Label>Teléfono</Label>
+                <Label>Phone</Label>
                 <Input value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))} placeholder="310 000 0000" />
               </div>
             </div>
@@ -372,11 +372,11 @@ export default function Suppliers() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Condición de pago</Label>
-              <Input value={supplierForm.payment_terms} onChange={(e) => setSupplierForm((f) => ({ ...f, payment_terms: e.target.value }))} placeholder="Ej: 30 días, contado, crédito 15 días" />
+              <Label>Payment terms</Label>
+              <Input value={supplierForm.payment_terms} onChange={(e) => setSupplierForm((f) => ({ ...f, payment_terms: e.target.value }))} placeholder="E.g. Net 30, cash, 15-day credit" />
             </div>
             <div className="space-y-1.5">
-              <Label>Notas</Label>
+              <Label>Notes</Label>
               <Input value={supplierForm.notes} onChange={(e) => setSupplierForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Observaciones adicionales" />
             </div>
             <button
@@ -385,7 +385,7 @@ export default function Suppliers() {
               disabled={!supplierForm.name.trim() || saveSupplier.isPending}
               onClick={() => saveSupplier.mutate(supplierForm)}
             >
-              {saveSupplier.isPending ? "Guardando..." : editingSupplier ? "Guardar cambios" : "Crear proveedor"}
+              {saveSupplier.isPending ? "Saving..." : editingSupplier ? "Save changes" : "Create supplier"}
             </button>
           </div>
         </DialogContent>
@@ -394,36 +394,36 @@ export default function Suppliers() {
       {/* Purchase order dialog */}
       <Dialog open={orderOpen} onOpenChange={(v) => { setOrderOpen(v); if (!v) { setOrderSupplierId(""); setOrderNotes(""); setOrderItems([]); } }}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Nueva orden de compra</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>New purchase order</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Proveedor</Label>
+                <Label>Supplier</Label>
                 <Select value={orderSupplierId} onValueChange={setOrderSupplierId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar proveedor" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
                   <SelectContent>
                     {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Notas</Label>
+                <Label>Notes</Label>
                 <Input value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Observaciones de la orden" />
               </div>
             </div>
 
             <div className="glass-thin rounded-xl p-3 space-y-3">
-              <div className="text-sm font-semibold text-ink-900">Agregar productos</div>
+              <div className="text-sm font-semibold text-ink-900">Add products</div>
               <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                 <div className="space-y-1">
-                  <Label className="text-xs">Producto</Label>
+                  <Label className="text-xs">Product</Label>
                   <Select value={itemProductId} onValueChange={(v) => { setItemProductId(v); const p = products.find((x) => x.id === v); if (p) setItemCost(String(p.cost)); }}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1 w-24">
-                  <Label className="text-xs">Cantidad</Label>
+                  <Label className="text-xs">Quantity</Label>
                   <Input type="number" min="0.01" value={itemQty} onChange={(e) => setItemQty(e.target.value)} placeholder="0" />
                 </div>
                 <div className="space-y-1 w-28">
@@ -445,7 +445,7 @@ export default function Suppliers() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Producto</TableHead>
+                      <TableHead>Product</TableHead>
                       <TableHead>Cant.</TableHead>
                       <TableHead>Costo</TableHead>
                       <TableHead className="text-right">Total</TableHead>

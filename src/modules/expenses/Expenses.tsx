@@ -44,9 +44,9 @@ const emptyExpense: ExpenseForm = {
 };
 
 const PAY_METHODS = [
-  { id: "cash",     label: "Efectivo" },
-  { id: "card",     label: "Tarjeta" },
-  { id: "transfer", label: "Transferencia" },
+  { id: "cash",     label: "Cash" },
+  { id: "card",     label: "Card" },
+  { id: "transfer", label: "Transfer" },
 ];
 
 export default function Expenses() {
@@ -117,7 +117,7 @@ export default function Expenses() {
       setEditingExpense(null);
       setExpenseForm(emptyExpense);
     },
-    onError: (e: any) => toast.error(e.message ?? "Error al guardar"),
+    onError: (e: any) => toast.error(e.message ?? "Error saving"),
   });
 
   const removeExpense = useMutation({
@@ -140,7 +140,7 @@ export default function Expenses() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Categoría creada");
+      toast.success("Category created");
       qc.invalidateQueries({ queryKey: ["expense-categories"] });
       setCatOpen(false);
       setCatName("");
@@ -176,14 +176,14 @@ export default function Expenses() {
           <div className="g-page-hd-meta">Este mes: {formatCurrency(totalMonth)}</div>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
-          <Plus size={16} className="mr-1" />Registrar gasto
+          <Plus size={16} className="mr-1" />Record expense
         </button>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="expenses">Gastos</TabsTrigger>
-          <TabsTrigger value="categories">Categorías</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
 
         {/* ── Expenses tab ── */}
@@ -192,16 +192,16 @@ export default function Expenses() {
             <EmptyState
               icon={TrendingDown}
               title="Sin gastos registrados"
-              description="Registra arriendo, nómina, servicios y otros gastos operativos."
+              description="Record rent, payroll, utilities, and other operating expenses."
             />
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="g-exp-head">
                 <span>Fecha</span>
-                <span>Descripción</span>
-                <span>Categoría</span>
-                <span>Método</span>
-                <span className="text-right">Monto</span>
+                <span>Description</span>
+                <span>Category</span>
+                <span>Method</span>
+                <span className="text-right">Amount</span>
                 <span />
               </div>
               {expenses.map((e) => (
@@ -215,7 +215,7 @@ export default function Expenses() {
                         {e.expense_categories.name}
                       </span>
                     ) : (
-                      <span className="h-meta">Sin categoría</span>
+                      <span className="h-meta">Uncategorized</span>
                     )}
                   </span>
                   <span className="g-exp-pay">
@@ -225,7 +225,7 @@ export default function Expenses() {
                   <span className="g-exp-actions">
                     <button
                       type="button"
-                      title="Editar gasto"
+                      title="Edit expense"
                       className="g-exp-icon-btn"
                       onClick={() => openEdit(e)}
                     >
@@ -233,9 +233,9 @@ export default function Expenses() {
                     </button>
                     <button
                       type="button"
-                      title="Eliminar gasto"
+                      title="Delete expense"
                       className="g-exp-icon-btn g-exp-icon-btn-del"
-                      onClick={() => { if (confirm("¿Eliminar gasto?")) removeExpense.mutate(e.id); }}
+                      onClick={() => { if (confirm("¿Delete expense?")) removeExpense.mutate(e.id); }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -250,19 +250,19 @@ export default function Expenses() {
         <TabsContent value="categories" className="mt-4">
           <div className="flex gap-2 mb-4">
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setCatOpen(true)}>
-              <Plus size={16} className="mr-1" />Nueva categoría
+              <Plus size={16} className="mr-1" />New category
             </button>
           </div>
           {categories.length === 0 ? (
             <EmptyState
               icon={Tag}
-              title="Sin categorías"
-              description="Crea categorías como Arriendo, Nómina, Servicios, etc."
+              title="Uncategorizeds"
+              description="Create categories such as Rent, Payroll, Utilities, etc."
             />
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="g-cat-head">
-                <span>Nombre</span>
+                <span>Name</span>
               </div>
               {categories.map((c) => (
                 <div key={c.id} className="g-cat-row">
@@ -284,12 +284,12 @@ export default function Expenses() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingExpense ? "Editar gasto" : "Registrar gasto"}</DialogTitle>
+            <DialogTitle>{editingExpense ? "Edit expense" : "Record expense"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Monto *</Label>
+                <Label>Amount *</Label>
                 <Input
                   type="number"
                   min="0"
@@ -308,19 +308,19 @@ export default function Expenses() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Categoría</Label>
+              <Label>Category</Label>
               <Select
                 value={expenseForm.category_id}
                 onValueChange={(v) => setExpenseForm((f) => ({ ...f, category_id: v }))}
               >
-                <SelectTrigger><SelectValue placeholder="Seleccionar categoría" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Método de pago</Label>
+              <Label>Method de pago</Label>
               <Select
                 value={expenseForm.payment_method}
                 onValueChange={(v) => setExpenseForm((f) => ({ ...f, payment_method: v }))}
@@ -332,11 +332,11 @@ export default function Expenses() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Descripción</Label>
+              <Label>Description</Label>
               <Input
                 value={expenseForm.description}
                 onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Ej: Arriendo local, pago de servicios..."
+                placeholder="E.g. Store rent, utility payment..."
               />
             </div>
             <button
@@ -345,7 +345,7 @@ export default function Expenses() {
               disabled={!expenseForm.amount || saveExpense.isPending}
               onClick={() => saveExpense.mutate(expenseForm)}
             >
-              {saveExpense.isPending ? "Guardando..." : editingExpense ? "Guardar cambios" : "Registrar gasto"}
+              {saveExpense.isPending ? "Saving..." : editingExpense ? "Save changes" : "Record expense"}
             </button>
           </div>
         </DialogContent>
@@ -354,14 +354,14 @@ export default function Expenses() {
       {/* Category dialog */}
       <Dialog open={catOpen} onOpenChange={setCatOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Nueva categoría</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>New category</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label>Nombre *</Label>
+              <Label>Name *</Label>
               <Input
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
-                placeholder="Ej: Arriendo, Nómina, Servicios..."
+                placeholder="E.g. Rent, Payroll, Utilities..."
               />
             </div>
             <button
@@ -370,7 +370,7 @@ export default function Expenses() {
               disabled={!catName.trim() || saveCat.isPending}
               onClick={() => saveCat.mutate()}
             >
-              {saveCat.isPending ? "Guardando..." : "Crear categoría"}
+              {saveCat.isPending ? "Saving..." : "Create category"}
             </button>
           </div>
         </DialogContent>

@@ -81,14 +81,14 @@ export default function TablesSettings() {
       });
       if (error) return toast.error(error.message);
     }
-    toast.success("Mesa guardada");
+    toast.success("Table saved");
     setOpen(false);
     qc.invalidateQueries({ queryKey: ["tables-settings"] });
     qc.invalidateQueries({ queryKey: ["tables"] });
   };
 
   const remove = async (id: string) => {
-    if (!confirm("¿Eliminar esta mesa?")) return;
+    if (!confirm("Delete this table?")) return;
     const { error } = await supabase.from("tables").delete().eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["tables-settings"] });
@@ -99,11 +99,11 @@ export default function TablesSettings() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="font-semibold text-ink-900">Mesas</p>
-          <p className="h-meta">Catálogo de mesas por sucursal</p>
+          <p className="font-semibold text-ink-900">Tables</p>
+          <p className="h-meta">Branch table catalog</p>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openNew}>
-          <Plus className="h-4 w-4" /> Nueva mesa
+          <Plus className="h-4 w-4" /> New table
         </button>
       </div>
 
@@ -118,13 +118,13 @@ export default function TablesSettings() {
               </div>
               <div className="h-meta mt-1 truncate">{branch?.name ?? "—"}</div>
               <div className="flex gap-1 mt-2">
-                <button type="button" className="g-btn g-btn-ghost h-7 px-2" title="Editar mesa" onClick={() => openEdit(t)}>
+                <button type="button" className="g-btn g-btn-ghost h-7 px-2" title="Edit table" onClick={() => openEdit(t)}>
                   <Pencil className="h-3 w-3" />
                 </button>
                 <button type="button" className="g-btn g-btn-ghost h-7 px-2" title="Ver QR" onClick={() => setQrTable(t)}>
                   <QrCode className="h-3 w-3" />
                 </button>
-                <button type="button" className="g-btn g-btn-ghost h-7 px-2 text-red-500 hover:text-red-600" title="Eliminar mesa" onClick={() => remove(t.id)}>
+                <button type="button" className="g-btn g-btn-ghost h-7 px-2 text-red-500 hover:text-red-600" title="Delete table" onClick={() => remove(t.id)}>
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
@@ -133,7 +133,7 @@ export default function TablesSettings() {
         })}
         {(tables ?? []).length === 0 && (
           <div className="col-span-full text-center py-12 h-meta">
-            Aún no hay mesas. Crea la primera con "Nueva mesa".
+            Aún no hay mesas. Crea la primera con "New table".
           </div>
         )}
       </div>
@@ -141,21 +141,21 @@ export default function TablesSettings() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar mesa" : "Nueva mesa"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit table" : "New table"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Sucursal</Label>
+              <Label>Branch</Label>
               <Select value={scopeBranch} onValueChange={setScopeBranch}>
-                <SelectTrigger><SelectValue placeholder="Selecciona sucursal" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
                 <SelectContent>
                   {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Nombre / Número</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mesa 1" />
+              <Label>Name / Number</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Table 1" />
             </div>
             <div className="space-y-1.5">
               <Label>Capacidad</Label>
@@ -164,9 +164,9 @@ export default function TablesSettings() {
             <div className="space-y-1.5">
               <Label>Mesero asignado (opcional)</Label>
               <Select value={waiterId || "none"} onValueChange={(v) => setWaiterId(v === "none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin asignar (cualquier mesero puede tomarla)</SelectItem>
+                  <SelectItem value="none">Unassigned (cualquier mesero puede tomarla)</SelectItem>
                   {(waiters ?? []).map((w) => (
                     <SelectItem key={w.id} value={w.id}>{w.full_name ?? w.email}</SelectItem>
                   ))}
@@ -175,8 +175,8 @@ export default function TablesSettings() {
             </div>
           </div>
           <DialogFooter>
-            <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button type="button" className="g-btn g-btn-primary" onClick={save}>Guardar</button>
+            <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+            <button type="button" className="g-btn g-btn-primary" onClick={save}>Save</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -10,8 +10,8 @@ interface BrandBarProps {
 }
 
 export function BrandBar({
-  branch   = "Sucursal",
-  session  = "Caja #01",
+  branch   = "Branch",
+  session  = "Register #01",
   channel  = "Local",
   showSync = true,
 }: BrandBarProps) {
@@ -29,7 +29,7 @@ export function BrandBar({
 
       {/* Branch */}
       <div>
-        <div className="eyebrow text-[9px]">SUCURSAL</div>
+        <div className="eyebrow text-[9px]">BRANCH</div>
         <div className="text-[13px] font-semibold leading-tight mt-0.5">{branch}</div>
       </div>
 

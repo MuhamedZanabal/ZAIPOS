@@ -14,57 +14,57 @@ const FEATURES = [
   {
     icon: ShoppingCart,
     sc: "sc-blue",
-    title: "Terminal POS táctil",
-    desc: "Catálogo visual por categorías, búsqueda por EAN, gestión de tickets y cobro multi-método en una sola pantalla.",
+    title: "Touchscreen POS terminal",
+    desc: "Visual catalog by category, EAN search, ticket management, and multi-method checkout on one screen.",
   },
   {
     icon: UtensilsCrossed,
     sc: "sc-green",
-    title: "Mesas & comandas",
-    desc: "Toma de pedidos por mesa, estado en tiempo real, envío a cocina y cobro desde el salón.",
+    title: "Tables & orders",
+    desc: "Table ordering, real-time status, kitchen dispatch, and checkout from the dining room.",
   },
   {
     icon: Bike,
     sc: "sc-purple",
-    title: "Domicilios propios",
-    desc: "Tablero kanban de pedidos a domicilio, asignación de repartidores y seguimiento de estado.",
+    title: "In-house delivery",
+    desc: "Kanban delivery board, courier assignment, and status tracking.",
   },
   {
     icon: Smartphone,
     sc: "sc-amber",
-    title: "Pedidos digitales",
-    desc: "Integración con Rappi, DiDi, Uber Eats y WhatsApp. Webhook en tiempo real, comisiones y neto calculado.",
+    title: "Digital orders",
+    desc: "Integration with Rappi, DiDi, Uber Eats, and WhatsApp. Real-time webhooks, commissions, and net revenue calculation.",
   },
   {
     icon: ChefHat,
     sc: "sc-cyan",
     title: "KDS · Cocina",
-    desc: "Display de cocina con alertas de tiempo, colores por urgencia y control de despacho ítem a ítem.",
+    desc: "Kitchen display with timing alerts, urgency colors, and item-by-item dispatch control.",
   },
   {
     icon: Package,
     sc: "sc-lime",
-    title: "Inventario & producción",
-    desc: "Stocks por sucursal, movimientos, mermas, recetas y producción. Alertas de stock mínimo automáticas.",
+    title: "Inventory & production",
+    desc: "Branch-level stock, movements, waste, recipes, and production. Automatic low-stock alerts.",
   },
   {
     icon: BarChart3,
     sc: "sc-rose",
-    title: "Reportes avanzados",
-    desc: "Ventas por día, top productos, mix de medios de pago, IVA y exportación CSV.",
+    title: "Advanced reports",
+    desc: "Daily sales, top products, payment-method mix, VAT, and CSV export.",
   },
   {
     icon: Wifi,
     sc: "sc-slate",
     title: "Offline-first",
-    desc: "Funciona sin internet. Sincronización automática al recuperar la conexión. PWA instalable.",
+    desc: "Works without internet. Automatically syncs when the connection returns. Installable PWA.",
   },
 ];
 
 /* ── Stats ── */
 const STATS = [
   { value: "5", unit: "canales", label: "de venta integrados" },
-  { value: "∞", unit: "sucursales", label: "multi-sucursal" },
+  { value: "∞", unit: "branches", label: "multi-branch" },
   { value: "100%", unit: "offline", label: "sin perder un ticket" },
   { value: "8", unit: "roles", label: "de acceso granular" },
 ];
@@ -75,7 +75,7 @@ const PLANS = [
     name: "Starter",
     price: "Gratis",
     sub: "Para empezar",
-    features: ["1 sucursal", "Terminal POS", "Caja & ventas", "Reportes básicos"],
+    features: ["1 branch", "Terminal POS", "Cash register & sales", "Basic reports"],
     cta: "Comenzar gratis",
     accent: false,
   },
@@ -83,16 +83,16 @@ const PLANS = [
     name: "Pro",
     price: "$149k",
     sub: "COP / mes",
-    features: ["Sucursales ilimitadas", "Todo Starter +", "Mesas & comandas", "Domicilios & KDS", "Pedidos digitales", "WhatsApp IA", "Inventario avanzado"],
-    cta: "Empezar gratis 14 días",
+    features: ["Unlimited branches", "Everything in Starter +", "Tables & orders", "Delivery & KDS", "Digital orders", "WhatsApp AI", "Advanced inventory"],
+    cta: "Start 14-day free trial",
     accent: true,
   },
   {
     name: "Enterprise",
     price: "Custom",
-    sub: "Cotización",
+    sub: "Custom quote",
     features: ["Todo Pro +", "SLA garantizado", "Onboarding dedicado", "Integraciones a medida"],
-    cta: "Hablar con ventas",
+    cta: "Talk to sales",
     accent: false,
   },
 ];
@@ -131,7 +131,7 @@ export default function Landing() {
           </nav>
           <div className="flex items-center gap-3">
             <Link to="/auth" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
-              Iniciar sesión
+              Sign in
             </Link>
             <Link to="/auth" className="landing-btn-primary">
               Empezar gratis <ArrowRight className="h-4 w-4" />
@@ -165,14 +165,14 @@ export default function Landing() {
           </h1>
 
           <p className="landing-hero-sub">
-            Multi-canal · Multi-sucursal · Offline-first.<br className="hidden sm:block" />
-            Del mostrador al repartidor, del salón al dashboard.
+            Multi-channel · Multi-branch · Offline-first.<br className="hidden sm:block" />
+            From the counter to the courier, from the dining room to the dashboard.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
             <Link to="/auth" className="landing-btn-primary landing-btn-lg">
-              Empezar gratis — sin tarjeta <ArrowRight className="h-4 w-4" />
+              Start free — no card required <ArrowRight className="h-4 w-4" />
             </Link>
             <a href="#features" className="landing-btn-ghost landing-btn-lg">
               Ver funciones
@@ -181,8 +181,8 @@ export default function Landing() {
 
           {/* Social proof */}
           <div className="flex items-center justify-center gap-6 mt-10 text-sm text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Sin tarjeta requerida</span>
-            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> 14 días gratis</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> No card required</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> 14 days free</span>
             <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Cancela cuando quieras</span>
           </div>
         </div>
@@ -208,11 +208,11 @@ export default function Landing() {
           <div className="text-center mb-12">
             <div className="eyebrow eyebrow-blue mb-3">FUNCIONALIDADES</div>
             <h2 className="landing-section-title">
-              Todo lo que necesita tu negocio,<br />
+              Everything your business needs,<br />
               <span className="gradient-text">en una sola plataforma.</span>
             </h2>
             <p className="landing-section-sub">
-              Desde la caja registradora hasta el inventario y los pedidos digitales.
+              From the cash register to inventory and digital orders.
             </p>
           </div>
 
@@ -242,13 +242,13 @@ export default function Landing() {
                 <span className="gradient-text">un solo lenguaje.</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                Navy profundo, azul de acción y verde signal. Tiles 100×100+ con glow al pulsar,
-                eyebrows en uppercase tracked y gradiente highlight en el título clave.
+                Deep navy, action blue, and signal green. 100×100+ tiles with glow on press,
+                tracked uppercase eyebrows and a gradient highlight on the key title.
                 Pensado para tocar, mirar y operar.
               </p>
               <ul className="space-y-3">
                 {[
-                  { label: "Tablet · Terminal POS",        sub: "Catálogo + ticket + cobro en una pantalla" },
+                  { label: "Tablet · Terminal POS",        sub: "Catalog + ticket + checkout on one screen" },
                   { label: "Móvil · Mesero / Repartidor",  sub: "Mesas con estado, comandas, domicilios"   },
                   { label: "Desktop · Dashboard operativo", sub: "KPIs, feed en vivo, KDS y reportes"       },
                 ].map(({ label, sub }) => (
@@ -396,7 +396,7 @@ export default function Landing() {
             </div>
             <p className="text-xs text-muted-foreground">© 2026 POS S360T Contributors · Apache 2.0</p>
             <Link to="/auth" className="text-sm font-semibold text-primary hover:underline">
-              Iniciar sesión →
+              Sign in →
             </Link>
           </div>
         </div>

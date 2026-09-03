@@ -93,7 +93,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
       <div className="flex items-center justify-between px-4 py-3 border-b g-pending-header">
         <div className="flex items-center gap-2">
           <UtensilsCrossed size={16} className="g-pending-icon" />
-          <span className="font-semibold g-pending-header-label">Cuentas de mesa pendientes</span>
+          <span className="font-semibold g-pending-header-label">Pending table bills</span>
           {list.length > 0 && (
             <span className="pill pill-warn g-kds-pill-micro">{list.length}</span>
           )}
@@ -115,7 +115,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
               <div key={o.id} className="glass-thin rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="h-display g-pending-table-name">{o.tables?.name ?? "Mesa"}</div>
+                    <div className="h-display g-pending-table-name">{o.tables?.name ?? "Table"}</div>
                     <div className="h-meta flex items-center gap-2 mt-0.5">
                       <Users size={12} /> {waiter}
                       <span className="opacity-40">·</span>

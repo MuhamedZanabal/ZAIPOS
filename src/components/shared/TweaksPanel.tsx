@@ -20,7 +20,7 @@ export function TweaksPanel({ onClose }: TweaksPanelProps) {
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
-        La apariencia ahora se gestiona desde Configuración &rsaquo; Apariencia.
+        Appearance is now managed from Settings &rsaquo; Appearance.
       </p>
     </div>
   )

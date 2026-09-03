@@ -23,7 +23,7 @@ async function loadPrinterLibrary() {
       CharacterSet = lib.CharacterSet;
     } catch (err) {
       console.error('[Printer] No se pudo cargar node-thermal-printer:', err);
-      throw new Error('Librería de impresora no disponible');
+      throw new Error('Printer library unavailable');
     }
   }
 }
@@ -104,7 +104,7 @@ export async function printTicket(
     printer.println(
       padLine(`Ticket #${data.ticketNumber}`, `${dateStr} ${timeStr}`, width)
     );
-    if (data.customerName) printer.println(`Cliente: ${data.customerName}`);
+    if (data.customerName) printer.println(`Customer: ${data.customerName}`);
     printer.drawLine();
 
     // ── Items ────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export async function printTicket(
     printer.println(padLine('Subtotal', formatCurrency(data.subtotal), width));
 
     if (data.discountTotal > 0) {
-      printer.println(padLine('Descuento', `-${formatCurrency(data.discountTotal)}`, width));
+      printer.println(padLine('Discount', `-${formatCurrency(data.discountTotal)}`, width));
     }
     if (data.taxTotal > 0) {
       printer.println(padLine('IVA', formatCurrency(data.taxTotal), width));
@@ -148,7 +148,7 @@ export async function printTicket(
     // ── Pagos ────────────────────────────────────────────────────────────────
     if (data.payments.length > 0) {
       printer.drawLine();
-      printer.println('Forma de pago:');
+      printer.println('Payment method:');
       for (const pay of data.payments) {
         printer.println(padLine(`  ${pay.method}`, formatCurrency(pay.amount), width));
       }
@@ -184,7 +184,7 @@ export async function printTicket(
     // ── Pie ──────────────────────────────────────────────────────────────────
     printer.newLine();
     printer.alignCenter();
-    printer.println('¡Gracias por su preferencia!');
+    printer.println('Thank you for your business!');
     printer.newLine();
 
     // Feed y corte
@@ -192,13 +192,13 @@ export async function printTicket(
 
     const success = await printer.execute();
     if (!success) {
-      return { ok: false, error: 'La impresora no respondió al comando' };
+      return { ok: false, error: 'The printer did not respond to the command' };
     }
 
     return { ok: true };
   } catch (err: any) {
     console.error('[Printer] Error al imprimir:', err);
-    return { ok: false, error: err?.message ?? 'Error desconocido al imprimir' };
+    return { ok: false, error: err?.message ?? 'Unknown printing error' };
   }
 }
 
@@ -215,8 +215,8 @@ export async function openCashDrawer(config: PrinterConfig): Promise<PrintResult
 
     return { ok: true };
   } catch (err: any) {
-    console.error('[Drawer] Error al abrir gaveta:', err);
-    return { ok: false, error: err?.message ?? 'Error al abrir gaveta' };
+    console.error('[Drawer] Error opening cash drawer:', err);
+    return { ok: false, error: err?.message ?? 'Error opening cash drawer' };
   }
 }
 

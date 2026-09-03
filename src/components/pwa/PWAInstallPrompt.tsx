@@ -39,18 +39,18 @@ export function PWAInstallPrompt() {
 
       toast("Instala POS Pro", {
         description:
-          "Instálalo en este dispositivo para abrirlo como una app y trabajar sin conexión.",
+          "Install it on this device to open it as an app and work offline.",
         duration: Infinity,
         icon: <Download className="h-4 w-4" />,
         action: {
-          label: "Instalar",
+          label: "Install",
           onClick: async () => {
             const promptEvent = deferredPromptRef.current;
             if (!promptEvent) return;
             await promptEvent.prompt();
             const choice = await promptEvent.userChoice;
             if (choice.outcome === "accepted") {
-              toast.success("¡App instalada!");
+              toast.success("App installed!");
             }
             deferredPromptRef.current = null;
           },
@@ -71,12 +71,12 @@ export function PWAInstallPrompt() {
     };
 
     const onUpdateAvailable = () => {
-      toast("Nueva versión disponible", {
-        description: "Actualiza para obtener las últimas mejoras.",
+      toast("New version available", {
+        description: "Update to get the latest improvements.",
         duration: Infinity,
         icon: <RefreshCw className="h-4 w-4" />,
         action: {
-          label: "Actualizar",
+          label: "Update",
           onClick: () => {
             void applyPWAUpdate();
           },
@@ -85,7 +85,7 @@ export function PWAInstallPrompt() {
     };
 
     const onOfflineReady = () => {
-      toast.success("Listo para funcionar sin conexión");
+      toast.success("Ready to work offline");
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);

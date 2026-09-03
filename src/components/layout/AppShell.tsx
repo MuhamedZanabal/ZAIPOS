@@ -54,7 +54,7 @@ function Shell() {
               type="button"
               onClick={toggleSidebar}
               className="glass g-topbar-toggle"
-              aria-label="Menú"
+              aria-label="Menu"
             >
               {isMobile && openMobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -62,7 +62,7 @@ function Shell() {
             {/* Search */}
             <div className="glass g-topbar-search">
               <Search size={18} />
-              <span className="g-topbar-search-text">Buscar productos, órdenes, clientes…</span>
+              <span className="g-topbar-search-text">Search products, orders, customers…</span>
               <span className="g-topbar-kbd">⌘K</span>
             </div>
 
@@ -71,7 +71,7 @@ function Shell() {
               <Calendar size={16} className="text-[--ink-700] shrink-0" />
               <Select value={branchId ?? undefined} onValueChange={setBranch}>
                 <SelectTrigger className="h-auto border-0 bg-transparent p-0 focus:ring-0 shadow-none text-sm font-semibold min-w-[90px]">
-                  <SelectValue placeholder="Sucursal" />
+                  <SelectValue placeholder="Branch" />
                 </SelectTrigger>
                 <SelectContent>
                   {branches.map((b) => (
@@ -116,7 +116,7 @@ function Shell() {
         {devMode && (
           <div className="g-dev-banner">
             <FlaskConical className="h-3.5 w-3.5 shrink-0" />
-            MODO DESARROLLO — Las ventas no respetan el stock del inventario
+            DEVELOPMENT MODE — Sales do not enforce inventory stock
           </div>
         )}
 

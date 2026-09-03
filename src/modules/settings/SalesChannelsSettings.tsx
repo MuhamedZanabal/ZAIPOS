@@ -139,7 +139,7 @@ export default function SalesChannelsSettings() {
         ? await supabase.from("rappi_integrations").update(payload).eq("id", rappiInteg.id)
         : await supabase.from("rappi_integrations").insert(payload);
       if (error) throw error;
-      toast.success("Configuración de Rappi guardada");
+      toast.success("Rappi settings saved");
       qc.invalidateQueries({ queryKey: ["rappi-integration"] });
     } catch (e: any) {
       toast.error(e.message);
@@ -154,8 +154,8 @@ export default function SalesChannelsSettings() {
         body: { branch_id: branchId, store_id: rappiStoreId || rappiInteg?.store_id },
       });
       if (error) throw error;
-      if (data?.ok) toast.success("Conexión OK con Rappi");
-      else toast.error(`Falló: ${data?.error ?? "verifica credenciales"}`);
+      if (data?.ok) toast.success("Rappi connection OK");
+      else toast.error(`Failed: ${data?.error ?? "check credentials"}`);
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(null); }
   };
@@ -168,8 +168,8 @@ export default function SalesChannelsSettings() {
         body: { branch_id: branchId },
       });
       if (error) throw error;
-      if (data?.ok) toast.success(`Menú enviado · ${data.items} ítems`);
-      else toast.error(`Error: ${data?.error ?? "no se pudo enviar"}`);
+      if (data?.ok) toast.success(`Menu sent · ${data.items} items`);
+      else toast.error(`Error: ${data?.error ?? "could not send"}`);
       qc.invalidateQueries({ queryKey: ["rappi-integration"] });
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(null); }
@@ -180,7 +180,7 @@ export default function SalesChannelsSettings() {
     toast.success("URL del webhook copiada");
   };
 
-  if (loadingTenant) return <div className="h-meta">Cargando...</div>;
+  if (loadingTenant) return <div className="h-meta">Loading...</div>;
 
   return (
     <div className="space-y-8">
@@ -192,7 +192,7 @@ export default function SalesChannelsSettings() {
             Canales de Venta
           </h2>
           <p className="h-meta mt-1">
-            Enciende o apaga los canales disponibles para este negocio. Los canales apagados no se mostrarán en el Punto de Venta ni en el sistema. (Solo Super Administrador)
+            Enable or disable the sales channels available for this business. Disabled channels will not appear in the Point of Sale or elsewhere in the system. (Super Admin only)
           </p>
         </div>
 
@@ -201,20 +201,20 @@ export default function SalesChannelsSettings() {
           <div className="glass-thin rounded-xl p-4 flex flex-col gap-3 opacity-70">
             <div className="flex items-center justify-between">
               <div className="font-semibold flex items-center gap-2 text-ink-900">
-                <Store className="h-4 w-4" /> POS Físico
+                <Store className="h-4 w-4" /> Physical POS
               </div>
               <Switch checked disabled />
             </div>
-            <p className="h-meta">Punto de venta físico por defecto (siempre activo).</p>
+            <p className="h-meta">Default physical point of sale (always active).</p>
           </div>
 
           {(
             [
-              { key: "tables" as SalesChannel, label: "Mesas", icon: <UtensilsCrossed className="h-4 w-4" />, desc: "Venta y gestión de mesas en sitio." },
-              { key: "delivery" as SalesChannel, label: "Domicilio Propio", icon: <CarFront className="h-4 w-4" />, desc: "Gestión de envíos propios con motorizados. Pagos con transferencia o contra entrega." },
-              { key: "rappi" as SalesChannel, label: "Rappi", icon: <PlugZap className="h-4 w-4 text-orange-500" />, desc: "Integración directa con pedidos de Rappi." },
-              { key: "didi" as SalesChannel, label: "Didi Food", icon: <PlugZap className="h-4 w-4 text-orange-500" />, desc: "Habilita el canal de ventas para Didi Food." },
-              { key: "uber" as SalesChannel, label: "Uber Eats", icon: <PlugZap className="h-4 w-4 text-green-500" />, desc: "Habilita el canal de ventas para Uber Eats." },
+              { key: "tables" as SalesChannel, label: "Tables", icon: <UtensilsCrossed className="h-4 w-4" />, desc: "On-site table sales and management." },
+              { key: "delivery" as SalesChannel, label: "In-house Delivery", icon: <CarFront className="h-4 w-4" />, desc: "Manage in-house deliveries with couriers. Supports transfer or cash-on-delivery payments." },
+              { key: "rappi" as SalesChannel, label: "Rappi", icon: <PlugZap className="h-4 w-4 text-orange-500" />, desc: "Direct integration with Rappi orders." },
+              { key: "didi" as SalesChannel, label: "Didi Food", icon: <PlugZap className="h-4 w-4 text-orange-500" />, desc: "Enable the Didi Food sales channel." },
+              { key: "uber" as SalesChannel, label: "Uber Eats", icon: <PlugZap className="h-4 w-4 text-green-500" />, desc: "Enable the Uber Eats sales channel." },
             ] as { key: SalesChannel; label: string; icon: React.ReactNode; desc: string }[]
           ).map(({ key, label, icon, desc }) => {
             const active = activeChannels.includes(key);
@@ -242,7 +242,7 @@ export default function SalesChannelsSettings() {
             <div>
               <div className="flex items-center gap-2">
                 <PlugZap className="h-5 w-5 text-orange-500" />
-                <h2 className="font-bold text-ink-900">Configuración de Rappi</h2>
+                <h2 className="font-bold text-ink-900">Rappi Settings</h2>
                 {rappiInteg && (
                   <span className={`g-pill g-pill-h22 ml-2 ${rappiStatus === "active" ? "g-pill-ok" : "g-pill-ghost"}`}>
                     {rappiStatus === "active" ? "Activa" : "Pausada"}
@@ -250,7 +250,7 @@ export default function SalesChannelsSettings() {
                 )}
               </div>
               <p className="h-meta mt-1">
-                Sucursal: <strong>{branchName}</strong>. Cada sucursal usa su propio Store ID de Rappi Partners.
+                Branch: <strong>{branchName}</strong>. Each branch uses its own Rappi Partners Store ID.
               </p>
             </div>
 
@@ -260,7 +260,7 @@ export default function SalesChannelsSettings() {
                 <Input value={rappiStoreId} onChange={(e) => setRappiStoreId(e.target.value)} placeholder="Ej. 900123" />
               </div>
               <div className="space-y-1.5">
-                <Label>Tiempo de preparación (min)</Label>
+                <Label>Preparation time (min)</Label>
                 <Input
                   type="number" min="1" max="120"
                   value={rappiPrepTime}
@@ -268,7 +268,7 @@ export default function SalesChannelsSettings() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Estado</Label>
+                <Label>Status</Label>
                 <Select value={rappiStatus} onValueChange={(v) => setRappiStatus(v as "active" | "paused")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -285,25 +285,25 @@ export default function SalesChannelsSettings() {
 
             <div className="flex flex-wrap gap-2">
               <button type="button" className="g-btn g-btn-primary" onClick={saveRappi} disabled={busy === "saveRappi"}>
-                {busy === "saveRappi" && <Loader2 className="h-4 w-4 animate-spin" />} Guardar
+                {busy === "saveRappi" && <Loader2 className="h-4 w-4 animate-spin" />} Save
               </button>
               <button type="button" className="g-btn g-btn-ghost" onClick={testRappi} disabled={busy === "testRappi"}>
-                {busy === "testRappi" && <Loader2 className="h-4 w-4 animate-spin" />} Probar conexión
+                {busy === "testRappi" && <Loader2 className="h-4 w-4 animate-spin" />} Test connection
               </button>
               <button type="button" className="g-btn g-btn-ghost" onClick={syncRappiMenu} disabled={busy === "syncRappi" || !rappiInteg}>
                 {busy === "syncRappi" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Sincronizar menú
+                Sync menu
               </button>
               <a
                 href="https://dev-portal.rappi.com/api/es/" target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm ml-auto h-label text-brand-600 hover:underline"
               >
-                <BookOpen className="h-4 w-4" /> Documentación
+                <BookOpen className="h-4 w-4" /> Documentation
               </a>
             </div>
 
             {rappiInteg?.last_menu_sync_at && (
-              <p className="h-meta">Último envío de menú: {formatDate(rappiInteg.last_menu_sync_at)}</p>
+              <p className="h-meta">Last menu sync: {formatDate(rappiInteg.last_menu_sync_at)}</p>
             )}
 
             <div className="border-t border-black/5 pt-4 space-y-2">
@@ -315,15 +315,15 @@ export default function SalesChannelsSettings() {
                 </button>
               </div>
               <p className="h-meta">
-                Pega esta URL en el Partner Portal de Rappi como destino de eventos (nuevos pedidos, cambios de estado).
+                Paste this URL into the Rappi Partner Portal as the event destination (new orders, status changes).
               </p>
             </div>
           </div>
 
           <div className="glass p-4 rounded-2xl">
-            <p className="font-semibold text-sm text-ink-900 mb-3">Últimos eventos recibidos</p>
+            <p className="font-semibold text-sm text-ink-900 mb-3">Latest received events</p>
             {(rappiLogs ?? []).length === 0 ? (
-              <p className="h-meta">Aún no hay eventos.</p>
+              <p className="h-meta">No events yet.</p>
             ) : (
               <div className="space-y-2 max-h-[480px] overflow-auto">
                 {rappiLogs!.map((l) => (
@@ -335,7 +335,7 @@ export default function SalesChannelsSettings() {
                       </span>
                     </div>
                     <div className="h-meta">{formatDate(l.created_at)}</div>
-                    {l.rappi_order_id && <div className="h-meta">Pedido: {l.rappi_order_id}</div>}
+                    {l.rappi_order_id && <div className="h-meta">Order: {l.rappi_order_id}</div>}
                     {l.error && <div className="text-red-500 truncate">{l.error}</div>}
                   </div>
                 ))}

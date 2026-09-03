@@ -175,7 +175,7 @@ export default function WhatsAppInbox() {
     if (!selectedId) return;
     await supabase.from("ai_conversations").update({ status: "open", handoff_reason: null }).eq("id", selectedId);
     qc.invalidateQueries({ queryKey: ["wa-conversations", tenantId] });
-    toast.success("El bot retomará la conversación");
+    toast.success("The bot will resume the conversation");
   };
 
   const insertProductText = (product: any) => {
@@ -193,7 +193,7 @@ export default function WhatsAppInbox() {
   const askAiSuggestion = async () => {
     if (!selectedId) return;
     const lastInbound = [...messages].reverse().find((m: any) => m.direction === "inbound");
-    if (!lastInbound) { toast.error("No hay mensaje del cliente para analizar"); return; }
+    if (!lastInbound) { toast.error("There is no customer message to analyze"); return; }
 
     setAiSuggesting(true);
     try {
@@ -210,7 +210,7 @@ export default function WhatsAppInbox() {
       if (!res.ok) throw new Error(data.error ?? "Error generando sugerencia");
       if (data.reply) {
         setReply(data.reply);
-        toast.success("Sugerencia lista — puedes editarla antes de enviar");
+        toast.success("Suggestion ready — you can edit it before sending");
       }
     } catch (e: any) {
       toast.error(e.message);
@@ -248,7 +248,7 @@ export default function WhatsAppInbox() {
       <div className="w-80 shrink-0 border-r flex flex-col">
         <div className="p-4 border-b">
           <PageHeader
-        eyebrow="OPERACIÓN · MENSAJERÍA" title="WhatsApp" description={`${conversations.length} conversaciones`} />
+        eyebrow="OPERATIONS · MESSAGING" title="WhatsApp" description={`${conversations.length} conversations`} />
         </div>
         <ScrollArea className="flex-1">
           {conversations.map((conv: any) => {
@@ -282,7 +282,7 @@ export default function WhatsAppInbox() {
           {conversations.length === 0 && (
             <div className="p-8 text-center text-muted-foreground text-sm">
               <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              Sin conversaciones aún
+              Sin conversations aún
             </div>
           )}
         </ScrollArea>
@@ -345,7 +345,7 @@ export default function WhatsAppInbox() {
           <div className="p-4 border-t space-y-2">
             {selectedConv.status === "handoff" && (
               <p className="text-xs text-yellow-600 flex items-center gap-1">
-                <HandshakeIcon className="h-3 w-3" /> Conversación en manos del asesor. El bot no responderá.
+                <HandshakeIcon className="h-3 w-3" /> Conversation handled by an advisor. The bot will not respond.
               </p>
             )}
 
@@ -355,16 +355,16 @@ export default function WhatsAppInbox() {
               <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                    <Package className="h-3 w-3" /> Producto
+                    <Package className="h-3 w-3" /> Product
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-80 p-3 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Buscar producto</p>
+                  <p className="text-xs font-medium text-muted-foreground">Search product</p>
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                       className="pl-7 h-8 text-sm"
-                      placeholder="Nombre, SKU…"
+                      placeholder="Name, SKU…"
                       value={productQuery}
                       onChange={(e) => setProductQuery(e.target.value)}
                       autoFocus
@@ -408,7 +408,7 @@ export default function WhatsAppInbox() {
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-72 p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">Respuestas rápidas</p>
+                    <p className="text-xs font-medium text-muted-foreground">Quick replies</p>
                     {isAdmin && (
                       <Button
                         size="icon"
@@ -435,7 +435,7 @@ export default function WhatsAppInbox() {
                     ))}
                     {quickReplies.length === 0 && (
                       <p className="text-xs text-muted-foreground py-2 text-center">
-                        {isAdmin ? "Sin respuestas aún — usa el ⚙ para crear" : "Sin respuestas preGuardadas"}
+                        {isAdmin ? "No replies yet — use ⚙ to create one" : "No saved replies"}
                       </p>
                     )}
                   </div>
@@ -449,12 +449,12 @@ export default function WhatsAppInbox() {
                 className="h-7 text-xs gap-1"
                 onClick={askAiSuggestion}
                 disabled={aiSuggesting}
-                title="Genera una sugerencia de respuesta basada en la conversación"
+                title="Generate a reply suggestion based on the conversation"
               >
                 {aiSuggesting
                   ? <Loader2 className="h-3 w-3 animate-spin" />
                   : <Sparkles className="h-3 w-3" />}
-                {aiSuggesting ? "Pensando…" : "¿Cómo respondería?"}
+                {aiSuggesting ? "Thinking…" : "How would it respond?"}
               </Button>
             </div>
 
@@ -477,7 +477,7 @@ export default function WhatsAppInbox() {
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <div className="text-center space-y-2">
             <MessageCircle className="h-12 w-12 mx-auto opacity-20" />
-            <p>Selecciona una conversación</p>
+            <p>Select a conversation</p>
           </div>
         </div>
       )}
@@ -486,7 +486,7 @@ export default function WhatsAppInbox() {
       <Dialog open={manageQrOpen} onOpenChange={setManageQrOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Gestionar respuestas rápidas</DialogTitle>
+            <DialogTitle>Manage quick replies</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Existing */}
@@ -508,15 +508,15 @@ export default function WhatsAppInbox() {
                 </div>
               ))}
               {quickReplies.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Sin respuestas aún</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No replies yet</p>
               )}
             </div>
 
             {/* New reply form */}
             <div className="border-t pt-4 space-y-2">
-              <p className="text-sm font-medium">Nueva respuesta</p>
+              <p className="text-sm font-medium">New reply</p>
               <Input
-                placeholder="Título corto (ej. Saludo, Horarios…)"
+                placeholder="Short title (e.g. Greeting, Hours…)"
                 value={newQrTitle}
                 onChange={(e) => setNewQrTitle(e.target.value)}
               />
@@ -532,7 +532,7 @@ export default function WhatsAppInbox() {
                 disabled={!newQrTitle.trim() || !newQrBody.trim()}
                 className="gap-1"
               >
-                <Plus className="h-3.5 w-3.5" /> Guardar
+                <Plus className="h-3.5 w-3.5" /> Save
               </Button>
             </div>
           </div>

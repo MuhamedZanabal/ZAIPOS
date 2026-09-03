@@ -17,21 +17,21 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 
-const DEFAULT_PROMPT = `Eres el asistente de pedidos por WhatsApp de este negocio. Tu trabajo es ayudar a los clientes a hacer su pedido de manera rápida y clara.
+const DEFAULT_PROMPT = `You are this business's WhatsApp ordering assistant. Your job is to help customers place orders quickly and clearly.
 
 Reglas:
-- Responde siempre en español, de forma breve y amigable.
-- Usa search_catalog para buscar productos antes de cotizar o confirmar.
-- Usa quote_order para mostrar el resumen del pedido antes de crearlo.
-- Usa create_order solo cuando el cliente confirme (diga "sí", "confirmar", "listo", "dale", "ok" o similar).
+- Always respond in English, briefly and in a friendly tone.
+- Use search_catalog to find products before quoting or confirming.
+- Use quote_order to show the order summary before creating it.
+- Use create_order only when the customer confirms (says "yes", "confirm", "ready", "go ahead", "ok", or similar).
 - Si no puedes resolver algo, usa handoff_to_human.
-- Los precios están en pesos colombianos (COP).
-- No inventes productos ni precios; siempre consulta el catálogo.
-- Si el cliente pide varios productos, agrégalos todos al mismo pedido.`;
+- Prices are in Colombian pesos (COP).
+- Do not invent products or prices; always check the catalog.
+- If the customer requests several products, add them all to the same order.`;
 
 const MODELS = [
-  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku (rápido, económico)" },
-  { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet (más inteligente)" },
+  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku (fast, economical)" },
+  { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet (smarter)" },
   { value: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
   { value: "openai/gpt-4o", label: "GPT-4o" },
   { value: "google/gemini-flash-1.5", label: "Gemini 1.5 Flash" },
@@ -136,7 +136,7 @@ export default function AiAgentSettings() {
         ? await supabase.from("ai_channel_configs").update(payload).eq("id", config.id)
         : await supabase.from("ai_channel_configs").insert(payload);
       if (error) throw error;
-      toast.success("Configuración del agente guardada");
+      toast.success("Agent settings saved");
       qc.invalidateQueries({ queryKey: ["ai-agent-config"] });
     } catch (e: any) {
       toast.error(e.message);
@@ -147,7 +147,7 @@ export default function AiAgentSettings() {
 
   // ── Add knowledge document ───────────────────────────────────
   const addDoc = async () => {
-    if (!newDocTitle.trim() || !newDocContent.trim()) return toast.error("Ingresa título y contenido");
+    if (!newDocTitle.trim() || !newDocContent.trim()) return toast.error("Enter a title and content");
     if (!tenantId || !selectedBranch) return;
     setSavingDoc(true);
     try {
@@ -162,7 +162,7 @@ export default function AiAgentSettings() {
         })
         .select("id")
         .single();
-      if (insErr || !inserted) throw insErr ?? new Error("No se pudo guardar el documento");
+      if (insErr || !inserted) throw insErr ?? new Error("Could not save the document");
 
       toast.success("Documento guardado. Generando embedding…");
       setAddDocOpen(false);
@@ -224,10 +224,10 @@ export default function AiAgentSettings() {
           Agente IA WhatsApp
         </div>
         <div className="space-y-1.5">
-          <Label>Sucursal</Label>
+          <Label>Branch</Label>
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona sucursal…" />
+              <SelectValue placeholder="Select branch…" />
             </SelectTrigger>
             <SelectContent>
               {(branches ?? []).map((b: any) => (
@@ -251,12 +251,12 @@ export default function AiAgentSettings() {
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Instruye al agente cómo debe comportarse con tus clientes. Si lo dejas vacío, se usará el prompt estándar.
+          Tell the agent how it should behave with your customers. If left blank, the standard prompt will be used.
         </p>
 
         {loadingConfig ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         ) : (
           <div className="space-y-4">
@@ -310,7 +310,7 @@ export default function AiAgentSettings() {
 
             <Button onClick={saveConfig} disabled={savingConfig}>
               {savingConfig ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Guardar configuración
+              Save settings
             </Button>
           </div>
         )}
@@ -323,21 +323,21 @@ export default function AiAgentSettings() {
           Contexto Diario
         </div>
         <p className="text-xs text-muted-foreground">
-          Esta información se inyecta automáticamente en cada conversación. El agente la usa para responder con datos del día actualizados.
+          This information is injected automatically into every conversation. The agent uses it to respond with current daily information.
         </p>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Recomendación del día</Label>
+            <Label>Recommendation of the day</Label>
             <Textarea
               rows={3}
-              placeholder="ej. Hoy tenemos croissant de jamón y queso recién horneado a $8.500. ¡Perfectos para el desayuno!"
+              placeholder="e.g. Today we have freshly baked ham and cheese croissants at $8,500. Perfect for breakfast!"
               value={dailyRecommendation}
               onChange={e => setDailyRecommendation(e.target.value)}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              El agente la mencionará proactivamente cuando sea relevante. Actualízala cada día.
+              The agent will mention it proactively when relevant. Update it each day.
             </p>
           </div>
 
@@ -352,20 +352,20 @@ export default function AiAgentSettings() {
               className="w-32"
             />
             <p className="text-xs text-muted-foreground">
-              El agente informará este tiempo al cliente al confirmar el pedido.
+              The agent will tell the customer this time when confirming the order.
             </p>
           </div>
 
           <div className="rounded-md bg-muted/40 border px-3 py-2 space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Fecha y hora actual</p>
             <p className="text-xs text-muted-foreground">
-              Se inyecta automáticamente en cada mensaje — no requiere configuración.
+              Automatically injected into every message — no setup required.
             </p>
           </div>
 
           <Button onClick={saveConfig} disabled={savingConfig}>
             {savingConfig ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Guardar contexto diario
+            Save daily context
           </Button>
         </div>
       </div>
@@ -380,13 +380,13 @@ export default function AiAgentSettings() {
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Agrega documentos (políticas, menú extendido, preguntas frecuentes, horarios…). El agente consultará
-          automáticamente el contexto más relevante antes de responder.
+          Add documents (policies, extended menu, FAQs, schedules…). The agent will consult
+          the most relevant context automatically before responding.
         </p>
 
         {loadingDocs ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Cargando documentos…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading documents…
           </div>
         ) : (
           <div className="space-y-2">
@@ -430,7 +430,7 @@ export default function AiAgentSettings() {
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7 text-destructive hover:text-destructive"
-                    title="Eliminar documento"
+                    title="Delete document"
                     onClick={() => deleteDoc(doc.id)}
                   >
                     <Trash2 className="h-3 w-3" />
@@ -441,7 +441,7 @@ export default function AiAgentSettings() {
 
             <Button variant="outline" className="w-full" onClick={() => setAddDocOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Agregar documento de conocimiento
+              Add knowledge document
             </Button>
           </div>
         )}
@@ -455,9 +455,9 @@ export default function AiAgentSettings() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Título</Label>
+              <Label>Title</Label>
               <Input
-                placeholder="ej. Política de envíos, Menú de bebidas especiales, Horarios…"
+                placeholder="e.g. Delivery Policy, Special Drinks Menu, Hours…"
                 value={newDocTitle}
                 onChange={e => setNewDocTitle(e.target.value)}
               />
@@ -466,21 +466,21 @@ export default function AiAgentSettings() {
               <Label>Contenido</Label>
               <Textarea
                 rows={12}
-                placeholder="Escribe o pega aquí el contenido del documento. El agente lo usará como referencia cuando sea relevante para la conversación."
+                placeholder="Write or paste the document content here. The agent will use it as a reference when relevant to the conversation."
                 value={newDocContent}
                 onChange={e => setNewDocContent(e.target.value)}
                 className="font-mono text-sm resize-none"
               />
               <p className="text-xs text-muted-foreground">
-                {newDocContent.length} caracteres · Se generará un embedding automáticamente.
+                {newDocContent.length} characters · An embedding will be generated automatically.
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDocOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAddDocOpen(false)}>Cancel</Button>
             <Button onClick={addDoc} disabled={savingDoc}>
               {savingDoc ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Guardar documento
+              Save document
             </Button>
           </DialogFooter>
         </DialogContent>

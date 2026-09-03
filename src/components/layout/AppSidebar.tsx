@@ -33,42 +33,42 @@ type Section = { label: string; items: Item[] };
    ────────────────────────────────────────────────────────── */
 const sections: Section[] = [
   {
-    label: "Operación",
+    label: "Operations",
     items: [
       { title: "Dashboard",   url: "/dashboard",      icon: LayoutDashboard, roles: ["owner","admin","manager","cashier","waiter","kitchen","inventory","courier","staff"] },
       { title: "POS",         url: "/pos",            icon: ShoppingCart,    roles: ["owner","admin","manager","cashier"], channel: "pos" },
-      { title: "Mesas",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables" },
-      { title: "Mesero",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables" },
-      { title: "Domicilios",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery" },
+      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables" },
+      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables" },
+      { title: "Delivery",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery" },
       { title: "Courier",     url: "/courier",        icon: Bike,            roles: ["courier","staff"], channel: "delivery" },
-      { title: "Caja",        url: "/cash",           icon: Wallet,          roles: ["owner","admin","manager","cashier"] },
-      { title: "Ventas",      url: "/sales",          icon: Receipt,         roles: ["owner","admin","manager","cashier"] },
-      { title: "Clientes",    url: "/customers",      icon: UserRound,       roles: ["owner","admin","manager","cashier"] },
+      { title: "Cash Register",        url: "/cash",           icon: Wallet,          roles: ["owner","admin","manager","cashier"] },
+      { title: "Sales",      url: "/sales",          icon: Receipt,         roles: ["owner","admin","manager","cashier"] },
+      { title: "Customers",    url: "/customers",      icon: UserRound,       roles: ["owner","admin","manager","cashier"] },
     ],
   },
   {
-    label: "Catálogo",
+    label: "Catalog",
     items: [
-      { title: "Productos",   url: "/products",   icon: Package,   roles: ["owner","admin","manager"] },
-      { title: "Recetas",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
+      { title: "Products",   url: "/products",   icon: Package,   roles: ["owner","admin","manager"] },
+      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
     ],
   },
   {
     label: "Stock",
     items: [
-      { title: "Inventario",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"] },
-      { title: "Producción",  url: "/production", icon: Factory,   roles: ["owner","admin","manager","kitchen"] },
+      { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"] },
+      { title: "Production",  url: "/production", icon: Factory,   roles: ["owner","admin","manager","kitchen"] },
       { title: "KDS Cocina",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
-      { title: "Proveedores", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"] },
+      { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"] },
     ],
   },
   {
-    label: "Negocio",
+    label: "Business",
     items: [
-      { title: "Empleados",     url: "/employees", icon: Users,      roles: ["owner","admin","manager"] },
-      { title: "Horarios",      url: "/shifts",    icon: Calendar,   roles: ["owner","admin","manager"] },
-      { title: "Reportes",      url: "/reports",   icon: BarChart3,  roles: ["owner","admin","manager"] },
-      { title: "Configuración", url: "/settings",  icon: Settings,   roles: ["owner","admin"] },
+      { title: "Employees",     url: "/employees", icon: Users,      roles: ["owner","admin","manager"] },
+      { title: "Schedules",      url: "/shifts",    icon: Calendar,   roles: ["owner","admin","manager"] },
+      { title: "Reports",      url: "/reports",   icon: BarChart3,  roles: ["owner","admin","manager"] },
+      { title: "Settings", url: "/settings",  icon: Settings,   roles: ["owner","admin"] },
     ],
   },
 ];
@@ -131,7 +131,7 @@ export function AppSidebar() {
                   <div className="g-sb-brand-name">
                     POS<span>-S360T</span>
                   </div>
-                  <div className="g-sb-brand-sub">POS / ERP Omnicanal</div>
+                  <div className="g-sb-brand-sub">Omnichannel POS / ERP</div>
                 </div>
               )}
             </div>
@@ -189,7 +189,7 @@ export function AppSidebar() {
                   </div>
                   <div>
                     <div className="g-sb-plan-title">Plan Premium</div>
-                    <div className="g-sb-plan-sub">Tu plan está activo</div>
+                    <div className="g-sb-plan-sub">Your plan is active</div>
                   </div>
                 </div>
                 <button
@@ -197,7 +197,7 @@ export function AppSidebar() {
                   className="g-sb-plan-btn"
                   onClick={() => navigate("/settings")}
                 >
-                  Ver beneficios <ChevronRight size={12} />
+                  View benefits <ChevronRight size={12} />
                 </button>
               </div>
             )}
@@ -214,7 +214,7 @@ export function AppSidebar() {
                   <button
                     type="button"
                     className="g-sb-logout-btn"
-                    title="Cerrar sesión"
+                    title="Sign out"
                     onClick={async () => {
                       await signOutFully();
                       navigate("/auth");

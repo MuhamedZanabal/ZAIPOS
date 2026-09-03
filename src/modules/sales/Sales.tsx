@@ -47,16 +47,16 @@ export default function Sales() {
   return (
     <div className="flex flex-col gap-5">
       <div className="g-page-hd">
-        <div className="g-page-hd-eyebrow">OPERACIÓN · VENTAS</div>
-        <div className="h-display g-page-title">Ventas</div>
-        <div className="g-page-hd-meta">{sales?.length ?? 0} ventas recientes</div>
+        <div className="g-page-hd-eyebrow">OPERATIONS · SALES</div>
+        <div className="h-display g-page-title">Sales</div>
+        <div className="g-page-hd-meta">{sales?.length ?? 0} recent sales</div>
       </div>
 
       {!sales || sales.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="Aún no hay ventas"
-          description="Las ventas aparecerán aquí en cuanto cierres tu primer ticket en el POS."
+          title="No sales yet"
+          description="Sales will appear here once you close your first POS ticket."
         />
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
@@ -64,9 +64,9 @@ export default function Sales() {
             <span>Ticket</span>
             <span>Fecha</span>
             <span>Items</span>
-            <span>Pago</span>
+            <span>Payment</span>
             <span className="text-right">Total</span>
-            <span>Estado</span>
+            <span>Status</span>
             <span />
           </div>
 
@@ -87,7 +87,7 @@ export default function Sales() {
               </span>
               <span>
                 <span className={s.status === "completed" ? "g-pill g-pill-ok" : "g-pill g-pill-ghost"}>
-                  {s.status === "completed" ? "Completada" : s.status}
+                  {s.status === "completed" ? "Completed" : s.status}
                 </span>
               </span>
               <span>

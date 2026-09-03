@@ -27,8 +27,8 @@ const MOVE_TYPES = ["purchase", "adjustment", "waste", "return"] as const;
 const MOVE_TYPE_LABELS: Record<typeof MOVE_TYPES[number], string> = {
   purchase:   "Compra / Entrada",
   adjustment: "Ajuste",
-  waste:      "Merma / Pérdida",
-  return:     "Devolución",
+  waste:      "Waste / Loss",
+  return:     "Return",
 };
 
 /* ── Stock bar component (inline dynamic styles OK: data-driven widths) ── */
@@ -159,14 +159,14 @@ export default function Inventory() {
       <div className="flex items-center justify-center h-48">
         <div className="flex items-center gap-3">
           <RefreshCw size={16} className="animate-spin text-ink-400" />
-          <span className="h-meta">Cargando inventario...</span>
+          <span className="h-meta">Loading inventory...</span>
         </div>
       </div>
     );
   }
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: "stock",    label: "Stock actual",  icon: <Warehouse size={14} /> },
+    { id: "stock",    label: "Current stock",  icon: <Warehouse size={14} /> },
     { id: "forecast", label: "Proyecciones",  icon: <TrendingUp size={14} /> },
     { id: "history",  label: "Kardex",        icon: <History size={14} /> },
     { id: "centers",  label: "Centros",       icon: <Settings2 size={14} /> },
@@ -179,13 +179,13 @@ export default function Inventory() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="h-label mb-1 inv-eyebrow">
-            Inventario · Stocks
+            Inventory · Stock
           </div>
-          <h1 className="h-display inv-page-title">Inventario</h1>
+          <h1 className="h-display inv-page-title">Inventory</h1>
           <div className="h-meta mt-1">
-            {activeStocks.length} productos activos
-            {lowStock.length > 0 && <> · <span className="inv-warn-text">{lowStock.length} bajo mínimo</span></>}
-            {outOfStock.length > 0 && <> · <span className="inv-bad-text">{outOfStock.length} sin stock</span></>}
+            {activeStocks.length} active products
+            {lowStock.length > 0 && <> · <span className="inv-warn-text">{lowStock.length} below minimum</span></>}
+            {outOfStock.length > 0 && <> · <span className="inv-bad-text">{outOfStock.length} out of stock</span></>}
           </div>
         </div>
 
@@ -213,7 +213,7 @@ export default function Inventory() {
           {/* OCR Invoice */}
           <Dialog open={openOCR} onOpenChange={setOpenOCR}>
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpenOCR(true)}>
-              <FileText size={15} /> Cargar Factura (AI)
+              <FileText size={15} /> Upload Invoice (AI)
             </button>
             <InvoiceOCRDialog
               tenantId={tenantId!} branchId={branchId!} userId={user!.id}
@@ -276,10 +276,10 @@ export default function Inventory() {
           <span className="h-meta">productos activos</span>
         </div>
 
-        {/* Bajo stock */}
+        {/* Low stock */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
-            <span className="h-label">Bajo stock</span>
+            <span className="h-label">Low stock</span>
             <div className="orb g-orb-38 orb-sq inv-orb-warn">
               <AlertTriangle size={15} />
             </div>
@@ -287,13 +287,13 @@ export default function Inventory() {
           <div className={"g-num-28 " + (lowStock.length > 0 ? "inv-warn-text" : "inv-ink-900")}>
             {lowStock.length}
           </div>
-          <span className="h-meta">requieren reposición</span>
+          <span className="h-meta">need restocking</span>
         </div>
 
-        {/* Sin stock */}
+        {/* Out of stock */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
-            <span className="h-label">Sin stock</span>
+            <span className="h-label">Out of stock</span>
             <div className="orb g-orb-38 orb-sq inv-orb-bad">
               <Package size={15} />
             </div>
@@ -301,26 +301,26 @@ export default function Inventory() {
           <div className={"g-num-28 " + (outOfStock.length > 0 ? "inv-bad-text" : "inv-ink-900")}>
             {outOfStock.length}
           </div>
-          <span className="h-meta">productos agotados</span>
+          <span className="h-meta">products out of stock</span>
         </div>
 
-        {/* Valor inventario */}
+        {/* Inventory value */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
             <span className="h-label">Unidades totales</span>
             <div className="orb g-orb-38 orb-sq"><TrendingUp size={15} /></div>
           </div>
           <div className="g-num-28">{totalValue.toLocaleString("es-CO", { maximumFractionDigits: 0 })}</div>
-          <span className="h-meta">en todos los centros</span>
+          <span className="h-meta">across all centers</span>
         </div>
 
         {/* Transfer card — wide */}
         <div className="glass g-kpi inv-card-transfer">
           <div className="flex items-center justify-between">
-            <span className="h-label">Transferencia rápida</span>
+            <span className="h-label">Quick transfer</span>
             <div className="orb g-orb-38 orb-sq"><ArrowRightLeft size={15} /></div>
           </div>
-          <div className="g-num-20 text-ink-700">Mover stock entre centros</div>
+          <div className="g-num-20 text-ink-700">Move stock between centers</div>
           <div className="flex gap-2 mt-1">
             <button type="button" className="g-btn g-btn-primary inv-btn-sm" onClick={() => setOpenTransfer(true)}>
               <ArrowRightLeft size={13} /> Transferir ahora
@@ -336,7 +336,7 @@ export default function Inventory() {
       {lowStock.length > 0 && (
         <div className="glass-thin flex items-center gap-3 px-4 py-3 inv-alert-banner">
           <AlertTriangle size={15} className="inv-warn-text flex-shrink-0" />
-          <span className="h-label inv-warn-text">Stock bajo ({lowStock.length}):</span>
+          <span className="h-label inv-warn-text">Low stock ({lowStock.length}):</span>
           <span className="h-meta truncate">
             {lowStock.slice(0, 8).map((s: any) => s.products?.name).join(", ")}
             {lowStock.length > 8 && " …"}
@@ -362,13 +362,13 @@ export default function Inventory() {
 
         {/* Center filter */}
         <div className="flex items-center gap-2">
-          <span className="h-label hidden md:block">Centro:</span>
+          <span className="h-label hidden md:block">Center:</span>
           <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
             <SelectTrigger className="h-8 text-xs bg-white/60 border-white/70 inv-select-trigger">
-              <SelectValue placeholder="Todos los centros" />
+              <SelectValue placeholder="All centers" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los centros</SelectItem>
+              <SelectItem value="all">All centers</SelectItem>
               {centers.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
@@ -388,7 +388,7 @@ export default function Inventory() {
               <Search size={14} className="inv-ink-400 flex-shrink-0" />
               <input
                 className="bg-transparent border-none outline-none text-sm flex-1 inv-search-input"
-                placeholder="Buscar producto..."
+                placeholder="Search product..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -398,8 +398,8 @@ export default function Inventory() {
             <div className="flex items-center gap-1.5">
               {[
                 { id: "all",  label: "Todos", count: activeStocks.length },
-                { id: "low",  label: "Bajo mínimo", count: lowStock.length },
-                { id: "out",  label: "Sin stock", count: outOfStock.length },
+                { id: "low",  label: "Below minimum", count: lowStock.length },
+                { id: "out",  label: "Out of stock", count: outOfStock.length },
               ].map((f) => (
                 <button
                   key={f.id}
@@ -428,9 +428,9 @@ export default function Inventory() {
           <div className="glass overflow-hidden">
             {/* Table header */}
             <div className="grid items-center px-5 py-3 inv-table-grid inv-table-header">
-              <span className="h-label">Producto</span>
+              <span className="h-label">Product</span>
               <span className="h-label">SKU</span>
-              <span className="h-label">Stock actual</span>
+              <span className="h-label">Current stock</span>
               <span className="h-label">Ubicación</span>
               <span className="h-label">Movimiento</span>
               <span className="h-label">Unidad</span>
@@ -507,7 +507,7 @@ export default function Inventory() {
                     {/* Status badge */}
                     <div>
                       {isOut ? (
-                        <span className="g-pill g-pill-bad inv-text-10">Sin stock</span>
+                        <span className="g-pill g-pill-bad inv-text-10">Out of stock</span>
                       ) : isLow ? (
                         <span className="g-pill g-pill-warn inv-text-10">Bajo</span>
                       ) : (
@@ -541,7 +541,7 @@ export default function Inventory() {
           {/* Header */}
           <div className="grid items-center px-5 py-3 inv-history-grid inv-table-header">
             <span className="h-label">Fecha</span>
-            <span className="h-label">Producto</span>
+            <span className="h-label">Product</span>
             <span className="h-label">Centro</span>
             <span className="h-label">Tipo</span>
             <span className="h-label">Cantidad</span>
@@ -642,8 +642,8 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
   return (
     <div className="glass overflow-hidden">
       <div className="grid items-center px-5 py-3 inv-forecast-grid inv-table-header">
-        <span className="h-label">Producto</span>
-        <span className="h-label">Stock actual</span>
+        <span className="h-label">Product</span>
+        <span className="h-label">Current stock</span>
         <span className="h-label">Venta/día (30d)</span>
         <span className="h-label">Días restantes</span>
         <span className="h-label">Alerta</span>
@@ -753,7 +753,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
 
         {/* Producto con búsqueda */}
         <div className="space-y-1.5">
-          <Label>Producto</Label>
+          <Label>Product</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input

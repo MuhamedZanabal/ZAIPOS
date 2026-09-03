@@ -62,7 +62,7 @@ export default function Cash() {
       _opening_amount: Number(openAmount),
     });
     if (error) toast.error(error.message);
-    else { toast.success("Caja abierta"); qc.invalidateQueries(); }
+    else { toast.success("Register opened"); qc.invalidateQueries(); }
   };
 
   const closeSession = async () => {
@@ -77,7 +77,7 @@ export default function Cash() {
     } as any);
     if (error) toast.error(error.message);
     else {
-      toast.success("Caja cerrada exitosamente");
+      toast.success("Register closed successfully");
       setCloseOpen(false);
       setCounts({ cash: "", card: "", transfer: "", qr: "" });
       qc.invalidateQueries();
@@ -89,9 +89,9 @@ export default function Cash() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div className="g-page-hd">
-          <div className="g-page-hd-eyebrow">OPERACIÓN · CAJA</div>
-          <div className="h-display g-page-title">Caja</div>
-          <div className="g-page-hd-meta">Apertura, cierre, arqueo y movimientos de efectivo</div>
+          <div className="g-page-hd-eyebrow">OPERATIONS · CASH REGISTER</div>
+          <div className="h-display g-page-title">Cash Register</div>
+          <div className="g-page-hd-meta">Opening, closing, reconciliation, and cash movements</div>
         </div>
         {session && (
           <div className="flex items-center gap-2 flex-wrap">
@@ -106,7 +106,7 @@ export default function Cash() {
               className="g-btn g-btn-primary"
               onClick={() => { setCounts({ cash: "", card: "", transfer: "", qr: "" }); setCloseOpen(true); }}
             >
-              <LockKeyhole size={16} className="mr-1" />Cerrar caja
+              <LockKeyhole size={16} className="mr-1" />Close register
             </button>
           </div>
         )}
@@ -114,7 +114,7 @@ export default function Cash() {
 
       <Tabs defaultValue="current">
         <TabsList>
-          <TabsTrigger value="current">Caja actual</TabsTrigger>
+          <TabsTrigger value="current">Current register</TabsTrigger>
           <TabsTrigger value="history">Historial de cierres</TabsTrigger>
         </TabsList>
 
@@ -127,13 +127,13 @@ export default function Cash() {
                   <LockKeyhole size={26} />
                 </div>
                 <div>
-                  <div className="h-display-sm">Caja cerrada</div>
-                  <div className="g-page-hd-meta">Abre caja para empezar a vender</div>
+                  <div className="h-display-sm">Register closed</div>
+                  <div className="g-page-hd-meta">Open the register to start selling</div>
                 </div>
               </div>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="h-label">Monto inicial en efectivo</Label>
+                  <Label className="h-label">Opening cash amount</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl font-bold g-prefix-muted">$</span>
                     <Input
@@ -145,7 +145,7 @@ export default function Cash() {
                   </div>
                 </div>
                 <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" onClick={openSession}>
-                  <LockOpen size={20} className="mr-2" />Abrir caja ahora
+                  <LockOpen size={20} className="mr-2" />Open register now
                 </button>
               </div>
             </div>
@@ -177,7 +177,7 @@ export default function Cash() {
                   <div className="g-cash-sect-hd">
                     <ArrowDownToLine size={16} className="g-icon-brand" />
                     <div>
-                      <div className="g-cash-sect-eyebrow">CAJA ACTIVA</div>
+                      <div className="g-cash-sect-eyebrow">ACTIVE REGISTER</div>
                       <div className="g-cash-sect-title">Movimientos manuales</div>
                     </div>
                   </div>
@@ -185,13 +185,13 @@ export default function Cash() {
                   <div className="g-cash-mov-head">
                     <span>Hora</span>
                     <span>Tipo</span>
-                    <span className="text-right">Monto</span>
+                    <span className="text-right">Amount</span>
                     <span>Motivo</span>
                   </div>
 
                   {(movements ?? []).length === 0 ? (
                     <div className="py-12 text-center g-page-hd-meta">
-                      Sin ingresos o egresos manuales en esta sesión
+                      No manual cash in or cash out entries in this session
                     </div>
                   ) : (
                     (movements ?? []).map((m: any) => (
@@ -214,29 +214,29 @@ export default function Cash() {
                 {/* Summary card */}
                 <div className="glass rounded-2xl p-5">
                   <div className="h-label-caps mb-4">
-                    Resumen de ventas
+                    Sales summary
                   </div>
                   <div className="g-cash-summary">
                     <div className="g-cash-summary-row">
-                      <span>Ventas presenciales</span>
+                      <span>In-person sales</span>
                       <span className="g-cash-summary-val">
                         {formatCurrency(Number(session.total_cash) + Number(session.total_card) + Number(session.total_transfer) + Number(session.total_qr))}
                       </span>
                     </div>
                     <div className="g-cash-summary-row">
-                      <span>Ingresos caja</span>
+                      <span>Cash in</span>
                       <span className="g-cash-summary-val g-cash-summary-ok">
                         +{formatCurrency(Number(session.total_in))}
                       </span>
                     </div>
                     <div className="g-cash-summary-row">
-                      <span>Egresos caja</span>
+                      <span>Cash out</span>
                       <span className="g-cash-summary-val g-cash-summary-bad">
                         -{formatCurrency(Number(session.total_out))}
                       </span>
                     </div>
                     <div className="g-cash-summary-total">
-                      <span>{canViewDifferences ? "Saldo Final" : "Saldo"}</span>
+                      <span>{canViewDifferences ? "Final Balance" : "Balance"}</span>
                       <span className="g-cash-summary-total-val">
                         {canViewDifferences ? formatCurrency(expectedTotal) : "Ciego"}
                       </span>
@@ -299,12 +299,12 @@ export default function Cash() {
         <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b bg-muted/20">
             <DialogTitle className="flex items-center gap-2">
-              <LockKeyhole className="h-5 w-5 text-primary" /> Auditoría de Cierre de Caja
+              <LockKeyhole className="h-5 w-5 text-primary" /> Register Closing Audit
             </DialogTitle>
           </DialogHeader>
           <div className="p-6 space-y-6">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest">Efectivo Contado</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest">Counted Cash</Label>
               <Input
                 type="number"
                 value={counts.cash}
@@ -313,7 +313,7 @@ export default function Cash() {
               />
             </div>
             <div className="space-y-3 border-t pt-4">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Otros medios de pago</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Other payment methods</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <div className="text-[10px] flex items-center gap-1"><CreditCard className="h-3 w-3" /> Tarjeta</div>
@@ -330,7 +330,7 @@ export default function Cash() {
               </div>
             </div>
             <div className="p-4 rounded-xl border bg-muted/30 text-center text-sm text-muted-foreground">
-              El sistema calculará diferencias después de finalizar el cierre.
+              The system will calculate differences after closing is completed.
             </div>
             <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" onClick={closeSession}>
               Finalizar Cierre de Turno
@@ -380,12 +380,12 @@ function CashMovementDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>
-            {type === "in" ? "Registrar ingreso de efectivo" : "Registrar egreso de efectivo"}
+            {type === "in" ? "Record cash in" : "Record cash out"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Monto</Label>
+            <Label>Amount</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-lg" />
           </div>
           <div className="space-y-1.5">
@@ -393,7 +393,7 @@ function CashMovementDialog({
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={type === "in" ? "Ej. Fondo extra" : "Ej. Pago a proveedor"}
+              placeholder={type === "in" ? "E.g. Extra float" : "E.g. Supplier payment"}
             />
           </div>
           <button

@@ -41,20 +41,20 @@ export function OfflineBanner() {
       text: "text-destructive-foreground",
       icon: <WifiOff className="h-4 w-4 shrink-0" />,
       message: pendingSyncCount > 0
-        ? `Sin conexión · ${pendingSyncCount} transacción${pendingSyncCount !== 1 ? "es" : ""} en cola`
-        : "Sin conexión · Modo offline activo",
+        ? `Offline · ${pendingSyncCount} transaction${pendingSyncCount !== 1 ? "s" : ""} queued`
+        : "Offline · Offline mode active",
     },
     syncing: {
       bg: "bg-amber-500",
       text: "text-white",
       icon: <RefreshCw className="h-4 w-4 shrink-0 animate-spin" />,
-      message: `Sincronizando ${pendingSyncCount} transacción${pendingSyncCount !== 1 ? "es" : ""} pendiente${pendingSyncCount !== 1 ? "s" : ""}…`,
+      message: `Syncing ${pendingSyncCount} pending transaction${pendingSyncCount !== 1 ? "s" : ""}…`,
     },
     done: {
       bg: "bg-green-600",
       text: "text-white",
       icon: <CheckCircle2 className="h-4 w-4 shrink-0" />,
-      message: "Sincronización completada",
+      message: "Synchronization complete",
     },
   } as const;
 
@@ -64,7 +64,7 @@ export function OfflineBanner() {
     <>
       <button
         type="button"
-        aria-label="Ver cola de sincronización"
+        aria-label="View sync queue"
         onClick={() => (bannerState !== "done" ? setPanelOpen(true) : undefined)}
         className={cn(
           "w-full flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-semibold",

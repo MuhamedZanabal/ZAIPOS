@@ -34,7 +34,7 @@ export function DataManagement() {
 
       if (error) throw error;
       exportToCsv(`productos_${new Date().toISOString().split('T')[0]}.csv`, data || []);
-      toast.success("Catálogo exportado");
+      toast.success("Catalog exported");
     } catch (err: any) {
       toast.error("Error al exportar: " + err.message);
     } finally {
@@ -61,7 +61,7 @@ export function DataManagement() {
       }));
 
       exportToCsv(`inventario_${new Date().toISOString().split('T')[0]}.csv`, flatData);
-      toast.success("Inventario exportado");
+      toast.success("Inventory exported");
     } catch (err: any) {
       toast.error("Error al exportar: " + err.message);
     } finally {
@@ -81,7 +81,7 @@ export function DataManagement() {
         const rows = parseCsv(content);
         
         if (rows.length === 0) {
-          toast.error("El archivo está vacío o tiene formato inválido");
+          toast.error("The file is empty or has an invalid format");
           setLoading(false);
           return;
         }
@@ -122,7 +122,7 @@ export function DataManagement() {
           setProgress(p => p ? { ...p, current: i + 1 } : null);
         }
 
-        toast.success(`Importación finalizada: ${rows.length} productos procesados`);
+        toast.success(`Import complete: ${rows.length} products processed`);
         setProgress(null);
       };
       reader.readAsText(file);
@@ -139,7 +139,7 @@ export function DataManagement() {
     if (!file) return;
 
     if (!selectedCenterId) {
-      toast.error("Debes seleccionar un centro de inventario");
+      toast.error("You must select an inventory center");
       return;
     }
 
@@ -189,7 +189,7 @@ export function DataManagement() {
                 inventoryCenterId: selectedCenterId,
                 type: "adjustment",
                 quantity: diff,
-                reason: "Importación masiva de datos",
+                reason: "Bulk data import",
                 userId: user?.id || "",
               });
             }
@@ -198,12 +198,12 @@ export function DataManagement() {
           setProgress(p => p ? { ...p, current: i + 1 } : null);
         }
 
-        toast.success(`Ajuste de inventario finalizado`);
+        toast.success(`Inventory adjustment complete`);
         setProgress(null);
       };
       reader.readAsText(file);
     } catch (err: any) {
-      toast.error("Error al importar inventario: " + err.message);
+      toast.error("Error importing inventory: " + err.message);
     } finally {
       setLoading(false);
       e.target.value = "";
@@ -213,15 +213,15 @@ export function DataManagement() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Catálogo de Productos */}
+        {/* Product Catalog */}
         <div className="glass rounded-2xl p-5 space-y-4">
           <div>
             <div className="flex items-center gap-2 text-brand-600">
               <FileSpreadsheet className="h-5 w-5" />
-              <div className="g-title-16">Catálogo de Productos</div>
+              <div className="g-title-16">Product Catalog</div>
             </div>
             <div className="h-meta mt-1">
-              Exporta o importa el listado completo de productos (precios, costos, categorías).
+              Export or import the complete product list (prices, costs, categories).
             </div>
           </div>
             <Button 
@@ -231,11 +231,11 @@ export function DataManagement() {
               disabled={loading}
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Exportar Catálogo (.csv)
+              Export Catalog (.csv)
             </Button>
             
             <div className="space-y-2">
-              <Label htmlFor="import-products">Importar / Actualizar Catálogo</Label>
+              <Label htmlFor="import-products">Import / Update Catalog</Label>
               <div className="relative">
                 <Input 
                   id="import-products" 
@@ -247,8 +247,8 @@ export function DataManagement() {
                 />
               </div>
               <p className="text-[10px] text-muted-foreground">
-                * Si incluyes la columna 'id', se actualizará el producto existente. 
-                Si no, se intentará buscar por 'sku'.
+                * If you include the 'id' column, the existing product will be updated. 
+                Otherwise, the system will try to match by 'sku'.
               </p>
             </div>
         </div>
@@ -258,10 +258,10 @@ export function DataManagement() {
           <div>
             <div className="flex items-center gap-2 text-brand-600">
               <Box className="h-5 w-5" />
-              <div className="g-title-16">Stock e Inventario</div>
+              <div className="g-title-16">Stock and Inventory</div>
             </div>
             <div className="h-meta mt-1">
-              Ajusta masivamente las cantidades físicas en tus centros de inventario.
+              Bulk-adjust physical quantities in your inventory centers.
             </div>
           </div>
             <Button 
@@ -276,10 +276,10 @@ export function DataManagement() {
 
             <div className="space-y-3 pt-2 border-t">
               <div className="space-y-1.5">
-                <Label>Centro destino para importación</Label>
+                <Label>Destination center for import</Label>
                 <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un centro..." />
+                    <SelectValue placeholder="Select a center..." />
                   </SelectTrigger>
                   <SelectContent>
                     {centers.map(c => (
@@ -290,7 +290,7 @@ export function DataManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="import-inventory">Importar Stock (Ajuste Físico)</Label>
+                <Label htmlFor="import-inventory">Import Stock (Physical Adjustment)</Label>
                 <Input 
                   id="import-inventory" 
                   type="file" 
@@ -301,7 +301,7 @@ export function DataManagement() {
                 />
                 <p className="text-[10px] text-muted-foreground">
                   * El archivo debe contener columnas 'sku' y 'quantity'. 
-                  Se generará un movimiento de ajuste automáticamente.
+                  An adjustment movement will be generated automatically.
                 </p>
               </div>
             </div>
@@ -320,9 +320,9 @@ export function DataManagement() {
 
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Recomendación</AlertTitle>
+        <AlertTitle>Recommendation</AlertTitle>
         <AlertDescription>
-          Realiza una exportación antes de importar datos masivamente para tener un respaldo de seguridad.
+          Export your data before a bulk import so you have a backup.
         </AlertDescription>
       </Alert>
     </div>

@@ -16,9 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
   composite: "Compuesto",
-  production: "Producción",
+  production: "Production",
   combo: "Combo",
-  ingredient: "Ingrediente",
+  ingredient: "Ingredient",
   modifier: "Modificador"
 };
 
@@ -67,10 +67,10 @@ export default function Products() {
     try {
       const { error } = await supabase.from("products").delete().eq("id", deletingId).eq("tenant_id", tenantId);
       if (error) throw error;
-      toast({ title: "Producto eliminado", description: "El producto ha sido eliminado correctamente." });
+      toast({ title: "Product deleted", description: "The product was deleted successfully." });
       qc.invalidateQueries({ queryKey: ["products"] });
     } catch (err: any) {
-      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
+      toast({ title: "Error deleting", description: err.message, variant: "destructive" });
     } finally {
       setDeletingId(null);
     }
@@ -103,12 +103,12 @@ export default function Products() {
         const content = event.target?.result as string;
         const parsed = parseCsv(content);
         if (parsed.length === 0) {
-          toast({ title: "Error", description: "El archivo está vacío o tiene un formato incorrecto.", variant: "destructive" });
+          toast({ title: "Error", description: "The file is empty or has an invalid format.", variant: "destructive" });
           return;
         }
         const isValid = parsed.every(row => row.name && row.name.trim() !== "");
         if (!isValid) {
-          toast({ title: "Formato inválido", description: "Asegúrate de que todos los productos tengan al menos un 'name' (nombre).", variant: "destructive" });
+          toast({ title: "Invalid format", description: "Make sure every product has at least a 'name' field.", variant: "destructive" });
           return;
         }
         const mapProductType = (type: string | undefined): string => {
@@ -156,19 +156,19 @@ export default function Products() {
         if (deleteError) {
           console.error("Error al borrar productos:", deleteError);
           if (deleteError.code === "23503") {
-            throw new Error("No se pueden borrar los productos actuales porque están asociados a pedidos, recetas o movimientos de inventario existentes. Contacta a soporte para una limpieza profunda.");
+            throw new Error("Current products cannot be deleted because they are linked to existing orders, recipes, or inventory movements. Contact support for a deep cleanup.");
           }
-          throw new Error("Ocurrió un error al intentar limpiar la base de datos de productos.");
+          throw new Error("An error occurred while trying to clean the product database.");
         }
         const { error: insertError } = await supabase.from("products").insert(dataToInsert);
         if (insertError) {
           console.error("Error al insertar:", insertError);
-          throw new Error("La base de datos se limpió, pero hubo un error insertando los nuevos productos. Verifica que la categoría u otros campos sean válidos.");
+          throw new Error("The database was cleaned, but an error occurred while inserting the new products. Verify the category and other fields.");
         }
-        toast({ title: "Sincronización exitosa", description: `Se eliminaron los datos anteriores y se importaron ${dataToInsert.length} productos nuevos.` });
+        toast({ title: "Synchronization successful", description: `Previous data was removed and ${dataToInsert.length} new products were imported.` });
         qc.invalidateQueries({ queryKey: ["products"] });
       } catch (err: any) {
-        toast({ title: "Error de Sincronización", description: err.message, variant: "destructive" });
+        toast({ title: "Synchronization Error", description: err.message, variant: "destructive" });
       } finally {
         setImportFile(null);
       }
@@ -180,23 +180,23 @@ export default function Products() {
     <div className="flex flex-col gap-5">
       {/* Page header */}
       <div className="flex flex-col gap-1">
-        <div className="h-display g-page-title">Productos</div>
-        <div className="h-meta g-page-subtitle">{products?.length ?? 0} productos · CATÁLOGO</div>
+        <div className="h-display g-page-title">Products</div>
+        <div className="h-meta g-page-subtitle">{products?.length ?? 0} products · CATALOG</div>
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
-          <Input className="pl-9 w-48 lg:w-64" placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9 w-48 lg:w-64" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
         <Select value={categoryId} onValueChange={setCategoryId}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Categoría" />
+            <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             {categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -206,12 +206,12 @@ export default function Products() {
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="simple">Simple</SelectItem>
             <SelectItem value="composite">Compuesto</SelectItem>
-            <SelectItem value="production">Producción</SelectItem>
+            <SelectItem value="production">Production</SelectItem>
             <SelectItem value="combo">Combo</SelectItem>
-            <SelectItem value="ingredient">Ingrediente</SelectItem>
+            <SelectItem value="ingredient">Ingredient</SelectItem>
             <SelectItem value="modifier">Modificador</SelectItem>
           </SelectContent>
         </Select>
@@ -219,23 +219,23 @@ export default function Products() {
         {/* Product type guide dialog */}
         <Dialog>
           <DialogTrigger asChild>
-            <button type="button" className="g-btn g-btn-ghost g-btn-icon" title="Explicación de tipos de producto" aria-label="Guía de tipos de producto">
+            <button type="button" className="g-btn g-btn-ghost g-btn-icon" title="Product type explanation" aria-label="Product type guide">
               <HelpCircle className="h-5 w-5 text-ink-400" />
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>Guía de Tipos de Producto</DialogTitle>
+              <DialogTitle>Product Type Guide</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="grid gap-4">
                 {[
-                  { label: "1. Simple", desc: "Producto terminado que se vende directamente. El inventario se descuenta por unidad vendida. Ej: Gaseosa embotellada." },
-                  { label: "2. Compuesto (Composite)", desc: "Producto que tiene una receta. Al venderse, descuenta del inventario los ingredientes definidos en su receta. Ej: Hamburguesa." },
-                  { label: "3. Producción (Production)", desc: "Producto que preparas en lote para generar stock propio a partir de otros ingredientes. Ej: Salsa de la casa o masa." },
-                  { label: "4. Combo", desc: "Agrupación de varios productos que se venden juntos bajo un solo precio. Ej: Combo Almuerzo." },
-                  { label: "5. Ingrediente (Ingredient)", desc: "Materias primas que no se venden solas, sino que se usan exclusivamente para recetas. Ej: Sal, harina, carne molida." },
-                  { label: "6. Modificador (Modifier)", desc: 'Opciones adicionales para personalizar un pedido. Ej: "Extra Tocino" o "Sin Cebolla".' },
+                  { label: "1. Simple", desc: "Finished product sold directly. Inventory is deducted per unit sold. Example: bottled soda." },
+                  { label: "2. Compuesto (Composite)", desc: "Product with a recipe. When sold, inventory is deducted from the ingredients defined in its recipe. Example: hamburger." },
+                  { label: "3. Production (Production)", desc: "Product prepared in batches to create stock from other ingredients. Example: house sauce or dough." },
+                  { label: "4. Combo", desc: "Group of several products sold together at one price. Example: lunch combo." },
+                  { label: "5. Ingredient (Ingredient)", desc: "Raw materials not sold on their own and used exclusively in recipes. Example: salt, flour, ground meat." },
+                  { label: "6. Modificador (Modifier)", desc: 'Additional options to customize an order. Example: "Extra Bacon" or "No Onion".' },
                 ].map(({ label, desc }) => (
                   <div key={label} className="space-y-1">
                     <div className="font-semibold text-sm text-brand-500">{label}</div>
@@ -290,13 +290,13 @@ export default function Products() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>SKU / Código</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-right">Costo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>SKU / Code</TableHead>
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Cost</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -331,8 +331,8 @@ export default function Products() {
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-icon"
-                      title="Editar producto"
-                      aria-label="Editar producto"
+                      title="Edit product"
+                      aria-label="Edit product"
                       onClick={() => { setEditing(p); setOpen(true); }}
                     >
                       <Pencil className="h-4 w-4" />
@@ -340,8 +340,8 @@ export default function Products() {
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-icon g-btn-danger"
-                      title="Eliminar producto"
-                      aria-label="Eliminar producto"
+                      title="Delete product"
+                      aria-label="Delete product"
                       onClick={() => setDeletingId(p.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -353,7 +353,7 @@ export default function Products() {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12 text-ink-400">
-                  Sin productos
+                  No products
                 </TableCell>
               </TableRow>
             )}
@@ -365,7 +365,7 @@ export default function Products() {
       <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogTitle>¿Delete product?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. El producto será eliminado permanentemente de la base de datos.
               Si tiene historial de ventas asociado, es posible que no se pueda eliminar.

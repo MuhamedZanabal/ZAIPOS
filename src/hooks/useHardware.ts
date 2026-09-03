@@ -157,12 +157,12 @@ export function useHardware(): UseHardwareReturn {
       try {
         const result = await hardware.printTicket(data);
         if (!result.ok) {
-          toast.error(`Error de impresora: ${result.error ?? 'Error desconocido'}`);
+          toast.error(`Printer error: ${result.error ?? 'Unknown error'}`);
         }
         return result;
       } catch (err: any) {
-        const error = err?.message ?? 'Error inesperado';
-        toast.error(`Error de impresora: ${error}`);
+        const error = err?.message ?? 'Unexpected error';
+        toast.error(`Printer error: ${error}`);
         return { ok: false, error };
       } finally {
         setIsPrinting(false);
@@ -176,14 +176,14 @@ export function useHardware(): UseHardwareReturn {
   const openDrawer = useCallback(async (): Promise<PrintResult> => {
     if (!available || !hardware) {
       webDrawerFallback();
-      toast.warning('Gaveta de dinero solo disponible en la terminal física.');
-      return { ok: false, error: 'Hardware no disponible en versión web' };
+      toast.warning('Cash drawer is only available on the physical terminal.');
+      return { ok: false, error: 'Hardware is not available in the web version' };
     }
 
     try {
       return await hardware.openDrawer();
     } catch (err: any) {
-      return { ok: false, error: err?.message ?? 'Error al abrir gaveta' };
+      return { ok: false, error: err?.message ?? 'Error opening cash drawer' };
     }
   }, [available]);
 

@@ -217,8 +217,8 @@ if (!gotLock) {
 app.whenReady().then(bootstrap).catch((err) => {
   log("error", "bootstrap_failed", { error: err?.message ?? String(err) });
   dialog.showErrorBox(
-    'Error al iniciar POS-S360T',
-    `Error inesperado: ${err?.message ?? err}`
+    'Error starting POS-S360T',
+    `Unexpected error: ${err?.message ?? err}`
   );
   app.quit();
 });

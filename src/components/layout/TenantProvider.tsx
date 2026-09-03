@@ -144,7 +144,7 @@ function UnconfiguredScreen() {
             disabled={!selectedTenant || saving}
             onClick={handleSetDomain}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vincular dominio y continuar"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link domain and continue"}
           </Button>
 
           <Button
@@ -152,7 +152,7 @@ function UnconfiguredScreen() {
             className="w-full text-xs text-muted-foreground"
             onClick={() => signOutFully()}
           >
-            Cerrar sesión
+            Sign out
           </Button>
         </div>
       </div>
@@ -181,7 +181,7 @@ function UnconfiguredScreen() {
             </p>
             <input
               type="email"
-              placeholder="Correo"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border rounded px-3 py-2 text-sm bg-background"
@@ -189,14 +189,14 @@ function UnconfiguredScreen() {
             />
             <input
               type="password"
-              placeholder="Contraseña"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border rounded px-3 py-2 text-sm bg-background"
               required
             />
             <Button type="submit" className="w-full" disabled={loggingIn}>
-              {loggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : "Iniciar sesión"}
+              {loggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
             </Button>
           </form>
         )}
@@ -227,9 +227,9 @@ export function TenantProvider({ children }: TenantProviderProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2 px-4">
-          <h1 className="text-xl font-semibold text-foreground">Error de conexión</h1>
+          <h1 className="text-xl font-semibold text-foreground">Connection error</h1>
           <p className="text-muted-foreground text-sm">
-            No se pudo contactar el servidor. Intenta recargar la página.
+            Could not reach the server. Try reloading the page.
           </p>
         </div>
       </div>

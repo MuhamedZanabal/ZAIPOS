@@ -12,10 +12,10 @@ export function useBarcodeLookup() {
     try {
       const product = await lookupEAN(barcode.trim());
       setResult(product);
-      if (!product) toast.info("Código no encontrado en la base de datos global.");
+      if (!product) toast.info("Code not found in the global database.");
       return product;
     } catch (err: any) {
-      toast.error(err.message ?? "Error al consultar la API de códigos de barras.");
+      toast.error(err.message ?? "Error querying the barcode API.");
       return null;
     } finally {
       setLoading(false);

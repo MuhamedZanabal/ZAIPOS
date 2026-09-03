@@ -62,13 +62,13 @@ export default function Customers() {
       }
     },
     onSuccess: () => {
-      toast.success(editing ? "Cliente actualizado" : "Cliente creado");
+      toast.success(editing ? "Customer updated" : "Customer created");
       qc.invalidateQueries({ queryKey: ["customers"] });
       setOpen(false);
       setEditing(null);
       setForm(empty);
     },
-    onError: (e: any) => toast.error(e.message ?? "Error al guardar"),
+    onError: (e: any) => toast.error(e.message ?? "Error saving"),
   });
 
   const remove = useMutation({
@@ -77,10 +77,10 @@ export default function Customers() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Cliente eliminado");
+      toast.success("Customer deleted");
       qc.invalidateQueries({ queryKey: ["customers"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Error al eliminar"),
+    onError: (e: any) => toast.error(e.message ?? "Error deleting"),
   });
 
   const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
@@ -106,8 +106,8 @@ export default function Customers() {
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <div className="h-meta g-page-subtitle text-ink-400">OPERACIÓN · CLIENTES</div>
-            <h1 className="h-display g-page-title">Clientes</h1>
+            <div className="h-meta g-page-subtitle text-ink-400">OPERATIONS · CUSTOMERS</div>
+            <h1 className="h-display g-page-title">Customers</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
               {customers.length} cliente{customers.length !== 1 ? "s" : ""} registrado{customers.length !== 1 ? "s" : ""}
             </div>
@@ -115,7 +115,7 @@ export default function Customers() {
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
           <Plus className="h-4 w-4" />
-          Nuevo cliente
+          New customer
         </button>
       </div>
 
@@ -124,7 +124,7 @@ export default function Customers() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
         <Input
           className="pl-9"
-          placeholder="Buscar por nombre, teléfono, NIT..."
+          placeholder="Search by name, phone, tax ID..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -136,19 +136,19 @@ export default function Customers() {
           <div className="orb mx-auto mb-4">
             <Users className="h-7 w-7" />
           </div>
-          <h2 className="h-display font-semibold text-lg">Sin clientes</h2>
+          <h2 className="h-display font-semibold text-lg">No customers</h2>
           <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-            Registra tus clientes para vincularlos a ventas y ver su historial.
+            Register customers to link them to sales and view their history.
           </p>
         </div>
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
           {/* Table header */}
           <div className="grid grid-cols-[2fr_1fr_2fr_2fr_100px_72px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-            <span>Nombre</span>
+            <span>Name</span>
             <span>Documento</span>
             <span>Contacto</span>
-            <span>Dirección</span>
+            <span>Address</span>
             <span className="text-right">Puntos</span>
             <span />
           </div>
@@ -193,7 +193,7 @@ export default function Customers() {
               <div className="flex gap-1 justify-end">
                 <button
                   type="button"
-                  aria-label="Editar cliente"
+                  aria-label="Edit customer"
                   className="g-btn g-btn-ghost h-8 w-8 p-0 flex items-center justify-center"
                   onClick={() => openEdit(c)}
                 >
@@ -201,9 +201,9 @@ export default function Customers() {
                 </button>
                 <button
                   type="button"
-                  aria-label="Eliminar cliente"
+                  aria-label="Delete customer"
                   className="g-btn g-btn-ghost h-8 w-8 p-0 flex items-center justify-center text-g-bad"
-                  onClick={() => { if (confirm("¿Eliminar cliente?")) remove.mutate(c.id); }}
+                  onClick={() => { if (confirm("Delete customer?")) remove.mutate(c.id); }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -217,12 +217,12 @@ export default function Customers() {
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar cliente" : "Nuevo cliente"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit customer" : "New customer"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label>Nombre *</Label>
-              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre completo o razón social" />
+              <Label>Name *</Label>
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name or legal name" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -230,16 +230,16 @@ export default function Customers() {
                 <Input value={form.document_number} onChange={(e) => setForm((f) => ({ ...f, document_number: e.target.value }))} placeholder="123456789" />
               </div>
               <div className="space-y-1.5">
-                <Label>Teléfono</Label>
+                <Label>Phone</Label>
                 <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="300 000 0000" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Correo electrónico</Label>
+              <Label>Email</Label>
               <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="cliente@email.com" />
             </div>
             <div className="space-y-1.5">
-              <Label>Dirección</Label>
+              <Label>Address</Label>
               <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Calle 123 # 45-67" />
             </div>
             <button
@@ -248,7 +248,7 @@ export default function Customers() {
               disabled={!form.name.trim() || save.isPending}
               onClick={() => save.mutate(form)}
             >
-              {save.isPending ? "Guardando..." : editing ? "Guardar cambios" : "Crear cliente"}
+              {save.isPending ? "Saving..." : editing ? "Save changes" : "Create customer"}
             </button>
           </div>
         </DialogContent>

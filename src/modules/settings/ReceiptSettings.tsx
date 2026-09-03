@@ -45,7 +45,7 @@ export default function ReceiptSettings() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Configuración de recibo guardada");
+      toast.success("Receipt settings saved");
       qc.invalidateQueries({ queryKey: ["tenant-receipt-config"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -56,24 +56,24 @@ export default function ReceiptSettings() {
       <div className="space-y-6">
         <div className="glass p-6 rounded-2xl space-y-6">
           <div className="flex items-center gap-2 font-bold text-ink-900">
-            <Layout className="h-5 w-5 text-brand-600" /> Estructura del Recibo
+            <Layout className="h-5 w-5 text-brand-600" /> Receipt Layout
           </div>
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label>Texto de Encabezado (Debajo del nombre)</Label>
+              <Label>Header Text (Below the name)</Label>
               <Input
                 placeholder="NIT: 123456789-0 | Calle 123 # 45-67"
                 value={config.header_text}
                 onChange={(e) => setConfig({ ...config, header_text: e.target.value })}
               />
-              <p className="h-meta">Suele incluirse el NIT, dirección y resolución de facturación.</p>
+              <p className="h-meta">Usually includes the tax ID, address, and invoicing information.</p>
             </div>
 
             <div className="space-y-2">
-              <Label>Texto de Pie de Página (Footer)</Label>
+              <Label>Footer Text</Label>
               <Textarea
-                placeholder="¡Gracias por su compra! Vuelva pronto."
+                placeholder="Thank you for your purchase! Come back soon."
                 value={config.footer_text}
                 onChange={(e) => setConfig({ ...config, footer_text: e.target.value })}
                 className="min-h-[100px]"
@@ -94,7 +94,7 @@ export default function ReceiptSettings() {
 
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <Label>Detalle de Impuestos</Label>
+                  <Label>Tax Details</Label>
                   <p className="h-meta">Desglosar base e IVA</p>
                 </div>
                 <Switch
@@ -105,8 +105,8 @@ export default function ReceiptSettings() {
 
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <Label>Datos del Cliente</Label>
-                  <p className="h-meta">Mostrar nombre y documento del cliente</p>
+                  <Label>Customer Details</Label>
+                  <p className="h-meta">Show customer name and ID</p>
                 </div>
                 <Switch
                   checked={config.show_customer_info}
@@ -118,7 +118,7 @@ export default function ReceiptSettings() {
 
           <div className="pt-4 border-t border-black/5 flex justify-end">
             <button type="button" className="g-btn g-btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
-              <Save className="h-4 w-4" /> Guardar cambios
+              <Save className="h-4 w-4" /> Save changes
             </button>
           </div>
         </div>
@@ -146,17 +146,17 @@ export default function ReceiptSettings() {
               <span>06/05/2026 10:00</span>
             </div>
             {config.show_customer_info && (
-              <div className="text-[9px]">CLIENTE: CONSUMIDOR FINAL</div>
+              <div className="text-[9px]">CUSTOMER: WALK-IN CUSTOMER</div>
             )}
           </div>
 
           <div className="space-y-1 mb-4">
             <div className="flex justify-between">
-              <span>2.0 x PRODUCTO A</span>
+              <span>2.0 x PRODUCT A</span>
               <span>$20.000</span>
             </div>
             <div className="flex justify-between">
-              <span>1.0 x PRODUCTO B</span>
+              <span>1.0 x PRODUCT B</span>
               <span>$10.000</span>
             </div>
           </div>
@@ -181,7 +181,7 @@ export default function ReceiptSettings() {
           </div>
 
           <div className="mt-6 text-center whitespace-pre-line italic opacity-70">
-            {config.footer_text || "¡Gracias por su compra!\nDesarrollado por S360T"}
+            {config.footer_text || "Thank you for your purchase!\nPowered by S360T"}
           </div>
         </div>
       </div>

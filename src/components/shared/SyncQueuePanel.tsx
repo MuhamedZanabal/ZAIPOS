@@ -12,13 +12,13 @@ import { es } from "date-fns/locale";
 
 const TYPE_LABELS: Record<string, string> = {
   CHECKOUT_SALE: "Venta POS",
-  CHECKOUT_TABLE_ORDER: "Cierre de mesa",
-  SEND_TO_KITCHEN: "Envío a cocina",
+  CHECKOUT_TABLE_ORDER: "Table checkout",
+  SEND_TO_KITCHEN: "Send to kitchen",
   MARK_ORDER_READY: "Orden lista",
-  SEND_TO_CASHIER: "Enviar a caja",
-  APPLY_INVENTORY_MOVEMENT: "Movimiento inventario",
-  ADD_TABLE_ORDER_ITEMS: "Items de mesa",
-  UPSERT_TABLE_ORDER_ITEMS: "Comanda de mesa",
+  SEND_TO_CASHIER: "Send to register",
+  APPLY_INVENTORY_MOVEMENT: "Inventory movement",
+  ADD_TABLE_ORDER_ITEMS: "Table items",
+  UPSERT_TABLE_ORDER_ITEMS: "Table order",
 };
 
 interface Props {
@@ -63,16 +63,16 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
       <SheetContent className="w-full sm:max-w-lg flex flex-col gap-0 p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b">
           <SheetTitle className="flex items-center gap-2">
-            Cola de Sincronización
+            Sync Queue
             {pending > 0 && (
-              <Badge className="bg-amber-500 text-white">{pending} pendiente{pending !== 1 ? "s" : ""}</Badge>
+              <Badge className="bg-amber-500 text-white">{pending} pending</Badge>
             )}
             {failed > 0 && (
               <Badge variant="destructive">{failed} fallido{failed !== 1 ? "s" : ""}</Badge>
             )}
           </SheetTitle>
           <SheetDescription>
-            Transacciones guardadas localmente esperando conexión.
+            Transactions saved locally while waiting for a connection.
           </SheetDescription>
         </SheetHeader>
 
@@ -91,7 +91,7 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
           </Button>
           <Button size="sm" variant="ghost" onClick={refresh} className="gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" />
-            Actualizar lista
+            Refresh list
           </Button>
         </div>
 
@@ -100,8 +100,8 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-3">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
               <div>
-                <p className="font-medium text-foreground">Cola vacía</p>
-                <p className="text-sm">Todas las transacciones están sincronizadas.</p>
+                <p className="font-medium text-foreground">Queue empty</p>
+                <p className="text-sm">All transactions are synchronized.</p>
               </div>
             </div>
           ) : (
@@ -126,7 +126,7 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
                       variant={item.status === "failed" ? "destructive" : "secondary"}
                       className="text-[10px] h-4"
                     >
-                      {item.status === "failed" ? `Fallido · ${item.retryCount} intentos` : "Pendiente"}
+                      {item.status === "failed" ? `Failed · ${item.retryCount} attempts` : "Pending"}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">

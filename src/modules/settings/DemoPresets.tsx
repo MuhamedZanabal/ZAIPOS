@@ -36,16 +36,16 @@ type Preset = {
 
 const BAKERY_PRESET: Preset = {
   key: "bakery",
-  label: "Panadería",
-  description: "Panes, pastelería, café y sándwiches.",
-  business: { name: "Panadería Pan de Oro", currency: "COP", tax_rate: 19 },
+  label: "Bakery",
+  description: "Bread, pastries, coffee, and sandwiches.",
+  business: { name: "Bakery Pan de Oro", currency: "COP", tax_rate: 19 },
   categories: [
     { name: "Panes", color: "#c2410c" },
-    { name: "Pastelería", color: "#d97706" },
+    { name: "Pastries", color: "#d97706" },
     { name: "Tortas", color: "#be185d" },
-    { name: "Bebidas calientes", color: "#7c2d12" },
-    { name: "Bebidas frías", color: "#0891b2" },
-    { name: "Sándwiches", color: "#65a30d" },
+    { name: "Hot drinks", color: "#7c2d12" },
+    { name: "Cold drinks", color: "#0891b2" },
+    { name: "Sandwiches", color: "#65a30d" },
   ],
   products: [
     { name: "Pan francés", category: "Panes", price: 1500, cost: 600, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
@@ -54,29 +54,29 @@ const BAKERY_PRESET: Preset = {
     { name: "Pan de yuca", category: "Panes", price: 2200, cost: 850, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
     { name: "Almojábana", category: "Panes", price: 2200, cost: 900, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
     { name: "Buñuelo", category: "Panes", price: 1800, cost: 700, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
-    { name: "Croissant mantequilla", category: "Pastelería", price: 4500, cost: 1800, tax_rate: 19, unit_code: "unit", initial_stock: 30 },
-    { name: "Pastel de pollo", category: "Pastelería", price: 5500, cost: 2300, tax_rate: 19, unit_code: "unit", initial_stock: 25 },
-    { name: "Empanada de carne", category: "Pastelería", price: 3500, cost: 1400, tax_rate: 19, unit_code: "unit", initial_stock: 40 },
-    { name: "Palitos de queso", category: "Pastelería", price: 3800, cost: 1500, tax_rate: 19, unit_code: "unit", initial_stock: 35 },
-    { name: "Milhoja de arequipe", category: "Pastelería", price: 6500, cost: 2600, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
-    { name: "Brownie chocolate", category: "Pastelería", price: 5500, cost: 2100, tax_rate: 19, unit_code: "unit", initial_stock: 25 },
+    { name: "Croissant mantequilla", category: "Pastries", price: 4500, cost: 1800, tax_rate: 19, unit_code: "unit", initial_stock: 30 },
+    { name: "Pastel de pollo", category: "Pastries", price: 5500, cost: 2300, tax_rate: 19, unit_code: "unit", initial_stock: 25 },
+    { name: "Empanada de carne", category: "Pastries", price: 3500, cost: 1400, tax_rate: 19, unit_code: "unit", initial_stock: 40 },
+    { name: "Palitos de queso", category: "Pastries", price: 3800, cost: 1500, tax_rate: 19, unit_code: "unit", initial_stock: 35 },
+    { name: "Milhoja de arequipe", category: "Pastries", price: 6500, cost: 2600, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
+    { name: "Brownie chocolate", category: "Pastries", price: 5500, cost: 2100, tax_rate: 19, unit_code: "unit", initial_stock: 25 },
     { name: "Torta de chocolate (porción)", category: "Tortas", price: 8000, cost: 3000, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
     { name: "Torta de zanahoria (porción)", category: "Tortas", price: 8000, cost: 3000, tax_rate: 19, unit_code: "unit", initial_stock: 18 },
     { name: "Torta tres leches (porción)", category: "Tortas", price: 8500, cost: 3200, tax_rate: 19, unit_code: "unit", initial_stock: 15 },
-    { name: "Café americano", category: "Bebidas calientes", price: 3500, cost: 800, tax_rate: 19, unit_code: "unit", initial_stock: 100 },
-    { name: "Café con leche", category: "Bebidas calientes", price: 4500, cost: 1200, tax_rate: 19, unit_code: "unit", initial_stock: 100 },
-    { name: "Capuchino", category: "Bebidas calientes", price: 5500, cost: 1500, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
-    { name: "Chocolate caliente", category: "Bebidas calientes", price: 5000, cost: 1400, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
-    { name: "Té aromático", category: "Bebidas calientes", price: 3500, cost: 700, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
-    { name: "Jugo de naranja", category: "Bebidas frías", price: 6500, cost: 2200, tax_rate: 19, unit_code: "unit", initial_stock: 40 },
-    { name: "Jugo de mora", category: "Bebidas frías", price: 6500, cost: 2200, tax_rate: 19, unit_code: "unit", initial_stock: 40 },
-    { name: "Sándwich jamón y queso", category: "Sándwiches", price: 9500, cost: 3800, tax_rate: 19, unit_code: "unit", initial_stock: 25 },
-    { name: "Sándwich vegetariano", category: "Sándwiches", price: 9000, cost: 3500, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
-    { name: "Sándwich club", category: "Sándwiches", price: 12500, cost: 4800, tax_rate: 19, unit_code: "unit", initial_stock: 18 },
-    { name: "Wrap de pollo", category: "Sándwiches", price: 11000, cost: 4200, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
+    { name: "Café americano", category: "Hot drinks", price: 3500, cost: 800, tax_rate: 19, unit_code: "unit", initial_stock: 100 },
+    { name: "Café con leche", category: "Hot drinks", price: 4500, cost: 1200, tax_rate: 19, unit_code: "unit", initial_stock: 100 },
+    { name: "Capuchino", category: "Hot drinks", price: 5500, cost: 1500, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
+    { name: "Chocolate caliente", category: "Hot drinks", price: 5000, cost: 1400, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
+    { name: "Té aromático", category: "Hot drinks", price: 3500, cost: 700, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
+    { name: "Jugo de naranja", category: "Cold drinks", price: 6500, cost: 2200, tax_rate: 19, unit_code: "unit", initial_stock: 40 },
+    { name: "Jugo de mora", category: "Cold drinks", price: 6500, cost: 2200, tax_rate: 19, unit_code: "unit", initial_stock: 40 },
+    { name: "Sándwich jamón y queso", category: "Sandwiches", price: 9500, cost: 3800, tax_rate: 19, unit_code: "unit", initial_stock: 25 },
+    { name: "Sándwich vegetariano", category: "Sandwiches", price: 9000, cost: 3500, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
+    { name: "Sándwich club", category: "Sandwiches", price: 12500, cost: 4800, tax_rate: 19, unit_code: "unit", initial_stock: 18 },
+    { name: "Wrap de pollo", category: "Sandwiches", price: 11000, cost: 4200, tax_rate: 19, unit_code: "unit", initial_stock: 20 },
   ],
   tables: Array.from({ length: 8 }, (_, i) => ({
-    name: `Mesa ${i + 1}`,
+    name: `Table ${i + 1}`,
     capacity: i < 4 ? 2 : 4,
   })),
 };
@@ -130,12 +130,12 @@ const BAR_PRESET: Preset = {
     { name: "Jugo de maracuyá", category: "Sin alcohol", price: 7000, cost: 2200, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
   ],
   tables: [
-    { name: "Mesa 1", capacity: 4 }, { name: "Mesa 2", capacity: 4 },
-    { name: "Mesa 3", capacity: 4 }, { name: "Mesa 4", capacity: 4 },
-    { name: "Mesa 5", capacity: 4 }, { name: "Mesa 6", capacity: 4 },
-    { name: "Mesa 7", capacity: 6 }, { name: "Mesa 8", capacity: 6 },
-    { name: "Mesa 9", capacity: 6 }, { name: "Mesa 10", capacity: 6 },
-    { name: "Mesa 11", capacity: 8 }, { name: "Mesa 12", capacity: 8 },
+    { name: "Table 1", capacity: 4 }, { name: "Table 2", capacity: 4 },
+    { name: "Table 3", capacity: 4 }, { name: "Table 4", capacity: 4 },
+    { name: "Table 5", capacity: 4 }, { name: "Table 6", capacity: 4 },
+    { name: "Table 7", capacity: 6 }, { name: "Table 8", capacity: 6 },
+    { name: "Table 9", capacity: 6 }, { name: "Table 10", capacity: 6 },
+    { name: "Table 11", capacity: 8 }, { name: "Table 12", capacity: 8 },
   ],
 };
 
@@ -150,7 +150,7 @@ const ICECREAM_PRESET: Preset = {
     { name: "Crepes", color: "#a16207" },
     { name: "Malteadas", color: "#7c3aed" },
     { name: "Toppings", color: "#65a30d" },
-    { name: "Bebidas frías", color: "#0891b2" },
+    { name: "Cold drinks", color: "#0891b2" },
   ],
   products: [
     { name: "Helado vainilla (bola)", category: "Helados", price: 4500, cost: 1500, tax_rate: 19, unit_code: "unit", initial_stock: 120 },
@@ -181,14 +181,14 @@ const ICECREAM_PRESET: Preset = {
     { name: "Salsa caramelo", category: "Toppings", price: 2500, cost: 800, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
     { name: "Salsa chocolate", category: "Toppings", price: 2500, cost: 800, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
     { name: "Salsa arequipe", category: "Toppings", price: 2500, cost: 800, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
-    { name: "Limonada natural", category: "Bebidas frías", price: 6000, cost: 2000, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
-    { name: "Limonada de coco", category: "Bebidas frías", price: 8500, cost: 3000, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
-    { name: "Limonada cerezada", category: "Bebidas frías", price: 7500, cost: 2500, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
-    { name: "Coca-Cola", category: "Bebidas frías", price: 5000, cost: 1800, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
-    { name: "Agua sin gas", category: "Bebidas frías", price: 4000, cost: 1300, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
+    { name: "Limonada natural", category: "Cold drinks", price: 6000, cost: 2000, tax_rate: 19, unit_code: "unit", initial_stock: 60 },
+    { name: "Limonada de coco", category: "Cold drinks", price: 8500, cost: 3000, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
+    { name: "Limonada cerezada", category: "Cold drinks", price: 7500, cost: 2500, tax_rate: 19, unit_code: "unit", initial_stock: 50 },
+    { name: "Coca-Cola", category: "Cold drinks", price: 5000, cost: 1800, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
+    { name: "Agua sin gas", category: "Cold drinks", price: 4000, cost: 1300, tax_rate: 19, unit_code: "unit", initial_stock: 80 },
   ],
   tables: Array.from({ length: 10 }, (_, i) => ({
-    name: `Mesa ${i + 1}`,
+    name: `Table ${i + 1}`,
     capacity: i < 6 ? 2 : 4,
   })),
 };
@@ -785,7 +785,7 @@ export default function DemoPresets() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => confirmKind && applyPreset(confirmKind)}>
               Aplicar
             </AlertDialogAction>

@@ -25,7 +25,7 @@ interface KDSItem {
 
 interface Modifier { name: string; price?: number }
 
-const STATIONS = ["Todas", "Cocina", "Bar", "Parrilla", "Frío", "Postres"];
+const STATIONS = ["All", "Kitchen", "Bar", "Grill", "Cold", "Desserts"];
 const SLA_MINUTES = 15;
 
 function elapsedMinutes(createdAt: string) {
@@ -110,7 +110,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
   const ratio   = elapsed / SLA_MINUTES;
   const late    = ratio >= 1;
   const urgent  = ratio > 0.8;
-  const tableName = items[0]?.table_orders?.tables?.name ?? "Mesa";
+  const tableName = items[0]?.table_orders?.tables?.name ?? "Table";
 
 
   return (
@@ -119,7 +119,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
       <div className={cn("g-kds-card-head", late ? "g-kds-card-head-late" : urgent ? "g-kds-card-head-urgent" : "g-kds-card-head-normal")}>
         <div className="g-kds-card-head-info">
           <div className="g-kds-card-id h-display">{tableName}</div>
-          <div className="g-kds-card-table">{items.length} ítem{items.length !== 1 ? "s"  : ""}</div>
+          <div className="g-kds-card-table">{items.length} item{items.length !== 1 ? "s"  : ""}</div>
         </div>
         <TimerRing elapsed={elapsed} sla={SLA_MINUTES} />
       </div>
@@ -180,7 +180,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
 export default function KDS() {
   const { branchId } = useTenantContext();
   const qc = useQueryClient();
-  const [station, setStation] = useState(() => localStorage.getItem("kds_station") || "Todas");
+  const [station, setStation] = useState(() => localStorage.getItem("kds_station") || "All");
   const [soundOn, setSoundOn] = useState(true);
   const [now, setNow] = useState(Date.now());
   const prevIds    = useRef<Set<string>>(new Set());
@@ -222,7 +222,7 @@ export default function KDS() {
   }, [branchId, qc]);
 
   const filtered = useMemo(() =>
-    items.filter((i) => station === "Todas" || (i.products?.station ?? "Cocina") === station),
+    items.filter((i) => station === "All" || (i.products?.station ?? "Kitchen") === station),
   [items, station]);
 
   const byOrder = useMemo(() =>
@@ -283,7 +283,7 @@ export default function KDS() {
       <div className="g-kds-header">
         <div className="g-kds-header-info">
           <div className="h-display g-page-title">KDS Cocina</div>
-          <div className="h-meta g-page-subtitle">Estación activa · {station}</div>
+          <div className="h-meta g-page-subtitle">Active station · {station}</div>
         </div>
 
         <div className="glass g-kds-header-stat">
@@ -329,7 +329,7 @@ export default function KDS() {
             className={cn("pill pill-md", station === s ? "pill-brand" : "pill-ghost")}
             onClick={() => setStation(s)}
           >
-            {s}{s === "Todas" ? ` · ${orderCount}` : ""}
+            {s}{s === "All" ? ` · ${orderCount}` : ""}
           </button>
         ))}
         <div className="flex-1" />
@@ -346,8 +346,8 @@ export default function KDS() {
           <div className="orb g-kds-empty-orb">
             <ChefHat size={32} />
           </div>
-          <p className="h-display g-kds-empty-title">Sin órdenes pendientes</p>
-          <p className="h-meta">La cocina está al día</p>
+          <p className="h-display g-kds-empty-title">No pending orders</p>
+          <p className="h-meta">Kitchen is up to date</p>
         </div>
       )}
 

@@ -115,14 +115,14 @@ export default function ChannelPrices() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        eyebrow="CATÁLOGO · PRECIOS"
+        eyebrow="CATALOG · PRICES"
         title="Precios por canal"
-        description="Define un precio diferente para cada canal de venta. Deja vacío para usar el precio base."
+        description="Set a different price for each sales channel. Leave blank to use the base price."
         actions={
           <Select value={branchScope} onValueChange={setBranchScope}>
             <SelectTrigger className="w-[260px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__global__">Global (todas las sucursales)</SelectItem>
+              <SelectItem value="__global__">Global (all branches)</SelectItem>
               {branches.map((b) => (
                 <SelectItem key={b.id} value={b.id}>Solo: {b.name}</SelectItem>
               ))}
@@ -132,12 +132,12 @@ export default function ChannelPrices() {
       />
 
       {!products || products.length === 0 ? (
-        <EmptyState icon={Tags} title="Sin productos" description="Crea productos primero en el módulo Productos" />
+        <EmptyState icon={Tags} title="No products" description="Create products first in the Products module" />
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
           <div className="grid px-5 py-3 text-xs font-semibold text-ink-400 uppercase tracking-wider border-b border-[var(--g-hairline)] g-channel-grid">
-            <div>Producto</div>
-            <div className="text-right">Precio base</div>
+            <div>Product</div>
+            <div className="text-right">Base price</div>
             {CHANNELS.map((c) => (
               <div key={c.id} className="text-right">{c.label}</div>
             ))}

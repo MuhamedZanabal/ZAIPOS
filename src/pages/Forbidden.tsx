@@ -22,14 +22,14 @@ export default function Forbidden() {
           <div className="eyebrow eyebrow-muted mb-2">ERROR 403</div>
           <h1 className="page-header-title">Acceso restringido</h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Tu rol actual no tiene permisos para abrir esta sección.
+            Your current role does not have permission to open this section.
             Contacta al administrador si crees que es un error.
           </p>
         </div>
 
         <Button asChild className="w-full h-11">
           <Link to="/">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Volver al inicio
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to home
           </Link>
         </Button>
       </div>

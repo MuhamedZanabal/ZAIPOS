@@ -20,12 +20,12 @@ import {
 const TABS = [
   { id: "business",   label: "Mi negocio",       icon: Building2 },
   { id: "branches",   label: "Sucursales",        icon: GitBranch },
-  { id: "tables",     label: "Mesas",             icon: UtensilsCrossed },
+  { id: "tables",     label: "Tables",             icon: UtensilsCrossed },
   { id: "users",      label: "Usuarios y permisos", icon: Users },
   { id: "canales",    label: "Canales de venta",  icon: Globe },
-  { id: "whatsapp",   label: "WhatsApp IA",       icon: MessageCircle },
+  { id: "whatsapp",   label: "WhatsApp AI",       icon: MessageCircle },
   { id: "agente",     label: "Agente IA",         icon: Bot },
-  { id: "receipt",    label: "Recibo",            icon: Receipt },
+  { id: "receipt",    label: "Receipt",            icon: Receipt },
   { id: "apariencia", label: "Apariencia",        icon: Palette },
   { id: "datos",      label: "Datos",             icon: Database },
   { id: "ops",        label: "Operaciones",       icon: Wrench },
@@ -40,7 +40,7 @@ export default function Settings() {
     <div className="g-cfg-stage">
       {/* Left nav */}
       <div className="glass g-cfg-nav-panel">
-        <div className="h-display g-cfg-nav-title">Configuración</div>
+        <div className="h-display g-cfg-nav-title">Settings</div>
         {TABS.map((t) => {
           const Icon = t.icon;
           const isActive = active === t.id;
@@ -58,7 +58,7 @@ export default function Settings() {
           );
         })}
         <div className="g-cfg-nav-hint glass-thin">
-          Cambios aplicados en tiempo real a esta sucursal.
+          Changes are applied to this branch in real time.
         </div>
       </div>
 

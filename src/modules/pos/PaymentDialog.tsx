@@ -20,8 +20,8 @@ interface PaymentDialogProps {
 }
 
 const METHODS = [
-  { id: "cash" as const, label: "Efectivo", icon: Banknote },
-  { id: "card" as const, label: "Tarjeta", icon: CreditCard },
+  { id: "cash" as const, label: "Cash", icon: Banknote },
+  { id: "card" as const, label: "Card", icon: CreditCard },
   { id: "transfer" as const, label: "Transfer.", icon: Smartphone },
   { id: "qr" as const, label: "QR", icon: QrCode },
 ];
@@ -73,7 +73,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
       setCouponDiscount(0);
       return;
     }
-    if (!tenantId) return toast.error("No hay negocio activo para validar el cupón");
+    if (!tenantId) return toast.error("There is no active business to validate the coupon");
     setValidatingCoupon(true);
     try {
       const { data, error } = await supabase
@@ -87,20 +87,20 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
       const now = Date.now();
       if (!data || new Date(data.starts_at).getTime() > now || (data.expires_at && new Date(data.expires_at).getTime() < now)) {
         setCouponDiscount(0);
-        return toast.error("Cupón inválido o vencido");
+        return toast.error("Invalid or expired coupon");
       }
       if (data.max_uses != null && Number(data.current_uses) >= Number(data.max_uses)) {
         setCouponDiscount(0);
-        return toast.error("Cupón sin usos disponibles");
+        return toast.error("Coupon has no remaining uses");
       }
       const rawDiscount = data.discount_type === "percentage"
         ? total * (Number(data.discount_value) / 100)
         : Number(data.discount_value);
       const discount = Math.min(total, Math.max(0, Math.round(rawDiscount)));
       setCouponDiscount(discount);
-      toast.success(`Cupón aplicado · -${formatCurrency(discount)}`);
+      toast.success(`Coupon applied · -${formatCurrency(discount)}`);
     } catch (e: any) {
-      toast.error(e.message ?? "No se pudo validar el cupón");
+      toast.error(e.message ?? "Could not validate the coupon");
     } finally {
       setValidatingCoupon(false);
     }
@@ -111,7 +111,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
       <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-[var(--g-hairline)]">
           <DialogTitle className="text-xl flex items-baseline justify-between">
-            <span className="h-display text-xl">Cobrar venta</span>
+            <span className="h-display text-xl">Charge sale</span>
             <div className="text-right">
               <div className="h-meta">Total a pagar (inc. propina)</div>
               <div className="h-num text-3xl text-brand-600">{formatCurrency(grandTotal)}</div>
@@ -125,7 +125,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
 
             {/* Payment Method */}
             <div className="space-y-3">
-              <div className="h-label uppercase tracking-widest">Método de pago</div>
+              <div className="h-label uppercase tracking-widest">Payment method</div>
               <div className="grid grid-cols-2 gap-2">
                 {METHODS.map((m) => {
                   const active = method === m.id;
@@ -184,7 +184,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 h-meta">$</span>
                 <Input
                   type="number"
-                  placeholder="Monto personalizado"
+                  placeholder="Custom amount"
                   className="pl-7"
                   value={tip || ""}
                   onChange={(e) => setTip(Number(e.target.value) || 0)}
@@ -195,11 +195,11 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
             {/* Coupon Code */}
             <div className="space-y-3 pt-2">
               <div className="h-label uppercase tracking-widest flex items-center gap-1.5">
-                <Tag className="h-3.5 w-3.5" /> Cupón de descuento
+                <Tag className="h-3.5 w-3.5" /> Discount coupon
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ingresa código..."
+                  placeholder="Enter code..."
                   value={coupon}
                   onChange={(e) => {
                     setCoupon(e.target.value.toUpperCase());
@@ -218,7 +218,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
               </div>
               {couponDiscount > 0 && (
                 <div className="text-xs font-semibold text-[var(--g-ok)]">
-                  Descuento aplicado: -{formatCurrency(couponDiscount)}
+                  Discount applied: -{formatCurrency(couponDiscount)}
                 </div>
               )}
             </div>
@@ -229,7 +229,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
             <div className="space-y-4">
               <div className="glass rounded-xl px-4 py-3">
                 <div className="h-label uppercase tracking-widest mb-1">
-                  {method === "cash" ? "Efectivo recibido" : "Confirmar monto"}
+                  {method === "cash" ? "Cash received" : "Confirm amount"}
                 </div>
                 <div className="h-num text-3xl">{formatCurrency(tenderedNum)}</div>
               </div>
@@ -243,7 +243,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
 
               {method === "cash" && (
                 <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-                  <span className="h-label uppercase tracking-wider">Cambio</span>
+                  <span className="h-label uppercase tracking-wider">Change</span>
                   <span className={cn("h-num text-xl", insufficient ? "text-[var(--g-bad)]" : "text-[var(--g-ok)]")}>
                     {insufficient ? "Faltan " + formatCurrency(grandTotal - tenderedNum) : formatCurrency(change)}
                   </span>

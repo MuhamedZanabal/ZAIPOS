@@ -9,9 +9,9 @@ import { formatCurrency } from "@/lib/format";
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
   composite: "Compuesto",
-  production: "Producción",
+  production: "Production",
   combo: "Combo",
-  ingredient: "Ingrediente",
+  ingredient: "Ingredient",
   modifier: "Modificador"
 };
 
@@ -37,19 +37,19 @@ export default function Recipes() {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1">
           <div className="h-display g-page-title">Recetas</div>
-          <div className="h-meta g-page-subtitle">Productos con ingredientes/componentes definidos · CATÁLOGO</div>
+          <div className="h-meta g-page-subtitle">Products with defined ingredients/components · CATALOG</div>
         </div>
         <Link to="/products" className="g-btn g-btn-ghost">
-          Ir a productos
+          Go to products
         </Link>
       </div>
 
       {!recipes || recipes.length === 0 ? (
         <EmptyState
           icon={ChefHat}
-          title="Aún no hay recetas"
-          description="Crea o edita un producto de tipo 'composite', 'production' o 'combo' y añade sus componentes desde la pestaña Receta."
-          action={<Link to="/products" className="g-btn g-btn-primary">Ir a productos</Link>}
+          title="No recipes yet"
+          description="Create or edit a product of type 'composite', 'production', or 'combo' and add its components from the Recipe tab."
+          action={<Link to="/products" className="g-btn g-btn-primary">Go to products</Link>}
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -73,8 +73,8 @@ export default function Recipes() {
                   <Link
                     to="/products"
                     className="g-btn g-btn-ghost g-btn-icon"
-                    title="Editar producto"
-                    aria-label="Editar producto"
+                    title="Edit product"
+                    aria-label="Edit product"
                   >
                     <Pencil className="h-4 w-4" />
                   </Link>
@@ -96,11 +96,11 @@ export default function Recipes() {
                 {/* Cost / price / margin KPIs */}
                 <div className="border-t mt-3 pt-3 grid grid-cols-3 gap-2 text-sm">
                   <div>
-                    <div className="h-label text-xs">Costo</div>
+                    <div className="h-label text-xs">Cost</div>
                     <div className="font-semibold tabular-nums">{formatCurrency(totalCost)}</div>
                   </div>
                   <div>
-                    <div className="h-label text-xs">Precio</div>
+                    <div className="h-label text-xs">Price</div>
                     <div className="font-semibold tabular-nums">{formatCurrency(Number(r.price))}</div>
                   </div>
                   <div>

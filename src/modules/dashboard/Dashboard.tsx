@@ -166,17 +166,17 @@ export default function Dashboard() {
 
   const totalSales = metrics?.totalSales ?? 0;
   const CHANNEL_SEGS: DonutSeg[] = [
-    { value: 52, color: "#1E63E6", label: "Tienda Física", amount: formatCurrency(totalSales * 0.52) },
+    { value: 52, color: "#1E63E6", label: "Physical Store", amount: formatCurrency(totalSales * 0.52) },
     { value: 24, color: "#5B95FF", label: "Web",           amount: formatCurrency(totalSales * 0.24) },
-    { value: 16, color: "#9CC0FF", label: "App Móvil",     amount: formatCurrency(totalSales * 0.16) },
+    { value: 16, color: "#9CC0FF", label: "Mobile App",     amount: formatCurrency(totalSales * 0.16) },
     { value:  8, color: "#FFB54A", label: "Delivery",      amount: formatCurrency(totalSales * 0.08) },
   ];
   const TOP_PRODUCTS = [
-    { name: "Capuchino Clásico",     cat: "Bebidas",   qty: 1245, pct: 96 },
-    { name: "Croissant Mantequilla", cat: "Panadería", qty: 978,  pct: 78 },
-    { name: "Latte Vainilla",        cat: "Bebidas",   qty: 854,  pct: 68 },
+    { name: "Capuchino Clásico",     cat: "Drinks",   qty: 1245, pct: 96 },
+    { name: "Croissant Mantequilla", cat: "Bakery", qty: 978,  pct: 78 },
+    { name: "Latte Vainilla",        cat: "Drinks",   qty: 854,  pct: 68 },
     { name: "Cheesecake de Fresa",   cat: "Postres",   qty: 642,  pct: 51 },
-    { name: "Pan de Masa Madre",     cat: "Panadería", qty: 523,  pct: 41 },
+    { name: "Pan de Masa Madre",     cat: "Bakery", qty: 523,  pct: 41 },
   ];
 
   return (
@@ -184,12 +184,12 @@ export default function Dashboard() {
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
-        <KPICard label="Ventas del día"  value={formatCurrency(metrics?.totalSales ?? 0)} delta="18.5%" sub="vs. ayer"     icon={<TrendingUp size={16} />} />
-        <KPICard label="Órdenes activas" value={String(metrics?.salesCount ?? 0)}          delta="12%"   sub="vs. ayer"     icon={<ShoppingCart size={16} />} />
-        <KPICard label="Caja actual"     value={formatCurrency(metrics?.expectedCash ?? 0)} sub={metrics?.cashOpen ? "Caja abierta" : "Sin sesión"} icon={<Wallet size={16} />} />
-        <KPICard label="Stock saludable" value={`${metrics?.stockHealth ?? 100}%`}          sub="Inventario"               icon={<Package size={16} />} />
-        <KPICard label="Producción"      value={String(metrics?.productionToday ?? 0)}      sub="Unidades hoy"             icon={<Factory size={16} />} />
-        <KPICard label="Canales activos" value="4 / 5"                                       sub="80% en línea"             icon={<Globe size={16} />} />
+        <KPICard label="Today's sales"  value={formatCurrency(metrics?.totalSales ?? 0)} delta="18.5%" sub="vs. yesterday"     icon={<TrendingUp size={16} />} />
+        <KPICard label="Active orders" value={String(metrics?.salesCount ?? 0)}          delta="12%"   sub="vs. yesterday"     icon={<ShoppingCart size={16} />} />
+        <KPICard label="Current register"     value={formatCurrency(metrics?.expectedCash ?? 0)} sub={metrics?.cashOpen ? "Register open" : "No session"} icon={<Wallet size={16} />} />
+        <KPICard label="Healthy stock" value={`${metrics?.stockHealth ?? 100}%`}          sub="Inventory"               icon={<Package size={16} />} />
+        <KPICard label="Production"      value={String(metrics?.productionToday ?? 0)}      sub="Units today"             icon={<Factory size={16} />} />
+        <KPICard label="Active channels" value="4 / 5"                                       sub="80% online"             icon={<Globe size={16} />} />
       </div>
 
       {/* Middle row */}
@@ -199,7 +199,7 @@ export default function Dashboard() {
         <div className="glass flex flex-col gap-3.5 g-panel-20">
           <div className="flex items-center justify-between">
             <div>
-              <div className="g-title-16">Resumen de ventas</div>
+              <div className="g-title-16">Sales summary</div>
               <div className="h-meta">Tendencia mensual · {branchName}</div>
             </div>
             <span className="g-pill g-pill-ghost g-pill-h28">Este mes <TrendingUp size={12} /></span>
@@ -210,7 +210,7 @@ export default function Dashboard() {
           <div className="flex items-end justify-between gap-2.5">
             <div>
               <div className="g-num-26">{formatCurrency(metrics?.totalSales ?? 0)}</div>
-              <div className="h-meta">Total del día</div>
+              <div className="h-meta">Day total</div>
             </div>
             <div className="text-right">
               <span className="inline-flex items-center gap-1 font-bold text-[14px] text-g-ok">
@@ -224,7 +224,7 @@ export default function Dashboard() {
         {/* Top products */}
         <div className="glass flex flex-col gap-3.5 g-panel-20">
           <div className="flex items-center justify-between">
-            <div className="g-title-16">Top productos</div>
+            <div className="g-title-16">Top products</div>
             <span className="g-pill g-pill-ghost g-pill-h28">Este mes</span>
           </div>
           <div className="flex flex-col gap-3 flex-1">
@@ -233,14 +233,14 @@ export default function Dashboard() {
             ))}
           </div>
           <Link to="/products" className="g-link justify-between">
-            Ver todos los productos <ArrowUpRight size={12} />
+            View all products <ArrowUpRight size={12} />
           </Link>
         </div>
 
         {/* Channel donut */}
         <div className="glass flex flex-col gap-3.5 g-panel-20">
           <div className="flex items-center justify-between">
-            <div className="g-title-16">Canal de ventas</div>
+            <div className="g-title-16">Sales channel</div>
             <span className="g-pill g-pill-ghost g-pill-h28">Este mes</span>
           </div>
           <div className="flex items-center gap-4 flex-1">
@@ -261,7 +261,7 @@ export default function Dashboard() {
             </div>
           </div>
           <Link to="/reports" className="g-link justify-between">
-            Ver detalle <ArrowUpRight size={12} />
+            View details <ArrowUpRight size={12} />
           </Link>
         </div>
       </div>
@@ -272,7 +272,7 @@ export default function Dashboard() {
         {/* Inventory */}
         <div className="glass flex flex-col gap-3.5 g-panel">
           <div className="flex justify-between items-center">
-            <div className="g-title-15">Inventario</div>
+            <div className="g-title-15">Inventory</div>
             <Link to="/inventory" className="g-link g-val-12">Ver todo</Link>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
@@ -291,7 +291,7 @@ export default function Dashboard() {
           </div>
           <div>
             <div className="flex justify-between mb-1.5">
-              <span className="h-meta">Salud del inventario</span>
+              <span className="h-meta">Inventory health</span>
               <span className="text-[12px] font-bold text-g-ok">{metrics?.stockHealth ?? 100}%</span>
             </div>
             <div className="g-bar">
@@ -304,7 +304,7 @@ export default function Dashboard() {
         <div className="glass flex flex-col gap-3 g-panel">
           <div className="flex justify-between items-center">
             <div className="g-title-15">Pagos</div>
-            <Link to="/sales" className="g-link g-val-12">Ver todos</Link>
+            <Link to="/sales" className="g-link g-val-12">View all</Link>
           </div>
           <div className="flex flex-col gap-2">
             {(metrics?.methodsMix ?? []).slice(0, 4).map((m, i) => (
@@ -317,7 +317,7 @@ export default function Dashboard() {
               </div>
             ))}
             {(metrics?.methodsMix ?? []).length === 0 && (
-              <p className="h-meta text-center py-2">Sin pagos hoy</p>
+              <p className="h-meta text-center py-2">No payments today</p>
             )}
           </div>
           <div className="g-hairline" />
@@ -330,14 +330,14 @@ export default function Dashboard() {
         {/* Live feed */}
         <div className="glass flex flex-col gap-3 g-panel">
           <div className="flex justify-between items-center">
-            <div className="g-title-15">Ventas recientes</div>
+            <div className="g-title-15">Recent sales</div>
             <span className="g-pill g-pill-ok g-pill-h22">
               <span className="g-dot g-dot-ok" /> Live
             </span>
           </div>
           <div className="flex flex-col gap-2 flex-1">
             {(recentSales ?? []).length === 0 ? (
-              <p className="h-meta text-center py-4">Sin ventas aún hoy</p>
+              <p className="h-meta text-center py-4">No sales yet today</p>
             ) : (recentSales ?? []).slice(0, 4).map((s: any) => (
               <div key={s.id} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -359,7 +359,7 @@ export default function Dashboard() {
         <div className="glass flex flex-col gap-3 g-panel">
           <div className="flex justify-between items-center">
             <div className="g-title-15">Sucursales</div>
-            <Link to="/branches" className="g-link g-val-12">Ver todas</Link>
+            <Link to="/branches" className="g-link g-val-12">View all</Link>
           </div>
           <div className="flex flex-col gap-2">
             {branches.slice(0, 4).map((b, i) => (
@@ -369,7 +369,7 @@ export default function Dashboard() {
                   <span className="text-[13px] font-semibold text-ink-900 truncate max-w-[100px]">{b.name}</span>
                 </div>
                 <span className={cn("g-pill g-pill-h18", i === 0 ? "g-pill-ok" : "g-pill-ghost")}>
-                  {i === 0 ? "En línea" : "Activa"}
+                  {i === 0 ? "Online" : "Active"}
                 </span>
               </div>
             ))}
@@ -380,7 +380,7 @@ export default function Dashboard() {
         {/* Sync */}
         <div className="glass flex flex-col gap-3 g-panel items-center text-center">
           <div className="flex justify-between items-center w-full">
-            <div className="g-title-15">Sincronización</div>
+            <div className="g-title-15">Synchronization</div>
           </div>
           <div className="orb g-orb-64 g-sync-orb-wrap">
             <Cloud size={28} />

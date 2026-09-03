@@ -78,7 +78,7 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success(`Devolución registrada · ${formatCurrency(returnTotal)}`);
+      toast.success(`Return recorded · ${formatCurrency(returnTotal)}`);
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
       onOpenChange(false);
@@ -87,7 +87,7 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
       setSupervisorPin("");
       setEvidenceFile(null);
     },
-    onError: (e: any) => toast.error(e.message ?? "Error al procesar devolución"),
+    onError: (e: any) => toast.error(e.message ?? "Error processing return"),
   });
 
   if (!sale) return null;
@@ -109,12 +109,12 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Undo2 className="h-5 w-5 g-return-undo-icon" />
-            Devolución — Ticket #{sale.ticket_number}
+            Return — Ticket #{sale.ticket_number}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          <p className="h-meta">Selecciona los productos a devolver:</p>
+          <p className="h-meta">Select the products to return:</p>
 
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
             {sale.sale_items.map((item) => (
@@ -140,11 +140,11 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Motivo de devolución</Label>
+            <Label>Return reason</Label>
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ej: Producto en mal estado, error en pedido..."
+              placeholder="E.g. Damaged product, order error..."
             />
           </div>
 
@@ -156,7 +156,7 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
                 inputMode="numeric"
                 value={supervisorPin}
                 onChange={(e) => setSupervisorPin(e.target.value)}
-                placeholder="Requerido según monto"
+                placeholder="Required depending on amount"
               />
             </div>
             <div className="space-y-1.5">
@@ -175,8 +175,8 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
             <div className="flex items-center gap-2 p-3 rounded-xl text-sm g-return-warning">
               <AlertTriangle className="h-4 w-4 shrink-0 g-return-warning-icon" />
               <span>
-                Se revertirá inventario de <strong>{selectedItems.length}</strong>{" "}
-                producto(s) por <strong>{formatCurrency(returnTotal)}</strong>.
+                Inventory will be restored for <strong>{selectedItems.length}</strong>{" "}
+                product(s) for <strong>{formatCurrency(returnTotal)}</strong>.
               </span>
             </div>
           )}
@@ -189,7 +189,7 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
           >
             {processReturn.isPending
               ? <><Loader2 className="h-4 w-4 animate-spin" /> Procesando…</>
-              : `Procesar devolución · ${formatCurrency(returnTotal)}`}
+              : `Process return · ${formatCurrency(returnTotal)}`}
           </button>
         </div>
       </DialogContent>

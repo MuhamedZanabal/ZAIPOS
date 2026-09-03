@@ -4,7 +4,7 @@ export default function AppearanceSettings() {
       <div>
         <h3 className="text-sm font-semibold text-foreground">Apariencia</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          POS-S360T usa el diseño glassmorphism claro de la marca. El modo oscuro está
+          POS-S360T uses the brand's light glassmorphism design. Dark mode is
           desactivado para mantener la coherencia visual del sistema.
         </p>
       </div>
