@@ -4,8 +4,8 @@ import { LiveDot } from "@/components/shared/LiveDot";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import {
-  ShoppingCart, UtensilsCrossed, BarChart3, Wifi, Zap, Shield,
-  Bike, ChefHat, Smartphone, Package, Receipt, TrendingUp,
+  ShoppingCart, UtensilsCrossed, BarChart3, Wifi,
+  Bike, ChefHat, Smartphone, Package,
   CheckCircle, ArrowRight, Star,
 } from "lucide-react";
 
@@ -66,23 +66,23 @@ const STATS = [
   { value: "5", unit: "channels", label: "integrated for sales" },
   { value: "∞", unit: "branches", label: "multi-branch" },
   { value: "100%", unit: "offline", label: "without losing a ticket" },
-  { value: "8", unit: "roles", label: "de acceso granular" },
+  { value: "8", unit: "roles", label: "granular access" },
 ];
 
 /* ── Plans ── */
 const PLANS = [
   {
     name: "Starter",
-    price: "Gratis",
-    sub: "Para empezar",
-    features: ["1 branch", "Terminal POS", "Cash register & sales", "Basic reports"],
-    cta: "Comenzar gratis",
+    price: "Free",
+    sub: "Get started",
+    features: ["1 branch", "POS terminal", "Cash register & sales", "Basic reports"],
+    cta: "Start free",
     accent: false,
   },
   {
     name: "Pro",
     price: "$149k",
-    sub: "COP / mes",
+    sub: "COP / month",
     features: ["Unlimited branches", "Everything in Starter +", "Tables & orders", "Delivery & KDS", "Digital orders", "WhatsApp AI", "Advanced inventory"],
     cta: "Start 14-day free trial",
     accent: true,
@@ -91,7 +91,7 @@ const PLANS = [
     name: "Enterprise",
     price: "Custom",
     sub: "Custom quote",
-    features: ["Todo Pro +", "SLA garantizado", "Onboarding dedicado", "Integraciones a medida"],
+    features: ["Everything in Pro +", "Guaranteed SLA", "Dedicated onboarding", "Custom integrations"],
     cta: "Talk to sales",
     accent: false,
   },
@@ -120,21 +120,19 @@ export default function Landing() {
         <div className="landing-container flex items-center justify-between h-full">
           <div className="flex items-center gap-2.5">
             <GearMark size={28} />
-            <span className="landing-logo-text">
-              POS<span className="c-blue">360</span><span className="c-green">T</span>
-            </span>
+            <span className="landing-logo-text">ZAIPOS</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Funciones</a>
-            <a href="#planes" className="hover:text-foreground transition-colors">Planes</a>
-            <a href="#contacto" className="hover:text-foreground transition-colors">Contacto</a>
+            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+            <a href="#plans" className="hover:text-foreground transition-colors">Plans</a>
+            <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
           </nav>
           <div className="flex items-center gap-3">
             <Link to="/auth" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
               Sign in
             </Link>
             <Link to="/auth" className="landing-btn-primary">
-              Empezar gratis <ArrowRight className="h-4 w-4" />
+              Start free <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -155,13 +153,13 @@ export default function Landing() {
         <div className="landing-container relative z-10 text-center">
           {/* Pill */}
           <div className="inline-flex items-center gap-2 s-pill s-pill-green mb-6">
-            <LiveDot /> SISTEMA POS · S360T · v1.0
+            <LiveDot /> ZAIPOS · v1.0
           </div>
 
           {/* Headline */}
           <h1 className="landing-hero-title">
-            Your sales like<br />
-            <span className="gradient-text">sistema operativo.</span>
+            Run your sales like<br />
+            <span className="gradient-text">an operating system.</span>
           </h1>
 
           <p className="landing-hero-sub">
@@ -175,7 +173,7 @@ export default function Landing() {
               Start free — no card required <ArrowRight className="h-4 w-4" />
             </Link>
             <a href="#features" className="landing-btn-ghost landing-btn-lg">
-              Ver funciones
+              View features
             </a>
           </div>
 
@@ -183,7 +181,7 @@ export default function Landing() {
           <div className="flex items-center justify-center gap-6 mt-10 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> No card required</span>
             <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> 14 days free</span>
-            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Cancela cuando quieras</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Cancel anytime</span>
           </div>
         </div>
       </section>
@@ -206,10 +204,10 @@ export default function Landing() {
       <section id="features" className="landing-section">
         <div className="landing-container">
           <div className="text-center mb-12">
-            <div className="eyebrow eyebrow-blue mb-3">FUNCIONALIDADES</div>
+            <div className="eyebrow eyebrow-blue mb-3">FEATURES</div>
             <h2 className="landing-section-title">
               Everything your business needs,<br />
-              <span className="gradient-text">en una sola plataforma.</span>
+              <span className="gradient-text">in one platform.</span>
             </h2>
             <p className="landing-section-sub">
               From the cash register to inventory and digital orders.
@@ -236,19 +234,19 @@ export default function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left copy */}
             <div>
-              <div className="eyebrow eyebrow-blue mb-3">BRANDING BRUTAL</div>
+              <div className="eyebrow eyebrow-blue mb-3">BUILT FOR EVERY SCREEN</div>
               <h2 className="landing-section-title mb-4">
-                Tres dispositivos,<br />
-                <span className="gradient-text">un solo lenguaje.</span>
+                Three devices,<br />
+                <span className="gradient-text">one visual language.</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 Deep navy, action blue, and signal green. 100×100+ tiles with glow on press,
-                tracked uppercase eyebrows and a gradient highlight on the key title.
-                Pensado para tocar, mirar y operar.
+                tracked uppercase eyebrows, and a gradient highlight on the key title.
+                Designed for fast, touch-first operation.
               </p>
               <ul className="space-y-3">
                 {[
-                  { label: "Tablet · Terminal POS",        sub: "Catalog + ticket + checkout on one screen" },
+                  { label: "Tablet · POS Terminal",        sub: "Catalog + ticket + checkout on one screen" },
                   { label: "Mobile · Waiter / Courier",  sub: "Table status, orders, delivery"   },
                   { label: "Desktop · Operations Dashboard", sub: "KPIs, live feed, KDS, and reports"       },
                 ].map(({ label, sub }) => (
@@ -264,7 +262,7 @@ export default function Landing() {
                 ))}
               </ul>
               <Link to="/auth" className="landing-btn-primary landing-btn-lg mt-8 inline-flex">
-                Ver demo <ArrowRight className="h-4 w-4" />
+                View demo <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
@@ -320,11 +318,11 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Planes ────────────────────────────────────────────── */}
-      <section id="planes" className="landing-section">
+      {/* ── Plans ─────────────────────────────────────────────── */}
+      <section id="plans" className="landing-section">
         <div className="landing-container">
           <div className="text-center mb-12">
-            <div className="eyebrow eyebrow-blue mb-3">PLANES Y PRECIOS</div>
+            <div className="eyebrow eyebrow-blue mb-3">PLANS & PRICING</div>
             <h2 className="landing-section-title">
               Grow with <span className="gradient-text">your business.</span>
             </h2>
@@ -367,7 +365,7 @@ export default function Landing() {
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────────── */}
-      <section className="landing-section landing-cta-section">
+      <section id="contact" className="landing-section landing-cta-section">
         <div className="landing-container text-center relative z-10">
           <div className="eyebrow mb-4">READY TO GET STARTED?</div>
           <h2 className="landing-section-title mb-4">
@@ -389,12 +387,10 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <GearMark size={22} />
-              <span className="font-semibold text-sm">
-                POS<span className="c-blue">360</span><span className="c-green">T</span>
-              </span>
+              <span className="font-semibold text-sm">ZAIPOS</span>
               <span className="text-muted-foreground text-xs">· Open Source</span>
             </div>
-            <p className="text-xs text-muted-foreground">© 2026 POS S360T Contributors · Apache 2.0</p>
+            <p className="text-xs text-muted-foreground">© 2026 ZAIPOS Contributors · MIT</p>
             <Link to="/auth" className="text-sm font-semibold text-primary hover:underline">
               Sign in →
             </Link>
