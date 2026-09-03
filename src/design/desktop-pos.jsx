@@ -232,7 +232,7 @@ function DesktopPOS() {
                   </div>
                 </div>
                 <button className="btn btn-ghost" title="View full product report" style={{ fontSize: 11 }}>
-                  Ver todos <I.ArrowR size={12} />
+                  View all <I.ArrowR size={12} />
                 </button>
               </div>
               <div>

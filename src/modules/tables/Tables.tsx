@@ -689,7 +689,7 @@ export default function Tables() {
       <div className="flex items-center gap-3">
         <div>
           <div className="h-display tbl-page-title">
-            Mesas
+            Tables
           </div>
           <div className="h-meta tbl-page-meta">
             {branchName} · {tables?.length ?? 0} tables
