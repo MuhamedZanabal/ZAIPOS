@@ -541,8 +541,8 @@ export default function DemoPresets() {
   };
 
   const applyPreset = async (kind: "bakery" | "bar" | "icecream") => {
-    if (!tenantId) return toast.error("Selecciona un negocio primero");
-    if (!branchId) return toast.error("Selecciona una sucursal primero");
+    if (!tenantId) return toast.error("Select a business first");
+    if (!branchId) return toast.error("Select a branch first");
     const preset = PRESETS[kind];
     setPending(kind);
 
@@ -630,7 +630,7 @@ export default function DemoPresets() {
         if (!session?.user) throw new Error();
         user = session.user;
       } catch {
-        throw new Error("No hay sesión activa para aplicar stock");
+        throw new Error("There is no active session to apply stock");
       }
 
       // Consultar stock actual de todos los productos del preset
@@ -698,15 +698,15 @@ export default function DemoPresets() {
       }
 
       const liveTxt = generateLive
-        ? `, ${live.openOrders} mesas con pedido, ${live.historicSales} ventas demo, ${live.deliveries} domicilios`
+        ? `, ${live.openOrders} tables with orders, ${live.historicSales} demo sales, ${live.deliveries} deliveries`
         : "";
       toast.success(
-        `Demo "${preset.business.name}" aplicado: ${createdCats} categorías, ${createdProds.length} productos, ${stocked} con stock${createdTables ? `, ${createdTables} mesas` : ""}${liveTxt}.`
+        `Demo "${preset.business.name}" applied: ${createdCats} categories, ${createdProds.length} products, ${stocked} stocked${createdTables ? `, ${createdTables} tables` : ""}${liveTxt}.`
       );
 
       qc.invalidateQueries();
     } catch (err: any) {
-      toast.error(err.message ?? "Error aplicando demo");
+      toast.error(err.message ?? "Error applying demo");
     } finally {
       setPending(null);
       setConfirmKind(null);
@@ -718,10 +718,10 @@ export default function DemoPresets() {
   return (
     <div className="glass p-6 space-y-4 border-dashed">
       <div>
-        <h3 className="font-semibold">Plantillas demo</h3>
+        <h3 className="font-semibold">Demo templates</h3>
         <p className="text-sm text-muted-foreground">
-          Aplica un preset completo (rebranding, categorías, productos, stock, mesas)
-          al negocio y sucursal activos. Es idempotente: no duplica lo existente.
+          Apply a complete preset (rebranding, categories, products, stock, tables)
+          to the active business and branch. It is idempotent and does not duplicate existing data.
         </p>
       </div>
 
@@ -746,8 +746,8 @@ export default function DemoPresets() {
               </div>
               <p className="text-xs text-muted-foreground mb-2">{p.description}</p>
               <p className="text-xs text-muted-foreground">
-                {p.categories.length} categorías · {p.products.length} productos
-                {p.tables ? ` · ${p.tables.length} mesas` : ""}
+                {p.categories.length} categories · {p.products.length} products
+                {p.tables ? ` · ${p.tables.length} tables` : ""}
               </p>
             </button>
           );
@@ -757,7 +757,7 @@ export default function DemoPresets() {
       <div className="flex items-center gap-3 pt-2 border-t">
         <Switch id="live-data" checked={generateLive} onCheckedChange={setGenerateLive} />
         <Label htmlFor="live-data" className="text-sm cursor-pointer">
-          Generar datos vivos: mesas con pedidos abiertos + 7 días de ventas + domicilios
+          Generate live data: tables with open orders + 7 days of sales + deliveries
         </Label>
       </div>
 
@@ -770,15 +770,15 @@ export default function DemoPresets() {
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Se cambiará el nombre del negocio a{" "}
+                  The business name will be changed to{" "}
                   <strong>{confirmKind ? PRESETS[confirmKind].business.name : ""}</strong>{" "}
-                  y se agregarán categorías, productos, stock inicial y mesas a la sucursal activa.
+                  and categories, products, opening stock, and tables will be added to the active branch.
                 </p>
                 {generateLive && (
                   <p className="text-foreground">
-                    Además se generarán: <strong>4–6 mesas ocupadas</strong> con pedidos abiertos,{" "}
-                    <strong>~50 ventas</strong> de los últimos 7 días con caja cerrada por día, y{" "}
-                    <strong>5–8 domicilios</strong>.
+                    The following will also be generated: <strong>4–6 occupied tables</strong> con pedidos abiertos,{" "}
+                    <strong>~50 sales</strong> from the last 7 days with a closed register for each day, and{" "}
+                    <strong>5–8 deliveries</strong>.
                   </p>
                 )}
               </div>

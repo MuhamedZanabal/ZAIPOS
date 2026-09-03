@@ -172,7 +172,7 @@ export default function Dashboard() {
     { value:  8, color: "#FFB54A", label: "Delivery",      amount: formatCurrency(totalSales * 0.08) },
   ];
   const TOP_PRODUCTS = [
-    { name: "Capuchino Clásico",     cat: "Drinks",   qty: 1245, pct: 96 },
+    { name: "Classic Cappuccino",     cat: "Drinks",   qty: 1245, pct: 96 },
     { name: "Croissant Mantequilla", cat: "Bakery", qty: 978,  pct: 78 },
     { name: "Latte Vainilla",        cat: "Drinks",   qty: 854,  pct: 68 },
     { name: "Cheesecake de Fresa",   cat: "Postres",   qty: 642,  pct: 51 },
@@ -285,7 +285,7 @@ export default function Dashboard() {
               <div className="g-num-20 text-g-warn">{metrics?.lowStockCount ?? 0}</div>
             </div>
             <div>
-              <div className="h-meta mb-1">Sin stock</div>
+              <div className="h-meta mb-1">Out of stock</div>
               <div className="g-num-20 text-g-bad">12</div>
             </div>
           </div>
@@ -373,7 +373,7 @@ export default function Dashboard() {
                 </span>
               </div>
             ))}
-            {branches.length === 0 && <p className="h-meta text-center py-4">Sin sucursales</p>}
+            {branches.length === 0 && <p className="h-meta text-center py-4">No branches</p>}
           </div>
         </div>
 
@@ -389,7 +389,7 @@ export default function Dashboard() {
             <div className="font-bold g-val-14 text-g-ok flex items-center justify-center gap-1">
               <CheckCircle size={14} /> Todo sincronizado
             </div>
-            <div className="h-meta mt-1">Última: hace &lt; 1 min</div>
+            <div className="h-meta mt-1">Last: &lt; 1 min ago</div>
           </div>
           <button type="button" className="g-btn g-btn-ghost g-val-12 w-full h-8">
             Ver historial <ArrowUpRight size={12} />

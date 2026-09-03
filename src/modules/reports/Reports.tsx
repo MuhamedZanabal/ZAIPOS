@@ -90,7 +90,7 @@ export default function Reports() {
       <PageHeader
         eyebrow="SISTEMA · ANALYTICS"
         title="Advanced Reports"
-        description="Analiza el rendimiento de tu negocio con filtros personalizados"
+        description="Analyze your business performance with custom filters"
         actions={
           <div className="flex items-center gap-2 glass rounded-xl px-3 py-1.5">
             <Calendar className="h-4 w-4 text-ink-500" />
@@ -228,7 +228,7 @@ export default function Reports() {
               </div>
             ))}
             {Object.keys(data?.byMethod ?? {}).length === 0 && (
-              <div className="col-span-full text-center h-meta py-6">Sin pagos registrados</div>
+              <div className="col-span-full text-center h-meta py-6">No payments recorded</div>
             )}
           </div>
         </div>

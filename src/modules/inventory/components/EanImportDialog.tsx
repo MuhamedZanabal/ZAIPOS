@@ -152,7 +152,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
             price: 0, cost: 0, tax_rate: 19, min_stock: 0,
             status: "active",
           }).select("id").single();
-          if (error) throw new Error(`Error creando "${line.newName}": ${error.message}`);
+          if (error) throw new Error(`Error creating "${line.newName}": ${error.message}`);
           productId = data.id;
         }
 

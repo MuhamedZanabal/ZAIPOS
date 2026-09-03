@@ -79,7 +79,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
       qc.invalidateQueries({ queryKey: ["table-orders-open"] });
       qc.invalidateQueries({ queryKey: ["tables"] });
     } catch (err: any) {
-      toast.error(err.message ?? "Error al cobrar");
+      toast.error(err.message ?? "Checkout error");
     } finally {
       setSubmitting(false);
     }

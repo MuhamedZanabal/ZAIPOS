@@ -154,8 +154,8 @@ export default function Cash() {
               {/* KPI metrics */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <MetricCard icon={Wallet} label="Apertura" value={formatCurrency(Number(session.opening_amount))} />
-                <MetricCard icon={Banknote} label="Efectivo" value={formatCurrency(Number(session.total_cash))} />
-                <MetricCard icon={CreditCard} label="Tarjeta" value={formatCurrency(Number(session.total_card))} />
+                <MetricCard icon={Banknote} label="Cash" value={formatCurrency(Number(session.total_cash))} />
+                <MetricCard icon={CreditCard} label="Card" value={formatCurrency(Number(session.total_card))} />
                 <MetricCard icon={Smartphone} label="Transfer." value={formatCurrency(Number(session.total_transfer))} />
                 <MetricCard icon={QrCode} label="QR" value={formatCurrency(Number(session.total_qr))} />
                 <MetricCard
@@ -316,7 +316,7 @@ export default function Cash() {
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Other payment methods</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <div className="text-[10px] flex items-center gap-1"><CreditCard className="h-3 w-3" /> Tarjeta</div>
+                  <div className="text-[10px] flex items-center gap-1"><CreditCard className="h-3 w-3" /> Card</div>
                   <Input type="number" value={counts.card} onChange={(e) => setCounts({ ...counts, card: e.target.value })} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">

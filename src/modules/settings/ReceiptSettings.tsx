@@ -136,13 +136,13 @@ export default function ReceiptSettings() {
                 <Image className="h-6 w-6 text-gray-300" />
               </div>
             )}
-            <div className="font-bold text-sm uppercase">{tenant?.name || "MI NEGOCIO"}</div>
+            <div className="font-bold text-sm uppercase">{tenant?.name || "MY BUSINESS"}</div>
             <div className="whitespace-pre-line text-slate-600">{config.header_text || "NIT 000.000.000-0\nCalle Falsa 123\nTel: 555-5555"}</div>
           </div>
 
           <div className="border-t border-b border-dashed py-2 mb-2 space-y-1">
             <div className="flex justify-between">
-              <span>ORDEN #1234</span>
+              <span>ORDER #1234</span>
               <span>06/05/2026 10:00</span>
             </div>
             {config.show_customer_info && (

@@ -340,7 +340,7 @@ export default function TableOrder() {
       qc.invalidateQueries({ queryKey: ["tables"] });
       navigate("/tables");
     } catch (err: any) {
-      toast.error(err.message ?? "Error al cobrar");
+      toast.error(err.message ?? "Checkout error");
     } finally { setSubmitting(false); }
   };
 
@@ -462,7 +462,7 @@ export default function TableOrder() {
         {isOpen && <span className="g-pill g-pill-brand g-pill-h22">Abierto</span>}
         {waiterName ? (
           <span className="h-meta">
-            Mesero: <span className="font-semibold text-[var(--ink-700)]">{waiterName}</span>
+            Waiter: <span className="font-semibold text-[var(--ink-700)]">{waiterName}</span>
           </span>
         ) : !(order as any)?.waiter_id ? (
           <span className="text-xs font-semibold text-[var(--brand-600)]">📱 QR Order</span>

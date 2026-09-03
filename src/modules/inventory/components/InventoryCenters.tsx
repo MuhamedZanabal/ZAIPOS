@@ -44,7 +44,7 @@ export function InventoryCenters() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editing ? "Edit Center" : "New Center de Inventario"}</DialogTitle>
+              <DialogTitle>{editing ? "Edit Center" : "New Inventory Center"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="space-y-2">

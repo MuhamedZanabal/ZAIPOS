@@ -174,7 +174,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
   return (
     <DialogContent className="max-w-md">
       <DialogHeader>
-        <DialogTitle>{editing ? "Edit category" : "New categoría"}</DialogTitle>
+        <DialogTitle>{editing ? "Edit category" : "New category"}</DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-1.5">
@@ -187,7 +187,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
             <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label>Orden</Label>
+            <Label>Order</Label>
             <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} />
           </div>
         </div>

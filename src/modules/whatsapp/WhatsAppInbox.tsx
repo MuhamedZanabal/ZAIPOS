@@ -24,7 +24,7 @@ import { canAccessRoles } from "@/lib/roles";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   open: { label: "Abierta", className: "bg-success text-success-foreground" },
-  handoff: { label: "Con asesor", className: "bg-yellow-500 text-white" },
+  handoff: { label: "With advisor", className: "bg-yellow-500 text-white" },
   closed: { label: "Cerrada", className: "bg-muted text-muted-foreground" },
 };
 
@@ -160,7 +160,7 @@ export default function WhatsAppInbox() {
           body: JSON.stringify({ conversation_id: selectedId, text: reply.trim() }),
         }
       );
-      if (!res.ok) throw new Error((await res.json()).error ?? "Error enviando");
+      if (!res.ok) throw new Error((await res.json()).error ?? "Error sending");
       setReply("");
       qc.invalidateQueries({ queryKey: ["wa-messages", selectedId] });
       qc.invalidateQueries({ queryKey: ["wa-conversations", tenantId] });
@@ -207,7 +207,7 @@ export default function WhatsAppInbox() {
         }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error generando sugerencia");
+      if (!res.ok) throw new Error(data.error ?? "Error generating suggestion");
       if (data.reply) {
         setReply(data.reply);
         toast.success("Suggestion ready — you can edit it before sending");
@@ -282,7 +282,7 @@ export default function WhatsAppInbox() {
           {conversations.length === 0 && (
             <div className="p-8 text-center text-muted-foreground text-sm">
               <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              Sin conversations aún
+              No conversations yet
             </div>
           )}
         </ScrollArea>
@@ -390,7 +390,7 @@ export default function WhatsAppInbox() {
                       </button>
                     ))}
                     {!searchingProducts && productQuery.length > 1 && productResults.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-2 text-center">Sin resultados</p>
+                      <p className="text-xs text-muted-foreground py-2 text-center">No results</p>
                     )}
                     {productQuery.length <= 1 && (
                       <p className="text-xs text-muted-foreground py-2 text-center">Escribe al menos 2 caracteres</p>

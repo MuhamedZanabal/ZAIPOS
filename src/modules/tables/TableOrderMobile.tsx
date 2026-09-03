@@ -197,7 +197,7 @@ export function TableOrderMobile(props: Props) {
 
       {tab === "products" && !isOpen && (
         <div className="flex-1 grid place-items-center text-muted-foreground p-8 text-center text-sm">
-          Order enviado a caja. Pendiente de cobro.
+          Order sent to register. Awaiting payment.
         </div>
       )}
 
@@ -208,7 +208,7 @@ export function TableOrderMobile(props: Props) {
             <div className="p-3 space-y-2 pb-2">
               {items.length === 0 && (
                 <div className="text-center text-muted-foreground py-16 text-sm">
-                  No products. Agrega desde la pestaña Products.
+                  No products. Add them from the Products tab.
                 </div>
               )}
               {items.map((it: any) => {

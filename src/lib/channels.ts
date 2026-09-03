@@ -3,13 +3,13 @@ import type { Database } from "@/integrations/supabase/types";
 export type SalesChannel = Database["public"]["Enums"]["sales_channel"];
 
 export const CHANNELS: { id: SalesChannel; label: string; short: string }[] = [
-  { id: "pos", label: "Presencial", short: "POS" },
-  { id: "tables", label: "Mesas / Comandas", short: "Mesas" },
+  { id: "pos", label: "In-person", short: "POS" },
+  { id: "tables", label: "Tables / Orders", short: "Tables" },
   { id: "rappi", label: "Rappi / Digital", short: "Rappi" },
   { id: "whatsapp", label: "WhatsApp", short: "WA" },
   { id: "didi", label: "Didi Food", short: "Didi" },
   { id: "uber", label: "Uber Eats", short: "Uber" },
-  { id: "delivery", label: "Domicilio propio", short: "Domicilio" },
+  { id: "delivery", label: "In-house Delivery", short: "Delivery" },
 ];
 
 export const channelLabel = (c: SalesChannel) =>

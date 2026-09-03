@@ -164,7 +164,7 @@ export default function AiAgentSettings() {
         .single();
       if (insErr || !inserted) throw insErr ?? new Error("Could not save the document");
 
-      toast.success("Documento guardado. Generando embedding…");
+      toast.success("Document saved. Generating embedding…");
       setAddDocOpen(false);
       setNewDocTitle("");
       setNewDocContent("");
@@ -201,7 +201,7 @@ export default function AiAgentSettings() {
       toast.success(`Embedding generado (${body.dims} dims)`);
       qc.invalidateQueries({ queryKey: ["ai-knowledge-docs"] });
     } catch (e: any) {
-      toast.error(`Error al generar embedding: ${e.message}`);
+      toast.error(`Error generating embedding: ${e.message}`);
     } finally {
       setEmbeddingId(null);
     }
@@ -210,7 +210,7 @@ export default function AiAgentSettings() {
   const deleteDoc = async (id: string) => {
     const { error } = await supabase.from("ai_knowledge_docs").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Documento eliminado");
+    toast.success("Document deleted");
     qc.invalidateQueries({ queryKey: ["ai-knowledge-docs"] });
   };
 
@@ -342,7 +342,7 @@ export default function AiAgentSettings() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Tiempo de demora para domicilios (minutos)</Label>
+            <Label>Delivery lead time (minutes)</Label>
             <Input
               type="number"
               min="1"
@@ -376,7 +376,7 @@ export default function AiAgentSettings() {
           <BookOpen className="h-4 w-4 text-primary" />
           Base de Conocimiento (RAG)
           <span className="ml-auto text-xs font-normal text-muted-foreground">
-            {docs?.length ?? 0} documento{docs?.length !== 1 ? "s" : ""}
+            {docs?.length ?? 0} document{docs?.length !== 1 ? "s" : ""}
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -451,7 +451,7 @@ export default function AiAgentSettings() {
       <Dialog open={addDocOpen} onOpenChange={setAddDocOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Nuevo documento de conocimiento</DialogTitle>
+            <DialogTitle>New knowledge document</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">

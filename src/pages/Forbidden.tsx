@@ -23,7 +23,7 @@ export default function Forbidden() {
           <h1 className="page-header-title">Acceso restringido</h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
             Your current role does not have permission to open this section.
-            Contacta al administrador si crees que es un error.
+            Contact the administrator if you believe this is an error.
           </p>
         </div>
 

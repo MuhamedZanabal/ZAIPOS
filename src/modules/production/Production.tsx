@@ -92,7 +92,7 @@ export default function Production() {
       <div className="grid grid-cols-4 gap-3">
         {[
           { l: "Orders today", v: String(stats.total), s: `${stats.running} in progress · ${stats.draft} queued` },
-          { l: "Completeds",  v: String(stats.completed), s: "Hoy" },
+          { l: "Completed",  v: String(stats.completed), s: "Today" },
           { l: "En curso",     v: String(stats.running),   s: "activas ahora" },
           { l: "Borradores",   v: String(stats.draft),     s: "pendientes de inicio" },
         ].map((s, i) => (
@@ -125,7 +125,7 @@ export default function Production() {
       {/* Orders table */}
       <div className="glass g-table-p0 flex flex-col rounded-2xl overflow-hidden flex-1">
         <div className="g-prod-table-head">
-          <span>Producto</span><span>Planned</span><span>Produced</span>
+          <span>Product</span><span>Planned</span><span>Produced</span>
           <span>Waste</span><span>Progress</span><span>Status</span><span />
         </div>
 
@@ -210,14 +210,14 @@ function CreateOrderDialog({ tenantId, branchId, products, onClose }: any) {
       planned_quantity: Number(planned), notes: notes || null, status: "draft",
     });
     if (error) return toast.error(error.message);
-    toast.success("Orden creada");
+    toast.success("Order created");
     setProductId(""); setPlanned("1"); setNotes("");
     onClose();
   };
 
   return (
     <DialogContent className="max-w-md">
-      <DialogHeader><DialogTitle>New order de producción</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>New production order</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-1.5">
           <Label>Product to produce</Label>
@@ -236,7 +236,7 @@ function CreateOrderDialog({ tenantId, branchId, products, onClose }: any) {
           <Label>Notes</Label>
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
         </div>
-        <Button type="submit" className="w-full h-12" disabled={!productId}>Crear orden</Button>
+        <Button type="submit" className="w-full h-12" disabled={!productId}>Create order</Button>
       </form>
     </DialogContent>
   );
@@ -260,7 +260,7 @@ function CompleteOrderDialog({ order, onClose }: { order: any | null; onClose: (
   return (
     <Dialog open={!!order} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Completar orden</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Complete order</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="text-sm text-muted-foreground">
             {order?.products?.name} · planeado {Number(order?.planned_quantity ?? 0).toFixed(2)}

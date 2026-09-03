@@ -69,7 +69,7 @@ export default function SalesChannelsSettings() {
   });
 
   const toggleChannel = (channel: SalesChannel, enabled: boolean) => {
-    if (!isSuperAdmin) return toast.error("Solo un super administrador puede modificar esto.");
+    if (!isSuperAdmin) return toast.error("Only a super administrator can change this.");
     setSavingChannels(true);
     let updated = [...activeChannels];
     if (enabled) {
@@ -124,7 +124,7 @@ export default function SalesChannelsSettings() {
 
   const saveRappi = async () => {
     if (!tenantId || !branchId) return;
-    if (!rappiStoreId.trim()) return toast.error("Ingresa el Store ID de Rappi");
+    if (!rappiStoreId.trim()) return toast.error("Enter the Rappi Store ID");
     setBusy("saveRappi");
     try {
       const payload = {

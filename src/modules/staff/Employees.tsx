@@ -34,7 +34,7 @@ export default function Employees() {
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <div className="h-meta g-page-subtitle text-ink-400">NEGOCIO · PERSONAL</div>
+            <div className="h-meta g-page-subtitle text-ink-400">BUSINESS · STAFF</div>
             <h1 className="h-display g-page-title">Employees</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
               {list.length} miembro{list.length !== 1 ? "s" : ""} del equipo

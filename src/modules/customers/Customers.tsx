@@ -109,7 +109,7 @@ export default function Customers() {
             <div className="h-meta g-page-subtitle text-ink-400">OPERATIONS · CUSTOMERS</div>
             <h1 className="h-display g-page-title">Customers</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
-              {customers.length} cliente{customers.length !== 1 ? "s" : ""} registrado{customers.length !== 1 ? "s" : ""}
+              {customers.length} registered customer{customers.length !== 1 ? "s" : ""}
             </div>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function Customers() {
             </div>
             <div className="space-y-1.5">
               <Label>Email</Label>
-              <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="cliente@email.com" />
+              <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="customer@email.com" />
             </div>
             <div className="space-y-1.5">
               <Label>Address</Label>

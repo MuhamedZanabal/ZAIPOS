@@ -152,7 +152,7 @@ export default function Shifts() {
             <Calendar className="h-5 w-5" />
           </div>
           <div>
-            <div className="h-meta g-page-subtitle text-ink-400">NEGOCIO · TURNOS</div>
+            <div className="h-meta g-page-subtitle text-ink-400">BUSINESS · SHIFTS</div>
             <h1 className="h-display g-page-title">Shift scheduling</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
               {shiftList.length} shift{shiftList.length !== 1 ? "s" : ""} this week
@@ -254,7 +254,7 @@ export default function Shifts() {
             <div className="orb mx-auto mb-4">
               <Calendar className="h-7 w-7" />
             </div>
-            <h2 className="h-display font-semibold text-lg">Sin turnos</h2>
+            <h2 className="h-display font-semibold text-lg">No shifts</h2>
             <p className="h-meta g-page-subtitle text-ink-500 mt-1">Create the first shift of the week.</p>
           </div>
         ) : (
@@ -317,7 +317,7 @@ export default function Shifts() {
             <div className="orb mx-auto mb-4">
               <Clock className="h-7 w-7" />
             </div>
-            <h2 className="h-display font-semibold text-lg">Sin registros</h2>
+            <h2 className="h-display font-semibold text-lg">No records</h2>
             <p className="h-meta g-page-subtitle text-ink-500 mt-1">No attendance records yet.</p>
           </div>
         ) : (
@@ -372,7 +372,7 @@ function ShiftForm({
     e.preventDefault();
     if (!form.employee_id || !form.branch_id) return toast.error("Employee and branch are required");
     if (new Date(form.scheduled_end) <= new Date(form.scheduled_start)) {
-      return toast.error("El fin debe ser posterior al inicio");
+      return toast.error("The end time must be after the start time");
     }
     setSaving(true);
     const { error } = await supabase.from("employee_shifts").insert({

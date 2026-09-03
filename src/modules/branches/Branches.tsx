@@ -89,7 +89,7 @@ export default function Branches() {
     const next = b.status === "active" ? "inactive" : "active";
     const { error } = await supabase.from("branches").update({ status: next }).eq("id", b.id);
     if (error) return toast.error(error.message);
-    toast.success(`Sucursal ${next === "active" ? "activated" : "desactivated"}`);
+    toast.success(`Branch ${next === "active" ? "activated" : "deactivated"}`);
     qc.invalidateQueries({ queryKey: ["branches-admin"] });
     qc.invalidateQueries({ queryKey: ["branches"] });
   };
@@ -111,7 +111,7 @@ export default function Branches() {
       await supabase.from("cash_registers").delete().eq("branch_id", b.id);
       const { error } = await supabase.from("branches").delete().eq("id", b.id);
       if (error) throw error;
-      toast.success(`Sucursal "${b.name}" deleted`);
+      toast.success(`Branch "${b.name}" deleted`);
       qc.invalidateQueries({ queryKey: ["branches-admin"] });
       qc.invalidateQueries({ queryKey: ["branches"] });
     } catch (e: any) {
@@ -151,7 +151,7 @@ export default function Branches() {
       ) : !branches || branches.length === 0 ? (
         <EmptyState
           icon={Store}
-          title="Sin sucursales"
+          title="No branches"
           description="Create your first branch to start operating"
         />
       ) : (

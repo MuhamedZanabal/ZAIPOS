@@ -273,7 +273,7 @@ export default function Inventory() {
             <div className="orb g-orb-38 orb-sq"><Package size={16} /></div>
           </div>
           <div className="g-num-28">{activeStocks.length}</div>
-          <span className="h-meta">productos activos</span>
+          <span className="h-meta">active products</span>
         </div>
 
         {/* Low stock */}
@@ -397,7 +397,7 @@ export default function Inventory() {
             {/* Filter pills */}
             <div className="flex items-center gap-1.5">
               {[
-                { id: "all",  label: "Todos", count: activeStocks.length },
+                { id: "all",  label: "All", count: activeStocks.length },
                 { id: "low",  label: "Below minimum", count: lowStock.length },
                 { id: "out",  label: "Out of stock", count: outOfStock.length },
               ].map((f) => (
@@ -431,17 +431,17 @@ export default function Inventory() {
               <span className="h-label">Product</span>
               <span className="h-label">SKU</span>
               <span className="h-label">Current stock</span>
-              <span className="h-label">Ubicación</span>
+              <span className="h-label">Location</span>
               <span className="h-label">Movimiento</span>
               <span className="h-label">Unidad</span>
-              <span className="h-label">Estado</span>
+              <span className="h-label">Status</span>
             </div>
 
             {/* Table rows */}
             {filteredStocks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="orb g-orb-52"><Package size={22} /></div>
-                <span className="h-meta">Sin productos{search ? ` para "${search}"` : ""}</span>
+                <span className="h-meta">No products{search ? ` for "${search}"` : ""}</span>
               </div>
             ) : (
               filteredStocks.map((s: any) => {
@@ -465,7 +465,7 @@ export default function Inventory() {
                           {s.products?.name}
                         </div>
                         <div className="h-meta truncate">
-                          {s.products?.sku ?? "Sin SKU"}
+                          {s.products?.sku ?? "No SKU"}
                         </div>
                       </div>
                     </div>
@@ -482,7 +482,7 @@ export default function Inventory() {
                           {qty.toFixed(2)}
                         </span>
                         {min > 0 && (
-                          <span className="h-meta">/ mín {min}</span>
+                          <span className="h-meta">/ min {min}</span>
                         )}
                       </div>
                       <StockBar qty={qty} minStock={min} />
@@ -522,7 +522,7 @@ export default function Inventory() {
             {/* Table footer */}
             {filteredStocks.length > 0 && (
               <div className="px-5 py-3 flex items-center justify-between inv-table-footer">
-                <span className="h-meta">{filteredStocks.length} productos mostrados</span>
+                <span className="h-meta">{filteredStocks.length} products shown</span>
                 <span className="h-meta">{filteredStocks.reduce((a: number, s: any) => a + Number(s.quantity), 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })} unidades en total</span>
               </div>
             )}
@@ -542,9 +542,9 @@ export default function Inventory() {
           <div className="grid items-center px-5 py-3 inv-history-grid inv-table-header">
             <span className="h-label">Fecha</span>
             <span className="h-label">Product</span>
-            <span className="h-label">Centro</span>
+            <span className="h-label">Center</span>
             <span className="h-label">Tipo</span>
-            <span className="h-label">Cantidad</span>
+            <span className="h-label">Quantity</span>
             <span className="h-label">Motivo</span>
             <span className="h-label">Origen</span>
           </div>
@@ -552,7 +552,7 @@ export default function Inventory() {
           {(!movements || movements.length === 0) ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="orb g-orb-52"><History size={22} /></div>
-              <span className="h-meta">Sin movimientos registrados</span>
+              <span className="h-meta">No movements recorded</span>
             </div>
           ) : (
             (movements ?? []).map((m: any) => (
@@ -634,7 +634,7 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
     return (
       <div className="glass flex flex-col items-center justify-center py-16 gap-3">
         <div className="orb g-orb-52"><TrendingUp size={22} /></div>
-        <span className="h-meta">No hay datos de ventas de los últimos 30 días para proyectar.</span>
+        <span className="h-meta">There is no sales data from the last 30 days to forecast.</span>
       </div>
     );
   }
@@ -644,8 +644,8 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
       <div className="grid items-center px-5 py-3 inv-forecast-grid inv-table-header">
         <span className="h-label">Product</span>
         <span className="h-label">Current stock</span>
-        <span className="h-label">Venta/día (30d)</span>
-        <span className="h-label">Días restantes</span>
+        <span className="h-label">Sales/day (30d)</span>
+        <span className="h-label">Days remaining</span>
         <span className="h-label">Alerta</span>
       </div>
 
@@ -670,7 +670,7 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
               {urgent ? (
                 <span className="g-pill g-pill-bad inv-text-10">Urgente ≤7d</span>
               ) : warning ? (
-                <span className="g-pill g-pill-warn inv-text-10">≤14 días</span>
+                <span className="g-pill g-pill-warn inv-text-10">≤14 days</span>
               ) : (
                 <span className="g-pill g-pill-ok inv-text-10">OK</span>
               )}

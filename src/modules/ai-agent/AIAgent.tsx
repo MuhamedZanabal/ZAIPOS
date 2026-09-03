@@ -53,9 +53,9 @@ function UserOrb({ initials }: { initials: string }) {
 
 function MarginBarChart() {
   const data = [
-    { name: "Capuchino Clásico",     margin: 71 },
+    { name: "Classic Cappuccino",     margin: 71 },
     { name: "Cheesecake de Fresa",   margin: 68 },
-    { name: "Frappé Mocha",          margin: 64 },
+    { name: "Mocha Frappe",          margin: 64 },
     { name: "Croissant Mantequilla", margin: 58 },
     { name: "Latte Vainilla",        margin: 55 },
   ];
@@ -111,7 +111,7 @@ export default function AIAgent() {
 
     const lower = text.toLowerCase();
     let aiMsg: Message;
-    if (lower.includes("margen") || lower.includes("producto")) {
+    if (lower.includes("margin") || lower.includes("product") || lower.includes("margen") || lower.includes("producto")) {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",
@@ -123,7 +123,7 @@ export default function AIAgent() {
         ],
         actions: ["Create transfer", "Export report"],
       };
-    } else if (lower.includes("venta") || lower.includes("hoy")) {
+    } else if (lower.includes("sale") || lower.includes("today") || lower.includes("venta") || lower.includes("hoy")) {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",

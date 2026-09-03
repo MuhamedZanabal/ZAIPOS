@@ -68,7 +68,7 @@ export default function RappiSettings() {
 
   const save = async () => {
     if (!tenantId || !branchId) return;
-    if (!storeId.trim()) return toast.error("Ingresa el Store ID de Rappi");
+    if (!storeId.trim()) return toast.error("Enter the Rappi Store ID");
     setBusy("save");
     try {
       const payload = {

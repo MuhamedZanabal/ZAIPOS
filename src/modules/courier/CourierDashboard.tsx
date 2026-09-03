@@ -16,19 +16,19 @@ type DeliveryStatus = Database["public"]["Enums"]["delivery_status"];
 type PayMethod = "cash" | "card" | "transfer" | "qr";
 
 const STATUS_META: Record<DeliveryStatus, { label: string; pillClass: string }> = {
-  received:   { label: "Recibido",          pillClass: "g-pill-ghost" },
-  preparing:  { label: "Preparando",        pillClass: "g-pill-warn" },
-  ready:      { label: "Listo para recoger",pillClass: "g-pill-sky" },
+  received:   { label: "Received",          pillClass: "g-pill-ghost" },
+  preparing:  { label: "Preparing",        pillClass: "g-pill-warn" },
+  ready:      { label: "Ready for pickup",pillClass: "g-pill-sky" },
   assigned:   { label: "Assigned to me",     pillClass: "g-pill-brand" },
-  on_way:     { label: "En camino",         pillClass: "g-pill-brand" },
-  delivered:  { label: "Entregado",         pillClass: "g-pill-ok" },
-  cancelled:  { label: "Cancelado",         pillClass: "g-pill-bad" },
+  on_way:     { label: "On the way",         pillClass: "g-pill-brand" },
+  delivered:  { label: "Delivered",         pillClass: "g-pill-ok" },
+  cancelled:  { label: "Cancelled",         pillClass: "g-pill-bad" },
 };
 
 const PAY_METHODS: { id: PayMethod; label: string; icon: any }[] = [
   { id: "cash",     label: "Cash",      icon: Banknote },
   { id: "card",     label: "Card terminal",      icon: CreditCard },
-  { id: "transfer", label: "Transferencia", icon: Smartphone },
+  { id: "transfer", label: "Transfer", icon: Smartphone },
   { id: "qr",       label: "QR",            icon: QrCode },
 ];
 
@@ -104,7 +104,7 @@ export default function CourierDashboard() {
       _order_id: id, _status: status, _courier_id: null,
     });
     if (error) return toast.error(error.message);
-    toast.success(`Estado: ${STATUS_META[status].label}`);
+    toast.success(`Status: ${STATUS_META[status].label}`);
     qc.invalidateQueries({ queryKey: ["courier-orders"] });
   };
 
@@ -247,7 +247,7 @@ export default function CourierDashboard() {
             <div className="h-meta">Loading…</div>
           ) : grouped.active.length === 0 ? (
             <div className="glass rounded-2xl p-8 text-center h-meta">
-              No tienes pedidos asignados.
+              You have no assigned orders.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -258,7 +258,7 @@ export default function CourierDashboard() {
 
         <TabsContent value="done" className="mt-4">
           {grouped.done.length === 0 ? (
-            <div className="glass rounded-2xl p-8 text-center h-meta">Sin historial.</div>
+            <div className="glass rounded-2xl p-8 text-center h-meta">No history.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {grouped.done.map(renderCard)}
@@ -271,7 +271,7 @@ export default function CourierDashboard() {
       <Dialog open={!!payOrder} onOpenChange={(o) => !o && setPayOrder(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="h-display text-lg">Cobrar y entregar</DialogTitle>
+            <DialogTitle className="h-display text-lg">Charge and deliver</DialogTitle>
           </DialogHeader>
           {payOrder && (
             <div className="space-y-4">
@@ -281,7 +281,7 @@ export default function CourierDashboard() {
                 <div className="h-meta">{payOrder.address}</div>
               </div>
               <div className="flex items-baseline justify-between border-t border-b border-[var(--g-hairline)] py-3">
-                <span className="h-label">Total recibido</span>
+                <span className="h-label">Total received</span>
                 <span className="h-num text-3xl text-[var(--brand-600)]">
                   {formatCurrency(Number(payOrder.sales?.total ?? 0) + Number(payOrder.delivery_fee ?? 0))}
                 </span>

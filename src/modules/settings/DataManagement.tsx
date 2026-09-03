@@ -33,10 +33,10 @@ export function DataManagement() {
         .eq("tenant_id", tenantId!);
 
       if (error) throw error;
-      exportToCsv(`productos_${new Date().toISOString().split('T')[0]}.csv`, data || []);
+      exportToCsv(`products_${new Date().toISOString().split('T')[0]}.csv`, data || []);
       toast.success("Catalog exported");
     } catch (err: any) {
-      toast.error("Error al exportar: " + err.message);
+      toast.error("Export error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -54,16 +54,16 @@ export function DataManagement() {
       if (error) throw error;
 
       const flatData = (data || []).map((s: any) => ({
-        producto: s.products?.name,
+        product: s.products?.name,
         sku: s.products?.sku,
-        centro: s.inventory_centers?.name,
-        cantidad: s.quantity
+        center: s.inventory_centers?.name,
+        quantity: s.quantity
       }));
 
-      exportToCsv(`inventario_${new Date().toISOString().split('T')[0]}.csv`, flatData);
+      exportToCsv(`inventory_${new Date().toISOString().split('T')[0]}.csv`, flatData);
       toast.success("Inventory exported");
     } catch (err: any) {
-      toast.error("Error al exportar: " + err.message);
+      toast.error("Export error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,7 @@ export function DataManagement() {
       };
       reader.readAsText(file);
     } catch (err: any) {
-      toast.error("Error al importar: " + err.message);
+      toast.error("Import error: " + err.message);
     } finally {
       setLoading(false);
       e.target.value = "";
@@ -271,7 +271,7 @@ export function DataManagement() {
               disabled={loading}
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Exportar Stock Actual (.csv)
+              Export Current Stock (.csv)
             </Button>
 
             <div className="space-y-3 pt-2 border-t">
@@ -300,7 +300,7 @@ export function DataManagement() {
                   disabled={loading || !selectedCenterId}
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  * El archivo debe contener columnas 'sku' y 'quantity'. 
+                  * The file must contain 'sku' and 'quantity' columns. 
                   An adjustment movement will be generated automatically.
                 </p>
               </div>
@@ -311,9 +311,9 @@ export function DataManagement() {
       {progress && (
         <Alert className="bg-primary/5 border-primary/20 animate-pulse">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <AlertTitle>Procesando datos...</AlertTitle>
+          <AlertTitle>Processing data...</AlertTitle>
           <AlertDescription>
-            Procesando fila {progress.current} de {progress.total}
+            Processing row {progress.current} of {progress.total}
           </AlertDescription>
         </Alert>
       )}

@@ -66,7 +66,7 @@ export default function TablesSettings() {
   };
 
   const save = async () => {
-    if (!tenantId || !scopeBranch || !name.trim()) return toast.error("Completa los campos");
+    if (!tenantId || !scopeBranch || !name.trim()) return toast.error("Complete the required fields");
     const payload = {
       name: name.trim(), capacity, branch_id: scopeBranch,
       assigned_waiter_id: waiterId || null,
@@ -133,7 +133,7 @@ export default function TablesSettings() {
         })}
         {(tables ?? []).length === 0 && (
           <div className="col-span-full text-center py-12 h-meta">
-            Aún no hay mesas. Crea la primera con "New table".
+            No tables yet. Create the first one with "New table".
           </div>
         )}
       </div>
@@ -162,11 +162,11 @@ export default function TablesSettings() {
               <Input type="number" min={1} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
             </div>
             <div className="space-y-1.5">
-              <Label>Mesero asignado (opcional)</Label>
+              <Label>Assigned waiter (optional)</Label>
               <Select value={waiterId || "none"} onValueChange={(v) => setWaiterId(v === "none" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Unassigned (cualquier mesero puede tomarla)</SelectItem>
+                  <SelectItem value="none">Unassigned (any waiter can take it)</SelectItem>
                   {(waiters ?? []).map((w) => (
                     <SelectItem key={w.id} value={w.id}>{w.full_name ?? w.email}</SelectItem>
                   ))}

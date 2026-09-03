@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 const TABS = [
-  { id: "business",   label: "Mi negocio",       icon: Building2 },
+  { id: "business",   label: "My Business",       icon: Building2 },
   { id: "branches",   label: "Sucursales",        icon: GitBranch },
   { id: "tables",     label: "Tables",             icon: UtensilsCrossed },
   { id: "users",      label: "Usuarios y permisos", icon: Users },

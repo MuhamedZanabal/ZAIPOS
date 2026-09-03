@@ -150,7 +150,7 @@ export default function Auth() {
             <div className="mb-6">
               <div className="h-label g-auth-eyebrow mb-2">ACCESO OPERATIVO</div>
               <div className="h-display g-auth-title">Sign in</div>
-              <div className="h-meta mt-1">Ingresa con tu cuenta de usuario autorizado.</div>
+              <div className="h-meta mt-1">Sign in with your authorized user account.</div>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
@@ -160,7 +160,7 @@ export default function Auth() {
                   id="email" type="email" required
                   inputMode="email" autoComplete="email"
                   className="h-11 text-base"
-                  placeholder="usuario@empresa.com"
+                  placeholder="user@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

@@ -365,14 +365,14 @@ export default function Products() {
       <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Delete product?</AlertDialogTitle>
+            <AlertDialogTitle>Delete product?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El producto será eliminado permanentemente de la base de datos.
-              Si tiene historial de ventas asociado, es posible que no se pueda eliminar.
+              This action cannot be undone. The product will be permanently deleted from the database.
+              If it has associated sales history, deletion may not be possible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Eliminar
             </AlertDialogAction>
@@ -385,18 +385,18 @@ export default function Products() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive flex items-center gap-2">
-              ⚠️ Advertencia de Importación
+              ⚠️ Import Warning
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              <p>Estás a punto de importar <strong>{importFile?.name}</strong>.</p>
-              <p>Esta acción <strong>borrará TODOS los productos actuales</strong> y los reemplazará por los del archivo.</p>
-              <p className="font-semibold text-destructive">¿Estás completamente seguro de continuar con el borrado y sincronización total?</p>
+              <p>You are about to import <strong>{importFile?.name}</strong>.</p>
+              <p>This action <strong>will delete ALL current products</strong> and replace them with the products in the file.</p>
+              <p className="font-semibold text-destructive">Are you completely sure you want to continue with the full deletion and synchronization?</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={executeImport} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sí, Borrar e Importar
+              Yes, Delete and Import
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

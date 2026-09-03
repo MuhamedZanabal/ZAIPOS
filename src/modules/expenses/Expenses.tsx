@@ -191,7 +191,7 @@ export default function Expenses() {
           {expenses.length === 0 ? (
             <EmptyState
               icon={TrendingDown}
-              title="Sin gastos registrados"
+              title="No expenses recorded"
               description="Record rent, payroll, utilities, and other operating expenses."
             />
           ) : (
@@ -235,7 +235,7 @@ export default function Expenses() {
                       type="button"
                       title="Delete expense"
                       className="g-exp-icon-btn g-exp-icon-btn-del"
-                      onClick={() => { if (confirm("¿Delete expense?")) removeExpense.mutate(e.id); }}
+                      onClick={() => { if (confirm("Delete expense?")) removeExpense.mutate(e.id); }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -320,7 +320,7 @@ export default function Expenses() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Method de pago</Label>
+              <Label>Payment method</Label>
               <Select
                 value={expenseForm.payment_method}
                 onValueChange={(v) => setExpenseForm((f) => ({ ...f, payment_method: v }))}

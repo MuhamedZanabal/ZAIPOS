@@ -116,7 +116,7 @@ export default function UsersSettings() {
   const invite = async () => {
     if (!tenantId) return;
     const email = inviteEmail.trim().toLowerCase();
-    if (!email) return toast.error("Ingresa un email");
+    if (!email) return toast.error("Enter an email");
     setInviting(true);
     try {
       const { data: profile, error: pErr } = await supabase
@@ -224,7 +224,7 @@ export default function UsersSettings() {
                   <Label>Email</Label>
                   <Input
                     type="email"
-                    placeholder="usuario@correo.com"
+                    placeholder="user@email.com"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
@@ -277,7 +277,7 @@ export default function UsersSettings() {
                   <Label>Email</Label>
                   <Input
                     type="email"
-                    placeholder="usuario@correo.com"
+                    placeholder="user@email.com"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                   />
@@ -318,14 +318,14 @@ export default function UsersSettings() {
         <div className="px-5 py-4 border-b border-black/5">
           <p className="font-semibold text-ink-900">Miembros del bar</p>
           <p className="h-meta">
-            {memberships?.length ?? 0} {(memberships?.length ?? 0) === 1 ? "usuario" : "users"} with access
+            {memberships?.length ?? 0} {(memberships?.length ?? 0) === 1 ? "user" : "users"} with access
           </p>
         </div>
         {isLoading ? (
           <div className="h-meta py-12 text-center">Loading…</div>
         ) : !memberships || memberships.length === 0 ? (
           <div className="p-6">
-            <EmptyState icon={Users} title="Sin users" description="There are no members in this business yet" />
+            <EmptyState icon={Users} title="No users" description="There are no members in this business yet" />
           </div>
         ) : (
           <div className="overflow-x-auto">

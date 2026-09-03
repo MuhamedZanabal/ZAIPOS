@@ -121,7 +121,7 @@ export default function Suppliers() {
       }
     },
     onSuccess: () => {
-      toast.success("Orden de compra creada");
+      toast.success("Purchase order created");
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       setOrderOpen(false); setOrderSupplierId(""); setOrderNotes(""); setOrderItems([]);
     },
@@ -147,7 +147,7 @@ export default function Suppliers() {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Error al recibir"),
+    onError: (e: any) => toast.error(e.message ?? "Error receiving order"),
   });
 
   const addOrderItem = () => {
@@ -364,11 +364,11 @@ export default function Suppliers() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Contacto</Label>
-                <Input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))} placeholder="Juan Pérez" />
+                <Input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))} placeholder="John Smith" />
               </div>
               <div className="space-y-1.5">
                 <Label>Email</Label>
-                <Input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))} placeholder="ventas@proveedor.com" />
+                <Input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))} placeholder="sales@supplier.com" />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -408,7 +408,7 @@ export default function Suppliers() {
               </div>
               <div className="space-y-1.5">
                 <Label>Notes</Label>
-                <Input value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Observaciones de la orden" />
+                <Input value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Order notes" />
               </div>
             </div>
 
@@ -427,12 +427,12 @@ export default function Suppliers() {
                   <Input type="number" min="0.01" value={itemQty} onChange={(e) => setItemQty(e.target.value)} placeholder="0" />
                 </div>
                 <div className="space-y-1 w-28">
-                  <Label className="text-xs">Costo unit.</Label>
+                  <Label className="text-xs">Unit cost</Label>
                   <Input type="number" min="0" value={itemCost} onChange={(e) => setItemCost(e.target.value)} placeholder="0" />
                 </div>
                 <button
                   type="button"
-                  aria-label="Agregar producto"
+                  aria-label="Add product"
                   className="g-btn g-btn-ghost"
                   onClick={addOrderItem}
                   disabled={!itemProductId || !itemQty}
@@ -447,7 +447,7 @@ export default function Suppliers() {
                     <TableRow>
                       <TableHead>Product</TableHead>
                       <TableHead>Cant.</TableHead>
-                      <TableHead>Costo</TableHead>
+                      <TableHead>Cost</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead />
                     </TableRow>
@@ -462,7 +462,7 @@ export default function Suppliers() {
                         <TableCell>
                           <button
                             type="button"
-                            aria-label="Quitar producto"
+                            aria-label="Remove product"
                             className="g-btn g-btn-ghost h-7 w-7 p-0 flex items-center justify-center text-g-bad"
                             onClick={() => setOrderItems((prev) => prev.filter((_, j) => j !== idx))}
                           >
@@ -478,7 +478,7 @@ export default function Suppliers() {
 
             <div className="flex justify-between items-center pt-2">
               <div className="text-sm text-ink-500">
-                {orderItems.length} producto(s) · Total:{" "}
+                {orderItems.length} product(s) · Total:{" "}
                 <span className="font-semibold text-ink-900">{formatCurrency(orderTotal)}</span>
               </div>
               <button
@@ -487,7 +487,7 @@ export default function Suppliers() {
                 disabled={orderItems.length === 0 || createOrder.isPending}
                 onClick={() => createOrder.mutate()}
               >
-                {createOrder.isPending ? "Creando..." : "Crear orden de compra"}
+                {createOrder.isPending ? "Creating..." : "Create purchase order"}
               </button>
             </div>
           </div>

@@ -134,7 +134,7 @@ export default function Onboarding() {
                 <div className="g-onboarding-tenant-name">
                   {opt.tenants?.name ?? opt.tenant_id}
                 </div>
-                <div className="h-meta capitalize">Rol: {opt.role}</div>
+                <div className="h-meta capitalize">Role: {opt.role}</div>
               </button>
             ))}
           </div>
@@ -157,8 +157,8 @@ export default function Onboarding() {
           <div className="orb g-onboarding-lock-orb mx-auto mb-4">
             <Lock size={26} />
           </div>
-          <div className="h-label g-onboarding-denied-eyebrow mb-2">SIN ACCESO</div>
-          <div className="h-display g-auth-title mb-2">Cuenta sin rol asignado</div>
+          <div className="h-label g-onboarding-denied-eyebrow mb-2">NO ACCESS</div>
+          <div className="h-display g-auth-title mb-2">Account has no assigned role</div>
           <p className="h-meta mb-6">
             Your account exists but does not have a role yet. Ask the administrator
             for access from Settings → Users.
@@ -187,7 +187,7 @@ export default function Onboarding() {
           <div>
             <div className="h-label g-auth-eyebrow mb-1">PRIMER SETUP</div>
             <div className="h-display g-auth-title">Set up your business</div>
-            <div className="h-meta">Eres el primer usuario. Menos de un minuto.</div>
+            <div className="h-meta">You are the first user. This takes less than a minute.</div>
           </div>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -200,7 +200,7 @@ export default function Onboarding() {
             <Input required value={branchName} onChange={(e) => setBranchName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Impuesto por defecto (%)</Label>
+            <Label>Default tax (%)</Label>
             <Input type="number" min="0" max="100" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
           </div>
           <button type="submit" className="g-btn g-btn-primary g-btn-touch w-full" disabled={loading}>

@@ -58,7 +58,7 @@ export default function BusinessSettings() {
       })
       .eq("id", tenantId);
     if (error) return toast.error(error.message);
-    toast.success("Datos del negocio actualizados");
+    toast.success("Business information updated");
     qc.invalidateQueries({ queryKey: ["tenant"] });
     qc.invalidateQueries({ queryKey: ["my-roles"] });
   };

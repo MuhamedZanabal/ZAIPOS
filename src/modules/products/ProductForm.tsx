@@ -21,12 +21,18 @@ const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
   composite: "Composite (Recipe)",
   production: "Production / Input",
-  combo: "Combo / Paquete",
+  combo: "Combo / Package",
   ingredient: "Ingredient / Raw Material",
-  modifier: "Modificador / Extra"
+  modifier: "Modifier / Extra"
 };
 const COMPOUND = new Set(["composite", "production", "combo"]);
-const KDS_STATIONS = ["Kitchen", "Bar", "Grill", "Cold", "Desserts"];
+const KDS_STATIONS = [
+  { value: "Cocina", label: "Kitchen" },
+  { value: "Bar", label: "Bar" },
+  { value: "Parrilla", label: "Grill" },
+  { value: "Frío", label: "Cold" },
+  { value: "Postres", label: "Desserts" },
+];
 
 interface Props { tenantId: string; categories: any[]; editing: any; onClose: () => void }
 
@@ -263,7 +269,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
       </div>
 
       {linked.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">Sin complementarios definidos.</p>
+        <p className="text-xs text-muted-foreground text-center py-4">No complementary products defined.</p>
       ) : (
         <div className="space-y-1.5">
           <Label className="text-xs">Complementarios actuales</Label>
@@ -302,7 +308,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       return toast.error("Only JPEG, PNG, or WebP images are allowed");
     }
     if (file.size > 5 * 1024 * 1024) {
-      return toast.error("La imagen no puede superar 5 MB");
+      return toast.error("The image cannot exceed 5 MB");
     }
     setUploadingImage(true);
     try {
@@ -318,7 +324,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       setForm((f: any) => ({ ...f, image_url: publicUrl }));
       toast.success("Imagen subida correctamente");
     } catch (err: any) {
-      toast.error(err.message ?? "Error al subir la imagen");
+      toast.error(err.message ?? "Error uploading image");
     } finally {
       setUploadingImage(false);
     }
@@ -454,7 +460,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               <Textarea
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Ej: Hamburguesa doble con queso cheddar, lechuga y tomate..."
+                placeholder="E.g. Double burger with cheddar cheese, lettuce, and tomato..."
                 rows={2}
               />
             </div>
@@ -500,7 +506,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                 <SelectTrigger><SelectValue placeholder="Unassigned (Kitchen by default)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Unassigned</SelectItem>
-                  {KDS_STATIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {KDS_STATIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -526,16 +532,16 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
                 <Label>Requiere detalle</Label>
-                <p className="text-xs text-muted-foreground">Al agregar al pedido se solicita un comentario que va al KDS</p>
+                <p className="text-xs text-muted-foreground">When added to an order, a comment is requested and sent to the KDS</p>
               </div>
               <Switch checked={!!form.requires_detail} onCheckedChange={(c) => setForm({ ...form, requires_detail: c })} />
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label>Activo</Label>
+              <Label>Active</Label>
               <Switch checked={form.status === "active"} onCheckedChange={(c) => setForm({ ...form, status: c ? "active" : "inactive" })} />
             </div>
             <Button type="submit" className="w-full h-12" disabled={saving}>
-              {editing ? "Guardar cambios" : "Crear producto"}
+              {editing ? "Save changes" : "Create product"}
             </Button>
           </form>
         </TabsContent>
@@ -549,7 +555,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         {showModifiers && (
           <TabsContent value="modifiers" className="mt-4">
             <p className="text-sm text-muted-foreground mb-3">
-              Define grupos de extras u opciones que el cajero/mesero debe seleccionar al agregar este producto.
+              Define add-on or option groups that the cashier/waiter must select when adding this product.
             </p>
             <ModifierGroupEditor tenantId={tenantId} productId={editing.id} />
           </TabsContent>

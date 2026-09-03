@@ -292,7 +292,7 @@ export default function WhatsAppSettings() {
             <div className="space-y-1.5">
               <Label>Instance name (Evolution API)</Label>
               <Input
-                placeholder="ej. pos-negocio-barra"
+                placeholder="e.g. pos-business-bar"
                 value={instance}
                 onChange={e => setInstance(e.target.value)}
               />
@@ -393,7 +393,7 @@ export default function WhatsAppSettings() {
           <li>En la instancia, ve a <strong>Webhooks</strong> y pega la URL de arriba.</li>
           <li>Activa el evento <strong>MESSAGES_UPSERT</strong>.</li>
           <li>Conecta la instancia a WhatsApp escaneando el QR.</li>
-          <li>Activa el agente con el toggle de arriba y guarda.</li>
+          <li>Enable the agent with the toggle above and save.</li>
           <li>En Supabase → Edge Functions → Secrets, agrega <code className="bg-muted px-1 rounded">EVOLUTION_API_URL</code> y <code className="bg-muted px-1 rounded">EVOLUTION_API_KEY</code>.</li>
         </ol>
       </div>

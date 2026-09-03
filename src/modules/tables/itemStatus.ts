@@ -42,13 +42,13 @@ export const ORDER_STATE_META: Record<
   DerivedOrderState,
   { label: string; tone: string }
 > = {
-  empty:      { label: "Abierta",          tone: "bg-primary text-primary-foreground" },
-  open:       { label: "Abierta",          tone: "bg-primary text-primary-foreground" },
+  empty:      { label: "Open",          tone: "bg-primary text-primary-foreground" },
+  open:       { label: "Open",          tone: "bg-primary text-primary-foreground" },
   preparing:  { label: "Preparing",   tone: "bg-amber-500 text-white" },
-  ready:      { label: "Ready para servir",tone: "bg-sky-500 text-white" },
-  served:     { label: "Servida",          tone: "bg-success text-success-foreground" },
-  in_cashier: { label: "En caja",          tone: "bg-warning text-warning-foreground" },
-  closed:     { label: "Cerrada",          tone: "bg-muted text-muted-foreground" },
+  ready:      { label: "Ready to serve",tone: "bg-sky-500 text-white" },
+  served:     { label: "Served",          tone: "bg-success text-success-foreground" },
+  in_cashier: { label: "At register",          tone: "bg-warning text-warning-foreground" },
+  closed:     { label: "Closed",          tone: "bg-muted text-muted-foreground" },
 };
 
 export function countByStatus(items: Array<{ status: string }>) {

@@ -65,7 +65,7 @@ const FEATURES = [
 const STATS = [
   { value: "5", unit: "canales", label: "de venta integrados" },
   { value: "∞", unit: "branches", label: "multi-branch" },
-  { value: "100%", unit: "offline", label: "sin perder un ticket" },
+  { value: "100%", unit: "offline", label: "without losing a ticket" },
   { value: "8", unit: "roles", label: "de acceso granular" },
 ];
 
@@ -249,8 +249,8 @@ export default function Landing() {
               <ul className="space-y-3">
                 {[
                   { label: "Tablet · Terminal POS",        sub: "Catalog + ticket + checkout on one screen" },
-                  { label: "Móvil · Mesero / Repartidor",  sub: "Mesas con estado, comandas, domicilios"   },
-                  { label: "Desktop · Dashboard operativo", sub: "KPIs, feed en vivo, KDS y reportes"       },
+                  { label: "Mobile · Waiter / Courier",  sub: "Table status, orders, delivery"   },
+                  { label: "Desktop · Operations Dashboard", sub: "KPIs, live feed, KDS, and reports"       },
                 ].map(({ label, sub }) => (
                   <li key={label} className="flex items-start gap-3">
                     <div className="h-5 w-5 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
@@ -326,9 +326,9 @@ export default function Landing() {
           <div className="text-center mb-12">
             <div className="eyebrow eyebrow-blue mb-3">PLANES Y PRECIOS</div>
             <h2 className="landing-section-title">
-              Crece con <span className="gradient-text">tu negocio.</span>
+              Grow with <span className="gradient-text">your business.</span>
             </h2>
-            <p className="landing-section-sub">Sin contratos anuales. Cancela cuando quieras.</p>
+            <p className="landing-section-sub">No annual contracts. Cancel anytime.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -336,7 +336,7 @@ export default function Landing() {
               <div key={name} className={`landing-plan-card ${accent ? "landing-plan-card-accent" : ""}`}>
                 {accent && (
                   <div className="landing-plan-badge">
-                    <Star className="h-3 w-3 fill-current" /> Más popular
+                    <Star className="h-3 w-3 fill-current" /> Most popular
                   </div>
                 )}
                 <div className="mb-6">
@@ -369,13 +369,13 @@ export default function Landing() {
       {/* ── Final CTA ─────────────────────────────────────────── */}
       <section className="landing-section landing-cta-section">
         <div className="landing-container text-center relative z-10">
-          <div className="eyebrow mb-4">¿LISTO PARA EMPEZAR?</div>
+          <div className="eyebrow mb-4">READY TO GET STARTED?</div>
           <h2 className="landing-section-title mb-4">
-            Empieza hoy —<br />
-            <span className="gradient-text">gratis, sin tarjeta.</span>
+            Start today —<br />
+            <span className="gradient-text">free, no card required.</span>
           </h2>
           <p className="landing-section-sub mb-8">
-            Configura tu primer negocio en menos de 5 minutos.
+            Set up your first business in under 5 minutes.
           </p>
           <Link to="/auth" className="landing-btn-primary landing-btn-lg">
             Crear cuenta gratis <ArrowRight className="h-4 w-4" />

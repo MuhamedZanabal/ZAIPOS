@@ -17,7 +17,7 @@ export function SystemMaintenance() {
       if (error) throw error;
       toast.success(`Cola de emails procesada: ${data?.processed || 0} enviados`);
     } catch (err: any) {
-      toast.error("Error al procesar emails: " + err.message);
+      toast.error("Error processing emails: " + err.message);
     } finally {
       setLoading(null);
     }

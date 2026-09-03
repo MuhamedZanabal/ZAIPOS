@@ -144,7 +144,7 @@ function TableCard({ table, order, items, isMine, onOpen }: {
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Mesa ${table.name}${occupied ? " – occupied" : " – available"}`}
+      aria-label={`Table ${table.name}${occupied ? " – occupied" : " – available"}`}
       className={cn(
         "relative rounded-2xl border-2 p-3.5 text-left transition-all active:scale-95 flex flex-col gap-1.5 min-h-[120px] w-full",
         cardClass,
@@ -306,7 +306,7 @@ export default function WaiterDashboard() {
 
           <div className="eyebrow eyebrow-blue mb-1">ACTIVE SHIFT · {branchName}</div>
           <div className="waiter-hero-font font-bold text-lg">
-            Hola, <span className="gradient-text">{user.email?.split("@")[0] ?? "Mesero"}</span>
+            Hello, <span className="gradient-text">{user.email?.split("@")[0] ?? "Waiter"}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mt-3">
@@ -385,7 +385,7 @@ export default function WaiterDashboard() {
           <>
             <div className="flex items-center justify-between mb-3">
               <div className="waiter-eyebrow-sm">
-                {(tables ?? []).length} TABLES · SALÓN
+                {(tables ?? []).length} TABLES · DINING ROOM
               </div>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1"><LiveDot />{occupiedCount} ocupadas</span>
@@ -431,7 +431,7 @@ export default function WaiterDashboard() {
             {myOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                 <CheckCircle2 className="h-10 w-10 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Sin comandas activas</p>
+                <p className="text-sm text-muted-foreground">No active orders</p>
               </div>
             ) : myOrders.map((o: any) => {
               const items = itemsByOrder[o.id] ?? [];

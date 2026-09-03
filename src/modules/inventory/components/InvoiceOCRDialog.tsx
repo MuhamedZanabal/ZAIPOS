@@ -104,7 +104,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
           : "Link the products manually",
       });
     } catch (err: any) {
-      toast.error(`Error al procesar: ${err.message}`);
+      toast.error(`Processing error: ${err.message}`);
     } finally {
       setProcessing(false);
     }
@@ -207,7 +207,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
           </div>
           <Button className="w-full h-12 text-base" disabled={!preview || processing} onClick={processInvoice}>
             {processing
-              ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Analizando con Gemini...</>
+              ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Analyzing with Gemini...</>
               : "Analyze invoice"}
           </Button>
         </div>
@@ -238,7 +238,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                   <TableHead>Product (invoice)</TableHead>
                   <TableHead>Product in system</TableHead>
                   <TableHead className="text-right">Cant.</TableHead>
-                  <TableHead className="text-right">Costo unit.</TableHead>
+                  <TableHead className="text-right">Unit cost</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -287,7 +287,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                 <CheckCircle2 className="h-4 w-4" /> {mappedCount} vinculados
               </span>
               {skippedCount > 0 && <Badge variant="secondary">{skippedCount} saltados</Badge>}
-              {pendingCount > 0 && <Badge variant="destructive">{pendingCount} sin vincular</Badge>}
+              {pendingCount > 0 && <Badge variant="destructive">{pendingCount} unlinked</Badge>}
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" onClick={() => setProducts([])}>Back</Button>

@@ -269,7 +269,7 @@ export default function DigitalOrders() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success(`Acción "${action}" enviada a Rappi`);
+      toast.success(`Action "${action}" sent to Rappi`);
       qc.invalidateQueries({ queryKey: ["digital-orders"] });
     } catch (e: any) {
       toast.error(e.message ?? "Could not send the action");
@@ -426,7 +426,7 @@ export default function DigitalOrders() {
       ) : !orders || orders.length === 0 ? (
         <EmptyState
           icon={Smartphone}
-          title="Sin pedidos digitales"
+          title="No digital orders"
           description="Record orders from Rappi or other platforms to track commissions and net sales"
         />
       ) : (

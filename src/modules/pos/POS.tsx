@@ -435,7 +435,7 @@ export default function POS() {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
     } catch (err: any) {
-      toast.error(err.message ?? "No se pudo finalizar la venta");
+      toast.error(err.message ?? "Could not complete the sale");
     } finally { setSubmitting(false); }
   };
 

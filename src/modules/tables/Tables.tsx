@@ -201,7 +201,7 @@ function TablePanel({
           {/* Waiter + state */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col gap-0.5">
-              <div className="h-label">Mesero</div>
+              <div className="h-label">Waiter</div>
               <div className="g-num-14 tbl-panel-waiter-name">
                 {waiterName ?? "—"}
               </div>

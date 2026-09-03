@@ -159,7 +159,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   <Heart className="h-3.5 w-3.5 text-[var(--g-bad)]" /> Propina
                 </div>
                 <div className="text-sm font-bold tabular-nums text-g-bad">
-                  {tip > 0 ? "+" + formatCurrency(tip) : "Sin propina"}
+                  {tip > 0 ? "+" + formatCurrency(tip) : "No tip"}
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-2">
