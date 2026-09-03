@@ -1,7 +1,7 @@
 {
-  "appId": "com.soluciones360.poss360t",
-  "productName": "POS S360T",
-  "copyright": "Copyright © 2026 POS S360T Contributors",
+  "appId": "com.zaipos.pos",
+  "productName": "ZAIPOS",
+  "copyright": "Copyright © 2026 ZAIPOS Contributors",
   "asar": true,
 
   "directories": {
@@ -23,8 +23,8 @@
     ],
     "category": "Office",
     "icon": "public/icon.png",
-    "maintainer": "POS S360T Contributors",
-    "vendor": "POS S360T"
+    "maintainer": "ZAIPOS Contributors",
+    "vendor": "ZAIPOS"
   },
 
   "win": {
@@ -46,6 +46,6 @@
     "perMachine": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "POS S360T"
+    "shortcutName": "ZAIPOS"
   }
 }
