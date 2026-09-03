@@ -1,7 +1,7 @@
 {
   "name": "zaipos",
   "productName": "ZAIPOS",
-  "description": "Open-source, AI-powered, offline-first point of sale for retail and restaurants.",
+  "description": "ZAIPOS — AI-powered, offline-first point of sale for retail and restaurants.",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -12,6 +12,7 @@
     "url": "https://github.com/MuhamedZanabal/ZAIPOS.git"
   },
   "keywords": [
+    "zaipos",
     "pos",
     "point-of-sale",
     "retail",
@@ -116,7 +117,7 @@
     "electron": "^42.0.1",
     "electron-builder": "^26.8.1",
     "eslint": "^9.32.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^6.0.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "jsdom": "^29.1.1",
