@@ -128,9 +128,7 @@ export function AppSidebar() {
               <GLogoIcon size={collapsed ? 36 : 44} />
               {!collapsed && (
                 <div>
-                  <div className="g-sb-brand-name">
-                    POS<span>-S360T</span>
-                  </div>
+                  <div className="g-sb-brand-name">ZAIPOS</div>
                   <div className="g-sb-brand-sub">Omnichannel POS / ERP</div>
                 </div>
               )}
