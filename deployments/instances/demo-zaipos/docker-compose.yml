@@ -1,0 +1,23 @@
+services:
+  pos:
+    build:
+      # Context = repository root, where the Dockerfile lives.
+      # Dokploy clones the repository and runs Compose from this instance directory.
+      context: ../../../
+      dockerfile: Dockerfile
+      args:
+        # VITE_* variables are embedded in the JS bundle at build time.
+        # They come from Dokploy UI in production or the local .env in development.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    image: zaipos-demo:latest
+    container_name: zaipos-demo
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3010}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
