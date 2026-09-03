@@ -20,9 +20,7 @@ export function BrandBar({
       {/* Lockup */}
       <div className="flex items-center gap-2.5">
         <GearMark size={28} />
-        <div className="lockup-text text-[15px] leading-none">
-          POS<span className="text-[#007BFF]">360</span><span className="text-[#10B981]">T</span>
-        </div>
+        <div className="lockup-text text-[15px] leading-none">ZAIPOS</div>
       </div>
 
       <div className="h-5 w-px bg-border shrink-0" />
