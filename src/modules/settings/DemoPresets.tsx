@@ -776,7 +776,7 @@ export default function DemoPresets() {
                 </p>
                 {generateLive && (
                   <p className="text-foreground">
-                    The following will also be generated: <strong>4–6 occupied tables</strong> con pedidos abiertos,{" "}
+                    The following will also be generated: <strong>4–6 occupied tables</strong> with open orders,{" "}
                     <strong>~50 sales</strong> from the last 7 days with a closed register for each day, and{" "}
                     <strong>5–8 deliveries</strong>.
                   </p>

@@ -68,7 +68,7 @@ export default function Reports() {
     let filename = "";
 
     if (type === 'days') {
-      csv = "Fecha,Tickets,Total\n" + data.days.map(d => `${d.date},${d.tickets},${d.total}`).join("\n");
+      csv = "Date,Tickets,Total\n" + data.days.map(d => `${d.date},${d.tickets},${d.total}`).join("\n");
       filename = `reporte_ventas_${dateFrom}_a_${dateTo}.csv`;
     } else {
       csv = "Product,Quantity,Total\n" + data.top.map(p => `${p.name},${p.qty},${p.total}`).join("\n");
@@ -152,7 +152,7 @@ export default function Reports() {
           </div>
           {/* Header */}
           <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
-            <div>Fecha</div>
+            <div>Date</div>
             <div className="text-right">Tickets</div>
             <div className="text-right">Total</div>
           </div>

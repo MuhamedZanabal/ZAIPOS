@@ -386,8 +386,8 @@ export default function POS() {
       const queuedOffline = !saleId || typeof saleId !== "string";
       toast.success(
         queuedOffline
-          ? `Venta guardada en cola · ${formatCurrency(payableTotal)}`
-          : `Venta registrada · ${formatCurrency(payableTotal)}`
+          ? `Sale queued · ${formatCurrency(payableTotal)}`
+          : `Sale recorded · ${formatCurrency(payableTotal)}`
       );
       if (saleId && typeof saleId === "string") {
         try {
@@ -421,7 +421,7 @@ export default function POS() {
         } catch (hwErr: any) {
           // La venta ya quedó registrada en BD; un fallo del hardware no debe
           // bloquear el cierre del ticket ni provocar que el cajero cobre dos veces.
-          toast.warning("Venta registrada, pero la impresora o gaveta fallaron", {
+          toast.warning("Sale recorded, but the printer or cash drawer failed", {
             description: hwErr?.message ?? "Check the hardware before the next ticket",
           });
         }

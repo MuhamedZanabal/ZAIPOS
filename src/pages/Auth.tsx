@@ -90,7 +90,7 @@ export default function Auth() {
           {/* Hero copy */}
           <div className="mt-auto mb-auto pt-12">
             <h1 className="auth-hero-title">
-              Tu venta como<br />
+              Your sales like<br />
               <span className="gradient-text">sistema operativo.</span>
             </h1>
             <p className="auth-hero-sub">

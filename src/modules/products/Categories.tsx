@@ -205,11 +205,11 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
             <div className="space-y-2 pl-6">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Desde</Label>
+                  <Label className="text-xs">From</Label>
                   <Input type="time" value={form.schedule_from ?? "08:00"} onChange={(e) => setForm({ ...form, schedule_from: e.target.value })} className="h-8" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Hasta</Label>
+                  <Label className="text-xs">To</Label>
                   <Input type="time" value={form.schedule_until ?? "22:00"} onChange={(e) => setForm({ ...form, schedule_until: e.target.value })} className="h-8" />
                 </div>
               </div>
@@ -237,7 +237,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
         </div>
 
         <div className="flex items-center justify-between p-3 border rounded-lg">
-          <Label>Activa</Label>
+          <Label>Active</Label>
           <Switch checked={form.status === "active"} onCheckedChange={(c) => setForm({ ...form, status: c ? "active" : "inactive" })} />
         </div>
 

@@ -94,7 +94,7 @@ export default function Production() {
           { l: "Orders today", v: String(stats.total), s: `${stats.running} in progress · ${stats.draft} queued` },
           { l: "Completed",  v: String(stats.completed), s: "Today" },
           { l: "En curso",     v: String(stats.running),   s: "activas ahora" },
-          { l: "Borradores",   v: String(stats.draft),     s: "pendientes de inicio" },
+          { l: "Drafts",   v: String(stats.draft),     s: "pending start" },
         ].map((s, i) => (
           <div key={i} className="glass flex flex-col gap-1.5 p-4 rounded-2xl">
             <div className="h-label">{s.l}</div>

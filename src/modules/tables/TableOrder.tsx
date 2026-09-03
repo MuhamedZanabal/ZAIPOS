@@ -455,7 +455,7 @@ export default function TableOrder() {
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--g-hairline)] glass-thin shrink-0">
         <button type="button" className="g-btn g-btn-ghost" onClick={() => navigate("/tables")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Mesas
+          <ArrowLeft className="h-4 w-4 mr-1" /> Tables
         </button>
         <div className="g-title-18">{(order as any).tables?.name ?? "Table"}</div>
         {sent && <span className="g-pill g-pill-warn g-pill-h22">Sent to register</span>}
@@ -601,7 +601,7 @@ export default function TableOrder() {
             <div className="p-3 space-y-2">
               {(items ?? []).length === 0 && (
                 <div className="text-center h-meta py-12">
-                  No products. Agrega desde la izquierda.
+                  No products. Add them from the left.
                 </div>
               )}
               {(items ?? []).map((it) => {

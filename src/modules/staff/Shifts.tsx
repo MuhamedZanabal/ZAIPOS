@@ -194,7 +194,7 @@ export default function Shifts() {
             className={`g-btn ${tab === t ? "g-btn-primary" : "g-btn-ghost"} g-btn-sm`}
             onClick={() => setTab(t)}
           >
-            {t === "week" ? "Semana" : t === "list" ? "Lista" : "Asistencia"}
+            {t === "week" ? "Week" : t === "list" ? "List" : "Attendance"}
           </button>
         ))}
       </div>
@@ -266,7 +266,7 @@ export default function Shifts() {
               <span>Entrada</span>
               <span>Salida</span>
               <span>Status</span>
-              <span className="text-right">Acciones</span>
+              <span className="text-right">Actions</span>
             </div>
             {shiftList.map((s: any, idx: number) => {
               const st = STATUS_MAP[s.status] ?? STATUS_MAP.scheduled;
@@ -323,9 +323,9 @@ export default function Shifts() {
         ) : (
           <div className="glass rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[2fr_2fr_120px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-              <span>Fecha</span>
+              <span>Date</span>
               <span>Employee</span>
-              <span>Tipo</span>
+              <span>Type</span>
             </div>
             {attendanceList.map((a: any, idx: number) => (
               <div

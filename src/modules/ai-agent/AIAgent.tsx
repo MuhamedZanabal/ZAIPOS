@@ -20,7 +20,7 @@ const SUGGESTIONS = [
   "Today's sales by hour",
   "What supplies should I order this week?",
   "Top 10 customers this quarter",
-  "Comparar sucursales",
+  "Compare branches",
 ];
 
 const DATA_SOURCES = [
@@ -128,7 +128,7 @@ export default function AIAgent() {
         id: crypto.randomUUID(),
         role: "ai",
         text: "You have active sales across all branches today. Peak demand occurs between 12:00 and 14:00. Check the Dashboard for full details.",
-        actions: ["Ver dashboard", "Exportar Excel"],
+        actions: ["View dashboard", "Export Excel"],
       };
     } else {
       aiMsg = {
@@ -209,7 +209,7 @@ export default function AIAgent() {
                   <span className="dot dot-brand g-ai-dot-mid" />
                   <span className="dot dot-brand g-ai-dot-dim" />
                 </span>
-                <span className="g-ai-typing-text">Consultando datos…</span>
+                <span className="g-ai-typing-text">Querying data…</span>
               </div>
             </div>
           )}
@@ -274,7 +274,7 @@ export default function AIAgent() {
 
         {/* Recent actions */}
         <div className="glass g-ai-actions-panel">
-          <div className="h-display g-ai-section-title">Acciones recientes</div>
+          <div className="h-display g-ai-section-title">Recent actions</div>
           {[
             { l: "Weekly report sent", s: "Today · 4 recipients", ok: true },
             { l: "Critical stock alert",  s: "2 SKUs · South Branch",  ok: false },
@@ -290,7 +290,7 @@ export default function AIAgent() {
         </div>
 
         <div className="glass-thin g-ai-privacy-note">
-          El agente accede solo a datos de tu tenant. Las consultas se registran en <code>audit_logs</code> y nunca salen de tu instancia.
+          The agent accesses only data from your tenant. Queries are recorded in <code>audit_logs</code> and never leave your instance.
         </div>
       </div>
     </div>

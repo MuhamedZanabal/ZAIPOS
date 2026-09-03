@@ -358,7 +358,7 @@ export default function Dashboard() {
         {/* Branches */}
         <div className="glass flex flex-col gap-3 g-panel">
           <div className="flex justify-between items-center">
-            <div className="g-title-15">Sucursales</div>
+            <div className="g-title-15">Branches</div>
             <Link to="/branches" className="g-link g-val-12">View all</Link>
           </div>
           <div className="flex flex-col gap-2">

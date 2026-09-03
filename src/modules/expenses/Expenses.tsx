@@ -197,7 +197,7 @@ export default function Expenses() {
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="g-exp-head">
-                <span>Fecha</span>
+                <span>Date</span>
                 <span>Description</span>
                 <span>Category</span>
                 <span>Method</span>
@@ -299,7 +299,7 @@ export default function Expenses() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha *</Label>
+                <Label>Date *</Label>
                 <Input
                   type="date"
                   value={expenseForm.expense_date}

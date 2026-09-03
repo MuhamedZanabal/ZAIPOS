@@ -184,7 +184,7 @@ export default function Cash() {
 
                   <div className="g-cash-mov-head">
                     <span>Hora</span>
-                    <span>Tipo</span>
+                    <span>Type</span>
                     <span className="text-right">Amount</span>
                     <span>Motivo</span>
                   </div>

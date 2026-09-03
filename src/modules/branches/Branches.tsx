@@ -132,7 +132,7 @@ export default function Branches() {
         </div>
         <div className="g-branches-header-info">
           <div className="g-branches-eyebrow">BUSINESS · BRANCHES</div>
-          <h1 className="g-branches-title">Sucursales</h1>
+          <h1 className="g-branches-title">Branches</h1>
           <div className="h-meta">
             {branches?.length ?? 0} registradas · {activeCount} activas
           </div>
@@ -171,7 +171,7 @@ export default function Branches() {
                       <div className="g-branch-card-name">{b.name}</div>
                       <div className="g-branch-card-pill-row">
                         <span className={"g-pill " + (isActive ? "g-pill-ok" : "g-pill-ghost")}>
-                          {isActive ? "Activa" : "Inactiva"}
+                          {isActive ? "Active" : "Inactive"}
                         </span>
                       </div>
                     </div>

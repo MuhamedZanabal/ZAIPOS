@@ -357,7 +357,7 @@ export default function AiAgentSettings() {
           </div>
 
           <div className="rounded-md bg-muted/40 border px-3 py-2 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Fecha y hora actual</p>
+            <p className="text-xs font-medium text-muted-foreground">Current date and time</p>
             <p className="text-xs text-muted-foreground">
               Automatically injected into every message — no setup required.
             </p>

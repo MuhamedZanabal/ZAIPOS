@@ -29,7 +29,7 @@ export function useSyncEngine() {
 
       if (pendingItems.length === 0) return;
 
-      toast.info(`Sincronizando ${pendingItems.length} transacciones pendientes...`);
+      toast.info(`Syncing ${pendingItems.length} pending transactions...`);
 
       let synced = 0;
       let failed = 0;

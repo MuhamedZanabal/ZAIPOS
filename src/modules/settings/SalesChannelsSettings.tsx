@@ -60,7 +60,7 @@ export default function SalesChannelsSettings() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Canales de venta actualizados");
+      toast.success("Sales channels updated");
       qc.invalidateQueries({ queryKey: ["tenant-channels"] });
       qc.invalidateQueries();
     },
@@ -189,7 +189,7 @@ export default function SalesChannelsSettings() {
         <div>
           <h2 className="font-bold flex items-center gap-2 text-ink-900">
             <Store className="h-5 w-5 text-brand-600" />
-            Canales de Venta
+            Sales Channels
           </h2>
           <p className="h-meta mt-1">
             Enable or disable the sales channels available for this business. Disabled channels will not appear in the Point of Sale or elsewhere in the system. (Super Admin only)
@@ -245,7 +245,7 @@ export default function SalesChannelsSettings() {
                 <h2 className="font-bold text-ink-900">Rappi Settings</h2>
                 {rappiInteg && (
                   <span className={`g-pill g-pill-h22 ml-2 ${rappiStatus === "active" ? "g-pill-ok" : "g-pill-ghost"}`}>
-                    {rappiStatus === "active" ? "Activa" : "Pausada"}
+                    {rappiStatus === "active" ? "Active" : "Paused"}
                   </span>
                 )}
               </div>
@@ -272,13 +272,13 @@ export default function SalesChannelsSettings() {
                 <Select value={rappiStatus} onValueChange={(v) => setRappiStatus(v as "active" | "paused")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Activa</SelectItem>
-                    <SelectItem value="paused">Pausada</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center justify-between border border-black/5 rounded-lg px-3 h-10 mt-6">
-                <Label className="cursor-pointer">Auto-aceptar pedidos</Label>
+                <Label className="cursor-pointer">Auto-accept orders</Label>
                 <Switch checked={rappiAutoAccept} onCheckedChange={setRappiAutoAccept} />
               </div>
             </div>

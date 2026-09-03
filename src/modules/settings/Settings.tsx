@@ -19,10 +19,10 @@ import {
 
 const TABS = [
   { id: "business",   label: "My Business",       icon: Building2 },
-  { id: "branches",   label: "Sucursales",        icon: GitBranch },
+  { id: "branches",   label: "Branches",        icon: GitBranch },
   { id: "tables",     label: "Tables",             icon: UtensilsCrossed },
-  { id: "users",      label: "Usuarios y permisos", icon: Users },
-  { id: "canales",    label: "Canales de venta",  icon: Globe },
+  { id: "users",      label: "Users & permissions", icon: Users },
+  { id: "canales",    label: "Sales channels",  icon: Globe },
   { id: "whatsapp",   label: "WhatsApp AI",       icon: MessageCircle },
   { id: "agente",     label: "Agente IA",         icon: Bot },
   { id: "receipt",    label: "Receipt",            icon: Receipt },

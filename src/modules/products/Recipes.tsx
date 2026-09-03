@@ -8,11 +8,11 @@ import { formatCurrency } from "@/lib/format";
 
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
-  composite: "Compuesto",
+  composite: "Composite",
   production: "Production",
   combo: "Combo",
   ingredient: "Ingredient",
-  modifier: "Modificador"
+  modifier: "Modifier"
 };
 
 export default function Recipes() {

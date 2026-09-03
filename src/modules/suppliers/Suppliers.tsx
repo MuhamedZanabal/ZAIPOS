@@ -210,7 +210,7 @@ export default function Suppliers() {
           className={`g-btn ${tab === "suppliers" ? "g-btn-primary" : "g-btn-ghost"} g-btn-sm`}
           onClick={() => setTab("suppliers")}
         >
-          Proveedores
+          Suppliers
         </button>
         <button
           type="button"
@@ -303,7 +303,7 @@ export default function Suppliers() {
         ) : (
           <div className="glass rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[1fr_2fr_100px_2fr_120px_100px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-              <span>Fecha</span>
+              <span>Date</span>
               <span>Supplier</span>
               <span>Status</span>
               <span>Notes</span>

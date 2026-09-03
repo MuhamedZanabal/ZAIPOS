@@ -63,7 +63,7 @@ const FEATURES = [
 
 /* ── Stats ── */
 const STATS = [
-  { value: "5", unit: "canales", label: "de venta integrados" },
+  { value: "5", unit: "channels", label: "integrated for sales" },
   { value: "∞", unit: "branches", label: "multi-branch" },
   { value: "100%", unit: "offline", label: "without losing a ticket" },
   { value: "8", unit: "roles", label: "de acceso granular" },
@@ -160,7 +160,7 @@ export default function Landing() {
 
           {/* Headline */}
           <h1 className="landing-hero-title">
-            Tu venta como<br />
+            Your sales like<br />
             <span className="gradient-text">sistema operativo.</span>
           </h1>
 

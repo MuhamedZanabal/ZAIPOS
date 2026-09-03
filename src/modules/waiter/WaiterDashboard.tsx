@@ -90,7 +90,7 @@ function TableDrawer({ table, order, items, onClose, onNavigate }: {
               return (
                 <>
                   {c.pending > 0   && <span className="s-pill s-pill-mute">{c.pending} pending</span>}
-                  {c.preparing > 0 && <span className="s-pill s-pill-warn">{c.preparing} preparando</span>}
+                  {c.preparing > 0 && <span className="s-pill s-pill-warn">{c.preparing} preparing</span>}
                   {c.ready > 0     && <span className="s-pill s-pill-blue">{c.ready} ready</span>}
                   {c.dispatched > 0 && <span className="s-pill s-pill-green">{c.dispatched} servido{c.dispatched !== 1 ? "s" : ""}</span>}
                 </>

@@ -3,7 +3,7 @@ const { useState, useMemo } = React;
 
 /* ===== Demo data ===== */
 const CATS = [
-  { id: "all",    label: "Todos",       hue: "blue",   n: 142 },
+  { id: "all",    label: "All",       hue: "blue",   n: 142 },
   { id: "burg",   label: "Hamburguesas", hue: "rose",  n: 18 },
   { id: "pizza",  label: "Pizzas",       hue: "amber", n: 14 },
   { id: "beb",    label: "Bebidas",      hue: "cyan",  n: 32 },
@@ -15,7 +15,7 @@ const CATS = [
 
 const PRODS = [
   { id: 1, n: "Smash Doble Tocineta", cat: "burg", hue: "rose",  px: 28900, sku: "SMSH-2T", st: 24 },
-  { id: 2, n: "Burger Clásica",        cat: "burg", hue: "rose",  px: 22500, sku: "BCL-01", st: 41 },
+  { id: 2, n: "Classic Burger",        cat: "burg", hue: "rose",  px: 22500, sku: "BCL-01", st: 41 },
   { id: 3, n: "Pollo Crispy BBQ",      cat: "burg", hue: "rose",  px: 24900, sku: "BPB-03", st: 18 },
   { id: 4, n: "Pizza Pepperoni 30cm",  cat: "pizza", hue: "amber", px: 38000, sku: "PZ-PEP", st: 12 },
   { id: 5, n: "Pizza Hawaiana 30cm",   cat: "pizza", hue: "amber", px: 36500, sku: "PZ-HAW", st: 10 },
@@ -23,11 +23,11 @@ const PRODS = [
   { id: 7, n: "Limonada Cerezada",     cat: "beb",   hue: "cyan",  px: 9500,  sku: "BEB-LCZ", st: 80 },
   { id: 8, n: "Coca Cola 350ml",       cat: "beb",   hue: "cyan",  px: 5500,  sku: "BEB-CC", st: 220 },
   { id: 9, n: "Cerveza Club Colombia", cat: "beb",   hue: "cyan",  px: 8900,  sku: "BEB-CLU", st: 64 },
-  { id: 10, n: "Brownie con Helado",   cat: "post",  hue: "violet", px: 14500, sku: "PST-BHL", st: 14 },
-  { id: 11, n: "Cheesecake Maracuyá",  cat: "post",  hue: "violet", px: 13900, sku: "PST-CCM", st: 9 },
+  { id: 10, n: "Brownie with Ice Cream",   cat: "post",  hue: "violet", px: 14500, sku: "PST-BHL", st: 14 },
+  { id: 11, n: "Passion Fruit Cheesecake",  cat: "post",  hue: "violet", px: 13900, sku: "PST-CCM", st: 9 },
   { id: 12, n: "Combo Smash + Fries",  cat: "comb",  hue: "green", px: 32500, sku: "CMB-SF", st: 999 },
   { id: 13, n: "Combo Familiar Pizza", cat: "comb",  hue: "green", px: 78000, sku: "CMB-FP", st: 999 },
-  { id: 14, n: "Papas Rústicas",       cat: "extra", hue: "slate", px: 7900,  sku: "EX-PR",  st: 60 },
+  { id: 14, n: "Rustic Potatoes",       cat: "extra", hue: "slate", px: 7900,  sku: "EX-PR",  st: 60 },
   { id: 15, n: "Aros de Cebolla",      cat: "extra", hue: "slate", px: 8500,  sku: "EX-AC",  st: 38 },
   { id: 16, n: "Huevos Rancheros",     cat: "des",   hue: "lime",  px: 18900, sku: "DES-HR", st: 22 },
 ];
@@ -77,13 +77,13 @@ function CategoryRail({ cats, active, onPick }) {
 function ZoomRail({ value, onChange, min = 1, max = 3 }) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
-    <div className="zoom-rail" title="Tamaño de los productos">
-      <button onClick={() => onChange(Math.max(min, value - 1))} aria-label="Reducir tamaño"><I.Minus size={12} /></button>
+    <div className="zoom-rail" title="Product size">
+      <button onClick={() => onChange(Math.max(min, value - 1))} aria-label="Decrease size"><I.Minus size={12} /></button>
       <input type="range" min={min} max={max} step={1} value={value}
-             aria-label="Control deslizante de tamaño de productos"
+             aria-label="Product size slider"
              onChange={e => onChange(Number(e.target.value))}
              style={{ "--zp": pct + "%" }} />
-      <button onClick={() => onChange(Math.min(max, value + 1))} aria-label="Aumentar tamaño"><I.Plus size={12} /></button>
+      <button onClick={() => onChange(Math.min(max, value + 1))} aria-label="Increase size"><I.Plus size={12} /></button>
       <I.Search size={12} style={{ marginLeft: 2 }} />
     </div>
   );
@@ -126,17 +126,17 @@ function TabletPOS() {
 
   return (
     <div className="ab-shell s-bg-navy ab-tablet">
-      <BrandBar branch="Sucursal · Centro Mayor" session="Caja #02 · Camila R." channel="Local — Mostrador" />
+      <BrandBar branch="Branch · Centro Mayor" session="Register #02 · Camila R." channel="In-store — Counter" />
       {/* Subheader: channels + ticker + actions */}
       <div className="pos-subheader">
-        <Eyebrow>CANAL DE VENTA</Eyebrow>
+        <Eyebrow>SALES CHANNEL</Eyebrow>
         <div style={{ display: "flex", gap: 6 }}>
           {[
-            { id: "local",  label: "Local",   ic: I.Cart, title: "Venta local" },
-            { id: "rappi",  label: "Rappi",   ic: I.Bike, title: "Venta Rappi" },
-            { id: "didi",   label: "DiDi",    ic: I.Bike, title: "Venta DiDi Food" },
-            { id: "ubr",    label: "Uber",    ic: I.Bike, title: "Venta Uber Eats" },
-            { id: "dom",    label: "Domicilio", ic: I.Bike, title: "Venta a domicilio propia" },
+            { id: "local",  label: "Local",   ic: I.Cart, title: "In-store sale" },
+            { id: "rappi",  label: "Rappi",   ic: I.Bike, title: "Rappi sale" },
+            { id: "didi",   label: "DiDi",    ic: I.Bike, title: "DiDi Food sale" },
+            { id: "ubr",    label: "Uber",    ic: I.Bike, title: "Uber Eats sale" },
+            { id: "dom",    label: "Delivery", ic: I.Bike, title: "In-house delivery sale" },
           ].map(c => {
             const Ico = c.ic;
             return (
@@ -148,10 +148,10 @@ function TabletPOS() {
         </div>
         <div style={{ flex: 1 }} />
         <TickRail items={[
-          { k: "VENTAS HOY", v: "$ 4.182.500" },
+          { k: "SALES TODAY", v: "$ 4.182.500" },
           { k: "TICKETS",    v: "63" },
           { k: "TICKET PROM", v: "$ 66.388" },
-          { k: "EFECTIVO",   v: "$ 1.245.000" },
+          { k: "CASH",   v: "$ 1.245.000" },
         ]} />
       </div>
 
@@ -166,16 +166,16 @@ function TabletPOS() {
               <input 
                 value={search} 
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar producto, código o EAN…" 
-                aria-label="Buscar producto"
+                placeholder="Search product, code, or EAN…" 
+                aria-label="Search product"
               />
               <span className="kbd">F2</span>
             </div>
-            <button className="btn btn-ghost" title="Escanear código de barras" style={{ height: 46, padding: "0 16px" }}>
+            <button className="btn btn-ghost" title="Scan barcode" style={{ height: 46, padding: "0 16px" }}>
               <I.Scan size={18} /> Escanear EAN
             </button>
-            <button className="btn btn-ghost" title="Asignar cliente al pedido" style={{ height: 46, padding: "0 16px" }}>
-              <I.User size={18} /> Cliente
+            <button className="btn btn-ghost" title="Assign customer to order" style={{ height: 46, padding: "0 16px" }}>
+              <I.User size={18} /> Customer
             </button>
           </div>
 
@@ -185,11 +185,11 @@ function TabletPOS() {
           {/* Product grid */}
           <div className="pos-catalog-panel" style={{ "--tile-cols": COLS, "--thumb-h": THUMB + "px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12 }}>
-              <Eyebrow color="blue">CATÁLOGO · {filtered.length} ÍTEMS</Eyebrow>
+              <Eyebrow color="blue">CATALOG · {filtered.length} ITEMS</Eyebrow>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <ZoomRail value={zoom} onChange={setZoom} />
                 <div style={{ display: "flex", gap: 6, alignItems: "center", color: "#94a3b8", fontSize: 11 }}>
-                  <I.Filter size={12} /> Disponibles · Esta sucursal
+                  <I.Filter size={12} /> Available · This branch
                 </div>
               </div>
             </div>
@@ -204,7 +204,7 @@ function TabletPOS() {
           {/* Header */}
           <div className="tablet-aside-header">
             <div>
-              <Eyebrow color="blue">PEDIDO ACTIVO</Eyebrow>
+              <Eyebrow color="blue">ACTIVE ORDER</Eyebrow>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 2 }}>
                 <span className="ticket-num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22 }}>
                   Ticket <span className="gradient-text">#A-1284</span>
@@ -214,7 +214,7 @@ function TabletPOS() {
                 15:42 · Mostrador · Local
               </div>
             </div>
-            <button className="btn btn-ghost" title="Mantener pedido en espera" style={{ padding: "6px 12px", fontSize: 11 }}>
+            <button className="btn btn-ghost" title="Hold order" style={{ padding: "6px 12px", fontSize: 11 }}>
               <I.Pkg size={14} /> Mantener
             </button>
           </div>
@@ -224,7 +224,7 @@ function TabletPOS() {
             {cart.length === 0 ? (
               <div style={{ padding: "48px 12px", textAlign: "center", color: "#64748b" }}>
                 <I.Cart size={28} />
-                <div style={{ marginTop: 10, fontSize: 13 }}>Toca un producto para empezar</div>
+                <div style={{ marginTop: 10, fontSize: 13 }}>Tap a product to start</div>
               </div>
             ) : cart.map(l => (
               <div key={l.id} className="cart-line">
@@ -247,7 +247,7 @@ function TabletPOS() {
                 <div className="cl-total" style={{ width: 80, textAlign: "right", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14 }}>
                   {COP(l.px * l.qty)}
                 </div>
-                <button title="Eliminar ítem" onClick={() => remove(l.id)} style={{ background: "transparent", border: 0, color: "#475569", cursor: "pointer" }}><I.X size={14} /></button>
+                <button title="Remove item" onClick={() => remove(l.id)} style={{ background: "transparent", border: 0, color: "#475569", cursor: "pointer" }}><I.X size={14} /></button>
               </div>
             ))}
           </div>

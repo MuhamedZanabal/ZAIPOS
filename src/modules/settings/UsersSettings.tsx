@@ -203,7 +203,7 @@ export default function UsersSettings() {
 
           <Tabs defaultValue="create">
             <TabsList>
-              <TabsTrigger value="create">Crear nuevo</TabsTrigger>
+              <TabsTrigger value="create">Create new</TabsTrigger>
               <TabsTrigger value="invite">Invitar existente</TabsTrigger>
             </TabsList>
 
@@ -335,7 +335,7 @@ export default function UsersSettings() {
                   <th className="text-left px-5 py-3 h-label">User</th>
                   <th className="text-left px-5 py-3 h-label">Role</th>
                   <th className="text-left px-5 py-3 h-label">Branch</th>
-                  {canManage && <th className="w-12 px-5 py-3 sr-only">Acciones</th>}
+                  {canManage && <th className="w-12 px-5 py-3 sr-only">Actions</th>}
                 </tr>
               </thead>
               <tbody>

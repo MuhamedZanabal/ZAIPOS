@@ -412,7 +412,7 @@ export default function DigitalOrders() {
     <div className="flex flex-col gap-4">
       <PageHeader
         eyebrow="OPERATIONS · PLATFORMS"
-        title="Pedidos digitales"
+        title="Digital orders"
         description={`Rappi, plataformas y otros canales digitales · ${branchName}`}
         actions={
           <button type="button" className="g-btn g-btn-primary" onClick={() => { resetForm(); setOpen(true); }}>
@@ -439,7 +439,7 @@ export default function DigitalOrders() {
             <div className="text-right">Bruto</div>
             <div className="text-right">Commission</div>
             <div className="text-right">Neto</div>
-            <div className="text-right">Acciones</div>
+            <div className="text-right">Actions</div>
           </div>
 
           <div className="divide-y divide-[var(--hairline)]">

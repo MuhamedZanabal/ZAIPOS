@@ -146,7 +146,7 @@ export default function Customers() {
           {/* Table header */}
           <div className="grid grid-cols-[2fr_1fr_2fr_2fr_100px_72px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
             <span>Name</span>
-            <span>Documento</span>
+            <span>ID / Tax ID</span>
             <span>Contacto</span>
             <span>Address</span>
             <span className="text-right">Puntos</span>

@@ -11,10 +11,10 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
 const TYPE_LABELS: Record<string, string> = {
-  CHECKOUT_SALE: "Venta POS",
+  CHECKOUT_SALE: "POS Sale",
   CHECKOUT_TABLE_ORDER: "Table checkout",
   SEND_TO_KITCHEN: "Send to kitchen",
-  MARK_ORDER_READY: "Orden lista",
+  MARK_ORDER_READY: "Order ready",
   SEND_TO_CASHIER: "Send to register",
   APPLY_INVENTORY_MOVEMENT: "Inventory movement",
   ADD_TABLE_ORDER_ITEMS: "Table items",

@@ -170,7 +170,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
 
       {/* Nuevo grupo */}
       <div className="glass p-3 space-y-2 border-dashed">
-        <p className="text-xs font-medium text-muted-foreground">Nuevo grupo de modificadores</p>
+        <p className="text-xs font-medium text-muted-foreground">New modifier group</p>
         <div className="flex gap-2">
           <Input
             placeholder="Group name (e.g. Add-ons)"
@@ -194,7 +194,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             <Label htmlFor="req-switch" className="text-xs">Required</Label>
           </div>
           <Button size="sm" onClick={addGroup} disabled={!newGroupName.trim()} className="h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" /> Crear grupo
+            <Plus className="h-3 w-3 mr-1" /> Create group
           </Button>
         </div>
       </div>
@@ -473,7 +473,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tipo</Label>
+                <Label>Type</Label>
                 <Select value={form.product_type} onValueChange={(v) => setForm({ ...form, product_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
@@ -531,7 +531,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <Label>Requiere detalle</Label>
+                <Label>Requires details</Label>
                 <p className="text-xs text-muted-foreground">When added to an order, a comment is requested and sent to the KDS</p>
               </div>
               <Switch checked={!!form.requires_detail} onCheckedChange={(c) => setForm({ ...form, requires_detail: c })} />

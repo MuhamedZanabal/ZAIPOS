@@ -42,8 +42,8 @@ export async function lookupEAN(barcode: string): Promise<BarcodeProduct | null>
   const url = `${BASE_URL}?barcode=${encodeURIComponent(barcode)}&formatted=y&key=${API_KEY}`;
   const res = await fetch(url);
   if (res.status === 404) return lookupOpenFoodFacts(barcode);
-  if (res.status === 429) throw new Error("Límite de consultas alcanzado. Intenta más tarde.");
-  if (!res.ok) throw new Error(`Error ${res.status} al consultar la API de códigos de barras.`);
+  if (res.status === 429) throw new Error("Query limit reached. Try again later.");
+  if (!res.ok) throw new Error(`Error ${res.status} querying the barcode API.`);
   const data = await res.json();
   return (data.products as BarcodeProduct[])?.[0] ?? null;
 }

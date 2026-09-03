@@ -146,7 +146,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
         });
       }
       toast.success("Inventory updated", {
-        description: `${toSave.length} movimiento(s) registrado(s)${products.length - toSave.length > 0 ? `, ${products.length - toSave.length} saltado(s)` : ""}`,
+        description: `${toSave.length} movement(s) recorded${products.length - toSave.length > 0 ? `, ${products.length - toSave.length} skipped` : ""}`,
       });
       onClose();
     } catch (err: any) {
@@ -217,7 +217,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
             <Card className="p-3 flex flex-wrap gap-4 text-sm bg-muted/30">
               {meta.supplier && <span><span className="text-muted-foreground">Supplier:</span> <strong>{meta.supplier}</strong></span>}
               {meta.invoice_number && <span><span className="text-muted-foreground">Invoice #:</span> <strong>{meta.invoice_number}</strong></span>}
-              {meta.invoice_date && <span><span className="text-muted-foreground">Fecha:</span> <strong>{meta.invoice_date}</strong></span>}
+              {meta.invoice_date && <span><span className="text-muted-foreground">Date:</span> <strong>{meta.invoice_date}</strong></span>}
             </Card>
           )}
 

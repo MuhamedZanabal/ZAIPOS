@@ -102,7 +102,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
       </div>
 
       {list.length === 0 ? (
-        <div className="py-10 text-center h-meta">No hay cuentas enviadas por meseros.</div>
+        <div className="py-10 text-center h-meta">There are no bills sent by waiters.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
           {list.map((o: any) => {

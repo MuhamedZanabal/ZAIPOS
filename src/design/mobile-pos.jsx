@@ -9,14 +9,14 @@ function MobilePOS() {
   const tables = [
     { id: 1,  guests: 2, status: "occupied",  total: 86200, time: "12m", waiter: "JR" },
     { id: 2,  guests: 0, status: "empty" },
-    { id: 3,  guests: 4, status: "attention", total: 142800, time: "34m", waiter: "JR", note: "Llamado a mesero" },
+    { id: 3,  guests: 4, status: "attention", total: 142800, time: "34m", waiter: "JR", note: "Waiter called" },
     { id: 4,  guests: 0, status: "empty" },
     { id: 5,  guests: 3, status: "occupied",  total: 67400, time: "8m",  waiter: "MA" },
     { id: 6,  guests: 0, status: "empty" },
     { id: 7,  guests: 2, status: "occupied",  total: 38900, time: "21m", waiter: "JR" },
     { id: 8,  guests: 6, status: "occupied",  total: 312500, time: "45m", waiter: "MA" },
     { id: 9,  guests: 0, status: "empty" },
-    { id: 10, guests: 4, status: "attention", total: 96400, time: "52m", waiter: "MA", note: "Cobro pendiente" },
+    { id: 10, guests: 4, status: "attention", total: 96400, time: "52m", waiter: "MA", note: "Payment pending" },
     { id: 11, guests: 0, status: "empty" },
     { id: 12, guests: 2, status: "occupied",  total: 28900, time: "5m",  waiter: "JR" },
   ];
@@ -41,7 +41,7 @@ function MobilePOS() {
           <div className="mp-brand-title">
             POS<span className="mp-brand-360">360</span><span className="mp-brand-t">T</span>
           </div>
-          <Eyebrow className="mp-brand-subtitle">MESERO · CENTRO MAYOR</Eyebrow>
+          <Eyebrow className="mp-brand-subtitle">WAITER · CENTRO MAYOR</Eyebrow>
         </div>
         <div className="mp-flex-1" />
         <button className="btn btn-ghost mp-bell-btn" title="Notificaciones" aria-label="Notificaciones">
@@ -52,17 +52,17 @@ function MobilePOS() {
       {/* Greeting & impact card */}
       <div className="greeting-impact-card-wrapper">
         <div className="s-glass mp-greeting-card">
-          <Eyebrow color="blue">TURNO ACTIVO · 5h 12m</Eyebrow>
+          <Eyebrow color="blue">ACTIVE SHIFT · 5h 12m</Eyebrow>
           <div className="mp-greeting-title">
             Hola, <span className="gradient-text">Juan R.</span>
           </div>
           <div className="mp-stats-grid">
             <div>
-              <Eyebrow className="mp-stat-label">MESAS</Eyebrow>
+              <Eyebrow className="mp-stat-label">TABLES</Eyebrow>
               <div className="big-number-plain mp-stat-val-plain">5</div>
             </div>
             <div>
-              <Eyebrow className="mp-stat-label">VENTAS</Eyebrow>
+              <Eyebrow className="mp-stat-label">SALES</Eyebrow>
               <div className="big-number mp-stat-val">$ 642k</div>
             </div>
             <div>
@@ -76,10 +76,10 @@ function MobilePOS() {
       {/* Quick actions */}
       <div className="quick-actions-grid">
         {[
-          { ic: I.Plus, l: "Nueva", kind: "blue", title: "Nueva venta" },
-          { ic: I.Bike, l: "Domicilio", kind: "green", title: "Registrar domicilio" },
-          { ic: I.Scan, l: "Escanear", kind: "purple", title: "Escanear código EAN" },
-          { ic: I.Receipt, l: "Cobrar", kind: "amber", title: "Cobrar pedido" },
+          { ic: I.Plus, l: "New", kind: "blue", title: "New sale" },
+          { ic: I.Bike, l: "Delivery", kind: "green", title: "Registrar domicilio" },
+          { ic: I.Scan, l: "Scan", kind: "purple", title: "Scan EAN code" },
+          { ic: I.Receipt, l: "Charge", kind: "amber", title: "Charge order" },
         ].map((a) => {
           const Ico = a.ic;
           return (
@@ -96,7 +96,7 @@ function MobilePOS() {
       {/* Tab pills */}
       <div className="tab-pills-row">
         {[
-          { id: "mesas", l: "Mesas" },
+          { id: "mesas", l: "Tables" },
           { id: "comandas", l: "Comandas", n: 7 },
           { id: "cuentas", l: "Cuentas", n: 2 },
         ].map(t => (
@@ -111,17 +111,17 @@ function MobilePOS() {
       {/* Mesas grid */}
       <div className="tables-grid-wrapper">
         <div className="mp-tables-header">
-          <Eyebrow color="mute">SALÓN PRINCIPAL · 12 MESAS</Eyebrow>
+          <Eyebrow color="mute">MAIN DINING ROOM · 12 TABLES</Eyebrow>
           <div className="mp-tables-status">
             <span><LiveDot /> 5 ocupadas</span>
-            <span><LiveDot kind="amber" /> 2 atención</span>
+            <span><LiveDot kind="amber" /> 2 need attention</span>
           </div>
         </div>
         <div className="tables-grid">
           {tables.map(t => (
             <div key={t.id} className={`tcard is-${t.status} mp-tcard-inner`} onClick={() => t.status !== "empty" && setOpenTable(t)}>
               <div className="mp-tcard-top">
-                <Eyebrow className="mp-tcard-label">MESA</Eyebrow>
+                <Eyebrow className="mp-tcard-label">TABLE</Eyebrow>
                 {t.status === "occupied" && <span className="mp-tcard-time">{t.time}</span>}
                 {t.status === "attention" && <LiveDot kind="amber" />}
               </div>
@@ -129,7 +129,7 @@ function MobilePOS() {
                 {String(t.id).padStart(2, "0")}
               </div>
               {t.status === "empty" ? (
-                <div className="mp-tcard-empty">Disponible</div>
+                <div className="mp-tcard-empty">Available</div>
               ) : (
                 <>
                   <div className="mp-tcard-guests">
@@ -153,11 +153,11 @@ function MobilePOS() {
       {/* Bottom nav */}
       <nav className="tab-bar">
         {[
-          { id: "home", ic: I.Home,    l: "Inicio", title: "Página de inicio" },
-          { id: "mesas", ic: I.Table,  l: "Mesas", active: true, title: "Gestión de mesas" },
-          { id: "ord",  ic: I.Receipt, l: "Órdenes", title: "Ver órdenes" },
-          { id: "dom",  ic: I.Bike,    l: "Domicilio", title: "Gestión de domicilios" },
-          { id: "yo",   ic: I.User,    l: "Yo", title: "Perfil de usuario" },
+          { id: "home", ic: I.Home,    l: "Home", title: "Home page" },
+          { id: "mesas", ic: I.Table,  l: "Tables", active: true, title: "Table management" },
+          { id: "ord",  ic: I.Receipt, l: "Orders", title: "View orders" },
+          { id: "dom",  ic: I.Bike,    l: "Delivery", title: "Delivery management" },
+          { id: "yo",   ic: I.User,    l: "Me", title: "User profile" },
         ].map(t => {
           const Ico = t.ic;
           return (
@@ -176,15 +176,15 @@ function MobilePOS() {
             <div className="mp-drawer-handle" />
             <div className="mp-drawer-header">
               <div>
-                <Eyebrow color="blue">MESA</Eyebrow>
+                <Eyebrow color="blue">TABLE</Eyebrow>
                 <div className="mp-drawer-title">
-                  Mesa {String(openTable.id).padStart(2, "0")}
+                  Table {String(openTable.id).padStart(2, "0")}
                 </div>
                 <div className="mp-drawer-subtitle">{openTable.guests} comensales · Abierta {openTable.time}</div>
               </div>
               <Pill kind={openTable.status === "attention" ? "warn" : "green"}>
                 <LiveDot kind={openTable.status === "attention" ? "amber" : "green"} />
-                {openTable.status === "attention" ? "Atención" : "Activa"}
+                {openTable.status === "attention" ? "Needs attention" : "Active"}
               </Pill>
             </div>
             <div className="mp-drawer-items">
@@ -205,8 +205,8 @@ function MobilePOS() {
               </div>
             </div>
             <div className="mp-drawer-actions">
-              <button className="btn btn-ghost" title="Enviar orden a cocina" aria-label="Enviar orden a cocina"><I.Send size={14} /> A cocina</button>
-              <button className="btn btn-success" title="Proceder al cobro de la mesa" aria-label="Proceder al cobro de la mesa"><I.Receipt size={14} /> Cobrar</button>
+              <button className="btn btn-ghost" title="Send order to kitchen" aria-label="Send order to kitchen"><I.Send size={14} /> To kitchen</button>
+              <button className="btn btn-success" title="Proceed to table checkout" aria-label="Proceed to table checkout"><I.Receipt size={14} /> Charge</button>
             </div>
           </div>
         </div>

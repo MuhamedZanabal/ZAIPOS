@@ -26,7 +26,7 @@ const MOVE_TYPES = ["purchase", "adjustment", "waste", "return"] as const;
 
 const MOVE_TYPE_LABELS: Record<typeof MOVE_TYPES[number], string> = {
   purchase:   "Compra / Entrada",
-  adjustment: "Ajuste",
+  adjustment: "Adjustment",
   waste:      "Waste / Loss",
   return:     "Return",
 };
@@ -432,8 +432,8 @@ export default function Inventory() {
               <span className="h-label">SKU</span>
               <span className="h-label">Current stock</span>
               <span className="h-label">Location</span>
-              <span className="h-label">Movimiento</span>
-              <span className="h-label">Unidad</span>
+              <span className="h-label">Movement</span>
+              <span className="h-label">Unit</span>
               <span className="h-label">Status</span>
             </div>
 
@@ -540,13 +540,13 @@ export default function Inventory() {
         <div className="glass overflow-hidden">
           {/* Header */}
           <div className="grid items-center px-5 py-3 inv-history-grid inv-table-header">
-            <span className="h-label">Fecha</span>
+            <span className="h-label">Date</span>
             <span className="h-label">Product</span>
             <span className="h-label">Center</span>
-            <span className="h-label">Tipo</span>
+            <span className="h-label">Type</span>
             <span className="h-label">Quantity</span>
             <span className="h-label">Motivo</span>
-            <span className="h-label">Origen</span>
+            <span className="h-label">Source</span>
           </div>
 
           {(!movements || movements.length === 0) ? (
@@ -716,7 +716,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
         reason: reason.trim() || `Entrada manual — ${MOVE_TYPE_LABELS[type]}`,
         referenceType: "manual",
       });
-      toast.success("Movimiento registrado correctamente");
+      toast.success("Movement recorded successfully");
       onClose();
     } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
@@ -733,7 +733,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
 
         {/* Tipo de movimiento */}
         <div className="space-y-1.5">
-          <Label>Tipo de movimiento</Label>
+          <Label>Movement type</Label>
           <div className="grid grid-cols-2 gap-2">
             {MOVE_TYPES.map((t) => (
               <button
@@ -825,7 +825,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
           className="g-btn g-btn-primary w-full"
           disabled={saving || !productId || !qty || !centerId}
         >
-          {saving ? "Registrando…" : "Registrar movimiento"}
+          {saving ? "Recording…" : "Record movement"}
         </button>
       </form>
     </DialogContent>

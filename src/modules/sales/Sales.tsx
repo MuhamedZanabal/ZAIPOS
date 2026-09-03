@@ -62,7 +62,7 @@ export default function Sales() {
         <div className="glass rounded-2xl overflow-hidden">
           <div className="g-sales-head">
             <span>Ticket</span>
-            <span>Fecha</span>
+            <span>Date</span>
             <span>Items</span>
             <span>Payment</span>
             <span className="text-right">Total</span>

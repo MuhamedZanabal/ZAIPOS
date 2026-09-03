@@ -337,7 +337,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
           <Separator className="mt-4" />
           <div className="px-6 py-4 flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              {lines.filter(l => l.status === "new" || l.status === "notfound").length} nuevo(s) ·{" "}
+              {lines.filter(l => l.status === "new" || l.status === "notfound").length} new ·{" "}
               {lines.filter(l => l.status === "found").length} existente(s)
             </p>
             <Button onClick={submit} disabled={!canSubmit || saving} className="min-w-36">

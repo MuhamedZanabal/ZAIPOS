@@ -100,7 +100,7 @@ function Shell() {
                     <div className="g-topbar-user-name">{branchName}</div>
                     <div className={cn("g-topbar-user-role", openSession ? "g-topbar-user-role-ok" : "g-topbar-user-role-off")}>
                       <span className={cn("g-dot", openSession ? "g-dot-ok" : "")} />
-                      {roles[0] ?? "Usuario"}
+                      {roles[0] ?? "User"}
                     </div>
                   </div>
                   <ChevronDown size={14} className="hidden md:block shrink-0 text-[--ink-500]" />

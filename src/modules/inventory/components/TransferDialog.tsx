@@ -65,16 +65,16 @@ export function TransferDialog({ tenantId, branchId, userId, products, centers, 
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Origen</Label>
+            <Label>Source</Label>
             <Select value={fromCenterId} onValueChange={setFromCenterId}>
-              <SelectTrigger><SelectValue placeholder="Desde..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="From..." /></SelectTrigger>
               <SelectContent>
                 {centers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Destino</Label>
+            <Label>Destination</Label>
             <Select value={toCenterId} onValueChange={setToCenterId}>
               <SelectTrigger><SelectValue placeholder="Hacia..." /></SelectTrigger>
               <SelectContent>

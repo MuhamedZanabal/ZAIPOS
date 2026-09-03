@@ -15,11 +15,11 @@ import { useToast } from "@/hooks/use-toast";
 
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
-  composite: "Compuesto",
+  composite: "Composite",
   production: "Production",
   combo: "Combo",
   ingredient: "Ingredient",
-  modifier: "Modificador"
+  modifier: "Modifier"
 };
 
 export default function Products() {
@@ -78,12 +78,12 @@ export default function Products() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      { name: "Coca Cola 600ml", category_name: "Bebidas", sku: "BEB-001", barcode: "123456789012", price: "2.50", cost: "1.00", product_type: "simple", status: "active" },
-      { name: "Carne de Hamburguesa (Caja 10kg)", category_name: "Insumos", sku: "INS-001", barcode: "", price: "0", cost: "50.00", product_type: "ingredient", status: "active" },
-      { name: "Hamburguesa Sencilla", category_name: "Platos Principales", sku: "PLA-001", barcode: "", price: "8.50", cost: "3.20", product_type: "composite", status: "active" },
-      { name: "Combo Hamburguesa + Gaseosa", category_name: "Combos", sku: "CMB-001", barcode: "", price: "10.00", cost: "4.20", product_type: "combo", status: "active" }
+      { name: "Coca Cola 600ml", category_name: "Drinks", sku: "BEB-001", barcode: "123456789012", price: "2.50", cost: "1.00", product_type: "simple", status: "active" },
+      { name: "Burger Meat (10kg Box)", category_name: "Supplies", sku: "INS-001", barcode: "", price: "0", cost: "50.00", product_type: "ingredient", status: "active" },
+      { name: "Classic Burger", category_name: "Main Dishes", sku: "PLA-001", barcode: "", price: "8.50", cost: "3.20", product_type: "composite", status: "active" },
+      { name: "Burger + Soda Combo", category_name: "Combos", sku: "CMB-001", barcode: "", price: "10.00", cost: "4.20", product_type: "combo", status: "active" }
     ];
-    exportToCsv(`guia_plantilla_productos_${tenantId}.csv`, template);
+    exportToCsv(`product_import_template_${tenantId}.csv`, template);
   };
 
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -203,16 +203,16 @@ export default function Products() {
 
         <Select value={productType} onValueChange={setProductType}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Tipo" />
+            <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="simple">Simple</SelectItem>
-            <SelectItem value="composite">Compuesto</SelectItem>
+            <SelectItem value="composite">Composite</SelectItem>
             <SelectItem value="production">Production</SelectItem>
             <SelectItem value="combo">Combo</SelectItem>
             <SelectItem value="ingredient">Ingredient</SelectItem>
-            <SelectItem value="modifier">Modificador</SelectItem>
+            <SelectItem value="modifier">Modifier</SelectItem>
           </SelectContent>
         </Select>
 
@@ -231,11 +231,11 @@ export default function Products() {
               <div className="grid gap-4">
                 {[
                   { label: "1. Simple", desc: "Finished product sold directly. Inventory is deducted per unit sold. Example: bottled soda." },
-                  { label: "2. Compuesto (Composite)", desc: "Product with a recipe. When sold, inventory is deducted from the ingredients defined in its recipe. Example: hamburger." },
+                  { label: "2. Composite", desc: "Product with a recipe. When sold, inventory is deducted from the ingredients defined in its recipe. Example: hamburger." },
                   { label: "3. Production (Production)", desc: "Product prepared in batches to create stock from other ingredients. Example: house sauce or dough." },
                   { label: "4. Combo", desc: "Group of several products sold together at one price. Example: lunch combo." },
                   { label: "5. Ingredient (Ingredient)", desc: "Raw materials not sold on their own and used exclusively in recipes. Example: salt, flour, ground meat." },
-                  { label: "6. Modificador (Modifier)", desc: 'Additional options to customize an order. Example: "Extra Bacon" or "No Onion".' },
+                  { label: "6. Modifier", desc: 'Additional options to customize an order. Example: "Extra Bacon" or "No Onion".' },
                 ].map(({ label, desc }) => (
                   <div key={label} className="space-y-1">
                     <div className="font-semibold text-sm text-brand-500">{label}</div>
@@ -247,21 +247,21 @@ export default function Products() {
           </DialogContent>
         </Dialog>
 
-        <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileSelect} title="Importar archivo CSV" aria-label="Importar archivo CSV" />
+        <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileSelect} title="Import CSV file" aria-label="Import CSV file" />
 
-        <button type="button" className="g-btn g-btn-ghost" onClick={() => fileInputRef.current?.click()} title="Importar CSV">
+        <button type="button" className="g-btn g-btn-ghost" onClick={() => fileInputRef.current?.click()} title="Import CSV">
           <Upload className="h-4 w-4" /> Importar
         </button>
 
-        <button type="button" className="g-btn g-btn-ghost" onClick={handleDownloadTemplate} title="Descargar plantilla CSV">
+        <button type="button" className="g-btn g-btn-ghost" onClick={handleDownloadTemplate} title="Download CSV template">
           <FileDown className="h-4 w-4" /> Plantilla
         </button>
 
         <button
           type="button"
           className="g-btn g-btn-ghost"
-          onClick={() => exportToCsv(`productos_${tenantId}.csv`, filtered)}
-          title="Exportar filtrados a CSV"
+          onClick={() => exportToCsv(`products_${tenantId}.csv`, filtered)}
+          title="Export filtered results to CSV"
         >
           <Download className="h-4 w-4" /> Exportar
         </button>
@@ -292,12 +292,12 @@ export default function Products() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>SKU / Code</TableHead>
               <TableHead className="text-right">Price</TableHead>
               <TableHead className="text-right">Cost</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

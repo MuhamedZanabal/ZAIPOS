@@ -236,10 +236,10 @@ export default function Delivery() {
       <PageHeader
         eyebrow="OPERATIONS · DELIVERY"
         title="In-house delivery"
-        description={`Tablero de pedidos a domicilio · ${branchName}`}
+        description={`Delivery order board · ${branchName}`}
         actions={
           <button type="button" className="g-btn g-btn-primary" onClick={() => { resetForm(); setOpen(true); }}>
-            <Plus size={15} className="mr-1" /> Nuevo domicilio
+            <Plus size={15} className="mr-1" /> New delivery
           </button>
         }
       />
@@ -348,7 +348,7 @@ export default function Delivery() {
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Nuevo domicilio</DialogTitle>
+            <DialogTitle>New delivery</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">

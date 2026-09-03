@@ -64,7 +64,7 @@ export default function Employees() {
           </div>
           <h2 className="h-display font-semibold text-lg">No employees</h2>
           <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-            Agrega los miembros de tu equipo para gestionar turnos y accesos.
+            Add your team members to manage shifts and access.
           </p>
         </div>
       ) : (

@@ -52,14 +52,14 @@ export function InventoryCenters() {
                 <Input id="name" name="name" defaultValue={editing?.name} placeholder="Ej: Bodega 2, Barra Principal" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="type">Tipo</Label>
+                <Label htmlFor="type">Type</Label>
                 <Select name="type" defaultValue={editing?.type || "warehouse"}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="warehouse">Warehouse</SelectItem>
-                    <SelectItem value="point_of_sale">Punto de Venta</SelectItem>
+                    <SelectItem value="point_of_sale">Point of Sale</SelectItem>
                     <SelectItem value="bar">Barra</SelectItem>
                     <SelectItem value="kitchen">Kitchen</SelectItem>
                   </SelectContent>
@@ -78,9 +78,9 @@ export function InventoryCenters() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

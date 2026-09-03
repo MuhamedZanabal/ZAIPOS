@@ -135,7 +135,7 @@ export default function RappiSettings() {
             <h2 className="text-lg font-bold">Rappi Integration</h2>
             {integ && (
               <Badge variant={status === "active" ? "default" : "outline"}>
-                {status === "active" ? "Activa" : "Pausada"}
+                {status === "active" ? "Active" : "Paused"}
               </Badge>
             )}
           </div>
@@ -162,13 +162,13 @@ export default function RappiSettings() {
             <Select value={status} onValueChange={(v) => setStatus(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Activa</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="paused">Pausada</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex items-center justify-between border rounded-md px-3 h-10 mt-6">
-            <Label className="cursor-pointer">Auto-aceptar pedidos</Label>
+            <Label className="cursor-pointer">Auto-accept orders</Label>
             <Switch checked={autoAccept} onCheckedChange={setAutoAccept} />
           </div>
         </div>

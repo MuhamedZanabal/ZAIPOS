@@ -6,16 +6,16 @@ function DesktopPOS() {
   const nav = [
     { ic: I.Layout, l: "Dashboard", active: true },
     { ic: I.Cart,   l: "Terminal POS" },
-    { ic: I.Table,  l: "Mesas" },
+    { ic: I.Table,  l: "Tables" },
     { ic: I.Bike,   l: "Domicilios", n: 4 },
-    { ic: I.Receipt, l: "Órdenes digitales", n: 12 },
-    { ic: I.Pkg,    l: "Inventario" },
-    { ic: I.Box,    l: "Productos" },
+    { ic: I.Receipt, l: "Digital orders", n: 12 },
+    { ic: I.Pkg,    l: "Inventory" },
+    { ic: I.Box,    l: "Products" },
     { ic: I.Wallet, l: "Caja" },
-    { ic: I.Users,  l: "Clientes" },
-    { ic: I.Chart,  l: "Reportes" },
-    { ic: I.Bag,    l: "Compras" },
-    { ic: I.Bolt,   l: "Producción" },
+    { ic: I.Users,  l: "Customers" },
+    { ic: I.Chart,  l: "Reports" },
+    { ic: I.Bag,    l: "Purchases" },
+    { ic: I.Bolt,   l: "Production" },
   ];
 
   const channels = [
@@ -35,12 +35,12 @@ function DesktopPOS() {
   ];
 
   const feed = [
-    { t: "15:42", ch: "Local",  id: "A-1284", who: "Camila R.",  amt: 86200,  pay: "Efectivo", dot: "green" },
+    { t: "15:42", ch: "Local",  id: "A-1284", who: "Camila R.",  amt: 86200,  pay: "Cash", dot: "green" },
     { t: "15:41", ch: "Rappi",  id: "RP-99812", who: "WebHook",  amt: 64900,  pay: "Plataforma", dot: "blue" },
     { t: "15:39", ch: "DiDi",   id: "DD-44128", who: "WebHook",  amt: 142400, pay: "Plataforma", dot: "blue" },
-    { t: "15:38", ch: "Mesa 8", id: "M-08-A",   who: "Mauricio A.", amt: 312500, pay: "Tarjeta", dot: "green" },
+    { t: "15:38", ch: "Table 8", id: "M-08-A",   who: "Mauricio A.", amt: 312500, pay: "Card", dot: "green" },
     { t: "15:36", ch: "Local",  id: "A-1283",   who: "Camila R.",  amt: 22500,  pay: "QR Nequi", dot: "green" },
-    { t: "15:34", ch: "Domicilio", id: "DM-441",  who: "Andrés M.", amt: 96400, pay: "Mixto", dot: "amber" },
+    { t: "15:34", ch: "Delivery", id: "DM-441",  who: "Andrés M.", amt: 96400, pay: "Mixed", dot: "amber" },
     { t: "15:30", ch: "Uber",   id: "UE-5512",  who: "WebHook", amt: 38900, pay: "Plataforma", dot: "blue" },
   ];
 
@@ -49,10 +49,10 @@ function DesktopPOS() {
       {/* Sidebar */}
       <aside className="ab-sidebar">
         <div style={{ padding: "0 8px 14px" }}>
-          <Lockup size={32} sub="OPERACIÓN · CENTRO MAYOR" />
+          <Lockup size={32} sub="OPERATIONS · CENTRO MAYOR" />
         </div>
         <div className="sidebar-branch-card">
-          <Eyebrow color="blue">SUCURSAL ACTIVA</Eyebrow>
+          <Eyebrow color="blue">ACTIVE BRANCH</Eyebrow>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>Centro Mayor</div>
             <I.ChevronD size={14} />
@@ -96,7 +96,7 @@ function DesktopPOS() {
         {/* Top bar */}
         <div className="ab-topbar">
           <div>
-            <Eyebrow>DASHBOARD · OPERACIÓN EN VIVO</Eyebrow>
+            <Eyebrow>DASHBOARD · LIVE OPERATIONS</Eyebrow>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22 }}>
               Buenas tardes, <span className="gradient-text">Camila</span>
             </div>
@@ -106,8 +106,8 @@ function DesktopPOS() {
             <I.Search size={14} color="#94a3b8" />
             <input 
               type="text" 
-              placeholder="Buscar producto, ticket, cliente…" 
-              aria-label="Buscar en el sistema"
+              placeholder="Search product, ticket, customer…" 
+              aria-label="Search the system"
               style={{ flex: 1, background: "transparent", border: 0, outline: "none", color: "#fff", fontSize: 13 }}
             />
             <span className="kbd">⌘K</span>
@@ -116,8 +116,8 @@ function DesktopPOS() {
           <button className="btn btn-ghost" title="Notificaciones" style={{ width: 38, height: 38, padding: 0 }}>
             <I.Bell size={16} />
           </button>
-          <button className="btn btn-primary" title="Iniciar nueva venta">
-            <I.Plus size={14} /> Nueva venta
+          <button className="btn btn-primary" title="Start new sale">
+            <I.Plus size={14} /> New sale
           </button>
         </div>
 
@@ -127,10 +127,10 @@ function DesktopPOS() {
             {/* KPI strip */}
             <div className="kpi-grid">
               <div className="s-glass kpi-main-card">
-                <Eyebrow color="blue">VENTAS HOY · TIEMPO REAL</Eyebrow>
+                <Eyebrow color="blue">SALES TODAY · REAL TIME</Eyebrow>
                 <div className="big-number" style={{ fontSize: 56, marginTop: 8 }}>$ 4.18M</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 11, color: "#10B981" }}>
-                  <I.Trend size={12} /> +18.4% vs ayer · meta 92%
+                  <I.Trend size={12} /> +18.4% vs yesterday · target 92%
                 </div>
                 <div className="meter" style={{ marginTop: 10 }}><i style={{ width: "92%" }} /></div>
                 {/* sparkline */}
@@ -143,7 +143,7 @@ function DesktopPOS() {
               {[
                 { ey: "TICKETS", v: "63", tr: "+6", ic: I.Receipt },
                 { ey: "TICKET PROM", v: "$ 66.388", tr: "+$ 4.2K", ic: I.Tag },
-                { ey: "EFECTIVO EN CAJA", v: "$ 1.245k", tr: "Arqueo OK", ic: I.Cash },
+                { ey: "CASH IN REGISTER", v: "$ 1.245k", tr: "Reconciliation OK", ic: I.Cash },
               ].map((k, i) => {
                 const Ico = k.ic;
                 return (
@@ -164,12 +164,12 @@ function DesktopPOS() {
               <div className="s-glass channels-card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div>
-                    <Eyebrow color="blue">MIX POR CANAL · HOY</Eyebrow>
+                    <Eyebrow color="blue">CHANNEL MIX · TODAY</Eyebrow>
                     <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, marginTop: 2 }}>
                       Local domina · plataformas digitales 42%
                     </div>
                   </div>
-                  <Pill kind="mute">Últimas 8h</Pill>
+                  <Pill kind="mute">Last 8h</Pill>
                 </div>
                 {/* Stacked bar */}
                 <div style={{ display: "flex", height: 14, borderRadius: 9999, overflow: "hidden",
@@ -192,11 +192,11 @@ function DesktopPOS() {
               </div>
 
               <div className="s-glass kds-card">
-                <Eyebrow color="blue">COCINA · KDS</Eyebrow>
+                <Eyebrow color="blue">KITCHEN · KDS</Eyebrow>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                   {[
                     { l: "En cola",  v: 7,  c: "#FCD34D", ic: I.Clock },
-                    { l: "Preparando", v: 4, c: "#7AB6FF", ic: I.Flame },
+                    { l: "Preparing", v: 4, c: "#7AB6FF", ic: I.Flame },
                     { l: "Listas",   v: 2, c: "#10B981", ic: I.Check },
                     { l: "Demoradas", v: 1, c: "#F87171", ic: I.Bell },
                   ].map((k, i) => {
@@ -216,7 +216,7 @@ function DesktopPOS() {
                 <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: "hsl(216 60% 12%)",
                               border: "1px dashed hsl(215 45% 26%)", fontSize: 11, color: "#94a3b8" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <LiveDot kind="amber" /> <strong style={{ color: "#FCD34D" }}>Mesa 03</strong> espera 14m · llamar mesero
+                    <LiveDot kind="amber" /> <strong style={{ color: "#FCD34D" }}>Table 03</strong> waiting 14m · call waiter
                   </div>
                 </div>
               </div>
@@ -226,12 +226,12 @@ function DesktopPOS() {
             <div className="s-glass top-products-card">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div>
-                  <Eyebrow color="blue">TOP PRODUCTOS · ÚLTIMOS 7 DÍAS</Eyebrow>
+                  <Eyebrow color="blue">TOP PRODUCTS · LAST 7 DAYS</Eyebrow>
                   <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18 }}>
                     El <span className="gradient-text">Smash Doble</span> dispara el ticket promedio
                   </div>
                 </div>
-                <button className="btn btn-ghost" title="Ver informe completo de productos" style={{ fontSize: 11 }}>
+                <button className="btn btn-ghost" title="View full product report" style={{ fontSize: 11 }}>
                   Ver todos <I.ArrowR size={12} />
                 </button>
               </div>

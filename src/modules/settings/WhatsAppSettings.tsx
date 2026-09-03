@@ -246,7 +246,7 @@ export default function WhatsAppSettings() {
           URL del Webhook (Evolution API)
         </div>
         <p className="text-sm text-muted-foreground">
-          Configura esta URL en tu instancia de Evolution API como destino de eventos{" "}
+          Configure this URL in your Evolution API instance as the event destination{" "}
           <code className="bg-muted px-1 py-0.5 rounded text-xs">MESSAGES_UPSERT</code>.
         </p>
         <div className="flex gap-2">
@@ -370,7 +370,7 @@ export default function WhatsAppSettings() {
 
           {diagDone && diagSteps.some(s => s.status === "fail" || s.status === "warn") && (
             <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground space-y-1.5">
-              <p className="font-semibold text-foreground">Acciones recomendadas:</p>
+              <p className="font-semibold text-foreground">Recommended actions:</p>
               {diagSteps[0]?.status !== "ok" && (
                 <p>• <strong>Configuration:</strong> Enter the instance name, save, and activate the agent.</p>
               )}
@@ -391,7 +391,7 @@ export default function WhatsAppSettings() {
         <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
           <li>Create an instance in your Evolution API using the exact name entered above.</li>
           <li>En la instancia, ve a <strong>Webhooks</strong> y pega la URL de arriba.</li>
-          <li>Activa el evento <strong>MESSAGES_UPSERT</strong>.</li>
+          <li>Enable the <strong>MESSAGES_UPSERT</strong> event.</li>
           <li>Conecta la instancia a WhatsApp escaneando el QR.</li>
           <li>Enable the agent with the toggle above and save.</li>
           <li>En Supabase → Edge Functions → Secrets, agrega <code className="bg-muted px-1 rounded">EVOLUTION_API_URL</code> y <code className="bg-muted px-1 rounded">EVOLUTION_API_KEY</code>.</li>
