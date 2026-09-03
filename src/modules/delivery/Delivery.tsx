@@ -21,12 +21,12 @@ import type { Database } from "@/integrations/supabase/types";
 type DeliveryStatus = Database["public"]["Enums"]["delivery_status"];
 
 const STATUSES: { id: DeliveryStatus; label: string; pillClass: string }[] = [
-  { id: "received",  label: "Recibido",  pillClass: "s-pill s-pill-mute" },
-  { id: "preparing", label: "Preparando",pillClass: "s-pill s-pill-warn" },
-  { id: "ready",     label: "Listo",     pillClass: "s-pill s-pill-blue" },
+  { id: "received",  label: "Received",  pillClass: "s-pill s-pill-mute" },
+  { id: "preparing", label: "Preparing",pillClass: "s-pill s-pill-warn" },
+  { id: "ready",     label: "Ready",     pillClass: "s-pill s-pill-blue" },
   { id: "assigned",  label: "Asignado",  pillClass: "s-pill s-pill-blue" },
   { id: "on_way",    label: "En camino", pillClass: "s-pill s-pill-green" },
-  { id: "delivered", label: "Entregado", pillClass: "s-pill s-pill-green" },
+  { id: "delivered", label: "Delivered", pillClass: "s-pill s-pill-green" },
   { id: "cancelled", label: "Cancelado", pillClass: "s-pill s-pill-danger" },
 ];
 

@@ -245,7 +245,7 @@ export default function TableOrder() {
     if (!orderId) return;
     try {
       const data = await sendKitchenMutation.mutateAsync({ _order_id: orderId });
-      toast.success(`${data ?? 0} item(s) enviados a cocina`);
+      toast.success(`${data ?? 0} item(s) sent to kitchen`);
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -496,7 +496,7 @@ export default function TableOrder() {
                       className={cn("g-pill g-pill-h28 transition-all", selectedCategory === "all" ? "g-pill-brand" : "g-pill-ghost")}
                       onClick={() => setSelectedCategory("all")}
                     >
-                      Todos
+                      All
                     </button>
                     {(categories ?? []).map((cat: any) => (
                       <button
@@ -564,7 +564,7 @@ export default function TableOrder() {
                 <div className="flex flex-wrap gap-1">
                   {c.pending > 0 && <span className="g-pill g-pill-ghost g-pill-h20">{c.pending} pend</span>}
                   {c.preparing > 0 && <span className="g-pill g-pill-warn g-pill-h20">{c.preparing} prep</span>}
-                  {c.ready > 0 && <span className="g-pill g-pill-sky g-pill-h20">{c.ready} listo</span>}
+                  {c.ready > 0 && <span className="g-pill g-pill-sky g-pill-h20">{c.ready} ready</span>}
                   {c.dispatched > 0 && <span className="g-pill g-pill-ok g-pill-h20">{c.dispatched} servido</span>}
                 </div>
               );
@@ -581,7 +581,7 @@ export default function TableOrder() {
                     disabled={c.pending === 0}
                     onClick={sendAllToKitchen}
                   >
-                    <ChefHat className="h-3 w-3 mr-1" /> A cocina
+                    <ChefHat className="h-3 w-3 mr-1" /> To kitchen
                   </button>
                   <button
                     type="button"
@@ -589,7 +589,7 @@ export default function TableOrder() {
                     disabled={c.preparing === 0 && c.pending === 0}
                     onClick={markAllReady}
                   >
-                    <Bell className="h-3 w-3 mr-1" /> Marcar listo
+                    <Bell className="h-3 w-3 mr-1" /> Mark ready
                   </button>
                 </div>
               );

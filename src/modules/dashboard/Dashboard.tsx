@@ -281,7 +281,7 @@ export default function Dashboard() {
               <div className="g-num-20">{metrics?.totalSKUs ?? 1248}</div>
             </div>
             <div>
-              <div className="h-meta mb-1">Bajo stock</div>
+              <div className="h-meta mb-1">Low stock</div>
               <div className="g-num-20 text-g-warn">{metrics?.lowStockCount ?? 0}</div>
             </div>
             <div>
@@ -392,7 +392,7 @@ export default function Dashboard() {
             <div className="h-meta mt-1">Last: &lt; 1 min ago</div>
           </div>
           <button type="button" className="g-btn g-btn-ghost g-val-12 w-full h-8">
-            Ver historial <ArrowUpRight size={12} />
+            View history <ArrowUpRight size={12} />
           </button>
         </div>
       </div>

@@ -209,7 +209,7 @@ function ComandaModal({ order, onClose, onConfirm, onRappiAction }: {
             </>
           )}
           {isRappi && ext === "accepted" && (
-            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "ready")}>Marcar listo</button>
+            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "ready")}>Mark ready</button>
           )}
           {isRappi && ext === "ready" && (
             <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "dispatched")}>Despachado</button>
@@ -492,7 +492,7 @@ export default function DigitalOrders() {
                       </>
                     )}
                     {isRappi && ext === "accepted" && (
-                      <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "ready")}>Marcar listo</button>
+                      <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "ready")}>Mark ready</button>
                     )}
                     {isRappi && ext === "ready" && (
                       <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "dispatched")}>Despachado</button>

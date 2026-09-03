@@ -12,8 +12,8 @@ export function TweaksPanel({ onClose }: TweaksPanelProps) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar"
-          title="Cerrar"
+          aria-label="Close"
+          title="Close"
           className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           <X className="h-3.5 w-3.5" />

@@ -704,9 +704,9 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productId) return toast.error("Selecciona un producto");
-    if (!centerId) return toast.error("Selecciona el centro de inventario");
-    if (!qty || Number(qty) <= 0) return toast.error("Cantidad inválida");
+    if (!productId) return toast.error("Select a product");
+    if (!centerId) return toast.error("Select the inventory center");
+    if (!qty || Number(qty) <= 0) return toast.error("Invalid quantity");
     setSaving(true);
     try {
       await applyInventoryMovement({
@@ -726,7 +726,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
     <DialogContent className="max-w-md">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <PackagePlus className="h-5 w-5" /> Aprovisionar inventario
+          <PackagePlus className="h-5 w-5" /> Provision inventory
         </DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
@@ -758,7 +758,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Buscar por nombre o SKU..."
+              placeholder="Search by name or SKU..."
               value={productSearch}
               onChange={(e) => { setProductSearch(e.target.value); setProductId(""); }}
             />
@@ -773,7 +773,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
           ) : productSearch.length > 0 && (
             <div className="border rounded-md max-h-48 overflow-y-auto">
               {filteredProducts.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-muted-foreground text-center">Sin resultados</p>
+                <p className="px-3 py-4 text-sm text-muted-foreground text-center">No results</p>
               ) : filteredProducts.slice(0, 20).map((p: any) => (
                 <button
                   key={p.id} type="button"
@@ -790,9 +790,9 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
 
         {/* Centro */}
         <div className="space-y-1.5">
-          <Label>Centro de inventario</Label>
+          <Label>Inventory center</Label>
           <Select value={centerId} onValueChange={setCenterId}>
-            <SelectTrigger><SelectValue placeholder="Selecciona el centro..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select the center..." /></SelectTrigger>
             <SelectContent>
               {(centers as any[]).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
@@ -801,7 +801,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
 
         {/* Cantidad */}
         <div className="space-y-1.5">
-          <Label>Cantidad {selectedProduct?.unit_code ? `(${selectedProduct.unit_code})` : ""}</Label>
+          <Label>Quantity {selectedProduct?.unit_code ? `(${selectedProduct.unit_code})` : ""}</Label>
           <Input
             type="number" step="0.001" min="0.001" required
             value={qty} onChange={(e) => setQty(e.target.value)}
@@ -815,7 +815,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
           <Label>Motivo <span className="text-muted-foreground font-normal">(opcional)</span></Label>
           <Textarea
             value={reason} onChange={(e) => setReason(e.target.value)}
-            placeholder="Ej: Compra a proveedor, conteo físico, etc."
+            placeholder="E.g. Supplier purchase, physical count, etc."
             rows={2}
           />
         </div>

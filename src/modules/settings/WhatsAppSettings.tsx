@@ -340,7 +340,7 @@ export default function WhatsAppSettings() {
           <div className="flex items-center gap-2 font-semibold">
             {diagDone
               ? diagSteps.every(s => s.status === "ok")
-                ? <><CheckCircle2 className="h-4 w-4 text-green-500" /> Todo en orden</>
+                ? <><CheckCircle2 className="h-4 w-4 text-green-500" /> Everything is OK</>
                 : diagSteps.some(s => s.status === "fail")
                   ? <><WifiOff className="h-4 w-4 text-red-500" /> Se encontraron problemas</>
                   : <><AlertCircle className="h-4 w-4 text-yellow-500" /> Advertencias detectadas</>

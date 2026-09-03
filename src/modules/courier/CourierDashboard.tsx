@@ -239,7 +239,7 @@ export default function CourierDashboard() {
       <Tabs defaultValue="active">
         <TabsList>
           <TabsTrigger value="active">Activos ({grouped.active.length})</TabsTrigger>
-          <TabsTrigger value="done">Historial ({grouped.done.length})</TabsTrigger>
+          <TabsTrigger value="done">History ({grouped.done.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-4">

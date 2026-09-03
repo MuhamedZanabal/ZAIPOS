@@ -141,7 +141,7 @@ export function TableOrderMobile(props: Props) {
                   className="rounded-full px-4 h-8"
                   onClick={() => setSelectedCategory("all")}
                 >
-                  Todos
+                  All
                 </Button>
                 {(categories ?? []).map((cat: any) => (
                   <Button

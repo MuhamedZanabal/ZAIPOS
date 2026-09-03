@@ -91,7 +91,7 @@ function TableDrawer({ table, order, items, onClose, onNavigate }: {
                 <>
                   {c.pending > 0   && <span className="s-pill s-pill-mute">{c.pending} pending</span>}
                   {c.preparing > 0 && <span className="s-pill s-pill-warn">{c.preparing} preparando</span>}
-                  {c.ready > 0     && <span className="s-pill s-pill-blue">{c.ready} listo{c.ready !== 1 ? "s" : ""}</span>}
+                  {c.ready > 0     && <span className="s-pill s-pill-blue">{c.ready} ready</span>}
                   {c.dispatched > 0 && <span className="s-pill s-pill-green">{c.dispatched} servido{c.dispatched !== 1 ? "s" : ""}</span>}
                 </>
               );
@@ -454,7 +454,7 @@ export default function WaiterDashboard() {
                     <div className="text-xs text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
                       {c.pending   > 0 && <span>{c.pending} pend.</span>}
                       {c.preparing > 0 && <span className="text-amber-500">{c.preparing} prep.</span>}
-                      {c.ready     > 0 && <span className="text-sky-500">{c.ready} listo{c.ready !== 1 ? "s" : ""}</span>}
+                      {c.ready     > 0 && <span className="text-sky-500">{c.ready} ready</span>}
                       {items.length === 0 && <span>No items</span>}
                     </div>
                     {meta && <div className={cn("text-[10px] font-semibold mt-1", meta.tone)}>{meta.label}</div>}

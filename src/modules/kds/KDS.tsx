@@ -170,7 +170,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
           className="g-btn g-btn-ghost g-btn-touch g-kds-action-btn"
           onClick={() => items.forEach((i) => { if (i.status === "pending") onPreparing(i.id); })}
         >
-          Preparando
+          Preparing
         </button>
         <button
           type="button"

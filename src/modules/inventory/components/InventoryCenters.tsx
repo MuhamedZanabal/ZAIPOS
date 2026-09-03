@@ -61,7 +61,7 @@ export function InventoryCenters() {
                     <SelectItem value="warehouse">Warehouse</SelectItem>
                     <SelectItem value="point_of_sale">Punto de Venta</SelectItem>
                     <SelectItem value="bar">Barra</SelectItem>
-                    <SelectItem value="kitchen">Cocina</SelectItem>
+                    <SelectItem value="kitchen">Kitchen</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

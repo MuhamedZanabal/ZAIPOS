@@ -119,7 +119,7 @@ export default function AIAgent() {
         chart: true,
         insights: [
           "The Classic Cappuccino has a 71% margin — an opportunity to promote a plant-based milk upsell.",
-          "Cheesecake de Fresa tiene margen alto pero stock bajo en algunas sucursales — considera una transferencia.",
+          "Strawberry Cheesecake has a high margin but low stock in some branches — consider a transfer.",
         ],
         actions: ["Create transfer", "Export report"],
       };

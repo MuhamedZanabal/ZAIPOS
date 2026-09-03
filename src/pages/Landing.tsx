@@ -38,7 +38,7 @@ const FEATURES = [
   {
     icon: ChefHat,
     sc: "sc-cyan",
-    title: "KDS · Cocina",
+    title: "KDS · Kitchen",
     desc: "Kitchen display with timing alerts, urgency colors, and item-by-item dispatch control.",
   },
   {
@@ -378,7 +378,7 @@ export default function Landing() {
             Set up your first business in under 5 minutes.
           </p>
           <Link to="/auth" className="landing-btn-primary landing-btn-lg">
-            Crear cuenta gratis <ArrowRight className="h-4 w-4" />
+            Create free account <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>

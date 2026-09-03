@@ -115,7 +115,7 @@ export default function Cash() {
       <Tabs defaultValue="current">
         <TabsList>
           <TabsTrigger value="current">Current register</TabsTrigger>
-          <TabsTrigger value="history">Historial de cierres</TabsTrigger>
+          <TabsTrigger value="history">Closing history</TabsTrigger>
         </TabsList>
 
         {/* ── Current session tab ── */}
@@ -333,7 +333,7 @@ export default function Cash() {
               The system will calculate differences after closing is completed.
             </div>
             <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" onClick={closeSession}>
-              Finalizar Cierre de Turno
+              Complete Register Closing
             </button>
           </div>
         </DialogContent>

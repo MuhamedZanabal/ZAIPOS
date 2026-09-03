@@ -27,7 +27,7 @@ const TABS = [
   { id: "agente",     label: "Agente IA",         icon: Bot },
   { id: "receipt",    label: "Receipt",            icon: Receipt },
   { id: "apariencia", label: "Apariencia",        icon: Palette },
-  { id: "datos",      label: "Datos",             icon: Database },
+  { id: "datos",      label: "Data",             icon: Database },
   { id: "ops",        label: "Operaciones",       icon: Wrench },
 ] as const;
 

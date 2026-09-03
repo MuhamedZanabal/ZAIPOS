@@ -198,7 +198,7 @@ export default function AiAgentSettings() {
       );
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Embedding failed");
-      toast.success(`Embedding generado (${body.dims} dims)`);
+      toast.success(`Embedding generated (${body.dims} dims)`);
       qc.invalidateQueries({ queryKey: ["ai-knowledge-docs"] });
     } catch (e: any) {
       toast.error(`Error generating embedding: ${e.message}`);
@@ -403,7 +403,7 @@ export default function AiAgentSettings() {
                       <Badge variant="secondary" className="text-[10px] h-4">Embedding ✓</Badge>
                     ) : (
                       <Badge variant="destructive" className="text-[10px] h-4">
-                        <AlertCircle className="h-2.5 w-2.5 mr-1" />Sin embedding
+                        <AlertCircle className="h-2.5 w-2.5 mr-1" />No embedding
                       </Badge>
                     )}
                     <span className="text-[10px] text-muted-foreground">
@@ -417,7 +417,7 @@ export default function AiAgentSettings() {
                       size="icon"
                       variant="outline"
                       className="h-7 w-7"
-                      title="Generar embedding"
+                      title="Generate embedding"
                       disabled={embeddingId === doc.id}
                       onClick={() => generateEmbedding(doc.id)}
                     >

@@ -58,7 +58,7 @@ const sections: Section[] = [
     items: [
       { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"] },
       { title: "Production",  url: "/production", icon: Factory,   roles: ["owner","admin","manager","kitchen"] },
-      { title: "KDS Cocina",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
+      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
       { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"] },
     ],
   },

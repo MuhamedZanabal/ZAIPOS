@@ -269,15 +269,15 @@ export function useAutoUpdater(): void {
     if (!available || !hardware) return;
 
     const cleanupAvailable = hardware.onUpdateAvailable(({ version }) => {
-      toast.info(`Nueva versión disponible: v${version}. Descargando…`, {
+      toast.info(`New version available: v${version}. Downloading…`, {
         duration: 5000,
       });
     });
 
     const cleanupDownloaded = hardware.onUpdateDownloaded(({ version }) => {
-      toast.success(`v${version} descargada. ¿Instalar ahora?`, {
+      toast.success(`v${version} downloaded. Install now?`, {
         action: {
-          label: 'Instalar y reiniciar',
+          label: 'Install and restart',
           onClick: () => hardware?.installUpdate(),
         },
         duration: Infinity,

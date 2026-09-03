@@ -9,7 +9,7 @@ export const ROLE_LABEL: Record<AppRole, string> = {
   manager: "Gerente",
   cashier: "Cajero",
   waiter: "Waiter",
-  kitchen: "Cocina",
+  kitchen: "Kitchen",
   inventory: "Inventory",
   courier: "Domiciliario",
   staff: "Personal",

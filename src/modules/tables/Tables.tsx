@@ -231,7 +231,7 @@ function TablePanel({
             )}
             {counts.ready > 0 && (
               <StatChip
-                label="Listo"
+                label="Ready"
                 count={counts.ready}
                 dotColor="tbl-dot-ok"
               />
@@ -608,7 +608,7 @@ export default function Tables() {
               >
                 {editMode ? (
                   <>
-                    <Check size={14} /> Listo
+                    <Check size={14} /> Ready
                   </>
                 ) : (
                   <>

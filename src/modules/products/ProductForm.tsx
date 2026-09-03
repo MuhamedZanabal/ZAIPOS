@@ -109,7 +109,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             <div className="flex items-center gap-2">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium text-sm">{g.name}</span>
-              {g.required && <span className="g-pill g-pill-bad g-pill-h22">Obligatorio</span>}
+              {g.required && <span className="g-pill g-pill-bad g-pill-h22">Required</span>}
               <span className="g-pill g-pill-ghost g-pill-h22">max {g.max_selections}</span>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -191,7 +191,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Switch checked={newRequired} onCheckedChange={setNewRequired} id="req-switch" />
-            <Label htmlFor="req-switch" className="text-xs">Obligatorio</Label>
+            <Label htmlFor="req-switch" className="text-xs">Required</Label>
           </div>
           <Button size="sm" onClick={addGroup} disabled={!newGroupName.trim()} className="h-7 text-xs">
             <Plus className="h-3 w-3 mr-1" /> Crear grupo

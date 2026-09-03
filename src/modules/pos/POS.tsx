@@ -775,7 +775,7 @@ export default function POS() {
                 </div>
                 <Button size="sm" variant="outline" className="shrink-0"
                   onClick={() => { add(p); setUpsellProduct(null); setUpsellItems([]); }}>
-                  Agregar
+                  Add
                 </Button>
               </div>
             ))}
