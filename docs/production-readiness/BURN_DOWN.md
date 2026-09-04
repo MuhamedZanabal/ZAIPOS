@@ -4,17 +4,20 @@ This inventory is evidence-based. An unchecked item may have partial code but la
 
 ## Baseline controls
 
-- [x] Current `main` SHA verified: `171d7d04a1627dead99c5d06a05f42dde69fb24a`
-- [x] Repository, 43 migrations, CI, package configuration and existing 20-test baseline inspected
+- [x] Current implementation baseline verified from `main`: `be8148f5b7c1d89956459d86a744b788ef1311ee`
+- [x] Repository, 44 baseline migrations, CI, package configuration, checkout path, money kernel and existing automated tests inspected
 - [x] Scan-to-receipt and offline replay path mapped
-- [ ] Database migrations executed on clean and supported-upgrade databases
+- [ ] Full database migration chain executed on clean and supported-upgrade production-shaped databases
 - [ ] Protected `main` with required checks
 
 ## P0 transaction core
 
 - [x] Exact-fils TypeScript kernel with boundary tests
 - [x] Pure split-payment, till-cash and refund-ceiling invariant tests
-- [ ] Exact-fils schema cutover — Stage A sidecars pass ephemeral PostgreSQL execution; production-shaped upgrade and authoritative cutover remain
+- [x] Exact-money Stage A: core BIGINT fils sidecars, backfill, synchronization, parity constraints and restricted diagnostics
+- [x] Exact-money Stage B: legacy monetary compatibility columns widened losslessly to three-decimal BHD precision, with parity diagnostics preserved
+- [ ] Remaining money-bearing ledger fields inventoried and given exact authoritative representations where required
+- [ ] Integer-fils authoritative application/server cutover
 - [ ] Server-authoritative prepare/validate/commit checkout
 - [ ] Split-payment UI and exact server persistence
 - [ ] Concurrent idempotent replay returning the original result
