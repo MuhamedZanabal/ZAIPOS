@@ -90,6 +90,14 @@ jobs:
               s = s.replace(old, new)
           roles.write_text(s)
 
+          expenses = Path('src/modules/expenses/Expenses.tsx')
+          s = expenses.read_text().replace('Este mes:', 'This month:')
+          expenses.write_text(s)
+
+          printer = Path('electron/services/printer.ts')
+          s = printer.read_text().replace('// ── Pagos', '// ── Payments')
+          printer.write_text(s)
+
           audit = Path('scripts/audit-localization.mjs')
           s = audit.read_text()
           marker = '"Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",\n'
@@ -161,6 +169,9 @@ jobs:
           test -s docs/screenshots/digital-orders.png
           test -s docs/screenshots/settings.png
 
+      - name: Remove temporary workflow from localization scan
+        run: rm -f .github/workflows/refresh-doc-screenshots.yml
+
       - name: Audit ZAIPOS Bahrain localization
         run: node scripts/audit-localization.mjs
 
@@ -189,7 +200,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/ src/modules/dashboard/Dashboard.tsx src/modules/pos/POS.tsx src/lib/roles.ts src/pages/Landing.tsx scripts/audit-localization.mjs .github/workflows/refresh-doc-screenshots.yml vite.docs-screenshots.config.ts scripts/capture-docs-screenshots.mjs scripts/screenshot-fixture || true
+          git add README.md docs/ electron/services/printer.ts src/modules/dashboard/Dashboard.tsx src/modules/expenses/Expenses.tsx src/modules/pos/POS.tsx src/lib/roles.ts src/pages/Landing.tsx scripts/audit-localization.mjs .github/workflows/refresh-doc-screenshots.yml vite.docs-screenshots.config.ts scripts/capture-docs-screenshots.mjs scripts/screenshot-fixture || true
           if git diff --cached --quiet; then
             echo "No screenshot changes generated"
             exit 1
