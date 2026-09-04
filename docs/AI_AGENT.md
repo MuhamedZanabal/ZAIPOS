@@ -1,128 +1,59 @@
-# AI Agent
+# ZAIPOS AI Agent
 
-The AI Agent enables conversational ordering through WhatsApp. Customers can ask questions, browse the catalog, get a quote, and place an order without human intervention.
+The ZAIPOS AI layer assists staff and customers with catalogue, order, and operational workflows while respecting tenant/branch permissions.
 
----
+## Bahrain Context
 
-## 1. Overview
+AI prompts and examples must assume:
 
-```mermaid
-flowchart TB
-    subgraph Channels["Channels"]
-        WhatsApp["WhatsApp"]
-    end
+- Kingdom of Bahrain as the operating market;
+- English as the default user-facing language;
+- BHD monetary values with three decimal places;
+- Bahrain +973 phone conventions;
+- standard Bahrain VAT default of 10% while respecting product-specific tax configuration;
+- Cash, Card, BenefitPay, and Bank Transfer terminology;
+- Talabat, WhatsApp, Physical POS, Tables, and In-house Delivery as active sales-channel concepts.
 
-    subgraph Gateway["Gateway"]
-        Evolution["Evolution API"]
-    end
+The agent must not introduce Colombian/COP assumptions, Latin-American addresses, or legacy Rappi/Didi/Uber integrations.
 
-    subgraph Backend["Supabase"]
-        Webhook["evolution-webhook Edge Function"]
-        Agent["ai-order-agent Edge Function"]
-        DB[(PostgreSQL)]
-        Knowledge["ai_knowledge_docs"]
-    end
+## Capabilities
 
-    subgraph LLM["LLM Provider"]
-        OpenRouter["OpenRouter"]
-    end
+Depending on the configured tools and permissions, the agent can:
 
-    WhatsApp -->|message| Evolution
-    Evolution -->|webhook| Webhook
-    Webhook -->|invoke| Agent
-    Agent -->|tool calls| DB
-    Agent -->|embeddings| Knowledge
-    Agent -->|chat completions| OpenRouter
-    Agent -->|reply| Evolution
-    Evolution -->|message| WhatsApp
-```
+- search the active catalogue and branch availability;
+- quote products using ZAIPOS prices;
+- answer knowledge-base questions;
+- prepare or assist with order drafts;
+- summarize operational data exposed to its role;
+- hand off conversations to staff when required.
 
----
+## Guardrails
 
-## 2. Agent Capabilities
+- Never fabricate stock, prices, payment confirmation, customer data, tax treatment, or delivery status.
+- Use current tenant/branch data as the source of truth.
+- Do not expose another tenant's data.
+- Do not claim a BenefitPay transaction settled unless the system has verified settlement evidence.
+- Do not invent Talabat partner API actions or credentials.
+- Sensitive mutations must use approved server-side tools and authorization checks.
 
-The agent exposes a set of tools to the LLM:
+## WhatsApp
 
-| Tool | Description |
-|------|-------------|
-| `search_catalog` | Search products by name, SKU, or barcode. |
-| `quote_order` | Calculate the total for a list of items. |
-| `create_order` | Create the final order after customer confirmation. |
-| `handoff_to_human` | Escalate to a human operator. |
+WhatsApp configuration is branch-aware. Bahrain phone numbers should be normalized consistently when the application expects E.164-style storage. The agent should keep customer-facing text concise and appropriate for the merchant's configured business context.
 
-The agent only calls `create_order` after the customer confirms with words like "yes", "confirm", "ok", "listo", or "dale".
+## Knowledge Base
 
----
+Knowledge documents are tenant/branch scoped. Retrieved content can supplement catalogue and policy answers but must not override transactional source-of-truth data.
 
-## 3. Configuration
+## Model Configuration
 
-Each branch can configure the agent in **Settings > AI Agent**:
+Model, temperature, system prompt, and channel behavior are configured per the supported settings surfaces. Secrets for model providers belong server-side.
 
-- `system_prompt`: custom behavior instructions
-- `ai_model`: LLM model via OpenRouter (Claude, GPT-4o, Gemini)
-- `temperature`: creativity vs determinism
-- `daily_recommendation`: product to suggest proactively
-- `delivery_delay_minutes`: estimated delivery time
+## Testing
 
-Configuration is stored in `ai_channel_configs`.
+AI changes should verify:
 
----
-
-## 4. Knowledge Base (RAG)
-
-Branches can upload knowledge documents (opening hours, policies, specials). The system:
-
-1. Stores the document in `ai_knowledge_docs`.
-2. Calls `embed-knowledge-doc` Edge Function to generate an embedding via OpenRouter.
-3. Saves the embedding as a `vector` column.
-4. The agent retrieves relevant documents by vector similarity during the conversation.
-
----
-
-## 5. Conversation State
-
-Conversations are tracked in `ai_conversations` and messages in `ai_messages`. This allows:
-
-- context-aware multi-turn conversations,
-- human handoff without losing history,
-- analytics on agent performance.
-
-Statuses:
-
-- `open`: handled by AI
-- `handoff`: transferred to human
-- `closed`: finished
-
----
-
-## 6. Security
-
-- Webhook signatures from Evolution are verified with `EVOLUTION_WEBHOOK_SECRET`.
-- IP allowlisting is supported via `EVOLUTION_IP_ALLOWLIST`.
-- The agent validates the user's JWT before invoking tools.
-- All database calls respect tenant and branch isolation.
-
----
-
-## 7. Extending the Agent
-
-To add a new tool:
-
-1. Define the tool schema in `supabase/functions/ai-order-agent/index.ts`.
-2. Implement the handler in the `tools` map.
-3. Add a corresponding RPC if the tool needs database access.
-4. Update the system prompt to mention when to use the new tool.
-
----
-
-## 8. Models Supported
-
-The default supported models are:
-
-- `anthropic/claude-3.5-haiku`
-- `anthropic/claude-3.5-sonnet`
-- `openai/gpt-4o-mini`
-- `openai/gpt-4o`
-- `google/gemini-flash-1.5`
-
-OpenRouter supports many more. You can add new models to `MODELS` in `src/modules/settings/AiAgentSettings.tsx`.
+- tenant/branch isolation;
+- correct BHD formatting;
+- Bahrain payment/channel terminology;
+- no fabricated transaction state;
+- appropriate handoff on unsupported or ambiguous actions.
