@@ -33,6 +33,9 @@ jobs:
       - name: Test exact-money migration
         run: npm run test:migrations:money
 
+      - name: Test atomic checkout migration
+        run: npm run test:migrations:checkout
+
       - name: Lint
         run: npm run lint
 
