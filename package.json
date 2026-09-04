@@ -36,6 +36,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "audit:localization": "node scripts/audit-localization.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
