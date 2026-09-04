@@ -41,6 +41,7 @@ jobs:
               '>Ver todo</Link>': '>View all</Link>',
               '>Pagos</div>': '>Payments</div>',
               'Todo sincronizado': 'Everything synchronized',
+              '${(SPARK[n-1] * 1000).toLocaleString()}': '{formatCurrency(SPARK[n-1])}',
               '{ value: 52, color: "#1E63E6", label: "Physical Store"': '{ value: 52, color: "#1E63E6", label: "Physical POS"',
               '{ value: 24, color: "#5B95FF", label: "Web"': '{ value: 24, color: "#5B95FF", label: "Talabat"',
               '{ value: 16, color: "#9CC0FF", label: "Mobile App"': '{ value: 16, color: "#9CC0FF", label: "WhatsApp"',
@@ -62,10 +63,37 @@ jobs:
           s = s.replace('sub: "BHD / month",', 'sub: "per month",')
           landing.write_text(s)
 
+          pos = Path('src/modules/pos/POS.tsx')
+          s = pos.read_text()
+          pos_replacements = {
+              '>Panel</span>': '>Dashboard</span>',
+              '>CANAL</span>': '>CHANNEL</span>',
+              '{ key: "PROM",': '{ key: "AVG TICKET",',
+              'aria-label="Reducir"': 'aria-label="Decrease product size"',
+              'aria-label="Ampliar"': 'aria-label="Increase product size"',
+              '"Comanda guardada en cola offline"': '"Order queued offline"',
+          }
+          for old, new in pos_replacements.items():
+              s = s.replace(old, new)
+          pos.write_text(s)
+
+          roles = Path('src/lib/roles.ts')
+          s = roles.read_text()
+          role_replacements = {
+              'admin: "Administrador"': 'admin: "Administrator"',
+              'manager: "Gerente"': 'manager: "Manager"',
+              'cashier: "Cajero"': 'cashier: "Cashier"',
+              'courier: "Domiciliario"': 'courier: "Courier"',
+              'staff: "Personal"': 'staff: "Staff"',
+          }
+          for old, new in role_replacements.items():
+              s = s.replace(old, new)
+          roles.write_text(s)
+
           audit = Path('scripts/audit-localization.mjs')
           s = audit.read_text()
           marker = '"Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",\n'
-          expanded = '"Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",\n  "Este mes", "Tendencia mensual", "mes anterior", "Ver todo", "Pagos", "Todo sincronizado",\n'
+          expanded = '"Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",\n  "Este mes", "Tendencia mensual", "mes anterior", "Ver todo", "Pagos", "Todo sincronizado",\n  "Administrador", "Gerente", "Cajero", "Domiciliario", "Comanda guardada en cola offline",\n'
           if expanded not in s:
               s = s.replace(marker, expanded)
           audit.write_text(s)
@@ -161,7 +189,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/ src/modules/dashboard/Dashboard.tsx src/pages/Landing.tsx scripts/audit-localization.mjs .github/workflows/refresh-doc-screenshots.yml vite.docs-screenshots.config.ts scripts/capture-docs-screenshots.mjs scripts/screenshot-fixture || true
+          git add README.md docs/ src/modules/dashboard/Dashboard.tsx src/modules/pos/POS.tsx src/lib/roles.ts src/pages/Landing.tsx scripts/audit-localization.mjs .github/workflows/refresh-doc-screenshots.yml vite.docs-screenshots.config.ts scripts/capture-docs-screenshots.mjs scripts/screenshot-fixture || true
           if git diff --cached --quiet; then
             echo "No screenshot changes generated"
             exit 1
