@@ -40,6 +40,7 @@
     "verify:release": "node scripts/verify-release.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "test:migrations:money": "node scripts/test-money-migration.mjs",
+    "test:migrations:checkout": "node scripts/test-atomic-checkout-v2.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir"
