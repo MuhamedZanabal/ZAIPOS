@@ -1,24 +1,53 @@
-import type { Database } from "@/integrations/supabase/types";
-
-export type SalesChannel = Database["public"]["Enums"]["sales_channel"];
+export type SalesChannel = "pos" | "tables" | "talabat" | "whatsapp" | "delivery";
 
 export const CHANNELS: { id: SalesChannel; label: string; short: string }[] = [
   { id: "pos", label: "In-person", short: "POS" },
   { id: "tables", label: "Tables / Orders", short: "Tables" },
-  { id: "rappi", label: "Rappi / Digital", short: "Rappi" },
+  { id: "talabat", label: "Talabat", short: "Talabat" },
   { id: "whatsapp", label: "WhatsApp", short: "WA" },
-  { id: "didi", label: "Didi Food", short: "Didi" },
-  { id: "uber", label: "Uber Eats", short: "Uber" },
   { id: "delivery", label: "In-house Delivery", short: "Delivery" },
 ];
 
-export const channelLabel = (c: SalesChannel) =>
-  CHANNELS.find((x) => x.id === c)?.label ?? c;
+export const BAHRAIN_CHANNEL_IDS = CHANNELS.map((channel) => channel.id);
+
+/**
+ * Convert inherited LatAm channel values to the Bahrain-native channel model.
+ * This is a compatibility boundary only: the UI never exposes Rappi, Didi, or Uber.
+ */
+export function normalizeBahrainChannels(values: readonly string[] | null | undefined): SalesChannel[] {
+  const result = new Set<SalesChannel>();
+
+  for (const raw of values ?? []) {
+    const value = raw.toLowerCase();
+    if (value === "rappi" || value === "didi" || value === "uber") {
+      result.add("talabat");
+      continue;
+    }
+    if (value === "qr") {
+      // Legacy QR ordering channel is not a Bahrain delivery channel.
+      continue;
+    }
+    if (BAHRAIN_CHANNEL_IDS.includes(value as SalesChannel)) {
+      result.add(value as SalesChannel);
+    }
+  }
+
+  if (result.size === 0) {
+    return ["pos", "tables", "talabat", "whatsapp", "delivery"];
+  }
+
+  return BAHRAIN_CHANNEL_IDS.filter((channel) => result.has(channel));
+}
+
+export const channelLabel = (channel: string) => {
+  if (channel === "rappi" || channel === "didi" || channel === "uber") return "Talabat";
+  return CHANNELS.find((item) => item.id === channel)?.label ?? channel;
+};
 
 export type ChannelPriceRow = {
   product_id: string;
   branch_id: string | null;
-  channel: SalesChannel;
+  channel: string;
   price: number;
 };
 
@@ -46,19 +75,23 @@ export function resolvePrice(
   branchProducts: BranchProductRow[]
 ): number {
   if (branchId) {
-    const branchChan = channelPrices.find(
-      (p) => p.product_id === productId && p.branch_id === branchId && p.channel === channel
+    const branchChannel = channelPrices.find(
+      (price) => price.product_id === productId && price.branch_id === branchId && price.channel === channel
     );
-    if (branchChan) return Number(branchChan.price);
+    if (branchChannel) return Number(branchChannel.price);
   }
-  const globalChan = channelPrices.find(
-    (p) => p.product_id === productId && p.branch_id === null && p.channel === channel
+
+  const globalChannel = channelPrices.find(
+    (price) => price.product_id === productId && price.branch_id === null && price.channel === channel
   );
-  if (globalChan) return Number(globalChan.price);
+  if (globalChannel) return Number(globalChannel.price);
 
   if (branchId) {
-    const bp = branchProducts.find((b) => b.product_id === productId && b.branch_id === branchId);
-    if (bp?.local_price != null) return Number(bp.local_price);
+    const branchProduct = branchProducts.find(
+      (product) => product.product_id === productId && product.branch_id === branchId
+    );
+    if (branchProduct?.local_price != null) return Number(branchProduct.local_price);
   }
+
   return Number(basePrice);
 }
