@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit ZAIPOS Bahrain localization
+        run: node scripts/audit-localization.mjs
+
       - name: Validate migrations
         run: npm run validate:migrations
 
