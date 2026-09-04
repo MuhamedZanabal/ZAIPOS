@@ -482,7 +482,7 @@ export default function POS() {
       toast.success(
         result && typeof result === "string"
           ? "Order sent to the table"
-          : "Comanda guardada en cola offline"
+          : "Order queued offline"
       );
       clear();
       setSelectedTableId(null);
@@ -531,13 +531,13 @@ export default function POS() {
           title="Back to main dashboard"
         >
           <LayoutDashboard className="h-4 w-4" />
-          <span className="hidden sm:inline font-medium">Panel</span>
+          <span className="hidden sm:inline font-medium">Dashboard</span>
         </Link>
       </div>
 
       {/* ── Sub-header: channels + metrics ticker ─────────── */}
       <div className="flex items-center gap-2 px-4 py-2 border-b bg-card/60 flex-wrap shrink-0">
-        <span className="eyebrow eyebrow-muted text-[9px] shrink-0">CANAL</span>
+        <span className="eyebrow eyebrow-muted text-[9px] shrink-0">CHANNEL</span>
 
         {CHANNELS.filter(c => activeChannels.includes(c.id)).map((c) => (
           <button
@@ -582,7 +582,7 @@ export default function POS() {
           <TickRail items={[
             { key: "SALES TODAY", value: formatCurrency(todayMetrics.totalSales) },
             { key: "TICKETS",    value: String(todayMetrics.count) },
-            { key: "PROM",       value: formatCurrency(todayMetrics.avgTicket) },
+            { key: "AVG TICKET",       value: formatCurrency(todayMetrics.avgTicket) },
           ]} />
         )}
 
@@ -710,7 +710,7 @@ export default function POS() {
               <div className="flex items-center gap-3">
                 {/* Zoom rail */}
                 <div className="zoom-rail">
-                  <button type="button" aria-label="Reducir" onClick={() => setZoom((z) => Math.max(1, z - 1))}>
+                  <button type="button" aria-label="Decrease product size" onClick={() => setZoom((z) => Math.max(1, z - 1))}>
                     <Minus className="h-3 w-3" />
                   </button>
                   <input
@@ -719,7 +719,7 @@ export default function POS() {
                     onChange={(e) => setZoom(Number(e.target.value))}
                     aria-label="Product size"
                   />
-                  <button type="button" aria-label="Ampliar" onClick={() => setZoom((z) => Math.min(3, z + 1))}>
+                  <button type="button" aria-label="Increase product size" onClick={() => setZoom((z) => Math.min(3, z + 1))}>
                     <Plus className="h-3 w-3" />
                   </button>
                   <Search className="h-3 w-3 ml-1 text-muted-foreground" />

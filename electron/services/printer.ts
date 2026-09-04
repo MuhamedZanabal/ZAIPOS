@@ -145,7 +145,7 @@ export async function printTicket(
     printer.bold(false);
     printer.setTextNormal();
 
-    // ── Pagos ────────────────────────────────────────────────────────────────
+    // ── Payments ────────────────────────────────────────────────────────────────
     if (data.payments.length > 0) {
       printer.drawLine();
       printer.println('Payment method:');

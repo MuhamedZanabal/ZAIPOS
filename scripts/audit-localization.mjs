@@ -40,6 +40,8 @@ const spanishUiTokens = [
   "Egreso", "Seleccionar", "Buscar", "Eliminar", "Editar", "Nuevo", "No, gracias",
   "En camino", "Asignado", "Cancelado", "Contado", "Esperado", "Diferencia",
   "Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",
+  "Este mes", "Tendencia mensual", "mes anterior", "Ver todo", "Pagos", "Todo sincronizado",
+  "Administrador", "Gerente", "Cajero", "Domiciliario", "Comanda guardada en cola offline",
 ];
 
 const checks = [

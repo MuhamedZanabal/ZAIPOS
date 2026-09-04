@@ -173,7 +173,7 @@ export default function Expenses() {
         <div className="g-page-hd">
           <div className="g-page-hd-eyebrow">FINANZAS · GASTOS</div>
           <div className="h-display g-page-title">Gastos</div>
-          <div className="g-page-hd-meta">Este mes: {formatCurrency(totalMonth)}</div>
+          <div className="g-page-hd-meta">This month: {formatCurrency(totalMonth)}</div>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
           <Plus size={16} className="mr-1" />Record expense
