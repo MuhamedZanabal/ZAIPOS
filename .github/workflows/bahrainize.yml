@@ -1,0 +1,42 @@
+name: Bahrainize branch
+
+on:
+  push:
+    branches:
+      - chore/english-ui
+
+permissions:
+  contents: write
+
+jobs:
+  bahrainize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/english-ui
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Apply deterministic Bahrainization pass
+        run: node scripts/bahrainize-repository.mjs
+
+      - name: Commit repairs
+        shell: bash
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No Bahrainization changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: complete ZAIPOS Bahrain repository cutover"
+          git push origin HEAD:chore/english-ui
