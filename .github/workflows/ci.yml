@@ -27,6 +27,9 @@ jobs:
       - name: Audit ZAIPOS Bahrain localization
         run: node scripts/audit-localization.mjs
 
+      - name: Audit transaction-core invariants
+        run: npm run audit:transactions
+
       - name: Validate migrations
         run: npm run validate:migrations
 
