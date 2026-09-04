@@ -7,15 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Smartphone, Trash2, ClipboardList, MapPin, User, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { resolvePrice, type SalesChannel } from "@/lib/channels";
+import { channelLabel, resolvePrice, type SalesChannel } from "@/lib/channels";
+import { roundBhd } from "@/lib/bahrain";
 
 type LineDraft = {
   product_id: string;
@@ -46,7 +45,6 @@ type DigitalOrder = {
   delivery_address: string | null;
   notes: string | null;
   sale_id: string | null;
-  rappi_order_id: string | null;
   table_id: string | null;
   created_at: string;
   digital_order_items: OrderItem[];
@@ -54,69 +52,63 @@ type DigitalOrder = {
 };
 
 const PLATFORMS: { value: SalesChannel; label: string }[] = [
-  { value: "rappi",    label: "Rappi" },
+  { value: "talabat", label: "Talabat" },
   { value: "whatsapp", label: "WhatsApp" },
-  { value: "didi",     label: "Didi Food" },
-  { value: "uber",     label: "Uber Eats" },
-  { value: "delivery", label: "Domicilio propio" },
+  { value: "delivery", label: "In-house Delivery" },
 ];
 
 const CHANNEL_PILL: Record<string, string> = {
+  talabat: "s-pill s-pill-warn",
   whatsapp: "s-pill s-pill-green",
-  rappi:    "s-pill s-pill-warn",
-  didi:     "s-pill s-pill-warn",
-  uber:     "s-pill s-pill-mute",
   delivery: "s-pill s-pill-blue",
-  qr:       "s-pill",
 };
 
-function ComandaModal({ order, onClose, onConfirm, onRappiAction }: {
+function OrderModal({
+  order,
+  onClose,
+  onConfirm,
+}: {
   order: DigitalOrder;
   onClose: () => void;
   onConfirm: (id: string) => void;
-  onRappiAction: (id: string, action: string) => void;
 }) {
-  const isRappi = order.channel === "rappi" && order.rappi_order_id;
-  const ext = order.external_status;
+  const notesParts = (order.notes ?? "")
+    .split(" · ")
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-  const notesParts = (order.notes ?? "").split(" · ").map((s) => s.trim()).filter(Boolean);
-
-  const minutesAgo = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
+  const minutesAgo = Math.max(0, Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000));
   const timeLabel = minutesAgo < 60
-    ? `hace ${minutesAgo} min`
-    : `hace ${Math.floor(minutesAgo / 60)}h ${minutesAgo % 60}min`;
+    ? `${minutesAgo} min ago`
+    : `${Math.floor(minutesAgo / 60)}h ${minutesAgo % 60}m ago`;
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
-        {/* Header */}
         <div className="px-5 py-4 flex items-start justify-between border-b border-[var(--hairline)]">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className={`${CHANNEL_PILL[order.channel] ?? "s-pill s-pill-mute"} capitalize`}>
-                {order.channel}
+              <span className={`${CHANNEL_PILL[order.channel] ?? "s-pill s-pill-mute"}`}>
+                {channelLabel(order.channel)}
               </span>
-              <span className="font-bold text-base text-ink-900">#{order.external_order_number ?? "—"}</span>
-              {order.channel === "qr" && order.tables?.name && (
-                <span className="text-sm font-semibold text-brand-600">· {order.tables.name}</span>
-              )}
+              <span className="font-bold text-base text-ink-900">
+                #{order.external_order_number ?? "—"}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 h-meta">
               <Clock size={11} />
               <span>{formatDate(order.created_at)} · {timeLabel}</span>
             </div>
           </div>
-          {ext && (
-            <span className="s-pill s-pill-mute capitalize">{ext}</span>
+          {order.external_status && (
+            <span className="s-pill s-pill-mute capitalize">{order.external_status}</span>
           )}
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Items */}
           <div>
             <div className="flex items-center gap-1.5 h-meta uppercase tracking-wider mb-2">
-              <ClipboardList size={12} />
-              Order items
+              <ClipboardList size={12} /> Order items
             </div>
             {order.digital_order_items?.length > 0 ? (
               <div className="space-y-1.5">
@@ -128,9 +120,7 @@ function ComandaModal({ order, onClose, onConfirm, onRappiAction }: {
                       </span>
                       <span className="font-medium text-ink-900">{item.product_name}</span>
                     </div>
-                    <span className="tabular-nums h-meta">
-                      {formatCurrency(Number(item.line_total))}
-                    </span>
+                    <span className="tabular-nums h-meta">{formatCurrency(Number(item.line_total))}</span>
                   </div>
                 ))}
               </div>
@@ -141,32 +131,29 @@ function ComandaModal({ order, onClose, onConfirm, onRappiAction }: {
 
           <div className="border-t border-[var(--hairline)]" />
 
-          {/* Totals */}
           <div className="space-y-1 text-sm">
             <div className="flex justify-between text-ink-500">
-              <span>Subtotal</span>
+              <span>Gross total</span>
               <span className="tabular-nums">{formatCurrency(Number(order.gross_total))}</span>
             </div>
             {Number(order.platform_commission) > 0 && (
               <div className="flex justify-between text-red-500">
-                <span>Commission</span>
+                <span>Platform commission</span>
                 <span className="tabular-nums">−{formatCurrency(Number(order.platform_commission))}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-base pt-1 border-t border-[var(--hairline)]">
-              <span className="text-ink-900">Total</span>
+              <span className="text-ink-900">Net total</span>
               <span className="tabular-nums text-brand-600">{formatCurrency(Number(order.net_total))}</span>
             </div>
           </div>
 
-          {/* Delivery address */}
           {order.delivery_address && (
             <>
               <div className="border-t border-[var(--hairline)]" />
               <div>
                 <div className="flex items-center gap-1.5 h-meta uppercase tracking-wider mb-2">
-                  <MapPin size={12} />
-                  Delivery address
+                  <MapPin size={12} /> Delivery address
                 </div>
                 <p className="text-sm font-medium glass-thin rounded-xl px-3 py-2">
                   {order.delivery_address}
@@ -175,18 +162,16 @@ function ComandaModal({ order, onClose, onConfirm, onRappiAction }: {
             </>
           )}
 
-          {/* Notes */}
           {notesParts.length > 0 && (
             <>
               <div className="border-t border-[var(--hairline)]" />
               <div>
                 <div className="flex items-center gap-1.5 h-meta uppercase tracking-wider mb-2">
-                  <User size={12} />
-                  Order notes
+                  <User size={12} /> Order notes
                 </div>
                 <div className="space-y-1">
-                  {notesParts.map((part, i) => (
-                    <p key={i} className="text-sm text-ink-500">{part}</p>
+                  {notesParts.map((part) => (
+                    <p key={part} className="text-sm text-ink-500">{part}</p>
                   ))}
                 </div>
               </div>
@@ -194,25 +179,21 @@ function ComandaModal({ order, onClose, onConfirm, onRappiAction }: {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="px-5 py-3 border-t border-[var(--hairline)] flex gap-2 flex-wrap justify-end">
-          <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={onClose}>Close</button>
+        <div className="px-5 py-3 border-t border-[var(--hairline)] flex gap-2 justify-end">
+          <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={onClose}>
+            Close
+          </button>
           {!order.sale_id && order.status !== "cancelled" && (
-            <button type="button" className="g-btn g-btn-primary g-btn-sm" onClick={() => { onConfirm(order.id); onClose(); }}>
+            <button
+              type="button"
+              className="g-btn g-btn-primary g-btn-sm"
+              onClick={() => {
+                onConfirm(order.id);
+                onClose();
+              }}
+            >
               Confirm sale
             </button>
-          )}
-          {isRappi && (ext === "pending" || !ext) && (
-            <>
-              <button type="button" className="g-btn g-btn-primary g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "take")}>Aceptar</button>
-              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "reject")}>Rechazar</button>
-            </>
-          )}
-          {isRappi && ext === "accepted" && (
-            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "ready")}>Mark ready</button>
-          )}
-          {isRappi && ext === "ready" && (
-            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => onRappiAction(order.rappi_order_id!, "dispatched")}>Despachado</button>
           )}
         </div>
       </DialogContent>
@@ -225,9 +206,9 @@ export default function DigitalOrders() {
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
-  const [channel, setChannel] = useState<SalesChannel>("rappi");
+  const [channel, setChannel] = useState<SalesChannel>("talabat");
   const [externalNo, setExternalNo] = useState("");
-  const [commission, setCommission] = useState<string>("");
+  const [commission, setCommission] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [search, setSearch] = useState("");
@@ -251,7 +232,7 @@ export default function DigitalOrders() {
 
   useEffect(() => {
     if (!branchId) return;
-    const ch = supabase
+    const realtime = supabase
       .channel(`digital-orders-${branchId}`)
       .on(
         "postgres_changes",
@@ -259,22 +240,11 @@ export default function DigitalOrders() {
         () => qc.invalidateQueries({ queryKey: ["digital-orders", branchId] })
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [branchId, qc]);
 
-  const rappiAction = async (orderId: string, action: "take" | "reject" | "ready" | "dispatched") => {
-    try {
-      const { data, error } = await supabase.functions.invoke("rappi-order-action", {
-        body: { order_id: orderId, action },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success(`Action "${action}" sent to Rappi`);
-      qc.invalidateQueries({ queryKey: ["digital-orders"] });
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not send the action");
-    }
-  };
+    return () => {
+      supabase.removeChannel(realtime);
+    };
+  }, [branchId, qc]);
 
   const confirmOrder = async (orderId: string) => {
     try {
@@ -285,8 +255,8 @@ export default function DigitalOrders() {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not confirm the order");
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not confirm the order");
     }
   };
 
@@ -305,7 +275,7 @@ export default function DigitalOrders() {
     },
   });
 
-  const { data: chPrices } = useQuery({
+  const { data: channelPrices } = useQuery({
     queryKey: ["digital-chprices", tenantId],
     enabled: !!tenantId && open,
     queryFn: async () => {
@@ -330,19 +300,24 @@ export default function DigitalOrders() {
   });
 
   const filtered = useMemo(() => {
-    let list = (products ?? []).filter((p) => {
-      const bp = (branchProducts ?? []).find((b) => b.product_id === p.id);
-      return !bp || bp.is_available;
+    let list = (products ?? []).filter((product) => {
+      const branchProduct = (branchProducts ?? []).find((value) => value.product_id === product.id);
+      return !branchProduct || branchProduct.is_available;
     });
+
     if (search) {
-      const s = search.toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(s) || (p.sku ?? "").toLowerCase().includes(s));
+      const normalizedSearch = search.toLowerCase();
+      list = list.filter(
+        (product) => product.name.toLowerCase().includes(normalizedSearch) ||
+          (product.sku ?? "").toLowerCase().includes(normalizedSearch)
+      );
     }
+
     return list.slice(0, 12);
   }, [products, branchProducts, search]);
 
   const resetForm = () => {
-    setChannel("rappi");
+    setChannel("talabat");
     setExternalNo("");
     setCommission("");
     setNotes("");
@@ -350,72 +325,105 @@ export default function DigitalOrders() {
     setSearch("");
   };
 
-  const addProduct = (p: any) => {
-    const price = resolvePrice(p.id, Number(p.price), branchId, channel, chPrices ?? [], branchProducts ?? []);
-    setLines((prev) => {
-      const existing = prev.find((l) => l.product_id === p.id);
+  const addProduct = (product: any) => {
+    const price = roundBhd(
+      resolvePrice(
+        product.id,
+        Number(product.price),
+        branchId,
+        channel,
+        channelPrices ?? [],
+        branchProducts ?? []
+      )
+    );
+
+    setLines((previous) => {
+      const existing = previous.find((line) => line.product_id === product.id);
       if (existing) {
-        return prev.map((l) => (l.product_id === p.id ? { ...l, quantity: l.quantity + 1 } : l));
+        return previous.map((line) =>
+          line.product_id === product.id ? { ...line, quantity: line.quantity + 1 } : line
+        );
       }
       return [
-        ...prev,
-        { product_id: p.id, name: p.name, quantity: 1, unit_price: price, tax_rate: Number(p.tax_rate) || 0 },
+        ...previous,
+        {
+          product_id: product.id,
+          name: product.name,
+          quantity: 1,
+          unit_price: price,
+          tax_rate: Number(product.tax_rate) || 0,
+        },
       ];
     });
     setSearch("");
   };
 
   const grossTotal = useMemo(
-    () => lines.reduce((s, l) => s + l.quantity * l.unit_price * (1 + (l.tax_rate || 0) / 100), 0),
+    () => roundBhd(
+      lines.reduce(
+        (sum, line) => sum + line.quantity * line.unit_price * (1 + (line.tax_rate || 0) / 100),
+        0
+      )
+    ),
     [lines]
   );
-  const commissionNum = Number(commission) || 0;
-  const netTotal = Math.max(0, grossTotal - commissionNum);
+  const commissionNum = roundBhd(Number(commission) || 0);
+  const netTotal = roundBhd(Math.max(0, grossTotal - commissionNum));
 
   const submit = async () => {
     if (!tenantId || !branchId) return;
-    if (lines.length === 0) return toast.error("Add products");
+    if (lines.length === 0) return toast.error("Add products to the order");
+
     setSubmitting(true);
     try {
-      const itemsPayload = lines.map((l) => ({
-        product_id: l.product_id,
-        quantity: l.quantity,
-        unit_price: l.unit_price,
-        tax_rate: l.tax_rate,
+      const itemsPayload = lines.map((line) => ({
+        product_id: line.product_id,
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        tax_rate: line.tax_rate,
         discount: 0,
       }));
-      const { error } = await supabase.rpc("register_digital_order", {
+
+      const { error } = await supabase.rpc("register_digital_order" as any, {
         _tenant_id: tenantId,
         _branch_id: branchId,
         _channel: channel,
         _external_no: externalNo || null,
-        _items: itemsPayload as any,
+        _items: itemsPayload,
         _commission: commissionNum,
         _notes: notes || null,
       });
       if (error) throw error;
-      toast.success("Digital order recorded");
+
+      toast.success(`${channelLabel(channel)} order recorded`);
       qc.invalidateQueries({ queryKey: ["digital-orders"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       setOpen(false);
       resetForm();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not record the digital order");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const branchName = branches.find((b) => b.id === branchId)?.name ?? "—";
+  const branchName = branches.find((branch) => branch.id === branchId)?.name ?? "—";
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        eyebrow="OPERATIONS · PLATFORMS"
+        eyebrow="OPERATIONS · DIGITAL CHANNELS"
         title="Digital orders"
-        description={`Rappi, plataformas y otros canales digitales · ${branchName}`}
+        description={`Talabat, WhatsApp, and in-house delivery · ${branchName}`}
         actions={
-          <button type="button" className="g-btn g-btn-primary" onClick={() => { resetForm(); setOpen(true); }}>
+          <button
+            type="button"
+            className="g-btn g-btn-primary"
+            onClick={() => {
+              resetForm();
+              setOpen(true);
+            }}
+          >
             <Plus size={15} className="mr-1" /> New order
           </button>
         }
@@ -427,75 +435,59 @@ export default function DigitalOrders() {
         <EmptyState
           icon={Smartphone}
           title="No digital orders"
-          description="Record orders from Rappi or other platforms to track commissions and net sales"
+          description="Record Talabat, WhatsApp, or in-house delivery orders to track commissions and net sales."
         />
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[100px_140px_110px_1fr_110px_110px_190px] px-5 py-3 border-b border-[var(--hairline)] text-[11px] font-semibold uppercase tracking-wider text-ink-500">
-            <div>Canal</div>
+          <div className="grid grid-cols-[110px_140px_110px_1fr_110px_110px_150px] px-5 py-3 border-b border-[var(--hairline)] text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+            <div>Channel</div>
             <div>Order</div>
             <div>Status</div>
-            <div className="text-right">Bruto</div>
+            <div className="text-right">Gross</div>
             <div className="text-right">Commission</div>
-            <div className="text-right">Neto</div>
+            <div className="text-right">Net</div>
             <div className="text-right">Actions</div>
           </div>
 
           <div className="divide-y divide-[var(--hairline)]">
-            {orders.map((o) => {
-              const isRappi = o.channel === "rappi" && o.rappi_order_id;
-              const ext = o.external_status;
-              const itemCount = o.digital_order_items?.length ?? 0;
+            {orders.map((order) => {
+              const itemCount = order.digital_order_items?.length ?? 0;
               return (
                 <div
-                  key={o.id}
-                  className="grid grid-cols-[100px_140px_110px_1fr_110px_110px_190px] items-center px-5 py-3 text-sm gap-2 hover:bg-white/5 transition-colors"
+                  key={order.id}
+                  className="grid grid-cols-[110px_140px_110px_1fr_110px_110px_150px] items-center px-5 py-3 text-sm gap-2 hover:bg-white/5 transition-colors"
                 >
-                  <span className={`${CHANNEL_PILL[o.channel] ?? "s-pill s-pill-mute"} capitalize`}>
-                    {o.channel}
+                  <span className={`${CHANNEL_PILL[order.channel] ?? "s-pill s-pill-mute"}`}>
+                    {channelLabel(order.channel)}
                   </span>
                   <div>
-                    <div className="font-medium text-ink-900">#{o.external_order_number ?? "—"}</div>
-                    <div className="h-meta">{formatDate(o.created_at)}</div>
-                    {o.channel === "qr" && o.tables?.name && (
-                      <div className="text-xs font-semibold text-brand-600">{o.tables.name}</div>
-                    )}
+                    <div className="font-medium text-ink-900">#{order.external_order_number ?? "—"}</div>
+                    <div className="h-meta">{formatDate(order.created_at)}</div>
                   </div>
                   <div>
-                    {ext
-                      ? <span className="s-pill s-pill-mute capitalize">{ext}</span>
-                      : <span className="h-meta">—</span>
-                    }
+                    {order.external_status
+                      ? <span className="s-pill s-pill-mute capitalize">{order.external_status}</span>
+                      : <span className="h-meta capitalize">{order.status || "—"}</span>}
                   </div>
-                  <div className="text-right tabular-nums text-ink-900">{formatCurrency(Number(o.gross_total))}</div>
-                  <div className="text-right tabular-nums text-red-500">−{formatCurrency(Number(o.platform_commission))}</div>
-                  <div className="text-right tabular-nums font-semibold text-ink-900">{formatCurrency(Number(o.net_total))}</div>
+                  <div className="text-right tabular-nums text-ink-900">{formatCurrency(Number(order.gross_total))}</div>
+                  <div className="text-right tabular-nums text-red-500">−{formatCurrency(Number(order.platform_commission))}</div>
+                  <div className="text-right tabular-nums font-semibold text-ink-900">{formatCurrency(Number(order.net_total))}</div>
                   <div className="flex justify-end gap-1 flex-wrap">
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-sm gap-1"
-                      onClick={() => setSelectedOrder(o)}
+                      onClick={() => setSelectedOrder(order)}
                     >
-                      <ClipboardList size={12} />
-                      Comanda{itemCount > 0 ? ` (${itemCount})` : ""}
+                      <ClipboardList size={12} /> Details{itemCount > 0 ? ` (${itemCount})` : ""}
                     </button>
-                    {!o.sale_id && o.status !== "cancelled" && (
-                      <button type="button" className="g-btn g-btn-primary g-btn-sm" onClick={() => confirmOrder(o.id)}>
+                    {!order.sale_id && order.status !== "cancelled" && (
+                      <button
+                        type="button"
+                        className="g-btn g-btn-primary g-btn-sm"
+                        onClick={() => confirmOrder(order.id)}
+                      >
                         Confirm
                       </button>
-                    )}
-                    {isRappi && (ext === "pending" || !ext) && (
-                      <>
-                        <button type="button" className="g-btn g-btn-primary g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "take")}>Aceptar</button>
-                        <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "reject")}>Rechazar</button>
-                      </>
-                    )}
-                    {isRappi && ext === "accepted" && (
-                      <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "ready")}>Mark ready</button>
-                    )}
-                    {isRappi && ext === "ready" && (
-                      <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => rappiAction(o.rappi_order_id!, "dispatched")}>Despachado</button>
                     )}
                   </div>
                 </div>
@@ -506,73 +498,99 @@ export default function DigitalOrders() {
       )}
 
       {selectedOrder && (
-        <ComandaModal
+        <OrderModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
           onConfirm={confirmOrder}
-          onRappiAction={(id, action) => rappiAction(id, action as any)}
         />
       )}
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          setOpen(value);
+          if (!value) resetForm();
+        }}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>New order digital</DialogTitle>
+            <DialogTitle>New digital order</DialogTitle>
           </DialogHeader>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div>
-                <Label>Plataforma</Label>
-                <Select value={channel} onValueChange={(v) => setChannel(v as SalesChannel)}>
+                <Label>Channel</Label>
+                <Select value={channel} onValueChange={(value) => setChannel(value as SalesChannel)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PLATFORMS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    {PLATFORMS.map((platform) => (
+                      <SelectItem key={platform.value} value={platform.value}>{platform.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
-                <Label>External order #</Label>
-                <Input value={externalNo} onChange={(e) => setExternalNo(e.target.value)} placeholder="Ej. RAP-12345" />
+                <Label>External order number</Label>
+                <Input
+                  value={externalNo}
+                  onChange={(event) => setExternalNo(event.target.value)}
+                  placeholder="e.g. TLB-12345"
+                />
               </div>
+
               <div>
-                <Label>Commission plataforma</Label>
+                <Label>Platform commission (BHD)</Label>
                 <Input
                   type="number"
                   min="0"
-                  step="100"
+                  step="0.001"
                   value={commission}
-                  onChange={(e) => setCommission(e.target.value)}
-                  placeholder="0"
+                  onChange={(event) => setCommission(event.target.value)}
+                  placeholder="0.000"
                 />
               </div>
+
               <div>
                 <Label>Notes</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <Input
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Delivery area, customer note, or marketplace reference"
+                />
               </div>
             </div>
+
             <div className="space-y-2">
               <Label>Add products</Label>
               <Input
                 placeholder="Search product..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
               />
+
               {search && (
                 <ScrollArea className="h-44 border rounded-lg">
                   <div className="divide-y">
-                    {filtered.map((p) => (
+                    {filtered.map((product) => (
                       <button
                         type="button"
-                        key={p.id}
-                        onClick={() => addProduct(p)}
+                        key={product.id}
+                        onClick={() => addProduct(product)}
                         className="w-full text-left px-3 py-2 hover:bg-muted/40 flex items-center justify-between text-sm"
                       >
-                        <span>{p.name}</span>
+                        <span>{product.name}</span>
                         <span className="tabular-nums text-muted-foreground">
                           {formatCurrency(
-                            resolvePrice(p.id, Number(p.price), branchId, channel, chPrices ?? [], branchProducts ?? [])
+                            resolvePrice(
+                              product.id,
+                              Number(product.price),
+                              branchId,
+                              channel,
+                              channelPrices ?? [],
+                              branchProducts ?? []
+                            )
                           )}
                         </span>
                       </button>
@@ -580,32 +598,35 @@ export default function DigitalOrders() {
                   </div>
                 </ScrollArea>
               )}
+
               <div className="glass rounded-2xl p-3">
                 {lines.length === 0 ? (
                   <div className="h-meta py-3 text-center">No items yet</div>
                 ) : (
                   <div className="space-y-2 max-h-44 overflow-auto">
-                    {lines.map((l) => (
-                      <div key={l.product_id} className="flex items-center gap-2 text-sm">
+                    {lines.map((line) => (
+                      <div key={line.product_id} className="flex items-center gap-2 text-sm">
                         <Input
                           type="number"
                           min="1"
-                          value={l.quantity}
-                          onChange={(e) => {
-                            const q = Math.max(1, Number(e.target.value) || 1);
-                            setLines((prev) => prev.map((x) => (x.product_id === l.product_id ? { ...x, quantity: q } : x)));
+                          value={line.quantity}
+                          onChange={(event) => {
+                            const quantity = Math.max(1, Number(event.target.value) || 1);
+                            setLines((previous) => previous.map((value) =>
+                              value.product_id === line.product_id ? { ...value, quantity } : value
+                            ));
                           }}
                           className="w-16 h-8 text-center tabular-nums"
                         />
-                        <div className="flex-1 truncate">{l.name}</div>
+                        <div className="flex-1 truncate">{line.name}</div>
                         <div className="tabular-nums w-24 text-right">
-                          {formatCurrency(l.unit_price * l.quantity * (1 + (l.tax_rate || 0) / 100))}
+                          {formatCurrency(roundBhd(line.unit_price * line.quantity * (1 + (line.tax_rate || 0) / 100)))}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => setLines((prev) => prev.filter((x) => x.product_id !== l.product_id))}
+                          onClick={() => setLines((previous) => previous.filter((value) => value.product_id !== line.product_id))}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -613,9 +634,10 @@ export default function DigitalOrders() {
                     ))}
                   </div>
                 )}
+
                 <div className="mt-3 pt-3 border-t border-[var(--hairline)] space-y-1 text-sm">
                   <div className="flex justify-between text-ink-500">
-                    <span>Total bruto</span>
+                    <span>Gross total</span>
                     <span className="tabular-nums">{formatCurrency(grossTotal)}</span>
                   </div>
                   <div className="flex justify-between text-red-500">
@@ -623,13 +645,18 @@ export default function DigitalOrders() {
                     <span className="tabular-nums">−{formatCurrency(commissionNum)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-base pt-1 border-t border-[var(--hairline)]">
-                    <span className="text-ink-900">Neto estimado</span>
+                    <span className="text-ink-900">Estimated net</span>
                     <span className="tabular-nums text-brand-600">{formatCurrency(netTotal)}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            Marketplace status actions are intentionally local-only until a documented Talabat partner API contract and credentials are configured.
+          </p>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={submit} disabled={submitting || lines.length === 0}>Record order</Button>
