@@ -1,0 +1,38 @@
+name: Finalize localization
+
+on:
+  push:
+    branches:
+      - chore/english-ui
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/english-ui
+      - name: Remove final legacy CSS residues
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/design/styles.css')
+          s = p.read_text()
+          s = s.replace('layered over s360t.css tokens', 'layered over ZAIPOS design tokens')
+          s = s.replace('.rappi-webhook-card', '.marketplace-webhook-card')
+          p.write_text(s)
+          PY
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/design/styles.css
+          git commit -m "fix: remove final legacy localization residues"
+          git push origin HEAD:chore/english-ui
