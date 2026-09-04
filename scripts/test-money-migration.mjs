@@ -1,11 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
-const migrationPath = new URL(
+const stageAPath = new URL(
   "../supabase/migrations/20260904221500_exact_money_stage_a.sql",
   import.meta.url,
 );
-const migration = await readFile(migrationPath, "utf8");
+const stageBPath = new URL(
+  "../supabase/migrations/20260905024000_exact_money_stage_b_precision.sql",
+  import.meta.url,
+);
+const [stageA, stageB] = await Promise.all([
+  readFile(stageAPath, "utf8"),
+  readFile(stageBPath, "utf8"),
+]);
 const db = new PGlite();
 
 try {
@@ -15,7 +22,6 @@ try {
     CREATE ROLE service_role;
 
     -- Mirror the production baseline: inherited monetary columns are NUMERIC(12,2).
-    -- Stage B must widen these compatibility columns before new 3-decimal BHD writes.
     CREATE TABLE public.products (
       id uuid PRIMARY KEY, tenant_id uuid NOT NULL,
       price numeric(12,2) NOT NULL, cost numeric(12,2) NOT NULL
@@ -73,7 +79,7 @@ try {
       ('00000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 0.02);
   `);
 
-  await db.exec(migration);
+  await db.exec(stageA);
 
   const product = await db.query(`
     SELECT price_fils, cost_fils FROM public.products
@@ -96,18 +102,61 @@ try {
     throw new Error(`Unexpected cash backfill: ${JSON.stringify(cash.rows[0])}`);
   }
 
-  // This is the production-critical red assertion: NUMERIC(12,2) cannot preserve
-  // a three-decimal BHD write, so Stage B must widen the compatibility columns.
+  await db.exec(stageB);
+
+  const precision = await db.query(`
+    SELECT table_name, column_name, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND (
+        (table_name = 'products' AND column_name IN ('price', 'cost'))
+        OR (table_name = 'payments' AND column_name = 'amount')
+        OR (table_name = 'cash_movements' AND column_name = 'amount')
+      )
+    ORDER BY table_name, column_name
+  `);
+  for (const column of precision.rows) {
+    if (Number(column.numeric_precision) !== 18 || Number(column.numeric_scale) !== 3) {
+      throw new Error(`Money column was not widened to NUMERIC(18,3): ${JSON.stringify(column)}`);
+    }
+  }
+
   await db.exec(`
-    UPDATE public.products SET price = 1.234
+    UPDATE public.products SET price = 1.234, cost = 0.025
+    WHERE id = '00000000-0000-0000-0000-000000000001';
+    UPDATE public.payments SET amount = 12.650
+    WHERE id = '00000000-0000-0000-0000-000000000006';
+    UPDATE public.cash_movements SET amount = 0.025
+    WHERE id = '00000000-0000-0000-0000-000000000008';
+  `);
+
+  const exactProduct = await db.query(`
+    SELECT price, price_fils, cost, cost_fils FROM public.products
     WHERE id = '00000000-0000-0000-0000-000000000001'
   `);
-  const synced = await db.query(`
-    SELECT price, price_fils FROM public.products
-    WHERE id = '00000000-0000-0000-0000-000000000001'
+  if (
+    exactProduct.rows[0].price !== "1.234"
+    || exactProduct.rows[0].price_fils !== 1_234
+    || exactProduct.rows[0].cost !== "0.025"
+    || exactProduct.rows[0].cost_fils !== 25
+  ) {
+    throw new Error(`Three-decimal product money was not preserved: ${JSON.stringify(exactProduct.rows[0])}`);
+  }
+
+  const exactPayment = await db.query(`
+    SELECT amount, amount_fils FROM public.payments
+    WHERE id = '00000000-0000-0000-0000-000000000006'
   `);
-  if (synced.rows[0].price !== "1.234" || synced.rows[0].price_fils !== 1_234) {
-    throw new Error(`Three-decimal BHD write was not preserved: ${JSON.stringify(synced.rows[0])}`);
+  if (exactPayment.rows[0].amount !== "12.650" || exactPayment.rows[0].amount_fils !== 12_650) {
+    throw new Error(`Three-decimal payment was not preserved: ${JSON.stringify(exactPayment.rows[0])}`);
+  }
+
+  const exactMovement = await db.query(`
+    SELECT amount, amount_fils FROM public.cash_movements
+    WHERE id = '00000000-0000-0000-0000-000000000008'
+  `);
+  if (exactMovement.rows[0].amount !== "0.025" || exactMovement.rows[0].amount_fils !== 25) {
+    throw new Error(`Three-decimal cash movement was not preserved: ${JSON.stringify(exactMovement.rows[0])}`);
   }
 
   let parityConstraintBlocked = false;
@@ -147,7 +196,7 @@ try {
     throw new Error(`Unexpected money migration privileges: ${JSON.stringify(privileges.rows[0])}`);
   }
 
-  console.log("PASS: money migrations preserve exact three-decimal BHD writes and fils parity.");
+  console.log("PASS: Stage A + B preserve exact three-decimal BHD writes and fils parity.");
 } finally {
   await db.close();
 }
