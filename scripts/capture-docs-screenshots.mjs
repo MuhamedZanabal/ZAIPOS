@@ -1,0 +1,86 @@
+import fs from "node:fs";
+import { chromium } from "playwright";
+
+const baseUrl = process.env.DOCS_APP_URL || "http://127.0.0.1:4173";
+const outDir = "docs/screenshots";
+fs.mkdirSync(outDir, { recursive: true });
+
+const specs = [
+  {
+    file: "landing.png",
+    path: "/",
+    viewport: { width: 1440, height: 900 },
+    expected: ["ZAIPOS", "Bahrain"],
+  },
+  {
+    file: "dashboard.png",
+    path: "/dashboard",
+    viewport: { width: 1440, height: 1000 },
+    expected: ["Today's sales", "BHD", "Talabat"],
+  },
+  {
+    file: "pos-desktop.png",
+    path: "/pos",
+    viewport: { width: 1440, height: 900 },
+    expected: ["Almarai Fresh Milk 1L", "BHD"],
+  },
+  {
+    file: "pos-mobile.png",
+    path: "/pos",
+    viewport: { width: 390, height: 844 },
+    expected: ["Almarai Fresh Milk 1L"],
+  },
+  {
+    file: "digital-orders.png",
+    path: "/digital-orders",
+    viewport: { width: 1440, height: 900 },
+    expected: ["Talabat", "TB-2048", "BHD"],
+  },
+  {
+    file: "settings.png",
+    path: "/settings",
+    viewport: { width: 1440, height: 900 },
+    expected: ["Settings", "Bahraini Dinar", "Bahrain standard VAT is 10%"],
+  },
+];
+
+async function capture(browser, spec) {
+  const context = await browser.newContext({
+    viewport: spec.viewport,
+    deviceScaleFactor: 1,
+    colorScheme: "light",
+    reducedMotion: "reduce",
+  });
+  const page = await context.newPage();
+
+  await page.goto(`${baseUrl}${spec.path}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(1600);
+
+  for (const text of spec.expected) {
+    await page.getByText(text, { exact: false }).first().waitFor({
+      state: "visible",
+      timeout: 12_000,
+    });
+  }
+
+  await page.screenshot({
+    path: `${outDir}/${spec.file}`,
+    fullPage: false,
+    animations: "disabled",
+  });
+
+  console.log(`Captured ${spec.file}`);
+  await context.close();
+}
+
+const browser = await chromium.launch({ headless: true });
+try {
+  for (const spec of specs) await capture(browser, spec);
+} finally {
+  await browser.close();
+}
+
+console.log(`Captured ${specs.length} current ZAIPOS documentation screenshots.`);
