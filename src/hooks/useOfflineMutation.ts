@@ -3,9 +3,9 @@ import { useNetworkStore } from '@/stores/network';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 
-interface OfflineMutationConfig<TData, TError, TVariables, TContext> 
+interface OfflineMutationConfig<TData, TError, TVariables, TContext>
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
-  type: string; // Identificador único para el sync_engine (e.g., 'CREATE_ORDER')
+  type: string; // Stable operation type used by the sync engine (e.g. 'CHECKOUT_SALE')
 }
 
 export interface OfflineQueuedResult {
@@ -30,7 +30,6 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
 
       if (!isOnline || isBrowserOffline()) return queueMutation();
 
-      // Modo Online: Ejecutar mutación normal
       if (config.mutationFn) {
         try {
           return await config.mutationFn(variables, undefined as never);
@@ -46,6 +45,15 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
   });
 }
 
+function payloadFingerprint(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(payloadFingerprint).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, nested]) => `${JSON.stringify(key)}:${payloadFingerprint(nested)}`);
+  return `{${entries.join(',')}}`;
+}
+
 export async function queueOfflineMutation<TVariables>(
   type: string,
   variables: TVariables,
@@ -53,6 +61,19 @@ export async function queueOfflineMutation<TVariables>(
 ): Promise<OfflineQueuedResult> {
   const deviceId = getDeviceId();
   const payload = withClientMutationId(variables, deviceId);
+  const clientMutationId = (payload as any)?._client_mutation_id as string | undefined;
+
+  if (clientMutationId) {
+    const existing = await db.sync_queue.where('clientMutationId').equals(clientMutationId).first();
+    if (existing) {
+      if (existing.type !== type || payloadFingerprint(existing.payload) !== payloadFingerprint(payload)) {
+        throw new Error(`Offline mutation ID collision: ${clientMutationId}`);
+      }
+      const count = await db.sync_queue.where('status').anyOf('pending', 'failed').count();
+      setPendingSyncCount(count);
+      return { offline: true, queued: true };
+    }
+  }
 
   await db.sync_queue.add({
     type,
@@ -61,7 +82,7 @@ export async function queueOfflineMutation<TVariables>(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     retryCount: 0,
-    clientMutationId: (payload as any)?._client_mutation_id,
+    clientMutationId,
     deviceId,
   });
 
@@ -85,7 +106,7 @@ export function isTransientNetworkError(error: unknown) {
 }
 
 function getDeviceId() {
-  const key = 'poss360t_device_id';
+  const key = 'zaipos_device_id';
   const existing = window.localStorage.getItem(key);
   if (existing) return existing;
   const created = crypto.randomUUID();
@@ -93,7 +114,7 @@ function getDeviceId() {
   return created;
 }
 
-function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {
+export function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {
   if (!variables || typeof variables !== 'object') return variables;
   const payload = variables as Record<string, unknown>;
   if (payload._client_mutation_id) return variables;

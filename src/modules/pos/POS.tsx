@@ -12,7 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CategoryBar } from "./CategoryBar";
 import { ProductGrid } from "./ProductGrid";
 import { TicketPanel } from "./TicketPanel";
-import { PaymentDialog, type PayMethod } from "./PaymentDialog";
+import { PaymentDialog, type PaymentAllocation } from "./PaymentDialog";
+import { allocationTotalFils, normalizePaymentAllocations } from "./paymentAllocations";
+import { filsToBhd } from "@/lib/money";
 import { useOfflineMutation } from "@/hooks/useOfflineMutation";
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
@@ -51,6 +53,7 @@ export default function POS() {
   const [modifierGroups, setModifierGroups] = useState<any[]>([]);
   const [upsellProduct, setUpsellProduct] = useState<any | null>(null);
   const [upsellItems, setUpsellItems] = useState<any[]>([]);
+  const checkoutMutationIdRef = useRef<string | null>(null);
 
   /* Zoom: 1=compact (5 cols / 72px), 2=medium (4 cols / 96px), 3=large (3 cols / 128px) */
   const [zoom, setZoom] = useState(2);
@@ -342,6 +345,11 @@ export default function POS() {
   const isPos = channel === "pos";
   const canCharge = isPos ? !!openSession : true;
 
+  const beginCheckout = useCallback(() => {
+    checkoutMutationIdRef.current = crypto.randomUUID();
+    setPaymentOpen(true);
+  }, []);
+
   const checkoutMutation = useOfflineMutation({
     type: 'CHECKOUT_SALE',
     mutationFn: async (payload: any) => {
@@ -351,7 +359,7 @@ export default function POS() {
     }
   });
 
-  const finalize = async (method: PayMethod, _tendered: number, tipAmount: number, couponCode?: string, discountAmount = 0) => {
+  const finalize = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {
     if (!tenantId || !branchId) return;
     if (lines.length === 0) return toast.error("Add products to the ticket");
     if (isPos && !openSession) return toast.error("You must open the register before making in-person sales");
@@ -366,9 +374,11 @@ export default function POS() {
         discount: l.discount || 0,
         modifiers: l.product._modifiers ?? [],
       }));
-      const payableTotal = Math.max(0, totalNum - discountAmount + tipAmount);
-      const payments = [{ method, amount: payableTotal, reference: null as string | null }];
-      
+      const payments = normalizePaymentAllocations(allocations);
+      const payableTotal = filsToBhd(allocationTotalFils(allocations));
+      const mutationId = checkoutMutationIdRef.current ?? crypto.randomUUID();
+      checkoutMutationIdRef.current = mutationId;
+
       const saleId = await checkoutMutation.mutateAsync({
         _tenant_id: tenantId,
         _branch_id: branchId,
@@ -380,7 +390,8 @@ export default function POS() {
         _channel: channel,
         _tip_amount: tipAmount,
         _coupon_code: couponCode ?? null,
-        _client_mutation_id: crypto.randomUUID(),
+        _client_mutation_id: mutationId,
+        _cash_session_id: openSession?.id ?? null,
       });
 
       const queuedOffline = !saleId || typeof saleId !== "string";
@@ -417,7 +428,7 @@ export default function POS() {
             notes: receiptConfig.footer_text || undefined,
             date: new Date().toISOString(),
           });
-          if (method === "cash") await openDrawer();
+          if (allocations.some((allocation) => allocation.method === "cash")) await openDrawer();
         } catch (hwErr: any) {
           // La sale ya quedó registrada en BD; un fallo del hardware no debe
           // bloquear el cierre del ticket ni provocar que el cajero cobre dos veces.
@@ -427,6 +438,7 @@ export default function POS() {
         }
       }
       clear();
+      checkoutMutationIdRef.current = null;
       setPaymentOpen(false);
       setCustomerId(null);
       setCustomerSearch("");
@@ -500,7 +512,7 @@ export default function POS() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "F2" && lines.length > 0 && canCharge) { e.preventDefault(); setPaymentOpen(true); }
+      if (e.key === "F2" && lines.length > 0 && canCharge) { e.preventDefault(); beginCheckout(); }
       if (e.key === "Escape" && paymentOpen) setPaymentOpen(false);
     };
     window.addEventListener("keydown", handler);
@@ -746,14 +758,17 @@ export default function POS() {
         <TicketPanel
           canCharge={canCharge}
           reasonDisabled={isPos && !openSession ? "Open register to charge" : undefined}
-          onCharge={() => setPaymentOpen(true)}
+          onCharge={() => beginCheckout()}
           onSendToTable={channel === "tables" ? handleSendToTable : undefined}
         />
       </div>
 
       <PaymentDialog
         open={paymentOpen}
-        onOpenChange={setPaymentOpen}
+        onOpenChange={(nextOpen) => {
+          setPaymentOpen(nextOpen);
+          if (!nextOpen && !submitting) checkoutMutationIdRef.current = null;
+        }}
         total={totalNum}
         tenantId={tenantId}
         submitting={submitting}
