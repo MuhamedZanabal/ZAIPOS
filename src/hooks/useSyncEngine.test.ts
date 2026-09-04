@@ -96,7 +96,6 @@ describe("useSyncEngine", () => {
 
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await result.current.discardItem(id);
-
     expect(mockDbStore).toHaveLength(0);
   });
 
@@ -194,6 +193,6 @@ describe("useSyncEngine", () => {
     const item = mockDbStore.find(i => i.id === id);
     expect(item).toBeDefined();
     expect(item?.status).toBe("failed");
-    expect(item?.lastError).toContain("Unsupported offline operation type");
+    expect(item?.error).toContain("Unsupported offline operation type");
   });
 });
