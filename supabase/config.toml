@@ -1,8 +1,5 @@
 project_id = "your-project-ref"
 
-[functions.rappi-webhook]
-verify_jwt = false
-
 [functions.evolution-webhook]
 verify_jwt = false
 
@@ -16,15 +13,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.process-invoice]
-verify_jwt = true
-
-[functions.rappi-order-action]
-verify_jwt = true
-
-[functions.rappi-sync-menu]
-verify_jwt = true
-
-[functions.rappi-test-connection]
 verify_jwt = true
 
 [functions.send-whatsapp-message]
