@@ -95,7 +95,7 @@ try {
     CREATE TYPE public.sale_status AS ENUM ('completed','cancelled','refunded','partially_refunded');
     CREATE TYPE public.cash_session_status AS ENUM ('open','closed');
     CREATE TYPE public.entity_status AS ENUM ('active','inactive');
-    CREATE TYPE public.sales_channel AS ENUM ('pos','rappi','delivery','tables','didi','uber','whatsapp','qr');
+    CREATE TYPE public.sales_channel AS ENUM ('pos','delivery','tables','whatsapp','qr');
 
     CREATE TABLE public.tenants (
       id uuid PRIMARY KEY,
