@@ -1,19 +1,15 @@
 services:
-  pos:
+  zaipos:
     build:
-      # Contexto = raíz del repo (donde vive el Dockerfile).
-      # Dokploy clona el repo y corre compose desde la raíz,
-      # así que ../../ sube desde deployments/_template/ hasta la raíz.
+      # Repository root containing the Dockerfile.
       context: ../../
       dockerfile: Dockerfile
       args:
-        # Las variables VITE_* se hornean en el JS en build-time.
-        # Provienen de Dokploy UI (producción) o del .env local (desarrollo).
+        # Public Vite variables are injected at build time.
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
-    # Cambiar CLIENTE por el nombre real de la instancia
-    image: pos-s360t-CLIENTE:latest
-    container_name: pos-CLIENTE
+    image: zaipos-CLIENT:latest
+    container_name: zaipos-CLIENT
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:80"

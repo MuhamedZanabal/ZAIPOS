@@ -330,9 +330,9 @@ export default function POS() {
       );
       if (product) {
         handleAddProduct(product);
-        toast.success(`${product.name} añadido`, { duration: 1500 });
+        toast.success(`${product.name} added`, { duration: 1500 });
       } else {
-        toast.error(`Código "${code}" no encontrado`, { duration: 2500 });
+        toast.error(`Code "${code}" not found`, { duration: 2500 });
       }
     });
   }, [onBarcodeScanned, priced, handleAddProduct]);
@@ -353,8 +353,8 @@ export default function POS() {
 
   const finalize = async (method: PayMethod, _tendered: number, tipAmount: number, couponCode?: string, discountAmount = 0) => {
     if (!tenantId || !branchId) return;
-    if (lines.length === 0) return toast.error("Agrega productos al ticket");
-    if (isPos && !openSession) return toast.error("Debes abrir caja antes de vender en presencial");
+    if (lines.length === 0) return toast.error("Add products to the ticket");
+    if (isPos && !openSession) return toast.error("You must open the register before making in-person sales");
 
     setSubmitting(true);
     try {
@@ -386,8 +386,8 @@ export default function POS() {
       const queuedOffline = !saleId || typeof saleId !== "string";
       toast.success(
         queuedOffline
-          ? `Venta guardada en cola · ${formatCurrency(payableTotal)}`
-          : `Venta registrada · ${formatCurrency(payableTotal)}`
+          ? `Sale queued · ${formatCurrency(payableTotal)}`
+          : `Sale recorded · ${formatCurrency(payableTotal)}`
       );
       if (saleId && typeof saleId === "string") {
         try {
@@ -400,7 +400,7 @@ export default function POS() {
           const receiptConfig = (tenant?.receipt_config as Record<string, any>) ?? {};
           await printTicket({
             ticketNumber: sale?.ticket_number ?? saleId.slice(0, 8),
-            businessName: tenant?.name ?? "POSS360T",
+            businessName: tenant?.name ?? "ZAIPOS",
             branchName,
             items: lines.map((line) => ({
               name: line.product.name,
@@ -419,10 +419,10 @@ export default function POS() {
           });
           if (method === "cash") await openDrawer();
         } catch (hwErr: any) {
-          // La venta ya quedó registrada en BD; un fallo del hardware no debe
+          // La sale ya quedó registrada en BD; un fallo del hardware no debe
           // bloquear el cierre del ticket ni provocar que el cajero cobre dos veces.
-          toast.warning("Venta registrada, pero la impresora o gaveta fallaron", {
-            description: hwErr?.message ?? "Revisa el hardware antes del próximo ticket",
+          toast.warning("Sale recorded, but the printer or cash drawer failed", {
+            description: hwErr?.message ?? "Check the hardware before the next ticket",
           });
         }
       }
@@ -435,7 +435,7 @@ export default function POS() {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
     } catch (err: any) {
-      toast.error(err.message ?? "No se pudo finalizar la venta");
+      toast.error(err.message ?? "Could not complete the sale");
     } finally { setSubmitting(false); }
   };
 
@@ -445,8 +445,8 @@ export default function POS() {
   });
 
   const handleSendToTable = async () => {
-    if (!selectedTableId) return toast.error("Selecciona una mesa primero");
-    if (lines.length === 0) return toast.error("Agrega productos al ticket");
+    if (!selectedTableId) return toast.error("Select a table first");
+    if (lines.length === 0) return toast.error("Add products to the ticket");
 
     setSubmitting(true);
     try {
@@ -481,7 +481,7 @@ export default function POS() {
 
       toast.success(
         result && typeof result === "string"
-          ? "Comanda enviada a la mesa"
+          ? "Order sent to the table"
           : "Comanda guardada en cola offline"
       );
       clear();
@@ -520,7 +520,7 @@ export default function POS() {
         <div className="flex-1">
           <BrandBar
             branch={branchName}
-            session={`Caja · ${branchName}`}
+            session={`Register · ${branchName}`}
             channel={CHANNELS.find((c) => c.id === channel)?.label ?? "Local"}
             showSync={!!openSession}
           />
@@ -528,7 +528,7 @@ export default function POS() {
         <Link
           to="/dashboard"
           className="flex items-center gap-1.5 shrink-0 px-4 border-l text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-          title="Volver al panel principal"
+          title="Back to main dashboard"
         >
           <LayoutDashboard className="h-4 w-4" />
           <span className="hidden sm:inline font-medium">Panel</span>
@@ -580,7 +580,7 @@ export default function POS() {
         {/* Today's metrics ticker */}
         {todayMetrics && (
           <TickRail items={[
-            { key: "VENTAS HOY", value: formatCurrency(todayMetrics.totalSales) },
+            { key: "SALES TODAY", value: formatCurrency(todayMetrics.totalSales) },
             { key: "TICKETS",    value: String(todayMetrics.count) },
             { key: "PROM",       value: formatCurrency(todayMetrics.avgTicket) },
           ]} />
@@ -594,18 +594,18 @@ export default function POS() {
             className="s-pill s-pill-blue gap-1"
           >
             <UtensilsCrossed className="h-3 w-3" />
-            {pendingTables} mesa{pendingTables !== 1 ? "s" : ""}
+            {pendingTables} table{pendingTables !== 1 ? "s" : ""}
           </button>
         )}
 
         {/* Cash session status */}
         {isPos && (openSession ? (
           <span className="s-pill s-pill-green">
-            <LiveDot /> Caja abierta
+            <LiveDot /> Register open
           </span>
         ) : (
           <span className="s-pill s-pill-danger">
-            <LockKeyhole className="h-3 w-3" /> Sin caja
+            <LockKeyhole className="h-3 w-3" /> No register
           </span>
         ))}
       </div>
@@ -613,8 +613,8 @@ export default function POS() {
       {/* ── No-session warning ───────────────────────────── */}
       {isPos && !openSession && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
-          <span className="text-sm"><strong>Caja cerrada</strong> · Abre la caja para registrar ventas presenciales.</span>
-          <Button asChild size="sm" variant="default"><Link to="/cash">Abrir caja</Link></Button>
+          <span className="text-sm"><strong>Register closed</strong> · Open the register to record in-person sales.</span>
+          <Button asChild size="sm" variant="default"><Link to="/cash">Open register</Link></Button>
         </div>
       )}
 
@@ -631,7 +631,7 @@ export default function POS() {
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
                 type="search"
-                placeholder="Buscar producto, SKU o código de barras…"
+                placeholder="Search product, SKU, or barcode…"
                 className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -655,7 +655,7 @@ export default function POS() {
                       <Heart className="h-2 w-2 fill-current" /> {selectedCustomer.loyalty_points}
                     </Badge>
                   )}
-                  <button type="button" aria-label="Limpiar cliente"
+                  <button type="button" aria-label="Clear customer"
                     onClick={() => { setCustomerId(null); setCustomerSearch(""); }}
                     className="text-primary/60 hover:text-primary ml-0.5">
                     <X className="h-3 w-3" />
@@ -666,7 +666,7 @@ export default function POS() {
                   <UserRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Cliente…"
+                    placeholder="Customer…"
                     value={customerSearch}
                     onChange={(e) => { setCustomerSearch(e.target.value); setCustomerDropdown(true); }}
                     onFocus={() => setCustomerDropdown(true)}
@@ -705,7 +705,7 @@ export default function POS() {
             {/* Catalog header: eyebrow + zoom rail */}
             <div className="flex items-center justify-between shrink-0">
               <span className="eyebrow eyebrow-blue">
-                CATÁLOGO · {filtered.length} ÍTEMS
+                CATALOG · {filtered.length} ITEMS
               </span>
               <div className="flex items-center gap-3">
                 {/* Zoom rail */}
@@ -717,7 +717,7 @@ export default function POS() {
                     ref={zoomInputRef}
                     type="range" min={1} max={3} step={1} value={zoom}
                     onChange={(e) => setZoom(Number(e.target.value))}
-                    aria-label="Tamaño de productos"
+                    aria-label="Product size"
                   />
                   <button type="button" aria-label="Ampliar" onClick={() => setZoom((z) => Math.min(3, z + 1))}>
                     <Plus className="h-3 w-3" />
@@ -725,7 +725,7 @@ export default function POS() {
                   <Search className="h-3 w-3 ml-1 text-muted-foreground" />
                 </div>
                 <span className="text-[11px] text-muted-foreground hidden sm:block">
-                  Esta sucursal
+                  This branch
                 </span>
               </div>
             </div>
@@ -745,7 +745,7 @@ export default function POS() {
         {/* RIGHT: ticket */}
         <TicketPanel
           canCharge={canCharge}
-          reasonDisabled={isPos && !openSession ? "Abre caja para cobrar" : undefined}
+          reasonDisabled={isPos && !openSession ? "Open register to charge" : undefined}
           onCharge={() => setPaymentOpen(true)}
           onSendToTable={channel === "tables" ? handleSendToTable : undefined}
         />
@@ -764,7 +764,7 @@ export default function POS() {
       <Dialog open={!!upsellProduct && upsellItems.length > 0} onOpenChange={open => { if (!open) { setUpsellProduct(null); setUpsellItems([]); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base">¿Agregar algo más?</DialogTitle>
+            <DialogTitle className="text-base">Add anything else?</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             {upsellItems.map((p: any) => (
@@ -775,13 +775,13 @@ export default function POS() {
                 </div>
                 <Button size="sm" variant="outline" className="shrink-0"
                   onClick={() => { add(p); setUpsellProduct(null); setUpsellItems([]); }}>
-                  Agregar
+                  Add
                 </Button>
               </div>
             ))}
           </div>
           <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { setUpsellProduct(null); setUpsellItems([]); }}>
-            No, gracias
+            No, thank you
           </Button>
         </DialogContent>
       </Dialog>
@@ -800,7 +800,7 @@ export default function POS() {
                 onChange={setPendingModifiers}
               />
               <Button className="w-full mt-2" onClick={confirmModifiers}>
-                Agregar al carrito
+                Add to cart
               </Button>
             </>
           )}

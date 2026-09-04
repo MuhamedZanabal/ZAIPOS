@@ -63,7 +63,7 @@ export function ModifierSelector({ productId, selected, onChange }: Props) {
           <div key={group.id} className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">{group.name}</span>
-              {group.required && <Badge variant="destructive" className="text-xs">Obligatorio</Badge>}
+              {group.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
               {group.max_selections > 1 && (
                 <Badge variant="outline" className="text-xs">
                   {groupSelected.length}/{group.max_selections}
@@ -114,7 +114,7 @@ export function validateModifiers(
     if (!group.required) continue;
     const count = selected.filter(s => s.group_id === group.id).length;
     if (count < group.min_selections) {
-      return `"${group.name}" es obligatorio`;
+      return `"${group.name}" is required`;
     }
   }
   return null;

@@ -1,17 +1,17 @@
 /**
  * electron/services/updater.ts
  * Auto-actualizaciones usando electron-updater.
- * Descarga desde GitHub Releases (o cualquier proveedor configurado en electron-builder).
+ * Descarga desde GitHub Releases (o cualquier supplier configurado en electron-builder).
  *
  * CONFIGURACIÓN:
- * Para habilitarlo, configura un proveedor publish real en electron-builder
+ * Para habilitarlo, configura un supplier publish real en electron-builder
  * y lanza la app con POS_ENABLE_AUTO_UPDATE=true.
  *
  * Ejemplo:
  *   "publish": {
  *     "provider": "github",
- *     "owner": "tu-usuario",
- *     "repo": "poss360t-releases"
+ *     "owner": "tu-user",
+ *     "repo": "zaipos-releases"
  *   }
  */
 
@@ -96,11 +96,11 @@ export async function setupUpdater(mainWindow: BrowserWindow): Promise<void> {
   ipcMain.handle(IPC_HANDLERS.INSTALL_UPDATE, async () => {
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'question',
-      buttons: ['Instalar y reiniciar', 'Cancelar'],
+      buttons: ['Install and restart', 'Cancel'],
       defaultId: 0,
-      title: 'Actualización lista',
-      message: 'La actualización está lista para instalar.',
-      detail: 'La aplicación se reiniciará para completar la instalación.',
+      title: 'Update ready',
+      message: 'The update is ready to install.',
+      detail: 'The application will restart to complete the installation.',
     });
 
     if (result.response === 0) {

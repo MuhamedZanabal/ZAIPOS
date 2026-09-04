@@ -68,11 +68,11 @@ export default function Reports() {
     let filename = "";
 
     if (type === 'days') {
-      csv = "Fecha,Tickets,Total\n" + data.days.map(d => `${d.date},${d.tickets},${d.total}`).join("\n");
-      filename = `reporte_ventas_${dateFrom}_a_${dateTo}.csv`;
+      csv = "Date,Tickets,Total\n" + data.days.map(d => `${d.date},${d.tickets},${d.total}`).join("\n");
+      filename = `reporte_sales_${dateFrom}_a_${dateTo}.csv`;
     } else {
-      csv = "Producto,Cantidad,Total\n" + data.top.map(p => `${p.name},${p.qty},${p.total}`).join("\n");
-      filename = `reporte_productos_${dateFrom}_a_${dateTo}.csv`;
+      csv = "Product,Quantity,Total\n" + data.top.map(p => `${p.name},${p.qty},${p.total}`).join("\n");
+      filename = `reporte_products_${dateFrom}_a_${dateTo}.csv`;
     }
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -82,15 +82,15 @@ export default function Reports() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Archivo exportado correctamente");
+    toast.success("File exportado correctamente");
   };
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         eyebrow="SISTEMA · ANALYTICS"
-        title="Reportes Avanzados"
-        description="Analiza el rendimiento de tu negocio con filtros personalizados"
+        title="Advanced Reports"
+        description="Analyze your business performance with custom filters"
         actions={
           <div className="flex items-center gap-2 glass rounded-xl px-3 py-1.5">
             <Calendar className="h-4 w-4 text-ink-500" />
@@ -114,10 +114,10 @@ export default function Reports() {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {[
-          { icon: <TrendingUp size={16} />, label: "Ventas Totales", value: formatCurrency(data?.totals ?? 0), accent: true },
+          { icon: <TrendingUp size={16} />, label: "Total Sales", value: formatCurrency(data?.totals ?? 0), accent: true },
           { icon: <Receipt size={16} />,    label: "Total Tickets",   value: String(data?.count ?? 0) },
           { icon: <ShoppingBag size={16} />,label: "Ticket Promedio", value: formatCurrency(data?.avg ?? 0) },
-          { icon: <Package size={16} />,    label: "Impuestos (IVA)", value: formatCurrency(data?.taxTotal ?? 0) },
+          { icon: <Package size={16} />,    label: "Taxes (VAT)", value: formatCurrency(data?.taxTotal ?? 0) },
         ].map(({ icon, label, value, accent }) => (
           <div key={label} className={`glass flex flex-col g-kpi${accent ? " border-l-2 border-brand-600" : ""}`}>
             <div className="flex items-center justify-between gap-2.5">
@@ -131,14 +131,14 @@ export default function Reports() {
 
       {/* Tables row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Ventas por día */}
+        {/* Sales by day */}
         <div className="glass rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
             <div className="flex items-center gap-2.5">
               <div className="orb g-orb-32"><TrendingUp size={14} /></div>
               <div>
-                <div className="h-meta uppercase tracking-wider">PERÍODO SELECCIONADO</div>
-                <div className="h-label font-semibold text-ink-900 text-sm">Ventas por día</div>
+                <div className="h-meta uppercase tracking-wider">SELECTED PERIOD</div>
+                <div className="h-label font-semibold text-ink-900 text-sm">Sales by day</div>
               </div>
             </div>
             <button
@@ -147,12 +147,12 @@ export default function Reports() {
               onClick={() => exportCSV('days')}
               disabled={!data?.days.length}
             >
-              <Download size={13} className="mr-1" /> Exportar
+              <Download size={13} className="mr-1" /> Export
             </button>
           </div>
           {/* Header */}
           <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
-            <div>Fecha</div>
+            <div>Date</div>
             <div className="text-right">Tickets</div>
             <div className="text-right">Total</div>
           </div>
@@ -160,7 +160,7 @@ export default function Reports() {
             {(data?.days ?? []).map((d) => (
               <div key={d.date} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm hover:bg-white/5 transition-colors">
                 <div className="font-medium text-ink-900">
-                  {new Date(d.date).toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short" })}
+                  {new Date(d.date).toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short" })}
                 </div>
                 <div className="text-right tabular-nums text-ink-500">{d.tickets}</div>
                 <div className="text-right tabular-nums font-bold text-ink-900">{formatCurrency(d.total)}</div>
@@ -168,20 +168,20 @@ export default function Reports() {
             ))}
             {(!data?.days || data.days.length === 0) && (
               <div className="px-5 py-10 text-center h-meta italic">
-                {isLoading ? "Cargando…" : "Sin movimientos en este periodo"}
+                {isLoading ? "Loading…" : "No activity in this period"}
               </div>
             )}
           </div>
         </div>
 
-        {/* Productos más vendidos */}
+        {/* Top-selling products */}
         <div className="glass rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
             <div className="flex items-center gap-2.5">
               <div className="orb g-orb-32"><Package size={14} /></div>
               <div>
                 <div className="h-meta uppercase tracking-wider">RANKING</div>
-                <div className="h-label font-semibold text-ink-900 text-sm">Productos más vendidos</div>
+                <div className="h-label font-semibold text-ink-900 text-sm">Top-selling products</div>
               </div>
             </div>
             <button
@@ -190,11 +190,11 @@ export default function Reports() {
               onClick={() => exportCSV('products')}
               disabled={!data?.top.length}
             >
-              <Download size={13} className="mr-1" /> Exportar
+              <Download size={13} className="mr-1" /> Export
             </button>
           </div>
           <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
-            <div>Producto</div>
+            <div>Product</div>
             <div className="text-right">Unidades</div>
             <div className="text-right">Total</div>
           </div>
@@ -208,7 +208,7 @@ export default function Reports() {
             ))}
             {(!data?.top || data.top.length === 0) && (
               <div className="px-5 py-10 text-center h-meta italic">
-                {isLoading ? "Cargando…" : "Sin productos vendidos"}
+                {isLoading ? "Loading…" : "No products sold"}
               </div>
             )}
           </div>
@@ -219,7 +219,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Medios de pago */}
         <div className="glass rounded-2xl p-5">
-          <div className="h-meta uppercase tracking-wider mb-4">MIX · MEDIOS DE PAGO</div>
+          <div className="h-meta uppercase tracking-wider mb-4">MIX · PAYMENT METHODS</div>
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(data?.byMethod ?? {}).map(([m, total]) => (
               <div key={m} className="glass-thin rounded-xl p-3">
@@ -228,7 +228,7 @@ export default function Reports() {
               </div>
             ))}
             {Object.keys(data?.byMethod ?? {}).length === 0 && (
-              <div className="col-span-full text-center h-meta py-6">Sin pagos registrados</div>
+              <div className="col-span-full text-center h-meta py-6">No payments recorded</div>
             )}
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function Reports() {
           <div className="space-y-4">
             {[
               { label: "Subtotal neto", value: formatCurrency((data?.totals ?? 0) - (data?.taxTotal ?? 0)) },
-              { label: "Impuestos IVA", value: formatCurrency(data?.taxTotal ?? 0) },
+              { label: "VAT Taxes", value: formatCurrency(data?.taxTotal ?? 0) },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between items-baseline">
                 <span className="h-label">{label}</span>

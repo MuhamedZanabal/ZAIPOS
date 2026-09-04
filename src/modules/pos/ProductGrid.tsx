@@ -141,7 +141,7 @@ export function ProductGrid({
       </div>
 
       {products.length === 0 && (
-        <p className="text-center py-16 h-meta">No se encontraron productos</p>
+        <p className="text-center py-16 h-meta">No products found</p>
       )}
     </div>
   );

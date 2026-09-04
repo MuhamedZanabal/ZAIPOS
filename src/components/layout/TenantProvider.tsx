@@ -11,30 +11,20 @@ interface TenantProviderProps {
   children: React.ReactNode;
 }
 
-// ── Pantalla: instancia sin dominio configurado ────────────────────────────────
-// Cuando no se encuentra un tenant para el hostname actual, bloqueamos el acceso
-// normal pero dejamos que un super_admin inicie sesión para configurar el dominio.
 function UnconfiguredScreen() {
   const hostname = window.location.hostname;
-
-  const [session, setSession]           = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [authLoading, setAuthLoading]   = useState(true);
-
-  // Login form state
-  const [email, setEmail]       = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
-
-  // Setup state
-  const [tenants, setTenants]           = useState<{ id: string; name: string; slug: string; domain: string | null }[]>([]);
+  const [tenants, setTenants] = useState<{ id: string; name: string; slug: string; domain: string | null }[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
-  const [saving, setSaving]             = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const loadTenants = useCallback(async () => {
-    const { data } = await supabase
-      .from("tenants")
-      .select("id, name, slug, domain");
+    const { data } = await supabase.from("tenants").select("id, name, slug, domain");
     setTenants(data ?? []);
   }, []);
 
@@ -50,11 +40,9 @@ function UnconfiguredScreen() {
     const isAdmin = !!data;
     setIsSuperAdmin(isAdmin);
     setAuthLoading(false);
-
     if (isAdmin) loadTenants();
   }, [loadTenants]);
 
-  // ── Check existing session & super_admin status ────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session ?? null);
@@ -62,17 +50,20 @@ function UnconfiguredScreen() {
       else setAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      if (s) checkSuperAdmin(s.user.id);
-      else { setIsSuperAdmin(false); setAuthLoading(false); }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession) checkSuperAdmin(nextSession.user.id);
+      else {
+        setIsSuperAdmin(false);
+        setAuthLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, [checkSuperAdmin]);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin(event: React.FormEvent) {
+    event.preventDefault();
     setLoggingIn(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) toast.error(error.message);
@@ -88,15 +79,14 @@ function UnconfiguredScreen() {
       .eq("id", selectedTenant);
 
     if (error) {
-      toast.error("Error: " + error.message);
+      toast.error(`Error: ${error.message}`);
     } else {
-      toast.success("Dominio configurado. Recargando...");
+      toast.success("Domain configured. Reloading...");
       setTimeout(() => window.location.reload(), 800);
     }
     setSaving(false);
   }
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -105,98 +95,86 @@ function UnconfiguredScreen() {
     );
   }
 
-  // ── Super admin autenticado: pantalla de configuración ─────────────────────
   if (session && isSuperAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="flex items-center gap-2 text-amber-600">
             <Settings2 className="h-5 w-5" />
-            <span className="font-semibold text-sm">Configurar instancia</span>
+            <span className="font-semibold text-sm">Configure instance</span>
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Hostname detectado</p>
-            <code className="block text-sm font-mono bg-muted px-3 py-2 rounded">
-              {hostname}
-            </code>
+            <p className="text-xs text-muted-foreground">Detected hostname</p>
+            <code className="block text-sm font-mono bg-muted px-3 py-2 rounded">{hostname}</code>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">Vincular a tenant</label>
+            <label className="text-xs text-muted-foreground">Link to business</label>
             <select
-              aria-label="Tenant"
+              aria-label="Business"
               className="w-full border rounded px-3 py-2 text-sm bg-background"
               value={selectedTenant}
-              onChange={(e) => setSelectedTenant(e.target.value)}
+              onChange={(event) => setSelectedTenant(event.target.value)}
             >
-              <option value="">Seleccionar tenant...</option>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.slug}){t.domain ? ` — ${t.domain}` : ""}
+              <option value="">Select business...</option>
+              {tenants.map((tenant) => (
+                <option key={tenant.id} value={tenant.id}>
+                  {tenant.name} ({tenant.slug}){tenant.domain ? ` — ${tenant.domain}` : ""}
                 </option>
               ))}
             </select>
           </div>
 
-          <Button
-            className="w-full"
-            disabled={!selectedTenant || saving}
-            onClick={handleSetDomain}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vincular dominio y continuar"}
+          <Button className="w-full" disabled={!selectedTenant || saving} onClick={handleSetDomain}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link domain and continue"}
           </Button>
 
-          <Button
-            variant="ghost"
-            className="w-full text-xs text-muted-foreground"
-            onClick={() => signOutFully()}
-          >
-            Cerrar sesión
+          <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => signOutFully()}>
+            Sign out
           </Button>
         </div>
       </div>
     );
   }
 
-  // ── Sin sesión o no es super_admin: login + mensaje ────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
-          <h1 className="text-lg font-semibold text-foreground">Instancia no configurada</h1>
+          <h1 className="text-lg font-semibold text-foreground">Instance not configured</h1>
           <p className="text-muted-foreground text-xs">
-            No hay un tenant vinculado a <code className="font-mono">{hostname}</code>
+            No business is linked to <code className="font-mono">{hostname}</code>.
           </p>
         </div>
 
         {session && !isSuperAdmin ? (
           <p className="text-center text-xs text-destructive">
-            Tu cuenta no tiene permisos para configurar esta instancia.
+            Your account does not have permission to configure this instance.
           </p>
         ) : (
           <form onSubmit={handleLogin} className="space-y-3">
             <p className="text-xs text-muted-foreground text-center">
-              Accede como super admin para configurarla
+              Sign in as a super administrator to configure it.
             </p>
             <input
               type="email"
-              placeholder="Correo"
+              placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               className="w-full border rounded px-3 py-2 text-sm bg-background"
               required
             />
             <input
               type="password"
-              placeholder="Contraseña"
+              placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               className="w-full border rounded px-3 py-2 text-sm bg-background"
               required
             />
             <Button type="submit" className="w-full" disabled={loggingIn}>
-              {loggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : "Iniciar sesión"}
+              {loggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
             </Button>
           </form>
         )}
@@ -205,7 +183,6 @@ function UnconfiguredScreen() {
   );
 }
 
-// ── Provider principal ─────────────────────────────────────────────────────────
 export function TenantProvider({ children }: TenantProviderProps) {
   const { loading, error } = useTenantByDomain();
 
@@ -217,19 +194,15 @@ export function TenantProvider({ children }: TenantProviderProps) {
     );
   }
 
-  // Dominio no encontrado → flujo super_admin
-  if (error === "not-found") {
-    return <UnconfiguredScreen />;
-  }
+  if (error === "not-found") return <UnconfiguredScreen />;
 
-  // Error de red / BD
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2 px-4">
-          <h1 className="text-xl font-semibold text-foreground">Error de conexión</h1>
+          <h1 className="text-xl font-semibold text-foreground">Connection error</h1>
           <p className="text-muted-foreground text-sm">
-            No se pudo contactar el servidor. Intenta recargar la página.
+            Could not reach the server. Try reloading the page.
           </p>
         </div>
       </div>

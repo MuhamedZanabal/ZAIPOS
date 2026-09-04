@@ -20,10 +20,10 @@ export interface ElectronBridge {
    */
   onBarcodeScanned: (callback: (code: string) => void) => () => void;
 
-  /** Obtiene la configuración actual de la app */
+  /** Obtiene la configuration actual de la app */
   getSettings: () => Promise<AppSettings>;
 
-  /** Guarda la configuración de la app */
+  /** Guarda la configuration de la app */
   saveSettings: (settings: Partial<AppSettings>) => Promise<void>;
 
   /**

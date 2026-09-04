@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         contents: [{
           parts: [
-            { text: "Analiza esta factura de proveedor. Extrae los productos, cantidades y precios unitarios. Responde estrictamente con un JSON en este formato: { \"products\": [{ \"name\": \"string\", \"quantity\": number, \"unit_price\": number, \"total\": number }] }. Si hay impuestos (IVA), usa el precio antes de impuestos." },
+            { text: "Analiza esta invoice de supplier. Extrae los products, quantityes y prices unitarios. Responde estrictamente con un JSON en este formato: { \"products\": [{ \"name\": \"string\", \"quantity\": number, \"unit_price\": number, \"total\": number }] }. Si hay impuestos (IVA), usa el price antes de impuestos." },
             {
               inline_data: {
                 mime_type,

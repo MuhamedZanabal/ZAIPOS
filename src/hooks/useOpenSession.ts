@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-/** Hook centralizado para conocer la sesión de caja abierta de la sucursal actual. */
+/** Hook centralizado para conocer la sesión de register abierta de la branch actual. */
 export function useOpenSession(branchId: string | null) {
   return useQuery({
     queryKey: ["open-session", branchId],

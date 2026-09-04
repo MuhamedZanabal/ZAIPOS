@@ -50,7 +50,7 @@ export function useInventoryCenters() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-centers", branchId] });
-      toast.success("Centro de inventario creado");
+      toast.success("Inventory center created");
     },
     onError: (error) => {
       toast.error(`Error: ${error.message}`);
@@ -71,7 +71,7 @@ export function useInventoryCenters() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-centers", branchId] });
-      toast.success("Centro de inventario actualizado");
+      toast.success("Inventory center updated");
     },
     onError: (error) => {
       toast.error(`Error: ${error.message}`);

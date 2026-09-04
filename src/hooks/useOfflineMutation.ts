@@ -24,7 +24,7 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
     mutationFn: async (variables: TVariables) => {
       const queueMutation = async () => {
         await queueOfflineMutation(config.type, variables, setPendingSyncCount);
-        toast.success('Guardado localmente. Se sincronizará al volver la conexión.');
+        toast.success('Saved locally. It will synchronize when the connection returns.');
         return { offline: true, queued: true } as TData;
       };
 

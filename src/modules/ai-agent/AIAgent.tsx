@@ -17,18 +17,18 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-  "Ventas por hora de hoy",
-  "¿Qué insumos pedir esta semana?",
-  "Top 10 clientes del trimestre",
-  "Comparar sucursales",
+  "Today's sales by hour",
+  "What supplies should I order this week?",
+  "Top 10 customers this quarter",
+  "Compare branches",
 ];
 
 const DATA_SOURCES = [
-  { icon: TrendingUp, label: "Ventas POS", sub: "transacciones del mes" },
-  { icon: Package,   label: "Inventario",  sub: "SKUs activos" },
-  { icon: Users,     label: "CRM clientes", sub: "clientes activos" },
-  { icon: Truck,     label: "Órdenes digitales", sub: "Rappi · DiDi · Uber" },
-  { icon: Wallet,    label: "Caja y pagos", sub: "sesiones del día" },
+  { icon: TrendingUp, label: "POS Sales", sub: "transactions this month" },
+  { icon: Package,   label: "Inventory",  sub: "active SKUs" },
+  { icon: Users,     label: "Customer CRM", sub: "active customers" },
+  { icon: Truck,     label: "Digital orders", sub: "Talabat · WhatsApp · In-house delivery" },
+  { icon: Wallet,    label: "Cash register and payments", sub: "sessions today" },
 ];
 
 function AiOrb({ size = 34 }: { size?: number }) {
@@ -53,17 +53,17 @@ function UserOrb({ initials }: { initials: string }) {
 
 function MarginBarChart() {
   const data = [
-    { name: "Capuchino Clásico",     margin: 71 },
+    { name: "Classic Cappuccino",     margin: 71 },
     { name: "Cheesecake de Fresa",   margin: 68 },
-    { name: "Frappé Mocha",          margin: 64 },
+    { name: "Mocha Frappe",          margin: 64 },
     { name: "Croissant Mantequilla", margin: 58 },
     { name: "Latte Vainilla",        margin: 55 },
   ];
   return (
     <div className="glass-thin g-ai-chart-wrap">
       <div className="flex justify-between items-center mb-3">
-        <span className="h-label">Margen bruto por producto · este mes</span>
-        <span className="h-meta">Fuente: ventas + costos</span>
+        <span className="h-label">Gross margin by product · this month</span>
+        <span className="h-meta">Source: sales + costs</span>
       </div>
       <div className="g-ai-margin-chart">
         {data.map((d, i) => (
@@ -88,7 +88,7 @@ export default function AIAgent() {
     {
       id: "welcome",
       role: "ai",
-      text: "Hola, soy el Agente S360T. Tengo acceso completo a tus ventas, inventario, clientes y más. ¿En qué puedo ayudarte hoy?",
+      text: "Hello, I'm the ZAIPOS Agent for your Bahrain operations. I can help with sales, inventory, customers, BHD reporting, and operational questions. How can I help?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -111,31 +111,31 @@ export default function AIAgent() {
 
     const lower = text.toLowerCase();
     let aiMsg: Message;
-    if (lower.includes("margen") || lower.includes("producto")) {
+    if (lower.includes("margin") || lower.includes("product") || lower.includes("margen") || lower.includes("product")) {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",
-        text: "Analicé las ventas del mes. Estos son los productos con mayor margen bruto:",
+        text: "I analyzed this month's sales. These are the products with the highest gross margin:",
         chart: true,
         insights: [
-          "El Capuchino Clásico tiene 71% de margen — oportunidad para promocionar el upsell de leche vegetal.",
-          "Cheesecake de Fresa tiene margen alto pero stock bajo en algunas sucursales — considera una transferencia.",
+          "The Classic Cappuccino has a 71% margin — an opportunity to promote a plant-based milk upsell.",
+          "Strawberry Cheesecake has a high margin but low stock in some branches — consider a transfer.",
         ],
-        actions: ["Crear transferencia", "Exportar reporte"],
+        actions: ["Create transfer", "Export report"],
       };
-    } else if (lower.includes("venta") || lower.includes("hoy")) {
+    } else if (lower.includes("sale") || lower.includes("today") || lower.includes("sale") || lower.includes("hoy")) {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",
-        text: "Hoy llevas ventas activas en todas las sucursales. El pico de demanda ocurre entre las 12:00 y las 14:00. Consulta el Dashboard para el detalle completo.",
-        actions: ["Ver dashboard", "Exportar Excel"],
+        text: "You have active sales across all branches today. Peak demand occurs between 12:00 and 14:00. Check the Dashboard for full details.",
+        actions: ["View dashboard", "Export Excel"],
       };
     } else {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",
-        text: "Entendido. Estoy consultando los datos de tu negocio para responderte con la mayor precisión posible. ¿Puedes darme más contexto sobre lo que necesitas?",
-        actions: ["Ver ventas", "Ver inventario"],
+        text: "Understood. I'm checking your business data to give you the most accurate answer possible. Can you give me more context about what you need?",
+        actions: ["View sales", "View inventory"],
       };
     }
 
@@ -151,14 +151,14 @@ export default function AIAgent() {
           <AiOrb size={50} />
           <div className="g-ai-header-info">
             <div className="g-ai-header-title h-display">
-              Agente S360T
+              Agent ZAIPOS
               <span className="pill pill-brand g-kds-pill-micro">BETA</span>
             </div>
-            <div className="h-meta">Conectado a tu inventario, ventas y CRM</div>
+            <div className="h-meta">Connected to your inventory, sales, and CRM</div>
           </div>
           <div className="pill pill-ok">
             <span className="dot dot-ok" />
-            En línea
+            Online
           </div>
         </div>
 
@@ -209,7 +209,7 @@ export default function AIAgent() {
                   <span className="dot dot-brand g-ai-dot-mid" />
                   <span className="dot dot-brand g-ai-dot-dim" />
                 </span>
-                <span className="g-ai-typing-text">Consultando datos…</span>
+                <span className="g-ai-typing-text">Querying data…</span>
               </div>
             </div>
           )}
@@ -219,19 +219,19 @@ export default function AIAgent() {
         {/* Composer */}
         <div className="glass-strong g-ai-composer">
           <div className="g-ai-composer-row">
-            <button type="button" title="Adjuntar archivo" className="g-btn g-btn-ghost g-ai-composer-btn-attach">
+            <button type="button" title="Adjuntar file" className="g-btn g-btn-ghost g-ai-composer-btn-attach">
               <Plus size={16} />
             </button>
             <input
               className="g-ai-composer-placeholder bg-transparent border-none outline-none"
-              placeholder="Pregunta al agente sobre ventas, inventario, clientes…"
+              placeholder="Ask the agent about sales, inventory, customers…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send(input))}
             />
             <button
               type="button"
-              title="Enviar mensaje"
+              title="Send message"
               className="g-btn g-btn-primary g-ai-composer-btn-send"
               onClick={() => send(input)}
               disabled={!input.trim() || typing}
@@ -274,10 +274,10 @@ export default function AIAgent() {
 
         {/* Recent actions */}
         <div className="glass g-ai-actions-panel">
-          <div className="h-display g-ai-section-title">Acciones recientes</div>
+          <div className="h-display g-ai-section-title">Recent actions</div>
           {[
-            { l: "Reporte semanal enviado", s: "Hoy · 4 destinatarios", ok: true },
-            { l: "Alerta de stock crítico",  s: "2 SKUs · Sucursal Sur",  ok: false },
+            { l: "Weekly report sent", s: "Today · 4 recipients", ok: true },
+            { l: "Critical stock alert",  s: "2 SKUs · South Branch",  ok: false },
           ].map((r, i) => (
             <div key={i} className="glass-thin g-ai-action-row">
               <span className={cn("dot", r.ok ? "dot-ok" : "dot-warn")} />
@@ -290,7 +290,7 @@ export default function AIAgent() {
         </div>
 
         <div className="glass-thin g-ai-privacy-note">
-          El agente accede solo a datos de tu tenant. Las consultas se registran en <code>audit_logs</code> y nunca salen de tu instancia.
+          The agent accesses only data from your tenant. Queries are recorded in <code>audit_logs</code> and never leave your instance.
         </div>
       </div>
     </div>

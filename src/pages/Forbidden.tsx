@@ -6,7 +6,7 @@ import { GearMark } from "@/components/shared/GearMark";
 
 export default function Forbidden() {
   useEffect(() => {
-    document.title = "Acceso Restringido (403) | POS S360T";
+    document.title = "Acceso Restringido (403) | ZAIPOS";
   }, []);
 
   return (
@@ -22,14 +22,14 @@ export default function Forbidden() {
           <div className="eyebrow eyebrow-muted mb-2">ERROR 403</div>
           <h1 className="page-header-title">Acceso restringido</h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Tu rol actual no tiene permisos para abrir esta sección.
-            Contacta al administrador si crees que es un error.
+            Your current role does not have permission to open this section.
+            Contact the administrator if you believe this is an error.
           </p>
         </div>
 
         <Button asChild className="w-full h-11">
           <Link to="/">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Volver al inicio
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to home
           </Link>
         </Button>
       </div>

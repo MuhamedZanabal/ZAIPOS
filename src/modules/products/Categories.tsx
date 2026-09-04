@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function isCategoryActive(cat: any): boolean {
   if (!cat.schedule_enabled) return true;
@@ -42,16 +42,16 @@ export default function Categories() {
   });
 
   const handleDelete = async (cat: any) => {
-    if (!confirm(`¿Eliminar la categoría "${cat.name}"?\n\nEsta acción no se puede deshacer. Los productos asociados quedarán sin categoría.`)) return;
+    if (!confirm(`Delete category "${cat.name}"?\n\nThis action cannot be undone. Associated products will be left without a category.`)) return;
     setDeleting(cat.id);
     try {
       await supabase.from("products").update({ category_id: null }).eq("category_id", cat.id);
       const { error } = await supabase.from("categories").delete().eq("id", cat.id);
       if (error) throw error;
-      toast.success(`Categoría "${cat.name}" eliminada`);
+      toast.success(`Category "${cat.name}" deleted`);
       qc.invalidateQueries({ queryKey: ["categories"] });
     } catch (e: any) {
-      toast.error(e.message ?? "No se pudo eliminar");
+      toast.error(e.message ?? "Could not delete");
     } finally {
       setDeleting(null);
     }
@@ -62,14 +62,14 @@ export default function Categories() {
       {/* Page header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1">
-          <div className="h-display g-page-title">Categorías</div>
-          <div className="h-meta g-page-subtitle">{categories?.length ?? 0} categorías · CATÁLOGO</div>
+          <div className="h-display g-page-title">Categories</div>
+          <div className="h-meta g-page-subtitle">{categories?.length ?? 0} categories · CATALOG</div>
         </div>
 
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
             <button type="button" className="g-btn g-btn-primary" onClick={() => setEditing(null)}>
-              <Plus className="h-4 w-4" />Nueva
+              <Plus className="h-4 w-4" />New
             </button>
           </DialogTrigger>
           <CategoryDialog
@@ -106,7 +106,7 @@ export default function Categories() {
                 <div className="mt-0.5">
                   {c.schedule_enabled ? (
                     <span className={active ? "pill pill-ok" : "pill pill-ghost"}>
-                      {active ? "Activa ahora" : "Fuera de horario"}
+                      {active ? "Active now" : "Outside schedule"}
                     </span>
                   ) : (
                     <span className="text-xs text-ink-400 capitalize">{c.status}</span>
@@ -118,8 +118,8 @@ export default function Categories() {
                 <button
                   type="button"
                   className="g-btn g-btn-ghost g-btn-icon"
-                  title="Editar categoría"
-                  aria-label="Editar categoría"
+                  title="Edit category"
+                  aria-label="Edit category"
                   onClick={() => { setEditing(c); setOpen(true); }}
                 >
                   <Pencil className="h-4 w-4" />
@@ -127,8 +127,8 @@ export default function Categories() {
                 <button
                   type="button"
                   className="g-btn g-btn-ghost g-btn-icon g-btn-danger"
-                  title="Eliminar categoría"
-                  aria-label="Eliminar categoría"
+                  title="Delete category"
+                  aria-label="Delete category"
                   disabled={isDeleting}
                   onClick={() => handleDelete(c)}
                 >
@@ -174,11 +174,11 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
   return (
     <DialogContent className="max-w-md">
       <DialogHeader>
-        <DialogTitle>{editing ? "Editar categoría" : "Nueva categoría"}</DialogTitle>
+        <DialogTitle>{editing ? "Edit category" : "New category"}</DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-1.5">
-          <Label>Nombre</Label>
+          <Label>Name</Label>
           <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -187,7 +187,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
             <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label>Orden</Label>
+            <Label>Order</Label>
             <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} />
           </div>
         </div>
@@ -197,7 +197,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-ink-400" />
-              <Label>Horario programado</Label>
+              <Label>Scheduled hours</Label>
             </div>
             <Switch checked={form.schedule_enabled} onCheckedChange={(v) => setForm({ ...form, schedule_enabled: v })} />
           </div>
@@ -205,16 +205,16 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
             <div className="space-y-2 pl-6">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Desde</Label>
+                  <Label className="text-xs">From</Label>
                   <Input type="time" value={form.schedule_from ?? "08:00"} onChange={(e) => setForm({ ...form, schedule_from: e.target.value })} className="h-8" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Hasta</Label>
+                  <Label className="text-xs">To</Label>
                   <Input type="time" value={form.schedule_until ?? "22:00"} onChange={(e) => setForm({ ...form, schedule_until: e.target.value })} className="h-8" />
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Días activos</Label>
+                <Label className="text-xs">Active days</Label>
                 <div className="flex gap-1 flex-wrap">
                   {DAYS.map((d, i) => (
                     <button
@@ -237,12 +237,12 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
         </div>
 
         <div className="flex items-center justify-between p-3 border rounded-lg">
-          <Label>Activa</Label>
+          <Label>Active</Label>
           <Switch checked={form.status === "active"} onCheckedChange={(c) => setForm({ ...form, status: c ? "active" : "inactive" })} />
         </div>
 
         <button type="submit" className="g-btn g-btn-primary w-full g-btn-touch">
-          Guardar
+          Save
         </button>
       </form>
     </DialogContent>

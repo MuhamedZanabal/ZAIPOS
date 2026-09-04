@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       .eq("tenant_id", tenant_id);
     if (rErr) return json({ error: rErr.message }, 500);
     const isAdmin = (callerRoles ?? []).some((r: any) => ["owner", "admin", "super_admin"].includes(r.role));
-    if (!isAdmin) return json({ error: "Forbidden: solo owner/admin pueden crear usuarios" }, 403);
+    if (!isAdmin) return json({ error: "Forbidden: solo owner/admin pueden crear users" }, 403);
 
     // Check existing profile by email
     const { data: existingProfile } = await admin
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: full_name ?? email },
       });
-      if (cErr || !created?.user) return json({ error: cErr?.message ?? "No se pudo crear el usuario" }, 400);
+      if (cErr || !created?.user) return json({ error: cErr?.message ?? "No se pudo crear el user" }, 400);
       newUserId = created.user.id;
     }
 
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       .eq("role", role)
       .maybeSingle();
     if (existingRole) {
-      return json({ error: "El usuario ya tiene este rol asignado" }, 409);
+      return json({ error: "El user ya tiene este rol asignado" }, 409);
     }
 
     const { error: insErr } = await admin

@@ -4,8 +4,8 @@ import { LiveDot } from "@/components/shared/LiveDot";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import {
-  ShoppingCart, UtensilsCrossed, BarChart3, Wifi, Zap, Shield,
-  Bike, ChefHat, Smartphone, Package, Receipt, TrendingUp,
+  ShoppingCart, UtensilsCrossed, BarChart3, Wifi,
+  Bike, ChefHat, Smartphone, Package,
   CheckCircle, ArrowRight, Star,
 } from "lucide-react";
 
@@ -14,85 +14,85 @@ const FEATURES = [
   {
     icon: ShoppingCart,
     sc: "sc-blue",
-    title: "Terminal POS táctil",
-    desc: "Catálogo visual por categorías, búsqueda por EAN, gestión de tickets y cobro multi-método en una sola pantalla.",
+    title: "Touchscreen POS terminal",
+    desc: "Visual catalog by category, EAN search, ticket management, and multi-method checkout on one screen.",
   },
   {
     icon: UtensilsCrossed,
     sc: "sc-green",
-    title: "Mesas & comandas",
-    desc: "Toma de pedidos por mesa, estado en tiempo real, envío a cocina y cobro desde el salón.",
+    title: "Tables & orders",
+    desc: "Table ordering, real-time status, kitchen dispatch, and checkout from the dining room.",
   },
   {
     icon: Bike,
     sc: "sc-purple",
-    title: "Domicilios propios",
-    desc: "Tablero kanban de pedidos a domicilio, asignación de repartidores y seguimiento de estado.",
+    title: "In-house delivery",
+    desc: "Kanban delivery board, courier assignment, and status tracking.",
   },
   {
     icon: Smartphone,
     sc: "sc-amber",
-    title: "Pedidos digitales",
-    desc: "Integración con Rappi, DiDi, Uber Eats y WhatsApp. Webhook en tiempo real, comisiones y neto calculado.",
+    title: "Digital orders",
+    desc: "Bahrain order channels with Talabat, WhatsApp, and in-house delivery. Marketplace orders are tracked without inventing unsupported partner API actions.",
   },
   {
     icon: ChefHat,
     sc: "sc-cyan",
-    title: "KDS · Cocina",
-    desc: "Display de cocina con alertas de tiempo, colores por urgencia y control de despacho ítem a ítem.",
+    title: "KDS · Kitchen",
+    desc: "Kitchen display with timing alerts, urgency colors, and item-by-item dispatch control.",
   },
   {
     icon: Package,
     sc: "sc-lime",
-    title: "Inventario & producción",
-    desc: "Stocks por sucursal, movimientos, mermas, recetas y producción. Alertas de stock mínimo automáticas.",
+    title: "Inventory & production",
+    desc: "Branch-level stock, movements, waste, recipes, and production. Automatic low-stock alerts.",
   },
   {
     icon: BarChart3,
     sc: "sc-rose",
-    title: "Reportes avanzados",
-    desc: "Ventas por día, top productos, mix de medios de pago, IVA y exportación CSV.",
+    title: "Advanced reports",
+    desc: "Daily sales, top products, payment-method mix, VAT, and CSV export.",
   },
   {
     icon: Wifi,
     sc: "sc-slate",
     title: "Offline-first",
-    desc: "Funciona sin internet. Sincronización automática al recuperar la conexión. PWA instalable.",
+    desc: "Works without internet. Automatically syncs when the connection returns. Installable PWA.",
   },
 ];
 
 /* ── Stats ── */
 const STATS = [
-  { value: "5", unit: "canales", label: "de venta integrados" },
-  { value: "∞", unit: "sucursales", label: "multi-sucursal" },
-  { value: "100%", unit: "offline", label: "sin perder un ticket" },
-  { value: "8", unit: "roles", label: "de acceso granular" },
+  { value: "5", unit: "channels", label: "integrated for sales" },
+  { value: "∞", unit: "branches", label: "multi-branch" },
+  { value: "100%", unit: "offline", label: "without losing a ticket" },
+  { value: "8", unit: "roles", label: "granular access" },
 ];
 
 /* ── Plans ── */
 const PLANS = [
   {
     name: "Starter",
-    price: "Gratis",
-    sub: "Para empezar",
-    features: ["1 sucursal", "Terminal POS", "Caja & ventas", "Reportes básicos"],
-    cta: "Comenzar gratis",
+    price: "Free",
+    sub: "Get started",
+    features: ["1 branch", "POS terminal", "Cash register & sales", "Basic reports"],
+    cta: "Start free",
     accent: false,
   },
   {
     name: "Pro",
     price: "$149k",
-    sub: "COP / mes",
-    features: ["Sucursales ilimitadas", "Todo Starter +", "Mesas & comandas", "Domicilios & KDS", "Pedidos digitales", "WhatsApp IA", "Inventario avanzado"],
-    cta: "Empezar gratis 14 días",
+    sub: "BHD / month",
+    features: ["Unlimited branches", "Everything in Starter +", "Tables & orders", "Delivery & KDS", "Digital orders", "WhatsApp AI", "Advanced inventory"],
+    cta: "Start 14-day free trial",
     accent: true,
   },
   {
     name: "Enterprise",
     price: "Custom",
-    sub: "Cotización",
-    features: ["Todo Pro +", "SLA garantizado", "Onboarding dedicado", "Integraciones a medida"],
-    cta: "Hablar con ventas",
+    sub: "Custom quote",
+    features: ["Everything in Pro +", "Guaranteed SLA", "Dedicated onboarding", "Custom integrations"],
+    cta: "Talk to sales",
     accent: false,
   },
 ];
@@ -120,21 +120,19 @@ export default function Landing() {
         <div className="landing-container flex items-center justify-between h-full">
           <div className="flex items-center gap-2.5">
             <GearMark size={28} />
-            <span className="landing-logo-text">
-              POS<span className="c-blue">360</span><span className="c-green">T</span>
-            </span>
+            <span className="landing-logo-text">ZAIPOS</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Funciones</a>
-            <a href="#planes" className="hover:text-foreground transition-colors">Planes</a>
-            <a href="#contacto" className="hover:text-foreground transition-colors">Contacto</a>
+            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+            <a href="#plans" className="hover:text-foreground transition-colors">Plans</a>
+            <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
           </nav>
           <div className="flex items-center gap-3">
             <Link to="/auth" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
-              Iniciar sesión
+              Sign in
             </Link>
             <Link to="/auth" className="landing-btn-primary">
-              Empezar gratis <ArrowRight className="h-4 w-4" />
+              Start free <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -155,35 +153,35 @@ export default function Landing() {
         <div className="landing-container relative z-10 text-center">
           {/* Pill */}
           <div className="inline-flex items-center gap-2 s-pill s-pill-green mb-6">
-            <LiveDot /> SISTEMA POS · S360T · v1.0
+            <LiveDot /> ZAIPOS · v1.0
           </div>
 
           {/* Headline */}
           <h1 className="landing-hero-title">
-            Tu venta como<br />
-            <span className="gradient-text">sistema operativo.</span>
+            Run your sales like<br />
+            <span className="gradient-text">an operating system.</span>
           </h1>
 
           <p className="landing-hero-sub">
-            Multi-canal · Multi-sucursal · Offline-first.<br className="hidden sm:block" />
-            Del mostrador al repartidor, del salón al dashboard.
+            Multi-channel · Multi-branch · Offline-first.<br className="hidden sm:block" />
+            From the counter to the courier, from the dining room to the dashboard.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
             <Link to="/auth" className="landing-btn-primary landing-btn-lg">
-              Empezar gratis — sin tarjeta <ArrowRight className="h-4 w-4" />
+              Start free — no card required <ArrowRight className="h-4 w-4" />
             </Link>
             <a href="#features" className="landing-btn-ghost landing-btn-lg">
-              Ver funciones
+              View features
             </a>
           </div>
 
           {/* Social proof */}
           <div className="flex items-center justify-center gap-6 mt-10 text-sm text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Sin tarjeta requerida</span>
-            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> 14 días gratis</span>
-            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Cancela cuando quieras</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> No card required</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> 14 days free</span>
+            <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-primary" /> Cancel anytime</span>
           </div>
         </div>
       </section>
@@ -206,13 +204,13 @@ export default function Landing() {
       <section id="features" className="landing-section">
         <div className="landing-container">
           <div className="text-center mb-12">
-            <div className="eyebrow eyebrow-blue mb-3">FUNCIONALIDADES</div>
+            <div className="eyebrow eyebrow-blue mb-3">FEATURES</div>
             <h2 className="landing-section-title">
-              Todo lo que necesita tu negocio,<br />
-              <span className="gradient-text">en una sola plataforma.</span>
+              Everything your business needs,<br />
+              <span className="gradient-text">in one platform.</span>
             </h2>
             <p className="landing-section-sub">
-              Desde la caja registradora hasta el inventario y los pedidos digitales.
+              From the cash register to inventory and digital orders.
             </p>
           </div>
 
@@ -236,21 +234,21 @@ export default function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left copy */}
             <div>
-              <div className="eyebrow eyebrow-blue mb-3">BRANDING BRUTAL</div>
+              <div className="eyebrow eyebrow-blue mb-3">BUILT FOR EVERY SCREEN</div>
               <h2 className="landing-section-title mb-4">
-                Tres dispositivos,<br />
-                <span className="gradient-text">un solo lenguaje.</span>
+                Three devices,<br />
+                <span className="gradient-text">one visual language.</span>
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                Navy profundo, azul de acción y verde signal. Tiles 100×100+ con glow al pulsar,
-                eyebrows en uppercase tracked y gradiente highlight en el título clave.
-                Pensado para tocar, mirar y operar.
+                Deep navy, action blue, and signal green. 100×100+ tiles with glow on press,
+                tracked uppercase eyebrows, and a gradient highlight on the key title.
+                Designed for fast, touch-first operation.
               </p>
               <ul className="space-y-3">
                 {[
-                  { label: "Tablet · Terminal POS",        sub: "Catálogo + ticket + cobro en una pantalla" },
-                  { label: "Móvil · Mesero / Repartidor",  sub: "Mesas con estado, comandas, domicilios"   },
-                  { label: "Desktop · Dashboard operativo", sub: "KPIs, feed en vivo, KDS y reportes"       },
+                  { label: "Tablet · POS Terminal",        sub: "Catalog + ticket + checkout on one screen" },
+                  { label: "Mobile · Waiter / Courier",  sub: "Table status, orders, delivery"   },
+                  { label: "Desktop · Operations Dashboard", sub: "KPIs, live feed, KDS, and reports"       },
                 ].map(({ label, sub }) => (
                   <li key={label} className="flex items-start gap-3">
                     <div className="h-5 w-5 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
@@ -264,7 +262,7 @@ export default function Landing() {
                 ))}
               </ul>
               <Link to="/auth" className="landing-btn-primary landing-btn-lg mt-8 inline-flex">
-                Ver demo <ArrowRight className="h-4 w-4" />
+                View demo <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
@@ -320,15 +318,15 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Planes ────────────────────────────────────────────── */}
-      <section id="planes" className="landing-section">
+      {/* ── Plans ─────────────────────────────────────────────── */}
+      <section id="plans" className="landing-section">
         <div className="landing-container">
           <div className="text-center mb-12">
-            <div className="eyebrow eyebrow-blue mb-3">PLANES Y PRECIOS</div>
+            <div className="eyebrow eyebrow-blue mb-3">PLANS & PRICING</div>
             <h2 className="landing-section-title">
-              Crece con <span className="gradient-text">tu negocio.</span>
+              Grow with <span className="gradient-text">your business.</span>
             </h2>
-            <p className="landing-section-sub">Sin contratos anuales. Cancela cuando quieras.</p>
+            <p className="landing-section-sub">No annual contracts. Cancel anytime.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -336,7 +334,7 @@ export default function Landing() {
               <div key={name} className={`landing-plan-card ${accent ? "landing-plan-card-accent" : ""}`}>
                 {accent && (
                   <div className="landing-plan-badge">
-                    <Star className="h-3 w-3 fill-current" /> Más popular
+                    <Star className="h-3 w-3 fill-current" /> Most popular
                   </div>
                 )}
                 <div className="mb-6">
@@ -367,18 +365,18 @@ export default function Landing() {
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────────── */}
-      <section className="landing-section landing-cta-section">
+      <section id="contact" className="landing-section landing-cta-section">
         <div className="landing-container text-center relative z-10">
-          <div className="eyebrow mb-4">¿LISTO PARA EMPEZAR?</div>
+          <div className="eyebrow mb-4">READY TO GET STARTED?</div>
           <h2 className="landing-section-title mb-4">
-            Empieza hoy —<br />
-            <span className="gradient-text">gratis, sin tarjeta.</span>
+            Start today —<br />
+            <span className="gradient-text">free, no card required.</span>
           </h2>
           <p className="landing-section-sub mb-8">
-            Configura tu primer negocio en menos de 5 minutos.
+            Set up your first business in under 5 minutes.
           </p>
           <Link to="/auth" className="landing-btn-primary landing-btn-lg">
-            Crear cuenta gratis <ArrowRight className="h-4 w-4" />
+            Create free account <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>
@@ -389,14 +387,12 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <GearMark size={22} />
-              <span className="font-semibold text-sm">
-                POS<span className="c-blue">360</span><span className="c-green">T</span>
-              </span>
+              <span className="font-semibold text-sm">ZAIPOS</span>
               <span className="text-muted-foreground text-xs">· Open Source</span>
             </div>
-            <p className="text-xs text-muted-foreground">© 2026 POS S360T Contributors · Apache 2.0</p>
+            <p className="text-xs text-muted-foreground">© 2026 ZAIPOS Contributors · MIT</p>
             <Link to="/auth" className="text-sm font-semibold text-primary hover:underline">
-              Iniciar sesión →
+              Sign in →
             </Link>
           </div>
         </div>

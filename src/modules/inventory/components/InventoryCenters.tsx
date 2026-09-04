@@ -32,41 +32,41 @@ export function InventoryCenters() {
     setEditing(null);
   };
 
-  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Cargando centros...</div>;
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading centers...</div>;
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Centros de Inventario</h3>
+        <h3 className="text-lg font-semibold">Inventory Centers</h3>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nuevo Centro</Button>
+            <Button size="sm"><Plus className="h-4 w-4 mr-2" />New Center</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editing ? "Editar Centro" : "Nuevo Centro de Inventario"}</DialogTitle>
+              <DialogTitle>{editing ? "Edit Center" : "New Inventory Center"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre del Centro</Label>
+                <Label htmlFor="name">Center Name</Label>
                 <Input id="name" name="name" defaultValue={editing?.name} placeholder="Ej: Bodega 2, Barra Principal" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="type">Tipo</Label>
+                <Label htmlFor="type">Type</Label>
                 <Select name="type" defaultValue={editing?.type || "warehouse"}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="warehouse">Bodega (Almacén)</SelectItem>
-                    <SelectItem value="point_of_sale">Punto de Venta</SelectItem>
+                    <SelectItem value="warehouse">Warehouse</SelectItem>
+                    <SelectItem value="point_of_sale">Point of Sale</SelectItem>
                     <SelectItem value="bar">Barra</SelectItem>
-                    <SelectItem value="kitchen">Cocina</SelectItem>
+                    <SelectItem value="kitchen">Kitchen</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" className="w-full" disabled={createCenter.isPending || updateCenter.isPending}>
-                {editing ? "Guardar Cambios" : "Crear Centro"}
+                {editing ? "Save Changes" : "Create Center"}
               </Button>
             </form>
           </DialogContent>
@@ -77,10 +77,10 @@ export function InventoryCenters() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -93,7 +93,7 @@ export function InventoryCenters() {
                 <TableCell className="capitalize">{center.type.replace("_", " ")}</TableCell>
                 <TableCell>
                   <Badge variant={center.status === "active" ? "default" : "secondary"} className={center.status === "active" ? "bg-success text-success-foreground" : ""}>
-                    {center.status === "active" ? "Activo" : "Inactivo"}
+                    {center.status === "active" ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">

@@ -1,8 +1,8 @@
-# Production Runbook — POS S360T
+# ZAIPOS Production Runbook
 
-## 1) Quality Gates (Required)
+## Pre-Deployment Gates
 
-Before every release, the following checks must pass:
+Run and require success for:
 
 ```bash
 npm ci
@@ -12,64 +12,63 @@ npm run test
 npm run build
 ```
 
-Do not deploy if any step fails.
+Verify the repository localization audit also passes before release.
 
-## 2) Webhook Contract
+## Bahrain Baseline Check
 
-### Rappi (`rappi-webhook`)
+Confirm the deployed tenant uses:
 
-Required headers:
+- ZAIPOS branding;
+- English interface;
+- `en-BH` locale behavior;
+- BHD with three decimal places;
+- appropriate Bahrain VAT configuration;
+- +973 phone conventions;
+- Cash, Card, BenefitPay, and Bank Transfer terminology;
+- Bahrain sales channels only.
 
-- `x-rappi-signature`
-- `x-rappi-timestamp`
+## Database
 
-Expected signature:
+1. Back up the production database.
+2. Apply migrations in timestamp order.
+3. Verify tenant/branch RLS policies.
+4. Verify Bahrain cutover migrations completed successfully.
+5. Confirm no production tenant was unintentionally modified by demo-data cleanup logic.
 
-- `HMAC-SHA256(secret, "<timestamp>.<raw_body>")`
-- Temporary compatibility: also accepts `HMAC-SHA256(secret, raw_body)`
+## POS Verification
 
-Additional protection:
+- open a register;
+- complete cash, card, BenefitPay, and Bank Transfer test sales in the intended test environment;
+- verify BHD totals and three-decimal formatting;
+- verify receipt output and VAT display;
+- verify stock movements;
+- verify register reconciliation;
+- verify a retry does not duplicate a sale.
 
-- Anti-replay via timestamp (5-minute window)
-- In-memory rate limit per IP
-- Optional IP allowlist via `RAPPI_IP_ALLOWLIST`
+## Delivery and Marketplace
 
-### Evolution (`evolution-webhook`)
+- verify Bahrain address/area fields;
+- verify +973 customer phone display;
+- verify Talabat ledger records can be created and confirmed locally;
+- verify no removed marketplace API action is reachable.
 
-Required headers:
+## Electron
 
-- `x-webhook-signature` or `x-evolution-signature`
-- `x-webhook-timestamp` or `x-evolution-timestamp`
+- verify application title and installer identity are ZAIPOS;
+- test printer, drawer, and barcode scanner;
+- verify application update configuration;
+- verify existing local settings survive where compatibility identifiers were intentionally retained.
 
-Expected signature:
+## Rollback
 
-- `HMAC-SHA256(secret, "<timestamp>.<raw_body>")`
+Application rollback should use the prior known-good release artifact. Database migrations require migration-specific rollback planning; do not blindly reverse transactional schema changes in production.
 
-Additional protection:
+## Incident Priorities
 
-- Anti-replay via timestamp (5-minute window)
-- In-memory rate limit per IP
-- Optional IP allowlist via `EVOLUTION_IP_ALLOWLIST`
-
-## 3) Minimum Observability
-
-- Structured JSON logs (`level`, `message`, `ts`, `context`).
-- Operational metrics to watch:
-  - `sync_queue_item_sync_failed`
-  - `sync_queue_batch_processed`
-  - `rappi_webhook_invalid_signature`
-  - `evolution_webhook_invalid_signature`
-  - Non-2xx HTTP errors in `ai-order-agent`
-
-## 4) Release and Rollback Process
-
-1. Create a semantic tag (`vX.Y.Z`).
-2. Publish a changelog with functional changes and breaking changes.
-3. Deploy the new image in Dokploy / Docker Compose.
-4. Post-deploy smoke test:
-   - Login
-   - Open cash session
-   - Complete a sale
-   - Sync offline → online
-   - Receive a signed webhook
-5. If the smoke test fails, roll back to the previous image.
+1. payment or transaction duplication;
+2. tenant/branch isolation failure;
+3. data loss or incorrect stock/accounting;
+4. inability to sell;
+5. synchronization failure;
+6. printer/hardware degradation;
+7. presentation/localization defects.

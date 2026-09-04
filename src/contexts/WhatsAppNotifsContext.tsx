@@ -38,7 +38,7 @@ export function WhatsAppNotifsProvider({ children }: { children: React.ReactNode
           if (payload.new?.direction !== "inbound") return;
           setUnreadCount((c) => c + 1);
           const preview = String(payload.new?.body ?? "");
-          toast("📱 Nuevo mensaje de WhatsApp", {
+          toast("📱 New WhatsApp message", {
             description: preview.length > 80 ? preview.slice(0, 80) + "…" : preview,
             action: { label: "Ver", onClick: () => { window.location.hash = "/whatsapp"; } },
           });

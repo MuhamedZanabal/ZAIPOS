@@ -18,7 +18,7 @@ export function TransferDialog({ tenantId, branchId, userId, products, centers, 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (fromCenterId === toCenterId) {
-      toast.error("El centro de origen y destino deben ser diferentes");
+      toast.error("Source and destination centers must be different");
       return;
     }
 
@@ -35,7 +35,7 @@ export function TransferDialog({ tenantId, branchId, userId, products, centers, 
       });
       if (error) throw error;
 
-      toast.success("Transferencia completada");
+      toast.success("Transfer completed");
       onClose();
     } catch (err: any) {
       toast.error(err.message);
@@ -49,14 +49,14 @@ export function TransferDialog({ tenantId, branchId, userId, products, centers, 
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <ArrowRightLeft className="h-5 w-5 text-primary" />
-          Transferir Stock
+          Transfer Stock
         </DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4 py-2">
         <div className="space-y-1.5">
-          <Label>Producto</Label>
+          <Label>Product</Label>
           <Select value={productId} onValueChange={setProductId}>
-            <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
               {products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
@@ -65,16 +65,16 @@ export function TransferDialog({ tenantId, branchId, userId, products, centers, 
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Origen</Label>
+            <Label>Source</Label>
             <Select value={fromCenterId} onValueChange={setFromCenterId}>
-              <SelectTrigger><SelectValue placeholder="Desde..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="From..." /></SelectTrigger>
               <SelectContent>
                 {centers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Destino</Label>
+            <Label>Destination</Label>
             <Select value={toCenterId} onValueChange={setToCenterId}>
               <SelectTrigger><SelectValue placeholder="Hacia..." /></SelectTrigger>
               <SelectContent>
@@ -85,7 +85,7 @@ export function TransferDialog({ tenantId, branchId, userId, products, centers, 
         </div>
 
         <div className="space-y-1.5">
-          <Label>Cantidad</Label>
+          <Label>Quantity</Label>
           <Input type="number" step="0.01" required value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0.00" className="h-12 text-lg" />
         </div>
 

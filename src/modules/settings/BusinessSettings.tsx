@@ -7,12 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Save, FlaskConical } from "lucide-react";
+import {
+  BAHRAIN_CURRENCY,
+  BAHRAIN_STANDARD_VAT,
+} from "@/lib/bahrain";
 
-const CURRENCIES = ["COP", "USD", "MXN", "ARS", "EUR", "PEN", "CLP", "BRL"];
+const CURRENCIES = [BAHRAIN_CURRENCY] as const;
 
 export default function BusinessSettings() {
   const { tenantId, hasRole } = useTenantContext();
@@ -34,44 +42,51 @@ export default function BusinessSettings() {
     },
   });
 
-  const [form, setForm] = useState({ name: "", currency: "COP", tax_rate: 19 });
+  const [form, setForm] = useState({
+    name: "",
+    currency: BAHRAIN_CURRENCY as string,
+    tax_rate: BAHRAIN_STANDARD_VAT as number,
+  });
 
   useEffect(() => {
     if (tenant) {
       setForm({
         name: tenant.name ?? "",
-        currency: tenant.currency ?? "COP",
-        tax_rate: Number(tenant.tax_rate ?? 0),
+        currency: tenant.currency || BAHRAIN_CURRENCY,
+        tax_rate: Number(tenant.tax_rate ?? BAHRAIN_STANDARD_VAT),
       });
     }
   }, [tenant]);
 
   const save = async () => {
     if (!tenantId) return;
-    if (!form.name.trim()) return toast.error("El nombre es requerido");
+    if (!form.name.trim()) return toast.error("Business name is required");
+
     const { error } = await supabase
       .from("tenants")
       .update({
         name: form.name.trim(),
-        currency: form.currency,
+        currency: BAHRAIN_CURRENCY,
         tax_rate: form.tax_rate,
       })
       .eq("id", tenantId);
+
     if (error) return toast.error(error.message);
-    toast.success("Datos del negocio actualizados");
+
+    toast.success("Business information updated");
     qc.invalidateQueries({ queryKey: ["tenant"] });
     qc.invalidateQueries({ queryKey: ["my-roles"] });
   };
 
-  if (isLoading) return <div className="h-meta">Cargando…</div>;
+  if (isLoading) return <div className="h-meta">Loading…</div>;
 
   return (
     <div className="space-y-6">
       <div className="glass p-6 rounded-2xl max-w-2xl space-y-5">
         <div className="space-y-1.5">
-          <Label>Nombre del bar</Label>
+          <Label>Business name</Label>
           <Input
-            placeholder="Mi Bar"
+            placeholder="Amwaj Market"
             value={form.name}
             disabled={!canEdit}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -80,22 +95,28 @@ export default function BusinessSettings() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Moneda</Label>
+            <Label>Currency</Label>
             <Select
-              value={form.currency}
-              disabled={!canEdit}
+              value={BAHRAIN_CURRENCY}
+              disabled
               onValueChange={(v) => setForm({ ...form, currency: v })}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {CURRENCIES.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                {CURRENCIES.map((currency) => (
+                  <SelectItem key={currency} value={currency}>
+                    {currency} — Bahraini Dinar
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              ZAIPOS is configured for Bahrain and uses BHD with three-decimal precision.
+            </p>
           </div>
+
           <div className="space-y-1.5">
-            <Label>IVA por defecto (%)</Label>
+            <Label>Default VAT (%)</Label>
             <Input
               type="number"
               min={0}
@@ -105,23 +126,25 @@ export default function BusinessSettings() {
               value={form.tax_rate}
               onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })}
             />
+            <p className="text-xs text-muted-foreground">
+              Bahrain standard VAT is 10%. Use product-level tax treatment for zero-rated or exempt supplies.
+            </p>
           </div>
         </div>
 
         {canEdit ? (
           <div className="pt-2">
             <button type="button" className="g-btn g-btn-primary" onClick={save}>
-              <Save className="h-4 w-4" /> Guardar cambios
+              <Save className="h-4 w-4" /> Save changes
             </button>
           </div>
         ) : (
           <p className="h-meta">
-            Solo el dueño o administradores pueden editar estos datos.
+            Only the owner or administrators can edit this information.
           </p>
         )}
       </div>
 
-      {/* Dev mode card — visible only to owner / super_admin */}
       {canToggle && (
         <div className="glass p-6 rounded-2xl max-w-2xl border border-orange-200/60">
           <div className="flex items-start justify-between gap-4">
@@ -130,10 +153,10 @@ export default function BusinessSettings() {
                 <FlaskConical className="h-4 w-4 text-orange-500" />
               </span>
               <div className="space-y-1">
-                <p className="font-semibold text-sm text-ink-900">Modo desarrollo</p>
+                <p className="font-semibold text-sm text-ink-900">Development mode</p>
                 <p className="h-meta max-w-sm">
-                  Permite registrar ventas y órdenes sin importar el stock disponible.
-                  Útil para pruebas y demostraciones. Un banner naranja avisa cuando está activo.
+                  Allows sales and orders to be recorded regardless of available stock.
+                  Use this only for testing and demonstrations.
                 </p>
               </div>
             </div>
@@ -143,7 +166,7 @@ export default function BusinessSettings() {
               onCheckedChange={(checked) => {
                 setDevMode(checked);
                 toast[checked ? "warning" : "success"](
-                  checked ? "Modo desarrollo ACTIVADO" : "Modo desarrollo desactivado"
+                  checked ? "Development mode enabled" : "Development mode disabled"
                 );
               }}
             />

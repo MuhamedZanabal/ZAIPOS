@@ -56,7 +56,7 @@ export function TableOrderMobile(props: Props) {
 
   const handleAdd = (p: any) => {
     onAdd(p);
-    // si ya hay 3+ items, sugerimos saltar al pedido
+    // si ya hay 3+ items, sugerimos saltar al order
   };
 
   return (
@@ -68,7 +68,7 @@ export function TableOrderMobile(props: Props) {
         </Button>
         <div className="flex-1 min-w-0">
           <div className="font-bold text-base leading-tight truncate">
-            {order?.tables?.name ?? "Mesa"}
+            {order?.tables?.name ?? "Table"}
           </div>
           <div className="text-[11px] text-muted-foreground tabular-nums">
             {itemCount} items · {formatCurrency(Number(order?.total ?? 0))}
@@ -80,7 +80,7 @@ export function TableOrderMobile(props: Props) {
       {devMode && (
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 text-white text-[11px] font-semibold">
           <FlaskConical className="h-3 w-3 shrink-0" />
-          MODO DEV · Sin validación de stock ni caja
+          DEV MODE · No stock or register validation
         </div>
       )}
 
@@ -97,7 +97,7 @@ export function TableOrderMobile(props: Props) {
             !isOpen && "opacity-40"
           )}
         >
-          <Grid3x3 className="h-4 w-4" /> Productos
+          <Grid3x3 className="h-4 w-4" /> Products
         </button>
         <button
           onClick={() => setTab("order")}
@@ -108,7 +108,7 @@ export function TableOrderMobile(props: Props) {
               : "text-muted-foreground"
           )}
         >
-          <ShoppingBag className="h-4 w-4" /> Pedido
+          <ShoppingBag className="h-4 w-4" /> Order
           {itemCount > 0 && (
             <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
               {itemCount}
@@ -124,7 +124,7 @@ export function TableOrderMobile(props: Props) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar producto..."
+                placeholder="Search product..."
                 className="pl-9 h-11"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -141,7 +141,7 @@ export function TableOrderMobile(props: Props) {
                   className="rounded-full px-4 h-8"
                   onClick={() => setSelectedCategory("all")}
                 >
-                  Todos
+                  All
                 </Button>
                 {(categories ?? []).map((cat: any) => (
                   <Button
@@ -174,12 +174,12 @@ export function TableOrderMobile(props: Props) {
               ))}
               {filtered.length === 0 && (
                 <div className="col-span-full text-center py-12 text-muted-foreground text-sm">
-                  Sin productos
+                  No products
                 </div>
               )}
             </div>
           </ScrollArea>
-          {/* Botón flotante Ver pedido */}
+          {/* Botón flotante View order */}
           {itemCount > 0 && (
             <div className="absolute bottom-3 left-3 right-3 z-20">
               <Button
@@ -188,7 +188,7 @@ export function TableOrderMobile(props: Props) {
                 onClick={() => setTab("order")}
               >
                 <ShoppingBag className="h-5 w-5 mr-2" />
-                Ver pedido ({itemCount}) · {formatCurrency(Number(order?.total ?? 0))}
+                View order ({itemCount}) · {formatCurrency(Number(order?.total ?? 0))}
               </Button>
             </div>
           )}
@@ -197,7 +197,7 @@ export function TableOrderMobile(props: Props) {
 
       {tab === "products" && !isOpen && (
         <div className="flex-1 grid place-items-center text-muted-foreground p-8 text-center text-sm">
-          Pedido enviado a caja. Pendiente de cobro.
+          Order sent to register. Awaiting payment.
         </div>
       )}
 
@@ -208,7 +208,7 @@ export function TableOrderMobile(props: Props) {
             <div className="p-3 space-y-2 pb-2">
               {items.length === 0 && (
                 <div className="text-center text-muted-foreground py-16 text-sm">
-                  Sin productos. Agrega desde la pestaña Productos.
+                  No products. Add them from the Products tab.
                 </div>
               )}
               {items.map((it: any) => {
@@ -326,14 +326,14 @@ export function TableOrderMobile(props: Props) {
             {isOpen && (
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" className="h-11" onClick={onCancel}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Cancelar
+                  <Trash2 className="h-4 w-4 mr-1" /> Cancel
                 </Button>
                 <Button
                   className="h-11"
                   onClick={onSendToCashier}
                   disabled={pendingCount === 0 && itemCount === 0}
                 >
-                  <Send className="h-4 w-4 mr-1" /> Enviar a caja
+                  <Send className="h-4 w-4 mr-1" /> Send to register
                 </Button>
               </div>
             )}

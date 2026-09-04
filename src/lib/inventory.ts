@@ -1,6 +1,6 @@
-// Helper único para mover inventario.
+// Helper único para mover insalerio.
 // Garantiza que TODO cambio de stock pase por apply_inventory_movement (RPC),
-// nunca por updates directos a inventory_stocks desde el cliente.
+// nunca por updates directos a inventory_stocks desde el customer.
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 

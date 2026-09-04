@@ -1,17 +1,18 @@
 {
-  "name": "poss360t",
-  "productName": "POS S360T",
-  "description": "Open-source, AI-powered, offline-first point of sale for retail and restaurants.",
+  "name": "zaipos",
+  "productName": "ZAIPOS",
+  "description": "ZAIPOS — AI-powered, offline-first point of sale for retail and restaurants.",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "author": "POS S360T Contributors",
+  "author": "ZAIPOS Contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mateopiza/ai-point-of-sale.git"
+    "url": "https://github.com/MuhamedZanabal/ZAIPOS.git"
   },
   "keywords": [
+    "zaipos",
     "pos",
     "point-of-sale",
     "retail",
@@ -35,6 +36,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "audit:localization": "node scripts/audit-localization.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",

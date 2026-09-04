@@ -10,8 +10,8 @@ interface BrandBarProps {
 }
 
 export function BrandBar({
-  branch   = "Sucursal",
-  session  = "Caja #01",
+  branch   = "Branch",
+  session  = "Register #01",
   channel  = "Local",
   showSync = true,
 }: BrandBarProps) {
@@ -20,16 +20,14 @@ export function BrandBar({
       {/* Lockup */}
       <div className="flex items-center gap-2.5">
         <GearMark size={28} />
-        <div className="lockup-text text-[15px] leading-none">
-          POS<span className="text-[#007BFF]">360</span><span className="text-[#10B981]">T</span>
-        </div>
+        <div className="lockup-text text-[15px] leading-none">ZAIPOS</div>
       </div>
 
       <div className="h-5 w-px bg-border shrink-0" />
 
       {/* Branch */}
       <div>
-        <div className="eyebrow text-[9px]">SUCURSAL</div>
+        <div className="eyebrow text-[9px]">BRANCH</div>
         <div className="text-[13px] font-semibold leading-tight mt-0.5">{branch}</div>
       </div>
 

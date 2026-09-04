@@ -24,7 +24,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
       <header className="px-4 py-3 border-b flex items-center justify-between bg-muted/30">
         <div className="flex items-center gap-2">
           <ShoppingBag className="h-4 w-4 text-primary" />
-          <span className="font-semibold">Ticket actual</span>
+          <span className="font-semibold">Current ticket</span>
           {lines.length > 0 && (
             <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + l.quantity, 0)} items</span>
           )}
@@ -40,7 +40,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
         {lines.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">
             <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            Toca un producto para agregarlo al ticket
+            Tap a product to add it to the ticket
           </div>
         ) : (
           <ul className="divide-y">
@@ -63,7 +63,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
                   <button
                     onClick={() => remove(l.id)}
                     className="text-muted-foreground hover:text-destructive p-1 -m-1"
-                    aria-label="Eliminar"
+                    aria-label="Remove"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -104,7 +104,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
             disabled={lines.length === 0}
             onClick={onSendToTable}
           >
-            <Send className="h-5 w-5 mr-2" /> ENVIAR A MESA
+            <Send className="h-5 w-5 mr-2" /> SEND TO TABLE
           </Button>
         ) : (
           <Button
@@ -113,7 +113,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
             disabled={lines.length === 0 || !canCharge}
             onClick={onCharge}
           >
-            COBRAR {formatCurrency(totalNum)}
+            CHARGE {formatCurrency(totalNum)}
           </Button>
         )}
       </footer>

@@ -51,7 +51,7 @@ export function MetricCard({ icon: Icon, label, value, accent, highlight, hint, 
 
       {highlight && (
         <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
-          Requiere atención
+          Requires attention
         </div>
       )}
     </div>

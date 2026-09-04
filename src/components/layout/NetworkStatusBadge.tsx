@@ -18,7 +18,7 @@ export function NetworkStatusBadge() {
     return (
       <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 shadow-sm transition-all duration-300">
         <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-        Sincronizando {pendingSyncCount}...
+        Syncing {pendingSyncCount}...
       </Badge>
     );
   }
@@ -26,7 +26,7 @@ export function NetworkStatusBadge() {
   return (
     <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 shadow-sm transition-all duration-300 animate-pulse">
       <CloudOff className="w-3.5 h-3.5 mr-1.5" />
-      Modo Offline ({pendingSyncCount} pendientes)
+      Offline Mode ({pendingSyncCount} pending)
     </Badge>
   );
 }

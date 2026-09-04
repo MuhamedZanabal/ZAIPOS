@@ -1,223 +1,92 @@
-# Architecture
+# ZAIPOS Architecture
 
-This document describes the high-level architecture of **POS S360T**. It is intended for contributors, operators, and architects who need to understand how the pieces fit together.
+ZAIPOS is an offline-first React/TypeScript point-of-sale platform for Bahrain businesses, backed by Supabase and optionally packaged with Electron.
 
----
-
-## 1. System Overview
-
-POS S360T is a **multi-tenant, offline-first point-of-sale system**. It can run as:
-
-- a **Progressive Web App (PWA)** in the browser,
-- a **desktop application** via Electron,
-- or a **self-hosted Docker container** behind nginx.
-
-All three variants share the same React codebase and talk to the same Supabase backend.
+## Runtime Layers
 
 ```mermaid
 flowchart TB
-    subgraph Clients["Clients"]
-        PWA["Browser / PWA"]
-        Electron["Electron Desktop"]
-    end
-
-    subgraph Hosting["Self-hosted (optional)"]
-        Docker["Docker + nginx"]
-    end
-
-    subgraph Backend["Supabase Backend"]
-        Auth["Auth"]
-        DB[(PostgreSQL)]
-        Realtime["Realtime"]
-        Edge["Edge Functions"]
-        Storage["Storage"]
-    end
-
-    subgraph Integrations["Third-party Integrations"]
-        Rappi["Rappi"]
-        Evolution["Evolution API (WhatsApp)"]
-        OpenRouter["OpenRouter / LLMs"]
-        Gemini["Google Gemini"]
-        Barcode["Barcode Lookup / Open Food Facts"]
-    end
-
-    PWA -->|HTTPS| Backend
-    Electron -->|HTTPS| Backend
-    Docker -->|serves static bundle| PWA
-    Edge -->|OAuth2 / Webhooks| Rappi
-    Edge -->|Webhooks| Evolution
-    Edge -->|LLM API| OpenRouter
-    Edge -->|OCR| Gemini
-    PWA -->|EAN lookup| Barcode
+  UI[React UI] --> Hooks[Application Hooks]
+  Hooks --> Query[TanStack Query]
+  Hooks --> State[Zustand]
+  Hooks --> Offline[Dexie / IndexedDB]
+  Query --> Supabase[Supabase]
+  Offline --> Sync[Sync Engine]
+  Sync --> Supabase
+  Electron[Electron] --> UI
+  Electron --> Hardware[Printer / Drawer / Scanner]
+  Supabase --> DB[(PostgreSQL + RLS)]
+  Supabase --> Realtime[Realtime]
+  Supabase --> Functions[Edge Functions]
 ```
 
----
+## Bahrain Configuration Boundary
 
-## 2. Frontend Architecture
+Country-sensitive application defaults are centralized rather than scattered across feature modules. The shared Bahrain layer defines the supported locale, currency, standard VAT default, phone convention, and related formatting behavior.
 
-The frontend is a **single-page application (SPA)** built with Vite and React.
+Core defaults:
 
-```mermaid
-flowchart TB
-    subgraph App["React App"]
-        Router["React Router"]
-        Layout["Layout Providers"]
-        Modules["Feature Modules"]
-        UI["shadcn/ui + Tailwind"]
-        State["State Layer"]
-    end
+- `en-BH`
+- `BHD`
+- three decimal places
+- standard VAT default 10%
+- `+973` telephone convention
 
-    subgraph State["State Layer"]
-        Zustand["Zustand (client state)"]
-        TQuery["TanStack Query"]
-        Sync["Sync Engine (Dexie)"]
-    end
+Feature modules should call shared formatting/normalization helpers rather than hard-code foreign currency symbols, non-Bahrain values, foreign phone formats, or non-Bahrain locale strings.
 
-    Router --> Layout
-    Layout --> Modules
-    Modules --> UI
-    Modules --> State
-    TQuery -->|persists| IndexedDB[(IndexedDB)]
-    Sync -->|queues| IndexedDB
-```
+## Tenant and Branch Model
 
-### Key responsibilities
+A business is a tenant. Operational data is scoped by `tenant_id`; branch-local data additionally uses `branch_id`. Authorization is enforced through Supabase Row Level Security and helper functions that evaluate tenant membership, role, and branch scope.
 
-| Layer | Responsibility |
-|-------|----------------|
-| `src/pages/` | Top-level route pages |
-| `src/modules/` | Feature modules (POS, inventory, tables, etc.) |
-| `src/components/ui/` | Low-level UI primitives from shadcn/ui |
-| `src/components/shared/` | Reusable business widgets |
-| `src/hooks/` | Data and domain hooks |
-| `src/stores/` | Zustand stores (cart, tenant, network, theme) |
-| `src/lib/` | Utilities and core business helpers |
-| `src/integrations/supabase/` | Supabase client and generated types |
+## Sales Channels
 
----
+The active Bahrain channel model is:
 
-## 3. Backend Architecture
+- `pos` — Physical POS
+- `tables` — Table service
+- `talabat` — Bahrain marketplace ledger
+- `whatsapp` — WhatsApp-assisted orders
+- `delivery` — In-house delivery
 
-Supabase provides the backend as a managed Postgres service with authentication, realtime subscriptions, and serverless edge functions.
+Historical enum values may remain in PostgreSQL when destructive enum removal would be unsafe, but they are not exposed as active ZAIPOS channels.
 
-### 3.1 Database
+## Payment Model
 
-PostgreSQL is the source of truth. Every tenant-scoped table has:
+User-facing payments are Cash, Card, BenefitPay, and Bank Transfer.
 
-- a `tenant_id` column,
-- Row Level Security (RLS) policies,
-- indexes on `tenant_id`, `branch_id`, and common query fields.
+For compatibility with existing accounting columns:
 
-### 3.2 Auth
+- BenefitPay uses the existing internal QR reconciliation bucket.
+- Bank Transfer uses the existing transfer reconciliation bucket.
 
-Authentication uses Supabase Auth (JWT). Users can have multiple roles across tenants and branches. Roles include: `owner`, `admin`, `manager`, `cashier`, `kitchen`, `inventory`, `waiter`, `courier`, `staff`, and `super_admin`.
+This prevents historical cash-session totals from being invalidated while keeping Bahrain-native terminology in the UI.
 
-### 3.3 Realtime
+## Offline Architecture
 
-Supabase Realtime is used for live updates in:
+ZAIPOS queues supported mutations in IndexedDB when the network is unavailable. The sync engine replays them when connectivity returns. Sensitive transactional flows use client mutation identifiers or equivalent idempotency controls to prevent duplicate writes.
 
-- Kitchen Display System (KDS)
-- Table orders
-- Digital order arrival
-- WhatsApp conversation inbox
+## Electron Architecture
 
-### 3.4 Edge Functions
+Electron provides:
 
-Edge Functions run on Deno and handle operations that cannot be done securely from the browser:
+- desktop packaging and installer identity;
+- persistent local settings;
+- thermal printer integration;
+- cash drawer control;
+- serial/barcode integration;
+- application update plumbing.
 
-| Function | Purpose |
-|----------|---------|
-| `ai-order-agent` | WhatsApp conversational AI agent |
-| `embed-knowledge-doc` | Generate vector embeddings for RAG |
-| `create-user` | Create auth users and assign roles |
-| `process-invoice` | OCR supplier invoices with Gemini |
-| `process-email-queue` | Process outgoing email queue |
-| `rappi-webhook` | Receive Rappi order events |
-| `rappi-order-action` | Accept/reject/ready/dispatch Rappi orders |
-| `rappi-sync-menu` | Push menu to Rappi |
-| `rappi-test-connection` | Validate Rappi credentials |
-| `evolution-webhook` | Receive WhatsApp events from Evolution API |
-| `send-whatsapp-message` | Send WhatsApp messages via Evolution API |
+Compatibility-sensitive local storage identifiers can remain internally where changing them would discard installed-device configuration. They must not appear as legacy product branding.
 
----
+## Server-Side Integrations
 
-## 4. Multi-Tenancy Model
+Supabase Edge Functions handle operations that require server-side credentials or privileged access, including AI/WhatsApp workflows and invoice processing. ZAIPOS does not fabricate undocumented Talabat partner API contracts. Talabat orders are tracked as marketplace records unless an authorized documented integration is added.
 
-```mermaid
-erDiagram
-    TENANT ||--o{ BRANCH : has
-    TENANT ||--o{ PRODUCT : owns
-    TENANT ||--o{ USER_ROLE : defines
-    BRANCH ||--o{ INVENTORY_CENTER : has
-    BRANCH ||--o{ CASH_SESSION : has
-    BRANCH ||--o{ TABLE : has
-    USER ||--o{ USER_ROLE : has
-    PRODUCT ||--o{ PRODUCT_CHANNEL_PRICE : has
-    PRODUCT ||--o{ INVENTORY_STOCK : tracked_in
-```
+## Security Boundaries
 
-Tenants are resolved by the incoming domain (`tenant.domain`). The `TenantProvider` reads the hostname, looks up the tenant, and exposes `tenantId`, `branchId`, and user roles to the rest of the app.
-
----
-
-## 5. Deployment Options
-
-### 5.1 PWA / Static Hosting
-
-Build the static bundle and serve it with any static host or with the included Docker + nginx setup.
-
-### 5.2 Electron Desktop
-
-Electron wraps the same bundle. The main process runs in Node.js and can access:
-
-- thermal printers via `node-thermal-printer`,
-- serial barcode scanners via `serialport`,
-- cash drawers via printer pulse,
-- auto-updater via `electron-updater`.
-
-### 5.3 Docker Compose per Tenant
-
-The `deployments/` folder contains templates for per-tenant Docker Compose stacks. Each tenant gets its own build because `VITE_*` variables are baked into the bundle.
-
----
-
-## 6. Technology Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| React + Vite | Fast build, modern dev experience, large ecosystem |
-| Supabase | Managed Postgres + Auth + Realtime in one platform |
-| TanStack Query + IndexedDB | Caching, persistence, and automatic background sync |
-| Dexie | Easy IndexedDB API for offline mutation queue |
-| Zustand | Lightweight global state |
-| Edge Functions | Secure server-side operations without managing servers |
-| Electron | Access to hardware peripherals not available in browsers |
-| PWA | Installable, works offline, no store approval needed |
-| OpenRouter | Unified API for multiple LLM providers |
-
----
-
-## 7. Directory Map
-
-```text
-src/
-├── components/        # UI components
-├── hooks/             # React hooks
-├── integrations/      # Supabase client and types
-├── lib/               # Business utilities
-├── modules/           # Feature modules
-├── pages/             # Route pages
-├── stores/            # Zustand stores
-├── types/             # Shared types
-└── main.tsx           # Entry point
-
-electron/              # Desktop app
-supabase/
-├── functions/         # Edge Functions
-├── migrations/        # SQL schema
-└── config.toml        # Local CLI config
-
-deployments/           # Docker Compose templates
-docs/                  # Documentation
-public/                # Static assets
-```
+- Browser code uses only public client credentials.
+- Service-role credentials remain server-side.
+- RLS is the primary tenant-isolation boundary.
+- RPC functions validate tenant/branch authorization for sensitive writes.
+- Checkout and synchronization paths preserve idempotency.
+- Production secrets and hard-coded demo passwords are prohibited.

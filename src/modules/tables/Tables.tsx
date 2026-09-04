@@ -179,10 +179,10 @@ function TablePanel({
           <div className="tbl-panel-empty-state">
             <div className="g-dot-brand g-dot tbl-panel-empty-dot" />
             <div className="h-label tbl-panel-empty-title">
-              Mesa libre
+              Available table
             </div>
             <div className="h-meta tbl-panel-empty-meta">
-              Sin pedido activo
+              No active order
             </div>
           </div>
 
@@ -191,7 +191,7 @@ function TablePanel({
             onClick={onOpen}
             className="g-btn g-btn-primary g-btn-touch tbl-panel-cta-btn"
           >
-            Abrir mesa
+            Open table
             <ChevronRight size={16} />
           </button>
         </div>
@@ -201,7 +201,7 @@ function TablePanel({
           {/* Waiter + state */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col gap-0.5">
-              <div className="h-label">Mesero</div>
+              <div className="h-label">Waiter</div>
               <div className="g-num-14 tbl-panel-waiter-name">
                 {waiterName ?? "—"}
               </div>
@@ -231,7 +231,7 @@ function TablePanel({
             )}
             {counts.ready > 0 && (
               <StatChip
-                label="Listo"
+                label="Ready"
                 count={counts.ready}
                 dotColor="tbl-dot-ok"
               />
@@ -247,7 +247,7 @@ function TablePanel({
               counts.preparing === 0 &&
               counts.ready === 0 &&
               counts.dispatched === 0 && (
-                <span className="h-meta">Sin ítems activos</span>
+                <span className="h-meta">No active items</span>
               )}
           </div>
 
@@ -459,7 +459,7 @@ export default function Tables() {
       qc.invalidateQueries({ queryKey: ["branches-admin"] });
     } catch (err) {
       console.error(err);
-      toast.error("Error al guardar preferencia de vista");
+      toast.error("Error saving view preference");
       setLocalViewMode(branch?.table_view_mode || "cards");
     }
   };
@@ -503,7 +503,7 @@ export default function Tables() {
       .from("tables")
       .update({ x_pos: xPos, y_pos: yPos })
       .eq("id", tableId);
-    if (error) toast.error("Error al guardar posición");
+    if (error) toast.error("Error saving position");
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -540,7 +540,7 @@ export default function Tables() {
   if (!tenantId || !branchId || !user) {
     return (
       <div className="flex items-center justify-center p-8 tbl-page-loading">
-        Cargando…
+        Loading…
       </div>
     );
   }
@@ -561,7 +561,7 @@ export default function Tables() {
         <div className="flex items-center gap-3">
           <div>
             <div className="h-display tbl-page-title">
-              Mesas
+              Tables
             </div>
             <div className="h-meta tbl-page-meta">
               {branchName}
@@ -569,13 +569,13 @@ export default function Tables() {
           </div>
         </div>
         <div className="glass flex flex-col items-center justify-center gap-4 rounded-3xl tbl-empty-card">
-          <div className="h-label">No hay mesas configuradas en esta sucursal.</div>
+          <div className="h-label">No tables are configured for this branch.</div>
           <button
             type="button"
             className="g-btn g-btn-ghost"
             onClick={() => navigate("/settings")}
           >
-            Ir a Configuración
+            Go to Settings
           </button>
         </div>
       </div>
@@ -591,10 +591,10 @@ export default function Tables() {
         <div className="flex items-center gap-3">
           <div>
             <div className="h-display tbl-page-title">
-              Mesas
+              Tables
             </div>
             <div className="h-meta tbl-page-meta">
-              {branchName} · {tables?.length ?? 0} mesas
+              {branchName} · {tables?.length ?? 0} tables
             </div>
           </div>
           <div className="tbl-flex-1" />
@@ -608,11 +608,11 @@ export default function Tables() {
               >
                 {editMode ? (
                   <>
-                    <Check size={14} /> Listo
+                    <Check size={14} /> Ready
                   </>
                 ) : (
                   <>
-                    <Edit2 size={14} /> Editar plano
+                    <Edit2 size={14} /> Edit floor plan
                   </>
                 )}
               </button>
@@ -623,8 +623,8 @@ export default function Tables() {
         {devMode && (
           <div className="g-dev-banner">
             <FlaskConical size={14} />
-            Modo Desarrollo activo · Las ventas de mesa no validan stock ni
-            requieren caja abierta
+            Development Mode active · Table sales do not validate stock or
+            require an open register
           </div>
         )}
 
@@ -689,10 +689,10 @@ export default function Tables() {
       <div className="flex items-center gap-3">
         <div>
           <div className="h-display tbl-page-title">
-            Mesas
+            Tables
           </div>
           <div className="h-meta tbl-page-meta">
-            {branchName} · {tables?.length ?? 0} mesas
+            {branchName} · {tables?.length ?? 0} tables
           </div>
         </div>
         <div className="tbl-flex-1" />
@@ -705,8 +705,8 @@ export default function Tables() {
       {devMode && (
         <div className="g-dev-banner">
           <FlaskConical size={14} />
-          Modo Desarrollo activo · Las ventas de mesa no validan stock ni
-          requieren caja abierta
+          Development Mode active · Table sales do not validate stock or
+          require an open register
         </div>
       )}
 
@@ -723,7 +723,7 @@ export default function Tables() {
           dotColor="tbl-dot-ok"
         />
         <StatChip
-          label="En caja"
+          label="At register"
           count={statCounts.inCashier}
           dotColor="tbl-dot-warn"
         />
@@ -735,7 +735,7 @@ export default function Tables() {
         <div className="tbl-flex-1" />
         <div className="flex items-center gap-1.5 h-meta tbl-page-meta">
           <Clock size={12} />
-          <span>Actualización automática cada 15 s</span>
+          <span>Auto-refresh every 15 s</span>
         </div>
       </div>
 

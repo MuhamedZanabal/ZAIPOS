@@ -22,7 +22,7 @@ export function CategoryBar({ categories, active, onChange, productCount }: Cate
             active === "all" ? "g-pill-brand" : "g-pill-ghost"
           )}
         >
-          Todos
+          All
           {productCount != null && (
             <span className="ml-1 text-[10px] opacity-70">{productCount}</span>
           )}

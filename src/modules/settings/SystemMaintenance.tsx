@@ -17,7 +17,7 @@ export function SystemMaintenance() {
       if (error) throw error;
       toast.success(`Cola de emails procesada: ${data?.processed || 0} enviados`);
     } catch (err: any) {
-      toast.error("Error al procesar emails: " + err.message);
+      toast.error("Error processing emails: " + err.message);
     } finally {
       setLoading(null);
     }
@@ -26,15 +26,15 @@ export function SystemMaintenance() {
   const auditInventoryDrift = async () => {
     setLoading("inventory");
     try {
-      // Este RPC asegura que todos los productos activos tengan un registro en inventory_stocks
+      // Este RPC asegura que todos los products activos tengan un registro en inventory_stocks
       const { data, error } = await supabase.rpc("audit_inventory_drift", {
         _tenant_id: tenantId,
         _branch_id: branchId
       });
       if (error) throw error;
-      toast.success("Auditoría de inventario completada: stocks sincronizados");
+      toast.success("Inventory audit completed: stock synchronized");
     } catch (err: any) {
-      toast.error("Error en auditoría: " + err.message);
+      toast.error("Audit error: " + err.message);
     } finally {
       setLoading(null);
     }
@@ -50,13 +50,13 @@ export function SystemMaintenance() {
       
       const config = data?.[0];
       if (!config || !config.is_active) {
-        toast.error("WhatsApp no está configurado o activo para esta sucursal");
+        toast.error("WhatsApp is not configured or active for this branch");
         return;
       }
 
-      toast.success("Configuración de WhatsApp cargada correctamente");
+      toast.success("WhatsApp configuration loaded successfully");
     } catch (err: any) {
-      toast.error("Error en test de WhatsApp: " + err.message);
+      toast.error("WhatsApp test error: " + err.message);
     } finally {
       setLoading(null);
     }
@@ -69,9 +69,9 @@ export function SystemMaintenance() {
         <div className="glass rounded-2xl p-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-brand-600">
             <Mail className="h-5 w-5" />
-            <div className="g-title-15">Mensajería</div>
+            <div className="g-title-15">Messaging</div>
           </div>
-          <div className="h-meta">Procesamiento manual de la cola de correos electrónicos pendientes.</div>
+          <div className="h-meta">Manual processing of the pending email queue.</div>
           <Button
             variant="outline"
             className="w-full gap-2"
@@ -83,13 +83,13 @@ export function SystemMaintenance() {
           </Button>
         </div>
 
-        {/* Inventario */}
+        {/* Inventory */}
         <div className="glass rounded-2xl p-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-brand-600">
             <ShieldCheck className="h-5 w-5" />
             <div className="g-title-15">Consistencia</div>
           </div>
-          <div className="h-meta">Asegura que todos los productos tengan registros de stock válidos.</div>
+          <div className="h-meta">Ensures every product has valid stock records.</div>
           <Button
             variant="outline"
             className="w-full gap-2"
@@ -105,9 +105,9 @@ export function SystemMaintenance() {
         <div className="glass rounded-2xl p-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-brand-600">
             <RefreshCcw className="h-5 w-5" />
-            <div className="g-title-15">Diagnóstico</div>
+            <div className="g-title-15">Diagnostics</div>
           </div>
-          <div className="h-meta">Verifica el estado de la conexión con el canal de WhatsApp IA.</div>
+          <div className="h-meta">Checks the connection status for the WhatsApp AI channel.</div>
           <Button
             variant="outline"
             className="w-full gap-2"
@@ -115,16 +115,16 @@ export function SystemMaintenance() {
             disabled={!!loading}
           >
             {loading === "whatsapp" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            Probar WhatsApp
+            Test WhatsApp
           </Button>
         </div>
       </div>
 
       <Alert variant="destructive" className="bg-destructive/5">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Modo Manual Activo</AlertTitle>
+        <AlertTitle>Manual Mode Active</AlertTitle>
         <AlertDescription>
-          Siguiendo las políticas de operación vigentes, todas las tareas de mantenimiento en segundo plano se han delegado a ejecución manual por parte del administrador.
+          Under the current operating policy, all background maintenance tasks are delegated to manual execution by an administrator.
         </AlertDescription>
       </Alert>
     </div>

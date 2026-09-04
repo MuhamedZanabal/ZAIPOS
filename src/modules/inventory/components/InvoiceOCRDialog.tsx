@@ -98,13 +98,13 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
       setMeta({ supplier: data.supplier, invoice_number: data.invoice_number, invoice_date: data.invoice_date });
 
       const autoMapped = mapped.filter(p => p.mapped_product_id).length;
-      toast.success(`${mapped.length} producto(s) extraídos`, {
+      toast.success(`${mapped.length} product(s) extracted`, {
         description: autoMapped > 0
-          ? `${autoMapped} vinculados automáticamente`
-          : "Vincula los productos manualmente",
+          ? `${autoMapped} linked automatically`
+          : "Link the products manually",
       });
     } catch (err: any) {
-      toast.error(`Error al procesar: ${err.message}`);
+      toast.error(`Processing error: ${err.message}`);
     } finally {
       setProcessing(false);
     }
@@ -125,11 +125,11 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
   };
 
   const saveInventory = async () => {
-    if (!centerId) return toast.error("Selecciona un centro de inventario");
+    if (!centerId) return toast.error("Select an inventory center");
     const toSave = products.filter(p => !p.skipped);
     const unmapped = toSave.filter(p => !p.mapped_product_id);
-    if (unmapped.length > 0) return toast.error(`Vincula o salta ${unmapped.length} producto(s) sin mapear`);
-    if (toSave.length === 0) return toast.error("No hay productos para guardar");
+    if (unmapped.length > 0) return toast.error(`Link or skip ${unmapped.length} unmapped product(s)`);
+    if (toSave.length === 0) return toast.error("There are no products to save");
 
     setSaving(true);
     try {
@@ -140,13 +140,13 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
           inventoryCenterId: centerId,
           type: "purchase",
           quantity: p.quantity,
-          reason: ["Factura IA", meta.supplier && `Proveedor: ${meta.supplier}`, meta.invoice_number && `#${meta.invoice_number}`]
+          reason: ["AI Invoice", meta.supplier && `Supplier: ${meta.supplier}`, meta.invoice_number && `#${meta.invoice_number}`]
             .filter(Boolean).join(" · "),
           referenceType: "ai_ocr",
         });
       }
-      toast.success("Inventario actualizado", {
-        description: `${toSave.length} movimiento(s) registrado(s)${products.length - toSave.length > 0 ? `, ${products.length - toSave.length} saltado(s)` : ""}`,
+      toast.success("Inventory updated", {
+        description: `${toSave.length} movement(s) recorded${products.length - toSave.length > 0 ? `, ${products.length - toSave.length} skipped` : ""}`,
       });
       onClose();
     } catch (err: any) {
@@ -165,7 +165,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
-          Cargar Factura con IA (Gemini)
+          Upload Invoice with AI (Gemini)
         </DialogTitle>
       </DialogHeader>
 
@@ -187,44 +187,44 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                   <Upload className="h-8 w-8" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium">Sube una foto de tu factura de proveedor</p>
+                  <p className="text-sm font-medium">Upload a photo of your supplier invoice</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Gemini extrae productos, cantidades y precios automáticamente
+                    Gemini automatically extracts products, quantities, and prices
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => fileInputRef.current?.click()} variant="outline">
-                    <Upload className="h-4 w-4 mr-2" /> Seleccionar archivo
+                    <Upload className="h-4 w-4 mr-2" /> Select file
                   </Button>
                   <Button onClick={() => fileInputRef.current?.click()} className="md:hidden">
                     <Camera className="h-4 w-4 mr-2" /> Tomar foto
                   </Button>
                 </div>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange}
-                  accept="image/*" className="hidden" title="Subir factura" />
+                  accept="image/*" className="hidden" title="Upload invoice" />
               </div>
             )}
           </div>
           <Button className="w-full h-12 text-base" disabled={!preview || processing} onClick={processInvoice}>
             {processing
-              ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Analizando con Gemini...</>
-              : "Analizar factura"}
+              ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Analyzing with Gemini...</>
+              : "Analyze invoice"}
           </Button>
         </div>
       ) : (
         <div className="space-y-4 py-2">
           {(meta.supplier || meta.invoice_number || meta.invoice_date) && (
             <Card className="p-3 flex flex-wrap gap-4 text-sm bg-muted/30">
-              {meta.supplier && <span><span className="text-muted-foreground">Proveedor:</span> <strong>{meta.supplier}</strong></span>}
-              {meta.invoice_number && <span><span className="text-muted-foreground">Factura #:</span> <strong>{meta.invoice_number}</strong></span>}
-              {meta.invoice_date && <span><span className="text-muted-foreground">Fecha:</span> <strong>{meta.invoice_date}</strong></span>}
+              {meta.supplier && <span><span className="text-muted-foreground">Supplier:</span> <strong>{meta.supplier}</strong></span>}
+              {meta.invoice_number && <span><span className="text-muted-foreground">Invoice #:</span> <strong>{meta.invoice_number}</strong></span>}
+              {meta.invoice_date && <span><span className="text-muted-foreground">Date:</span> <strong>{meta.invoice_date}</strong></span>}
             </Card>
           )}
 
           <div className="max-w-xs">
-            <Label className="text-xs mb-1.5 block">Centro de inventario</Label>
+            <Label className="text-xs mb-1.5 block">Inventory center</Label>
             <Select value={centerId} onValueChange={setCenterId}>
-              <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent>
                 {centers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
@@ -235,10 +235,10 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead>Producto (factura)</TableHead>
-                  <TableHead>Producto en sistema</TableHead>
+                  <TableHead>Product (invoice)</TableHead>
+                  <TableHead>Product in system</TableHead>
                   <TableHead className="text-right">Cant.</TableHead>
-                  <TableHead className="text-right">Costo unit.</TableHead>
+                  <TableHead className="text-right">Unit cost</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -268,7 +268,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{Number(p.quantity).toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums">${Number(p.unit_price).toLocaleString("es-CO")}</TableCell>
+                    <TableCell className="text-right tabular-nums">BHD {Number(p.unit_price).toLocaleString("en-BH", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
                         title={p.skipped ? "Incluir" : "Saltar"} onClick={() => toggleSkip(idx)}>
@@ -287,14 +287,14 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                 <CheckCircle2 className="h-4 w-4" /> {mappedCount} vinculados
               </span>
               {skippedCount > 0 && <Badge variant="secondary">{skippedCount} saltados</Badge>}
-              {pendingCount > 0 && <Badge variant="destructive">{pendingCount} sin vincular</Badge>}
+              {pendingCount > 0 && <Badge variant="destructive">{pendingCount} unlinked</Badge>}
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setProducts([])}>Volver</Button>
+              <Button variant="ghost" onClick={() => setProducts([])}>Back</Button>
               <Button onClick={saveInventory} disabled={saving || pendingCount > 0 || !centerId || mappedCount === 0}>
                 {saving
                   ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Guardando...</>
-                  : `Cargar ${mappedCount} al inventario`}
+                  : `Load ${mappedCount} into inventory`}
               </Button>
             </div>
           </div>

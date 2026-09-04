@@ -51,7 +51,7 @@ export default function Branches() {
 
   const save = async () => {
     if (!tenantId) return;
-    if (!form.name.trim()) return toast.error("Nombre requerido");
+    if (!form.name.trim()) return toast.error("Name is required");
     try {
       if (editing) {
         const { error } = await supabase
@@ -59,7 +59,7 @@ export default function Branches() {
           .update({ name: form.name, address: form.address || null, phone: form.phone || null })
           .eq("id", editing.id);
         if (error) throw error;
-        toast.success("Sucursal actualizada");
+        toast.success("Branch updated");
       } else {
         const { data: branch, error } = await supabase
           .from("branches")
@@ -74,8 +74,8 @@ export default function Branches() {
         if (error) throw error;
         await supabase
           .from("cash_registers")
-          .insert({ tenant_id: tenantId, branch_id: branch.id, name: "Caja 1" });
-        toast.success("Sucursal creada");
+          .insert({ tenant_id: tenantId, branch_id: branch.id, name: "Register 1" });
+        toast.success("Branch created");
       }
       qc.invalidateQueries({ queryKey: ["branches-admin"] });
       qc.invalidateQueries({ queryKey: ["branches"] });
@@ -89,7 +89,7 @@ export default function Branches() {
     const next = b.status === "active" ? "inactive" : "active";
     const { error } = await supabase.from("branches").update({ status: next }).eq("id", b.id);
     if (error) return toast.error(error.message);
-    toast.success(`Sucursal ${next === "active" ? "activada" : "desactivada"}`);
+    toast.success(`Branch ${next === "active" ? "activated" : "deactivated"}`);
     qc.invalidateQueries({ queryKey: ["branches-admin"] });
     qc.invalidateQueries({ queryKey: ["branches"] });
   };
@@ -97,11 +97,11 @@ export default function Branches() {
   const handleDelete = async (b: Branch) => {
     const total = branches?.length ?? 0;
     if (total <= 1) {
-      return toast.error("No puedes eliminar la única sucursal. Debes tener al menos una.");
+      return toast.error("You cannot delete the only branch. You must have at least one.");
     }
     if (
       !confirm(
-        `¿Eliminar la sucursal "${b.name}"?\n\nSe eliminarán también sus cajas registradoras y datos asociados. Esta acción no se puede deshacer.`
+        `Delete branch "${b.name}"?\n\nIts cash registers and associated data will also be deleted. This action cannot be undone.`
       )
     )
       return;
@@ -111,11 +111,11 @@ export default function Branches() {
       await supabase.from("cash_registers").delete().eq("branch_id", b.id);
       const { error } = await supabase.from("branches").delete().eq("id", b.id);
       if (error) throw error;
-      toast.success(`Sucursal "${b.name}" eliminada`);
+      toast.success(`Branch "${b.name}" deleted`);
       qc.invalidateQueries({ queryKey: ["branches-admin"] });
       qc.invalidateQueries({ queryKey: ["branches"] });
     } catch (e: any) {
-      toast.error(e.message ?? "No se pudo eliminar");
+      toast.error(e.message ?? "Could not delete");
     } finally {
       setDeleting(null);
     }
@@ -131,8 +131,8 @@ export default function Branches() {
           <Store className="h-5 w-5" />
         </div>
         <div className="g-branches-header-info">
-          <div className="g-branches-eyebrow">NEGOCIO · SUCURSALES</div>
-          <h1 className="g-branches-title">Sucursales</h1>
+          <div className="g-branches-eyebrow">BUSINESS · BRANCHES</div>
+          <h1 className="g-branches-title">Branches</h1>
           <div className="h-meta">
             {branches?.length ?? 0} registradas · {activeCount} activas
           </div>
@@ -140,19 +140,19 @@ export default function Branches() {
         {canManage && (
           <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            Nueva sucursal
+            New branch
           </button>
         )}
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <div className="h-meta text-center py-16">Cargando…</div>
+        <div className="h-meta text-center py-16">Loading…</div>
       ) : !branches || branches.length === 0 ? (
         <EmptyState
           icon={Store}
-          title="Sin sucursales"
-          description="Crea tu primera sucursal para empezar a operar"
+          title="No branches"
+          description="Create your first branch to start operating"
         />
       ) : (
         <div className="g-branches-grid">
@@ -171,7 +171,7 @@ export default function Branches() {
                       <div className="g-branch-card-name">{b.name}</div>
                       <div className="g-branch-card-pill-row">
                         <span className={"g-pill " + (isActive ? "g-pill-ok" : "g-pill-ghost")}>
-                          {isActive ? "Activa" : "Inactiva"}
+                          {isActive ? "Active" : "Inactive"}
                         </span>
                       </div>
                     </div>
@@ -182,7 +182,7 @@ export default function Branches() {
                         type="button"
                         className="g-btn g-btn-ghost g-btn-icon"
                         onClick={() => openEdit(b)}
-                        title="Editar sucursal"
+                        title="Edit branch"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -191,7 +191,7 @@ export default function Branches() {
                         className="g-btn g-btn-ghost g-btn-icon g-branch-card-del-btn"
                         disabled={isDeleting || (branches?.length ?? 0) <= 1}
                         onClick={() => handleDelete(b)}
-                        title={(branches?.length ?? 0) <= 1 ? "No puedes eliminar la única sucursal" : "Eliminar sucursal"}
+                        title={(branches?.length ?? 0) <= 1 ? "You cannot delete the only branch" : "Delete branch"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -237,25 +237,25 @@ export default function Branches() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar sucursal" : "Nueva sucursal"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit branch" : "New branch"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Nombre</Label>
+              <Label>Name</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
-              <Label>Dirección</Label>
+              <Label>Address</Label>
               <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <div>
-              <Label>Teléfono</Label>
+              <Label>Phone</Label>
               <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button type="button" className="g-btn g-btn-primary" onClick={save}>Guardar</button>
+            <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+            <button type="button" className="g-btn g-btn-primary" onClick={save}>Save</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

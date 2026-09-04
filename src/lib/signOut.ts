@@ -8,8 +8,8 @@ import { logger } from "@/lib/logger";
 /**
  * Cierra sesión y limpia todo el estado local del tenant anterior.
  *
- * Esto es importante en dispositivos compartidos (caja del local): sin esta
- * limpieza, el siguiente usuario podría ver brevemente productos, mesas y
+ * Esto es importante en dispositivos compartidos (register del local): sin esta
+ * limpieza, el siguiente user podría ver brevemente products, mesas y
  * mutaciones en la cola offline del tenant anterior antes de que las queries
  * refresquen.
  */

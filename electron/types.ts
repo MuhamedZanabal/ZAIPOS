@@ -43,7 +43,7 @@ export interface PrintResult {
   error?: string;
 }
 
-// ─── Configuración Hardware ──────────────────────────────────────────────────
+// ─── Configuration Hardware ──────────────────────────────────────────────────
 
 export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth';
 
@@ -71,7 +71,7 @@ export interface BarcodeConfig {
   baudRate?: number;
 }
 
-// ─── Configuración Global de la App ─────────────────────────────────────────
+// ─── Configuration Global de la App ─────────────────────────────────────────
 
 export interface AppSettings {
   kiosk: boolean;

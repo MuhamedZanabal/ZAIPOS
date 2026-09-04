@@ -1,4 +1,4 @@
-/* POS360T — product-specific styles, layered over s360t.css tokens */
+/* ZAIPOS — product-specific styles, layered over ZAIPOS design tokens */
 
 * { box-sizing: border-box; }
 
@@ -494,7 +494,7 @@ html, body { margin: 0; padding: 0; }
 [data-theme="light"] .lockup-text { color: var(--s360-ink); }
 
 /* =====================================================================
-   LIGHT THEME — papel S360T (#FFFFFF + #F6F8FB) sobre tinta navy
+   LIGHT THEME — papel ZAIPOS (#FFFFFF + #F6F8FB) sobre tinta navy
    Activado con [data-theme="light"] en el root del artboard.
    ===================================================================== */
 [data-theme="light"] {
@@ -947,7 +947,7 @@ html, body { margin: 0; padding: 0; }
   padding: 18px;
 }
 
-.rappi-webhook-card {
+.marketplace-webhook-card {
   padding: 18px;
 }
 

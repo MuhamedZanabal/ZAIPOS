@@ -18,21 +18,22 @@ describe("OfflineBanner", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("shows red offline banner when isOnline is false", async () => {
+  it("shows red offline banner when isOnline is false", () => {
     useNetworkStore.setState({ isOnline: false, pendingSyncCount: 0 });
     render(<OfflineBanner />);
-    expect(screen.getByText(/Sin conexión/i)).toBeInTheDocument();
+    expect(screen.getByText(/Offline/i)).toBeInTheDocument();
   });
 
   it("shows pending count when offline with queued items", () => {
     useNetworkStore.setState({ isOnline: false, pendingSyncCount: 3 });
     render(<OfflineBanner />);
-    expect(screen.getByText(/3 transacciónes en cola/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 transactions queued/i)).toBeInTheDocument();
   });
 
   it("shows syncing banner when online with pending items", () => {
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 2 });
     render(<OfflineBanner />);
-    expect(screen.getByText(/Sincronizando/i)).toBeInTheDocument();
+    expect(screen.getByText(/Syncing/i)).toBeInTheDocument();
+    expect(screen.getByText(/View details/i)).toBeInTheDocument();
   });
 });

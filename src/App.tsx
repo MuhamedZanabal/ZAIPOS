@@ -64,11 +64,11 @@ const App = () => {
 
   // PWA lifecycle feedback
   useEffect(() => {
-    const onReady = () => toast.success("App lista para usar sin conexión ✓", { duration: 4000 });
+    const onReady = () => toast.success("App ready to use offline ✓", { duration: 4000 });
     const onUpdate = () =>
-      toast.info("Nueva versión disponible", {
+      toast.info("New version available", {
         duration: 0,
-        action: { label: "Actualizar", onClick: () => window.location.reload() },
+        action: { label: "Update", onClick: () => window.location.reload() },
       });
     window.addEventListener("pwa:offline-ready", onReady);
     window.addEventListener("pwa:update-available", onUpdate);

@@ -19,7 +19,7 @@ export type { TicketData, AppSettings };
 // ─── Detección de entorno ─────────────────────────────────────────────────────
 
 /**
- * Retorna true si el código corre dentro de una ventana de Electron.
+ * Retorna true si el código corre dentro de una salena de Electron.
  * Funciona verificando la existencia de window.electron (expuesto en preload.ts).
  */
 export function isElectron(): boolean {

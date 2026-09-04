@@ -4,6 +4,7 @@ import { useTenantStore } from "@/stores/tenant";
 import { useAuth } from "./useAuth";
 import { Branch } from "@/types/branch";
 import { useEffect, useMemo } from "react";
+import { normalizeBahrainChannels } from "@/lib/channels";
 
 type TenantSummary = {
   id: string;
@@ -19,7 +20,6 @@ function isTenantSummary(value: unknown): value is TenantSummary {
 
 export function useTenantContext() {
   const { user } = useAuth();
-  // tenantId is now injected by useTenantByDomain via TenantProvider (domain-resolved).
   const { tenantId, branchId, setTenant, setBranch } = useTenantStore();
 
   const { data: memberships, isLoading: loadingRoles } = useQuery({
@@ -51,15 +51,15 @@ export function useTenantContext() {
   });
 
   const tenantMemberships = useMemo(
-    () => (memberships ?? []).filter((m) => m.tenant_id === tenantId),
+    () => (memberships ?? []).filter((membership) => membership.tenant_id === tenantId),
     [memberships, tenantId],
   );
+
   const branchScopedIds = useMemo(
-    () => tenantMemberships.map((m) => m.branch_id).filter(Boolean) as string[],
+    () => tenantMemberships.map((membership) => membership.branch_id).filter(Boolean) as string[],
     [tenantMemberships],
   );
 
-  // Auto-select the first branch the user can actually use in the domain tenant.
   useEffect(() => {
     if (!branchId && branches && branches.length > 0) {
       const scoped = branches.find((branch) => branchScopedIds.includes(branch.id));
@@ -67,29 +67,24 @@ export function useTenantContext() {
     }
   }, [branches, branchId, branchScopedIds, setBranch]);
 
-  // Roles only for the current domain tenant and selected branch. Null branch_id means all branches.
   const roles = useMemo(
     () => tenantMemberships
-      .filter((m) => !m.branch_id || !branchId || m.branch_id === branchId)
-      .map((m) => m.role),
+      .filter((membership) => !membership.branch_id || !branchId || membership.branch_id === branchId)
+      .map((membership) => membership.role),
     [branchId, tenantMemberships],
   );
 
   const hasRole = (...needed: string[]) =>
-    roles.includes("super_admin") || roles.some((r) => needed.includes(r));
+    roles.includes("super_admin") || roles.some((role) => needed.includes(role));
 
-  // True when the logged-in user has at least one membership in the domain tenant
-  const isAuthorizedForDomain =
-    !loadingRoles &&
-    tenantMemberships.length > 0;
+  const isAuthorizedForDomain = !loadingRoles && tenantMemberships.length > 0;
 
-  // Active channels from the domain tenant
   const activeChannels = useMemo(() => {
-    const tenantObj = memberships?.find((m) => m.tenant_id === tenantId)?.tenants;
+    const tenantObj = memberships?.find((membership) => membership.tenant_id === tenantId)?.tenants;
     if (isTenantSummary(tenantObj) && Array.isArray(tenantObj.active_channels)) {
-      return tenantObj.active_channels;
+      return normalizeBahrainChannels(tenantObj.active_channels);
     }
-    return ["pos", "qr", "delivery", "tables"];
+    return normalizeBahrainChannels(null);
   }, [memberships, tenantId]);
 
   return {

@@ -3,7 +3,7 @@ import { useNetworkStore } from '@/stores/network';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-// Asegúrate de importar tu cliente de supabase real
+// Asegúrate de importar tu customer de supabase real
 import { supabase } from '@/integrations/supabase/client';
 
 export function useSyncEngine() {
@@ -29,7 +29,7 @@ export function useSyncEngine() {
 
       if (pendingItems.length === 0) return;
 
-      toast.info(`Sincronizando ${pendingItems.length} transacciones pendientes...`);
+      toast.info(`Syncing ${pendingItems.length} pending transactions...`);
 
       let synced = 0;
       let failed = 0;
@@ -78,7 +78,7 @@ export function useSyncEngine() {
               _client_mutation_id: p._client_mutation_id ?? null,
             });
             if (error) throw error;
-            if (!orderId) throw new Error("No se pudo crear o actualizar la comanda");
+            if (!orderId) throw new Error("Could not create or update the table order");
           } else {
             // Tipo desconocido: descartamos para no bloquear la cola
             logger.warn("sync_queue_unknown_mutation_type", { type: item.type, itemId: item.id });
@@ -117,9 +117,9 @@ export function useSyncEngine() {
       await updatePendingCount();
       logger.info("sync_queue_batch_processed", { total: pendingItems.length, synced, failed });
       if (failed > 0) {
-        toast.warning(`${synced} sincronizadas, ${failed} pendientes con error`);
+        toast.warning(`${synced} synchronized, ${failed} pending with errors`);
       } else {
-        toast.success('Sincronización completada con éxito');
+        toast.success('Synchronization completed successfully');
       }
     } catch (error) {
       logger.error("sync_queue_process_failed", { error: String(error) });
@@ -130,13 +130,13 @@ export function useSyncEngine() {
   useEffect(() => {
     const handleOnline = () => {
       setOnline(true);
-      toast.success('Conexión restaurada', { description: 'Sincronizando datos...' });
+      toast.success('Connection restored', { description: 'Synchronizing data...' });
       processSyncQueue();
     };
 
     const handleOffline = () => {
       setOnline(false);
-      toast.error('Conexión perdida', { description: 'Modo Offline Activado - Guardando localmente' });
+      toast.error('Connection lost', { description: 'Offline Mode Active - Saving locally' });
     };
 
     window.addEventListener('online', handleOnline);

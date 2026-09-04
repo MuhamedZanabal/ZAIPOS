@@ -79,7 +79,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
       qc.invalidateQueries({ queryKey: ["table-orders-open"] });
       qc.invalidateQueries({ queryKey: ["tables"] });
     } catch (err: any) {
-      toast.error(err.message ?? "Error al cobrar");
+      toast.error(err.message ?? "Checkout error");
     } finally {
       setSubmitting(false);
     }
@@ -93,7 +93,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
       <div className="flex items-center justify-between px-4 py-3 border-b g-pending-header">
         <div className="flex items-center gap-2">
           <UtensilsCrossed size={16} className="g-pending-icon" />
-          <span className="font-semibold g-pending-header-label">Cuentas de mesa pendientes</span>
+          <span className="font-semibold g-pending-header-label">Pending table bills</span>
           {list.length > 0 && (
             <span className="pill pill-warn g-kds-pill-micro">{list.length}</span>
           )}
@@ -102,7 +102,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
       </div>
 
       {list.length === 0 ? (
-        <div className="py-10 text-center h-meta">No hay cuentas enviadas por meseros.</div>
+        <div className="py-10 text-center h-meta">There are no bills sent by waiters.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
           {list.map((o: any) => {
@@ -115,7 +115,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
               <div key={o.id} className="glass-thin rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="h-display g-pending-table-name">{o.tables?.name ?? "Mesa"}</div>
+                    <div className="h-display g-pending-table-name">{o.tables?.name ?? "Table"}</div>
                     <div className="h-meta flex items-center gap-2 mt-0.5">
                       <Users size={12} /> {waiter}
                       <span className="opacity-40">·</span>

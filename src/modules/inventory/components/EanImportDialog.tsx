@@ -77,7 +77,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
     if (!barcode) return;
 
     if (lines.some(l => l.barcode === barcode)) {
-      toast.info("Ese código ya está en la lista.");
+      toast.info("That code is already in the list.");
       setBarcodeInput("");
       return;
     }
@@ -90,7 +90,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
     setLines(prev => [...prev, line]);
     setBarcodeInput("");
 
-    // Buscar en productos existentes primero
+    // Search en products existentes primero
     const local = existingProducts.find(p => p.barcode === barcode);
     if (local) {
       setLines(prev => prev.map(l =>
@@ -117,7 +117,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
       setLines(prev => prev.map(l =>
         l.barcode === barcode ? { ...l, status: "notfound" } : l
       ));
-      toast.error(err?.message ?? "Error al consultar la API de códigos de barras.");
+      toast.error(err?.message ?? "Error querying the barcode API.");
     }
   };
 
@@ -152,7 +152,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
             price: 0, cost: 0, tax_rate: 19, min_stock: 0,
             status: "active",
           }).select("id").single();
-          if (error) throw new Error(`Error creando "${line.newName}": ${error.message}`);
+          if (error) throw new Error(`Error creating "${line.newName}": ${error.message}`);
           productId = data.id;
         }
 
@@ -163,15 +163,15 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
           inventoryCenterId: centerId,
           type: "purchase",
           quantity: line.quantity,
-          reason: "Carga por código EAN",
+          reason: "EAN code import",
           referenceType: "ean_import",
         });
       }
 
       const created = lines.filter(l => l.status === "new").length;
       const updated = lines.filter(l => l.status === "found").length;
-      toast.success(`Inventario actualizado`, {
-        description: `${created} producto(s) creado(s), ${updated} actualizado(s).`,
+      toast.success(`Inventory updated`, {
+        description: `${created} product(s) created, ${updated} updated.`,
       });
       onClose();
     } catch (err: any) {
@@ -185,16 +185,16 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
     <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0">
       <DialogHeader className="px-6 pt-6 pb-4">
         <DialogTitle className="flex items-center gap-2">
-          <PackagePlus className="h-5 w-5" /> Cargar inventario por código EAN
+          <PackagePlus className="h-5 w-5" /> Load inventory by EAN code
         </DialogTitle>
       </DialogHeader>
 
       <div className="px-6 space-y-3 pb-4">
-        {/* Centro de inventario */}
+        {/* Inventory center */}
         <div className="space-y-1.5">
-          <Label>Centro de inventario</Label>
+          <Label>Inventory center</Label>
           <Select value={centerId} onValueChange={setCenterId}>
-            <SelectTrigger><SelectValue placeholder="Selecciona el centro..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select a center..." /></SelectTrigger>
             <SelectContent>
               {centers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
@@ -203,11 +203,11 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
 
         {/* Input de código */}
         <div className="space-y-1.5">
-          <Label>Código EAN / Código de barras</Label>
+          <Label>EAN code / Barcode</Label>
           <div className="flex gap-2">
             <Input
               ref={inputRef}
-              placeholder="Digita o escanea el código y presiona Enter…"
+              placeholder="Type or scan the code and press Enter…"
               value={barcodeInput}
               onChange={e => setBarcodeInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -217,7 +217,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
             <Button type="button" variant="outline" size="icon"
               onClick={() => addBarcode(barcodeInput)}
               disabled={!barcodeInput.trim()}
-              title="Agregar código"
+              title="Add code"
             >
               <Globe className="h-4 w-4" />
             </Button>
@@ -229,7 +229,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
             </Button>
           </div>
           {scanning && (
-            <p className="text-xs text-muted-foreground animate-pulse">Apunta el lector al producto…</p>
+            <p className="text-xs text-muted-foreground animate-pulse">Point the scanner at the product…</p>
           )}
         </div>
       </div>
@@ -238,7 +238,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
       <div className="flex-1 overflow-y-auto px-6 space-y-2 min-h-0">
         {lines.length === 0 && (
           <div className="py-12 text-center text-muted-foreground text-sm">
-            Agrega códigos EAN para buscar y cargar productos al inventario.
+            Add EAN codes to find and load products into inventory.
           </div>
         )}
 
@@ -249,8 +249,8 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-mono text-sm text-muted-foreground">{line.barcode}</span>
                   {line.status === "loading" && <Badge variant="outline" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" />Buscando…</Badge>}
-                  {line.status === "found" && <Badge className="gap-1 bg-success text-success-foreground"><CheckCircle className="h-3 w-3" />En catálogo</Badge>}
-                  {line.status === "new" && <Badge className="gap-1 bg-blue-500 text-white"><Plus className="h-3 w-3" />Nuevo producto</Badge>}
+                  {line.status === "found" && <Badge className="gap-1 bg-success text-success-foreground"><CheckCircle className="h-3 w-3" />In catalog</Badge>}
+                  {line.status === "new" && <Badge className="gap-1 bg-blue-500 text-white"><Plus className="h-3 w-3" />New product</Badge>}
                   {line.status === "notfound" && <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" />No encontrado</Badge>}
                 </div>
 
@@ -261,11 +261,11 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
                 {line.status === "new" && (
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs">Nombre del producto</Label>
+                      <Label className="text-xs">Product name</Label>
                       <Input
                         value={line.newName}
                         onChange={e => updateLine(line.barcode, { newName: e.target.value })}
-                        placeholder="Nombre…"
+                        placeholder="Name…"
                         className="h-8 text-sm"
                       />
                     </div>
@@ -287,11 +287,11 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
                 {line.status === "notfound" && (
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs">Nombre del producto</Label>
+                      <Label className="text-xs">Product name</Label>
                       <Input
                         value={line.newName}
                         onChange={e => updateLine(line.barcode, { newName: e.target.value, status: e.target.value ? "new" : "notfound" })}
-                        placeholder="Escribe el nombre manualmente…"
+                        placeholder="Enter the name manually…"
                         className="h-8 text-sm"
                       />
                     </div>
@@ -310,7 +310,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
 
               <div className="flex items-center gap-2 shrink-0">
                 <div className="space-y-1 text-center">
-                  <Label className="text-xs">Cantidad</Label>
+                  <Label className="text-xs">Quantity</Label>
                   <Input
                     type="number"
                     min="0.01"
@@ -337,12 +337,12 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
           <Separator className="mt-4" />
           <div className="px-6 py-4 flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              {lines.filter(l => l.status === "new" || l.status === "notfound").length} nuevo(s) ·{" "}
+              {lines.filter(l => l.status === "new" || l.status === "notfound").length} new ·{" "}
               {lines.filter(l => l.status === "found").length} existente(s)
             </p>
             <Button onClick={submit} disabled={!canSubmit || saving} className="min-w-36">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PackagePlus className="h-4 w-4 mr-2" />}
-              Cargar al inventario
+              Load into inventory
             </Button>
           </div>
         </>

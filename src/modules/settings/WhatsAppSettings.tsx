@@ -2,30 +2,28 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
-
+import { normalizeBahrainPhone } from "@/lib/bahrain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Bot, Webhook, Save, Loader2, Wifi, WifiOff, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Copy, Bot, Webhook, Save, Loader2, Wifi, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const EVO_WEBHOOK = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
 
-// ─── Types ───────────────────────────────────────────────────
 type DiagStep = {
   label: string;
   status: "pending" | "ok" | "fail" | "warn";
   detail?: string;
 };
 
-// ─── Helper ──────────────────────────────────────────────────
-const statusIcon = (s: DiagStep["status"]) => {
-  if (s === "ok")   return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
-  if (s === "fail") return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
-  if (s === "warn") return <AlertCircle className="h-4 w-4 text-yellow-500 shrink-0" />;
+const statusIcon = (status: DiagStep["status"]) => {
+  if (status === "ok") return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
+  if (status === "fail") return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
+  if (status === "warn") return <AlertCircle className="h-4 w-4 text-yellow-500 shrink-0" />;
   return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />;
 };
 
@@ -37,8 +35,6 @@ export default function WhatsAppSettings() {
   const [phone, setPhone] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // ── Diagnostics state ──
   const [testing, setTesting] = useState(false);
   const [diagSteps, setDiagSteps] = useState<DiagStep[]>([]);
   const [diagDone, setDiagDone] = useState(false);
@@ -73,17 +69,17 @@ export default function WhatsAppSettings() {
     if (branchId) setSelectedBranch(branchId);
   }, [branchId]);
 
-  // ── Save ──────────────────────────────────────────────────
   const save = async () => {
-    if (!instance.trim()) return toast.error("Ingresa el nombre de instancia de Evolution API");
+    if (!instance.trim()) return toast.error("Enter the Evolution API instance name");
     if (!selectedBranch || !tenantId) return;
     setSaving(true);
     try {
+      const normalizedPhone = phone.trim() ? normalizeBahrainPhone(phone) : null;
       const payload = {
         tenant_id: tenantId,
         branch_id: selectedBranch,
         channel: "whatsapp",
-        phone_number: phone.trim() || null,
+        phone_number: normalizedPhone,
         is_active: isActive,
         config: { evolution_instance: instance.trim() },
         updated_at: new Date().toISOString(),
@@ -92,7 +88,8 @@ export default function WhatsAppSettings() {
         ? await supabase.from("ai_channel_configs").update(payload).eq("id", config.id)
         : await supabase.from("ai_channel_configs").insert(payload);
       if (error) throw error;
-      toast.success("Configuración guardada");
+      if (normalizedPhone) setPhone(normalizedPhone);
+      toast.success("WhatsApp settings saved");
       qc.invalidateQueries({ queryKey: ["ai-channel-config"] });
     } catch (e: any) {
       toast.error(e.message);
@@ -103,181 +100,128 @@ export default function WhatsAppSettings() {
 
   const copyWebhook = async () => {
     await navigator.clipboard.writeText(EVO_WEBHOOK);
-    toast.success("URL del webhook copiada");
+    toast.success("Webhook URL copied");
   };
 
-  // ── Connection test ───────────────────────────────────────
   const runDiagnostics = async () => {
     setTesting(true);
     setDiagDone(false);
     const steps: DiagStep[] = [
-      { label: "Configuración en DB", status: "pending" },
-      { label: "Edge function evolution-webhook", status: "pending" },
-      { label: "Edge function send-whatsapp-message", status: "pending" },
-      { label: "Evolution API reachable (fetch desde cliente)", status: "pending" },
-      { label: "Instancia Evolution API responde", status: "pending" },
+      { label: "Active branch configuration", status: "pending" },
+      { label: "Inbound WhatsApp webhook", status: "pending" },
+      { label: "Authenticated outbound WhatsApp function", status: "pending" },
+      { label: "Evolution API secrets", status: "pending" },
     ];
     setDiagSteps([...steps]);
 
-    const update = (i: number, patch: Partial<DiagStep>) => {
-      steps[i] = { ...steps[i], ...patch };
+    const update = (index: number, patch: Partial<DiagStep>) => {
+      steps[index] = { ...steps[index], ...patch };
       setDiagSteps([...steps]);
     };
 
-    // Step 0: DB config check
     try {
-      const { data: cfgCheck } = await supabase
+      const { data } = await supabase
         .from("ai_channel_configs")
         .select("id, is_active, phone_number, config")
         .eq("branch_id", selectedBranch)
         .eq("channel", "whatsapp")
         .eq("is_active", true)
         .maybeSingle();
-
-      if (!cfgCheck) {
-        update(0, { status: "fail", detail: "No hay configuración activa de WhatsApp para esta sucursal. Guarda la configuración primero." });
-      } else {
-        const evoInst = (cfgCheck.config as any)?.evolution_instance;
-        if (!evoInst) {
-          update(0, { status: "warn", detail: "Configuración encontrada pero sin nombre de instancia Evolution." });
-        } else {
-          update(0, { status: "ok", detail: `Instancia: "${evoInst}" | Teléfono: ${cfgCheck.phone_number ?? "no especificado"}` });
-        }
-      }
+      if (!data) update(0, { status: "fail", detail: "Save an active WhatsApp configuration for this branch first." });
+      else if (!(data.config as any)?.evolution_instance) update(0, { status: "warn", detail: "Configuration exists, but the Evolution API instance name is missing." });
+      else update(0, { status: "ok", detail: `Instance: ${(data.config as any).evolution_instance} · Phone: ${data.phone_number ?? "not specified"}` });
     } catch (e: any) {
       update(0, { status: "fail", detail: e.message });
     }
 
-    // Step 1: Ping evolution-webhook function
     try {
-      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`, {
+      const response = await fetch(EVO_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event: "PING_TEST", instance: "__ping__", data: {} }),
       });
-      const body = await r.json().catch(() => ({}));
-      // 200 ok:true/ignored OR 404 (no config for __ping__) = function is UP
-      if (r.status === 200 || r.status === 404) {
-        update(1, { status: "ok", detail: `HTTP ${r.status} – función activa` });
-      } else {
-        update(1, { status: "warn", detail: `HTTP ${r.status}: ${JSON.stringify(body)}` });
-      }
+      if (response.status === 200 || response.status === 404) update(1, { status: "ok", detail: `HTTP ${response.status} · function reachable` });
+      else update(1, { status: "warn", detail: `HTTP ${response.status}` });
     } catch (e: any) {
-      update(1, { status: "fail", detail: `No se pudo alcanzar: ${e.message}` });
+      update(1, { status: "fail", detail: `Could not reach the inbound webhook: ${e.message}` });
     }
 
-    // Step 2: Ping send-whatsapp-message (sin auth → esperamos 401 del gateway)
-    try {
-      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (r.status === 401) {
-        update(2, { status: "ok", detail: "HTTP 401 esperado – función activa y protegida correctamente" });
-      } else {
-        const respBody = await r.json().catch(() => ({}));
-        update(2, { status: "warn", detail: `HTTP ${r.status}: ${JSON.stringify(respBody)}` });
-      }
-    } catch (e: any) {
-      update(2, { status: "fail", detail: `No se pudo alcanzar: ${e.message}` });
-    }
-
-    // Step 3 & 4: Verificar secrets de Evolution API vía edge function autenticada
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Sin sesión activa");
-
-      // Enviamos __connection_test junto con tenant/branch para pasar la validación de roles
-      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
+      if (!session?.access_token) throw new Error("No active session");
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          __connection_test: true,
-          tenant_id: tenantId,
-          branch_id: selectedBranch,
-        }),
+        body: JSON.stringify({ __connection_test: true, tenant_id: tenantId, branch_id: selectedBranch }),
       });
-      const respBody = await r.json().catch(() => ({}));
-
-      if (r.status === 200 && respBody?.diagnostics) {
-        const diag = respBody.diagnostics;
-        update(3, { status: "ok", detail: "Autenticación JWT ✓ | Permisos de rol verificados" });
-        const evoUrlOk = diag.evolution_api_url_set;
-        const evoKeyOk = diag.evolution_api_key_set;
-        if (evoUrlOk && evoKeyOk) {
-          update(4, { status: "ok", detail: "EVOLUTION_API_URL y EVOLUTION_API_KEY configurados en secrets" });
-        } else {
-          const missing = [!evoUrlOk && "EVOLUTION_API_URL", !evoKeyOk && "EVOLUTION_API_KEY"].filter(Boolean).join(" y ");
-          update(4, {
-            status: "fail",
-            detail: `Faltan secretos: ${missing}. Ve a Supabase → Edge Functions → Secrets.`,
-          });
+      const body = await response.json().catch(() => ({}));
+      if (response.status === 200 && body?.diagnostics) {
+        update(2, { status: "ok", detail: "Authentication and branch permissions verified" });
+        const urlSet = body.diagnostics.evolution_api_url_set;
+        const keySet = body.diagnostics.evolution_api_key_set;
+        if (urlSet && keySet) update(3, { status: "ok", detail: "Evolution API URL and API key are configured" });
+        else {
+          const missing = [!urlSet && "EVOLUTION_API_URL", !keySet && "EVOLUTION_API_KEY"].filter(Boolean).join(" and ");
+          update(3, { status: "fail", detail: `Missing server-side secrets: ${missing}` });
         }
-      } else if (r.status === 401) {
-        update(3, { status: "fail", detail: "JWT rechazado – verifica que el usuario tenga sesión activa" });
-        update(4, { status: "warn", detail: "Requiere autenticación válida para continuar" });
-      } else if (r.status === 403) {
-        update(3, { status: "fail", detail: "Sin permisos (Forbidden) – verifica que tu usuario tenga rol owner/admin/manager en esta sucursal" });
-        update(4, { status: "warn", detail: "Requiere rol adecuado para continuar" });
+      } else if (response.status === 401) {
+        update(2, { status: "fail", detail: "Session authentication was rejected" });
+        update(3, { status: "warn", detail: "Authentication must succeed before checking provider secrets" });
+      } else if (response.status === 403) {
+        update(2, { status: "fail", detail: "Your account does not have the required branch role" });
+        update(3, { status: "warn", detail: "A permitted role is required before checking provider secrets" });
       } else {
-        update(3, { status: "warn", detail: `HTTP ${r.status}: ${JSON.stringify(respBody)}` });
-        update(4, { status: "warn", detail: "Resultado inesperado" });
+        update(2, { status: "warn", detail: `Unexpected HTTP ${response.status}` });
+        update(3, { status: "warn", detail: "Provider-secret status could not be confirmed" });
       }
     } catch (e: any) {
-      update(3, { status: "fail", detail: e.message });
-      update(4, { status: "warn", detail: "No se pudo completar la prueba" });
+      update(2, { status: "fail", detail: e.message });
+      update(3, { status: "warn", detail: "Provider-secret check did not complete" });
     }
 
     setDiagDone(true);
     setTesting(false);
   };
 
-  // ── Render ────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Webhook URL */}
       <div className="glass p-5 space-y-3">
         <div className="flex items-center gap-2 font-semibold">
           <Webhook className="h-4 w-4 text-primary" />
-          URL del Webhook (Evolution API)
+          WhatsApp webhook URL
         </div>
         <p className="text-sm text-muted-foreground">
-          Configura esta URL en tu instancia de Evolution API como destino de eventos{" "}
-          <code className="bg-muted px-1 py-0.5 rounded text-xs">MESSAGES_UPSERT</code>.
+          Configure this URL in Evolution API as the destination for <code className="bg-muted px-1 py-0.5 rounded text-xs">MESSAGES_UPSERT</code> events.
         </p>
         <div className="flex gap-2">
           <Input readOnly value={EVO_WEBHOOK} className="font-mono text-xs" />
-          <Button variant="outline" size="icon" onClick={copyWebhook} title="Copiar URL">
+          <Button variant="outline" size="icon" onClick={copyWebhook} title="Copy URL">
             <Copy className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Configuración por sucursal */}
       <div className="glass p-5 space-y-4">
         <div className="flex items-center gap-2 font-semibold">
           <Bot className="h-4 w-4 text-primary" />
-          Agente IA WhatsApp
+          WhatsApp AI Agent
           {config && (
             <Badge className={config.is_active ? "bg-success text-success-foreground" : "bg-muted"}>
-              {config.is_active ? "Activo" : "Inactivo"}
+              {config.is_active ? "Active" : "Inactive"}
             </Badge>
           )}
         </div>
 
         <div className="space-y-1.5">
-          <Label>Sucursal</Label>
+          <Label>Branch</Label>
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona sucursal…" />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select branch…" /></SelectTrigger>
             <SelectContent>
-              {(branches ?? []).map((b: any) => (
-                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              {(branches ?? []).map((branch: any) => (
+                <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -285,118 +229,56 @@ export default function WhatsAppSettings() {
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-            <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Nombre de instancia (Evolution API)</Label>
-              <Input
-                placeholder="ej. pos-negocio-barra"
-                value={instance}
-                onChange={e => setInstance(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Debe coincidir exactamente con el nombre de la instancia en tu Evolution API.
-              </p>
+              <Label>Evolution API instance name</Label>
+              <Input placeholder="e.g. zaipos-manama" value={instance} onChange={(e) => setInstance(e.target.value)} />
+              <p className="text-xs text-muted-foreground">This must exactly match the instance configured in Evolution API.</p>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Número WhatsApp asociado (opcional)</Label>
-              <Input
-                placeholder="57300XXXXXXX"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-              />
+              <Label>Bahrain WhatsApp number (optional)</Label>
+              <Input placeholder="+973 3600 0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
 
             <div className="flex items-center gap-3">
               <Switch checked={isActive} onCheckedChange={setIsActive} id="wa-active" />
-              <Label htmlFor="wa-active">Agente activo</Label>
+              <Label htmlFor="wa-active">Agent active</Label>
             </div>
 
             <div className="flex gap-2 flex-wrap">
               <Button onClick={save} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Guardar configuración
+                Save settings
               </Button>
               <Button variant="outline" onClick={runDiagnostics} disabled={testing || !selectedBranch}>
-                {testing
-                  ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  : diagDone
-                    ? <RefreshCw className="h-4 w-4 mr-2" />
-                    : <Wifi className="h-4 w-4 mr-2" />
-                }
-                {diagDone ? "Repetir diagnóstico" : "Probar conexión"}
+                {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : diagDone ? <RefreshCw className="h-4 w-4 mr-2" /> : <Wifi className="h-4 w-4 mr-2" />}
+                {diagDone ? "Run diagnostics again" : "Test connection"}
               </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Diagnostics panel ── */}
       {diagSteps.length > 0 && (
         <div className="glass p-5 space-y-3">
-          <div className="flex items-center gap-2 font-semibold">
-            {diagDone
-              ? diagSteps.every(s => s.status === "ok")
-                ? <><CheckCircle2 className="h-4 w-4 text-green-500" /> Todo en orden</>
-                : diagSteps.some(s => s.status === "fail")
-                  ? <><WifiOff className="h-4 w-4 text-red-500" /> Se encontraron problemas</>
-                  : <><AlertCircle className="h-4 w-4 text-yellow-500" /> Advertencias detectadas</>
-              : <><Loader2 className="h-4 w-4 animate-spin text-primary" /> Ejecutando diagnóstico…</>
-            }
-          </div>
-
+          <div className="font-semibold">Connection diagnostics</div>
           <div className="space-y-2">
-            {diagSteps.map((step, i) => (
-              <div key={i} className="flex items-start gap-3 py-2 border-b last:border-0">
+            {diagSteps.map((step) => (
+              <div key={step.label} className="flex items-start gap-2 rounded-lg border p-3">
                 {statusIcon(step.status)}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium leading-none mb-0.5">{step.label}</p>
-                  {step.detail && (
-                    <p className={`text-xs mt-1 ${
-                      step.status === "fail" ? "text-red-500"
-                      : step.status === "warn" ? "text-yellow-600"
-                      : "text-muted-foreground"
-                    }`}>
-                      {step.detail}
-                    </p>
-                  )}
+                <div>
+                  <div className="text-sm font-medium">{step.label}</div>
+                  {step.detail && <div className="text-xs text-muted-foreground mt-0.5">{step.detail}</div>}
                 </div>
               </div>
             ))}
           </div>
-
-          {diagDone && diagSteps.some(s => s.status === "fail" || s.status === "warn") && (
-            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground space-y-1.5">
-              <p className="font-semibold text-foreground">Acciones recomendadas:</p>
-              {diagSteps[0]?.status !== "ok" && (
-                <p>• <strong>Configuración:</strong> Llena el nombre de instancia, guarda y activa el agente.</p>
-              )}
-              {(diagSteps[3]?.status !== "ok") && (
-                <p>• <strong>Secrets de Edge Function:</strong> Ve a Supabase Dashboard → Edge Functions → send-whatsapp-message → Secrets y agrega <code>EVOLUTION_API_URL</code> y <code>EVOLUTION_API_KEY</code>.</p>
-              )}
-              {(diagSteps[4]?.status === "warn") && (
-                <p>• <strong>Evolution API:</strong> Verifica que tu instancia <code>{instance || "?"}</code> esté conectada a WhatsApp (QR escaneado) y que el webhook esté configurado con la URL de arriba.</p>
-              )}
-            </div>
-          )}
         </div>
       )}
-
-      {/* Instrucciones */}
-      <div className="glass p-5 space-y-2 bg-muted/30">
-        <p className="text-sm font-medium">Cómo conectar Evolution API</p>
-        <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-          <li>Crea una instancia en tu Evolution API con el nombre exacto que pusiste arriba.</li>
-          <li>En la instancia, ve a <strong>Webhooks</strong> y pega la URL de arriba.</li>
-          <li>Activa el evento <strong>MESSAGES_UPSERT</strong>.</li>
-          <li>Conecta la instancia a WhatsApp escaneando el QR.</li>
-          <li>Activa el agente con el toggle de arriba y guarda.</li>
-          <li>En Supabase → Edge Functions → Secrets, agrega <code className="bg-muted px-1 rounded">EVOLUTION_API_URL</code> y <code className="bg-muted px-1 rounded">EVOLUTION_API_KEY</code>.</li>
-        </ol>
-      </div>
     </div>
   );
 }

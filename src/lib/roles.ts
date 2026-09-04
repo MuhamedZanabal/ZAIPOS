@@ -4,13 +4,13 @@ export type AppRole = Database["public"]["Enums"]["app_role"];
 
 export const ROLE_LABEL: Record<AppRole, string> = {
   super_admin: "Super admin",
-  owner: "Dueño",
+  owner: "Owner",
   admin: "Administrador",
   manager: "Gerente",
   cashier: "Cajero",
-  waiter: "Mesero",
-  kitchen: "Cocina",
-  inventory: "Inventario",
+  waiter: "Waiter",
+  kitchen: "Kitchen",
+  inventory: "Inventory",
   courier: "Domiciliario",
   staff: "Personal",
 };

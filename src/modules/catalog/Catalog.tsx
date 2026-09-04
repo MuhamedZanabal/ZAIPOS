@@ -82,9 +82,9 @@ export default function Catalog() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        eyebrow="CATÁLOGO · SUCURSAL"
-        title="Catálogo por sucursal"
-        description="Activa o desactiva productos y define precios locales por sucursal"
+        eyebrow="CATALOG · BRANCH"
+        title="Catalog by branch"
+        description="Enable or disable products and define local prices by branch"
         actions={
           branches.length > 0 && (
             <Select value={selected ?? undefined} onValueChange={setBranchId}>
@@ -100,16 +100,16 @@ export default function Catalog() {
       />
 
       {!selected ? (
-        <EmptyState icon={Layers} title="Selecciona una sucursal" description="Elige la sucursal cuyo catálogo deseas configurar" />
+        <EmptyState icon={Layers} title="Select a branch" description="Choose the branch whose catalog you want to configure" />
       ) : !products || products.length === 0 ? (
-        <EmptyState icon={Layers} title="Sin productos" description="Crea productos primero en el módulo Productos" />
+        <EmptyState icon={Layers} title="No products" description="Create products first in the Products module" />
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
           <div className="grid grid-cols-[1fr_120px_180px_120px] px-5 py-3 text-xs font-semibold text-ink-400 uppercase tracking-wider border-b border-[var(--g-hairline)]">
-            <div>Producto</div>
-            <div className="text-right">Precio base</div>
-            <div className="text-right">Precio local</div>
-            <div className="text-center">Disponible</div>
+            <div>Product</div>
+            <div className="text-right">Base price</div>
+            <div className="text-right">Local price</div>
+            <div className="text-center">Available</div>
           </div>
           <div className="divide-y divide-[var(--g-hairline)]">
             {products.map((p) => {

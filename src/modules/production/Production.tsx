@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 function StatusPill({ status }: { status: string }) {
-  if (status === "completed") return <span className="pill pill-ok">Completada</span>;
+  if (status === "completed") return <span className="pill pill-ok">Completed</span>;
   if (status === "in_progress" || status === "running") return <span className="pill pill-brand">En curso</span>;
   return <span className="pill pill-ghost">Borrador</span>;
 }
@@ -67,17 +67,17 @@ export default function Production() {
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-1">
-          <div className="h-display g-page-title">Producción</div>
-          <div className="h-meta g-page-subtitle">Recetas, lotes y órdenes · Sincronizado con inventario y KDS</div>
+          <div className="h-display g-page-title">Production</div>
+          <div className="h-meta g-page-subtitle">Recipes, batches, and orders · Synchronized with inventory and KDS</div>
         </div>
         <div className="glass g-prod-header-date">
           <Calendar size={14} color="var(--ink-400)" />
-          <span>Hoy</span>
+          <span>Today</span>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <button type="button" className="g-btn g-btn-primary g-prod-header-btn">
-              <Plus size={14} /> Nueva orden
+              <Plus size={14} /> New order
             </button>
           </DialogTrigger>
           <CreateOrderDialog
@@ -91,10 +91,10 @@ export default function Production() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { l: "Órdenes hoy", v: String(stats.total), s: `${stats.running} en curso · ${stats.draft} en cola` },
-          { l: "Completadas",  v: String(stats.completed), s: "Hoy" },
+          { l: "Orders today", v: String(stats.total), s: `${stats.running} in progress · ${stats.draft} queued` },
+          { l: "Completed",  v: String(stats.completed), s: "Today" },
           { l: "En curso",     v: String(stats.running),   s: "activas ahora" },
-          { l: "Borradores",   v: String(stats.draft),     s: "pendientes de inicio" },
+          { l: "Drafts",   v: String(stats.draft),     s: "pending start" },
         ].map((s, i) => (
           <div key={i} className="glass flex flex-col gap-1.5 p-4 rounded-2xl">
             <div className="h-label">{s.l}</div>
@@ -107,9 +107,9 @@ export default function Production() {
       {/* Filter pills */}
       <div className="flex items-center gap-2">
         {[
-          { id: "all",         label: `Todas · ${stats.total}` },
+          { id: "all",         label: `All · ${stats.total}` },
           { id: "in_progress", label: `En curso · ${stats.running}` },
-          { id: "completed",   label: `Completadas · ${stats.completed}` },
+          { id: "completed",   label: `Completeds · ${stats.completed}` },
           { id: "draft",       label: `Borradores · ${stats.draft}` },
         ].map((f) => (
           <button
@@ -125,14 +125,14 @@ export default function Production() {
       {/* Orders table */}
       <div className="glass g-table-p0 flex flex-col rounded-2xl overflow-hidden flex-1">
         <div className="g-prod-table-head">
-          <span>Producto</span><span>Planeado</span><span>Producido</span>
-          <span>Merma</span><span>Progreso</span><span>Estado</span><span />
+          <span>Product</span><span>Planned</span><span>Produced</span>
+          <span>Waste</span><span>Progress</span><span>Status</span><span />
         </div>
 
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Factory size={36} color="var(--ink-400)" opacity={0.3} />
-            <p className="h-meta text-center">Sin órdenes de producción</p>
+            <p className="h-meta text-center">No production orders</p>
           </div>
         ) : (
           filtered.map((o: any, i: number) => {
@@ -150,7 +150,7 @@ export default function Production() {
                   <div className="min-w-0">
                     <div className="g-prod-name truncate">{o.products?.name}</div>
                     <div className="g-prod-date">
-                      {new Date(o.created_at).toLocaleString("es-CO", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {new Date(o.created_at).toLocaleString("en-BH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
                 </div>
@@ -210,33 +210,33 @@ function CreateOrderDialog({ tenantId, branchId, products, onClose }: any) {
       planned_quantity: Number(planned), notes: notes || null, status: "draft",
     });
     if (error) return toast.error(error.message);
-    toast.success("Orden creada");
+    toast.success("Order created");
     setProductId(""); setPlanned("1"); setNotes("");
     onClose();
   };
 
   return (
     <DialogContent className="max-w-md">
-      <DialogHeader><DialogTitle>Nueva orden de producción</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>New production order</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-1.5">
-          <Label>Producto a producir</Label>
+          <Label>Product to produce</Label>
           <Select value={productId} onValueChange={setProductId}>
-            <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
               {products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Cantidad planeada</Label>
+          <Label>Planned quantity</Label>
           <Input type="number" step="0.01" value={planned} onChange={(e) => setPlanned(e.target.value)} className="h-12 text-lg" />
         </div>
         <div className="space-y-1.5">
-          <Label>Notas</Label>
+          <Label>Notes</Label>
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
         </div>
-        <Button type="submit" className="w-full h-12" disabled={!productId}>Crear orden</Button>
+        <Button type="submit" className="w-full h-12" disabled={!productId}>Create order</Button>
       </form>
     </DialogContent>
   );
@@ -252,7 +252,7 @@ function CompleteOrderDialog({ order, onClose }: { order: any | null; onClose: (
       _order_id: order.id, _produced: Number(produced), _waste: Number(waste),
     });
     if (error) return toast.error(error.message);
-    toast.success("Orden completada · stock actualizado");
+    toast.success("Order completed · stock updated");
     setProduced(""); setWaste("0");
     onClose();
   };
@@ -260,18 +260,18 @@ function CompleteOrderDialog({ order, onClose }: { order: any | null; onClose: (
   return (
     <Dialog open={!!order} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Completar orden</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Complete order</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="text-sm text-muted-foreground">
             {order?.products?.name} · planeado {Number(order?.planned_quantity ?? 0).toFixed(2)}
           </div>
           <div className="space-y-1.5">
-            <Label>Producido</Label>
+            <Label>Produced</Label>
             <Input type="number" step="0.01" value={produced} onChange={(e) => setProduced(e.target.value)}
               placeholder={String(order?.planned_quantity ?? "")} className="h-12 text-lg" />
           </div>
           <div className="space-y-1.5">
-            <Label>Merma</Label>
+            <Label>Waste</Label>
             <Input type="number" step="0.01" value={waste} onChange={(e) => setWaste(e.target.value)} />
           </div>
           <Button size="lg" className="w-full" onClick={submit} disabled={!produced}>
