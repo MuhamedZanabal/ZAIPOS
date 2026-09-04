@@ -1,88 +1,60 @@
-# Deployments
+# ZAIPOS Deployments
 
-Per-client deployment configuration for Dokploy or any Docker Compose host.
-Real secrets **never** live in the repository — they are injected via the hosting platform UI.
-
----
+Per-instance deployment configuration for ZAIPOS using Docker Compose hosts such as Dokploy. Production secrets never live in this repository; hosting infrastructure injects them at build/deploy time.
 
 ## Structure
 
 ```text
 deployments/
-├── _template/                # Base template for each new client
-│   ├── .env.example
+├── _template/
 │   └── docker-compose.yml
 └── instances/
-    └── <client>/
-        ├── .env.example      # Documents required variables (committed)
+    └── demo-zaipos/
         └── docker-compose.yml
 ```
 
----
-
-## Add a New Client
+## Add an Instance
 
 ```bash
 cp -r deployments/_template deployments/instances/client-name
 ```
 
-Edit the two files in the new folder:
+Edit `docker-compose.yml` and replace the placeholder image/container names with the intended instance identifier.
 
-1. **`docker-compose.yml`** — change `image` and `container_name` to the client name. Update `context` if the folder depth changes.
-2. **`.env.example`** — document the Supabase URL and key with example values, not real ones.
+## Repository Source
 
-```bash
-git add deployments/instances/client-name
-git commit -m "feat: add client-name instance"
-git push
-```
-
----
-
-## Deploy with Dokploy
-
-1. **New project** in Dokploy → type **Docker Compose**
-2. **Source** → connect the `ai-point-of-sale` repository
-3. **Compose file path** → `deployments/instances/<client>/docker-compose.yml`
-4. **Environment Variables** in Dokploy UI → paste the real values:
-
-   | Variable | Where to get it |
-   |---|---|
-   | `VITE_SUPABASE_URL` | Supabase Dashboard → Settings → API → Project URL |
-   | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → Settings → API → anon public |
-   | `APP_PORT` | Free port on the server (e.g. 3001, 3002…) |
-
-5. **Deploy** — Dokploy injects the variables as build args → Vite bakes them into the bundle → the container starts.
-
----
-
-## How Secrets Flow
+Use:
 
 ```text
-Dokploy UI (environment variables)
-        │
-        ▼
-docker-compose.yml receives ${VITE_SUPABASE_URL} etc.
-        │
-        ▼
-Dockerfile: ARG VITE_SUPABASE_URL → ENV → npm run build
-        │
-        ▼
-Compiled JS bundle with that client's URL/key baked in
-        │
-        ▼
-nginx serves /dist static files → browser connects directly to Supabase
+https://github.com/MuhamedZanabal/ZAIPOS
 ```
 
-`VITE_*` variables are **build-time**: they end up inside the compiled JS. Each client needs its own build — its own Docker image.
+## Required Build Variables
 
----
-
-## Port Mapping per Instance
-
-| Client | APP_PORT |
+| Variable | Purpose |
 |---|---|
-| demo-s360t | 3010 |
-| _(next client)_ | 3002 |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase public client key |
+| `APP_PORT` | Host port mapped to container port 80 |
 
-Update this table when adding a new instance.
+`VITE_*` values are build-time frontend variables and become part of the compiled client bundle. Never place service-role secrets in them.
+
+## Bahrain Deployment Baseline
+
+After deployment, verify:
+
+- ZAIPOS branding;
+- English UI;
+- BHD with three decimal places;
+- Bahrain VAT configuration;
+- +973 phone conventions;
+- Cash, Card, BenefitPay, and Bank Transfer payment terminology;
+- Physical POS, Tables, Talabat, WhatsApp, and In-house Delivery channels.
+
+## Example Instance
+
+| Instance | Default example port |
+|---|---:|
+| `demo-zaipos` | 3010 |
+
+Legacy instance names and old upstream repository references are not supported deployment configuration.
