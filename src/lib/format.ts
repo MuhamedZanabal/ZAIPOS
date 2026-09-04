@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { BAHRAIN_CURRENCY, BAHRAIN_LOCALE } from "@/lib/bahrain";
 
 export const formatCurrency = (n: number, currency = BAHRAIN_CURRENCY) => {
@@ -24,6 +23,8 @@ export const formatDate = (d: string | Date) =>
 
 export async function getCurrentUserId(): Promise<string | null> {
   try {
+    // Keep pure formatting utilities independent from Supabase initialization.
+    const { supabase } = await import("@/integrations/supabase/client");
     const {
       data: { session },
     } = await supabase.auth.getSession();
