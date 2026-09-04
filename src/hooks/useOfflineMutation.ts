@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 interface OfflineMutationConfig<TData, TError, TVariables, TContext> 
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
-  type: string; // Identificador único para el sync_engine (e.g., 'CREATE_ORDER')
+  type: string; // Stable operation type used by the sync engine (e.g. 'CHECKOUT_SALE')
 }
 
 export interface OfflineQueuedResult {
@@ -85,7 +85,7 @@ export function isTransientNetworkError(error: unknown) {
 }
 
 function getDeviceId() {
-  const key = 'poss360t_device_id';
+  const key = 'zaipos_device_id';
   const existing = window.localStorage.getItem(key);
   if (existing) return existing;
   const created = crypto.randomUUID();
@@ -93,7 +93,7 @@ function getDeviceId() {
   return created;
 }
 
-function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {
+export function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {
   if (!variables || typeof variables !== 'object') return variables;
   const payload = variables as Record<string, unknown>;
   if (payload._client_mutation_id) return variables;

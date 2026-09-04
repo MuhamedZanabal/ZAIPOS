@@ -573,6 +573,8 @@ END;
 $$;
 
 -- Preserve table-order checkout while routing it through the hardened checkout RPC.
+DROP FUNCTION IF EXISTS public.checkout_table_order(uuid, jsonb, numeric, numeric, text, text);
+
 CREATE OR REPLACE FUNCTION public.checkout_table_order(
   _order_id uuid,
   _payments jsonb,
