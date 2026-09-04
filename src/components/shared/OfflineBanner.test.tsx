@@ -18,7 +18,7 @@ describe("OfflineBanner", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("shows red offline banner when isOnline is false", async () => {
+  it("shows red offline banner when isOnline is false", () => {
     useNetworkStore.setState({ isOnline: false, pendingSyncCount: 0 });
     render(<OfflineBanner />);
     expect(screen.getByText(/Offline/i)).toBeInTheDocument();
@@ -33,6 +33,7 @@ describe("OfflineBanner", () => {
   it("shows syncing banner when online with pending items", () => {
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 2 });
     render(<OfflineBanner />);
-    expect(screen.getByText(/Sincronizando/i)).toBeInTheDocument();
+    expect(screen.getByText(/Syncing/i)).toBeInTheDocument();
+    expect(screen.getByText(/View details/i)).toBeInTheDocument();
   });
 });
