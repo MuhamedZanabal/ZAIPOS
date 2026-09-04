@@ -1,4 +1,4 @@
-/* ZAIPOS — product-specific styles, layered over s360t.css tokens */
+/* ZAIPOS — product-specific styles, layered over ZAIPOS design tokens */
 
 * { box-sizing: border-box; }
 
@@ -947,7 +947,7 @@ html, body { margin: 0; padding: 0; }
   padding: 18px;
 }
 
-.rappi-webhook-card {
+.marketplace-webhook-card {
   padding: 18px;
 }
 
