@@ -41,18 +41,19 @@ jobs:
               'POS payment imports',
           )
           state_anchor = '  const [upsellItems, setUpsellItems] = useState<any[]>([]);\n'
+          s = replace_once(s, state_anchor, state_anchor + '  const checkoutMutationIdRef = useRef<string | null>(null);\n', 'POS checkout identity ref')
           s = replace_once(
               s,
-              state_anchor,
-              state_anchor + '  const checkoutMutationIdRef = useRef<string | null>(null);\n',
-              'POS checkout identity ref',
+              '  const finalize = async (method: PayMethod, _tendered: number, tipAmount: number, couponCode?: string, discountAmount = 0) => {',
+              '  const finalize = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {',
+              'POS finalize signature',
           )
-          old_finalize = '  const finalize = async (method: PayMethod, _tendered: number, tipAmount: number, couponCode?: string, discountAmount = 0) => {'
-          new_finalize = '  const finalize = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {'
-          s = replace_once(s, old_finalize, new_finalize, 'POS finalize signature')
-          old_payments = '''      const payableTotal = Math.max(0, totalNum - discountAmount + tipAmount);\n      const payments = [{ method, amount: payableTotal, reference: null as string | null }];\n      \n      const saleId = await checkoutMutation.mutateAsync({'''
-          new_payments = '''      const payments = normalizePaymentAllocations(allocations);\n      const payableTotal = filsToBhd(allocationTotalFils(allocations));\n      const mutationId = checkoutMutationIdRef.current ?? crypto.randomUUID();\n      checkoutMutationIdRef.current = mutationId;\n\n      const saleId = await checkoutMutation.mutateAsync({'''
-          s = replace_once(s, old_payments, new_payments, 'POS payment payload')
+          s = replace_once(
+              s,
+              '''      const payableTotal = Math.max(0, totalNum - discountAmount + tipAmount);\n      const payments = [{ method, amount: payableTotal, reference: null as string | null }];\n      \n      const saleId = await checkoutMutation.mutateAsync({''',
+              '''      const payments = normalizePaymentAllocations(allocations);\n      const payableTotal = filsToBhd(allocationTotalFils(allocations));\n      const mutationId = checkoutMutationIdRef.current ?? crypto.randomUUID();\n      checkoutMutationIdRef.current = mutationId;\n\n      const saleId = await checkoutMutation.mutateAsync({''',
+              'POS payment payload',
+          )
           s = replace_once(
               s,
               '        _client_mutation_id: crypto.randomUUID(),\n',
@@ -63,23 +64,24 @@ jobs:
               s,
               '          if (method === "cash") await openDrawer();',
               '          if (allocations.some((allocation) => allocation.method === "cash")) await openDrawer();',
-              'POS cash drawer split payment',
+              'POS split cash drawer',
           )
           s = replace_once(
               s,
               '      clear();\n      setPaymentOpen(false);',
               '      clear();\n      checkoutMutationIdRef.current = null;\n      setPaymentOpen(false);',
-              'POS clear checkout identity',
+              'POS clear identity',
           )
-
-          # Every path that opens payment starts a new transaction identity.
           open_count = s.count('setPaymentOpen(true)')
           if open_count < 1:
               raise SystemExit('POS: no payment-open call sites found')
           s = s.replace('setPaymentOpen(true)', 'beginCheckout()')
-          can_charge_anchor = '  const canCharge = isPos ? !!openSession : true;\n'
-          begin_checkout = '''  const canCharge = isPos ? !!openSession : true;\n\n  const beginCheckout = useCallback(() => {\n    checkoutMutationIdRef.current = crypto.randomUUID();\n    setPaymentOpen(true);\n  }, []);\n'''
-          s = replace_once(s, can_charge_anchor, begin_checkout, 'POS begin checkout')
+          s = replace_once(
+              s,
+              '  const canCharge = isPos ? !!openSession : true;\n',
+              '  const canCharge = isPos ? !!openSession : true;\n\n  const beginCheckout = useCallback(() => {\n    checkoutMutationIdRef.current = crypto.randomUUID();\n    setPaymentOpen(true);\n  }, []);\n',
+              'POS begin checkout',
+          )
           s = s.replace(
               'onOpenChange={setPaymentOpen}',
               'onOpenChange={(nextOpen) => {\n          setPaymentOpen(nextOpen);\n          if (!nextOpen && !submitting) checkoutMutationIdRef.current = null;\n        }}',
@@ -89,52 +91,42 @@ jobs:
           offline = Path('src/hooks/useOfflineMutation.ts')
           s = offline.read_text()
           s = s.replace("  type: string; // Identificador único para el sync_engine (e.g., 'CREATE_ORDER')", "  type: string; // Stable operation type used by the sync engine (e.g. 'CHECKOUT_SALE')")
-          old_device = '''function getDeviceId() {\n  const key = 'poss360t_device_id';\n  const existing = window.localStorage.getItem(key);\n  if (existing) return existing;\n  const created = crypto.randomUUID();\n  window.localStorage.setItem(key, created);\n  return created;\n}\n\nfunction withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {'''
-          new_device = '''function getDeviceId() {\n  const key = 'zaipos_device_id';\n  const existing = window.localStorage.getItem(key);\n  if (existing) return existing;\n  const created = crypto.randomUUID();\n  window.localStorage.setItem(key, created);\n  return created;\n}\n\nexport function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {'''
-          s = replace_once(s, old_device, new_device, 'ZAIPOS device identity')
+          s = replace_once(
+              s,
+              "function getDeviceId() {\n  const key = 'poss360t_device_id';\n  const existing = window.localStorage.getItem(key);\n  if (existing) return existing;\n  const created = crypto.randomUUID();\n  window.localStorage.setItem(key, created);\n  return created;\n}\n\nfunction withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {",
+              "function getDeviceId() {\n  const key = 'zaipos_device_id';\n  const existing = window.localStorage.getItem(key);\n  if (existing) return existing;\n  const created = crypto.randomUUID();\n  window.localStorage.setItem(key, created);\n  return created;\n}\n\nexport function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {",
+              'ZAIPOS device identity',
+          )
           offline.write_text(s)
 
           session = Path('src/hooks/useOpenSession.ts')
           s = session.read_text()
           s = s.replace('/** Hook centralizado para conocer la sesión de register abierta de la branch actual. */', '/** Resolve the current open cash session for the active branch. */')
-          s = s.replace(
-              '.select("id, opening_amount, total_cash, total_card, total_transfer, total_qr, total_in, total_out, opened_at")',
-              '.select("id, register_id, user_id, opening_amount, total_cash, total_card, total_transfer, total_qr, total_in, total_out, opened_at")',
-          )
-          s = s.replace(
-              '.eq("status", "open")\n        .maybeSingle();',
-              '.eq("status", "open")\n        .order("opened_at", { ascending: false })\n        .limit(1)\n        .maybeSingle();',
-          )
+          s = s.replace('.select("id, opening_amount, total_cash, total_card, total_transfer, total_qr, total_in, total_out, opened_at")', '.select("id, register_id, user_id, opening_amount, total_cash, total_card, total_transfer, total_qr, total_in, total_out, opened_at")')
+          s = s.replace('.eq("status", "open")\n        .maybeSingle();', '.eq("status", "open")\n        .order("opened_at", { ascending: false })\n        .limit(1)\n        .maybeSingle();')
           session.write_text(s)
 
           migration = Path('supabase/migrations/20260905000100_transaction_core_foundation.sql')
           s = migration.read_text()
-          table_anchor = '-- Preserve table-order checkout while routing it through the hardened checkout RPC.\nCREATE OR REPLACE FUNCTION public.checkout_table_order('
-          replacement = '''-- Preserve table-order checkout while routing it through the hardened checkout RPC.\nDROP FUNCTION IF EXISTS public.checkout_table_order(uuid, jsonb, numeric, numeric, text, text);\n\nCREATE OR REPLACE FUNCTION public.checkout_table_order('''
-          s = replace_once(s, table_anchor, replacement, 'drop legacy table checkout overload')
+          s = replace_once(
+              s,
+              '-- Preserve table-order checkout while routing it through the hardened checkout RPC.\nCREATE OR REPLACE FUNCTION public.checkout_table_order(',
+              '-- Preserve table-order checkout while routing it through the hardened checkout RPC.\nDROP FUNCTION IF EXISTS public.checkout_table_order(uuid, jsonb, numeric, numeric, text, text);\n\nCREATE OR REPLACE FUNCTION public.checkout_table_order(',
+              'drop legacy table checkout overload',
+          )
           migration.write_text(s)
 
           pkg_path = Path('package.json')
           pkg = json.loads(pkg_path.read_text())
           pkg['scripts']['audit:transactions'] = 'node scripts/audit-transaction-core.mjs'
           pkg_path.write_text(json.dumps(pkg, indent=2) + '\n')
-
-          ci = Path('.github/workflows/ci.yml')
-          s = ci.read_text()
-          audit_anchor = '      - name: Validate migrations\n        run: npm run validate:migrations\n'
-          audit_step = '''      - name: Audit transaction-core invariants\n        run: npm run audit:transactions\n\n      - name: Validate migrations\n        run: npm run validate:migrations\n'''
-          s = replace_once(s, audit_anchor, audit_step, 'CI transaction audit')
-          ci.write_text(s)
           PY
 
-      - name: Remove one-shot workflow
-        run: rm -f .github/workflows/p0-transaction-apply.yml
-
-      - name: Commit wiring
+      - name: Commit source wiring
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add src/modules/pos/POS.tsx src/hooks/useOfflineMutation.ts src/hooks/useOpenSession.ts supabase/migrations/20260905000100_transaction_core_foundation.sql package.json
           git commit -m "feat: wire split checkout and stable replay identity"
           git push origin HEAD:feat/p0-transaction-core
