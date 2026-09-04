@@ -10,7 +10,7 @@ const specs = [
     file: "landing.png",
     path: "/",
     viewport: { width: 1440, height: 900 },
-    expected: ["ZAIPOS", "Bahrain"],
+    expected: ["ZAIPOS", "Run your sales like"],
   },
   {
     file: "dashboard.png",
@@ -59,11 +59,18 @@ async function capture(browser, spec) {
   });
   await page.waitForTimeout(1600);
 
-  for (const text of spec.expected) {
-    await page.getByText(text, { exact: false }).first().waitFor({
-      state: "visible",
-      timeout: 12_000,
-    });
+  try {
+    for (const text of spec.expected) {
+      await page.getByText(text, { exact: false }).first().waitFor({
+        state: "visible",
+        timeout: 12_000,
+      });
+    }
+  } catch (error) {
+    console.error(`Capture assertion failed for ${spec.file}`);
+    console.error(`Current URL: ${page.url()}`);
+    console.error(`Rendered text: ${(await page.locator("body").innerText()).slice(0, 5000)}`);
+    throw error;
   }
 
   await page.screenshot({
