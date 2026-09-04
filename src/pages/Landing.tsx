@@ -81,8 +81,8 @@ const PLANS = [
   },
   {
     name: "Pro",
-    price: "$149k",
-    sub: "BHD / month",
+    price: "BHD 149",
+    sub: "per month",
     features: ["Unlimited branches", "Everything in Starter +", "Tables & orders", "Delivery & KDS", "Digital orders", "WhatsApp AI", "Advanced inventory"],
     cta: "Start 14-day free trial",
     accent: true,
@@ -163,7 +163,7 @@ export default function Landing() {
           </h1>
 
           <p className="landing-hero-sub">
-            Multi-channel · Multi-branch · Offline-first.<br className="hidden sm:block" />
+            Built for Bahrain · Multi-channel · Multi-branch · Offline-first.<br className="hidden sm:block" />
             From the counter to the courier, from the dining room to the dashboard.
           </p>
 

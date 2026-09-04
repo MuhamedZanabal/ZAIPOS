@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 /* ── Sparkline data ── */
 const SPARK = [55,62,58,71,68,78,82,76,89,94,88,102,110,105,118,124,121,132,128,140,138,145,152,148,155,150,158];
 const YMAX = 200;
+const PAYMENT_METHOD_LABELS: Record<string, string> = { cash: "Cash", card: "Card", qr: "BenefitPay", transfer: "Bank Transfer" };
 
 /* ── Area chart ── */
 function AreaChart() {
@@ -44,7 +45,7 @@ function AreaChart() {
       <g transform={`translate(${lX}, ${lY - 24})`}>
         <rect x="-32" y="-13" width="64" height="20" rx="10" fill="#2B7CFF" />
         <text x="0" y="2" textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff" fontFamily="var(--g-font-display)">
-          ${(SPARK[n-1] * 1000).toLocaleString()}
+          {formatCurrency(SPARK[n-1])}
         </text>
       </g>
     </svg>
@@ -166,17 +167,17 @@ export default function Dashboard() {
 
   const totalSales = metrics?.totalSales ?? 0;
   const CHANNEL_SEGS: DonutSeg[] = [
-    { value: 52, color: "#1E63E6", label: "Physical Store", amount: formatCurrency(totalSales * 0.52) },
-    { value: 24, color: "#5B95FF", label: "Web",           amount: formatCurrency(totalSales * 0.24) },
-    { value: 16, color: "#9CC0FF", label: "Mobile App",     amount: formatCurrency(totalSales * 0.16) },
-    { value:  8, color: "#FFB54A", label: "Delivery",      amount: formatCurrency(totalSales * 0.08) },
+    { value: 52, color: "#1E63E6", label: "Physical POS", amount: formatCurrency(totalSales * 0.52) },
+    { value: 24, color: "#5B95FF", label: "Talabat",           amount: formatCurrency(totalSales * 0.24) },
+    { value: 16, color: "#9CC0FF", label: "WhatsApp",     amount: formatCurrency(totalSales * 0.16) },
+    { value:  8, color: "#FFB54A", label: "In-house Delivery",      amount: formatCurrency(totalSales * 0.08) },
   ];
   const TOP_PRODUCTS = [
-    { name: "Classic Cappuccino",     cat: "Drinks",   qty: 1245, pct: 96 },
-    { name: "Croissant Mantequilla", cat: "Bakery", qty: 978,  pct: 78 },
-    { name: "Latte Vainilla",        cat: "Drinks",   qty: 854,  pct: 68 },
-    { name: "Cheesecake de Fresa",   cat: "Postres",   qty: 642,  pct: 51 },
-    { name: "Pan de Masa Madre",     cat: "Bakery", qty: 523,  pct: 41 },
+    { name: "Karak Tea",     cat: "Drinks",   qty: 1245, pct: 96 },
+    { name: "Cheese Croissant", cat: "Bakery", qty: 978,  pct: 78 },
+    { name: "Fresh Orange Juice",        cat: "Drinks",   qty: 854,  pct: 68 },
+    { name: "Date Cake Slice",   cat: "Desserts",   qty: 642,  pct: 51 },
+    { name: "Arabic Bread Pack",     cat: "Bakery", qty: 523,  pct: 41 },
   ];
 
   return (
@@ -200,9 +201,9 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <div className="g-title-16">Sales summary</div>
-              <div className="h-meta">Tendencia mensual · {branchName}</div>
+              <div className="h-meta">Monthly trend · {branchName}</div>
             </div>
-            <span className="g-pill g-pill-ghost g-pill-h28">Este mes <TrendingUp size={12} /></span>
+            <span className="g-pill g-pill-ghost g-pill-h28">This month <TrendingUp size={12} /></span>
           </div>
           <div className="flex-1 flex items-center justify-center min-w-0 overflow-hidden">
             <AreaChart />
@@ -216,7 +217,7 @@ export default function Dashboard() {
               <span className="inline-flex items-center gap-1 font-bold text-[14px] text-g-ok">
                 <ArrowUpRight size={12} /> 18.5%
               </span>
-              <div className="h-meta">vs. mes anterior</div>
+              <div className="h-meta">vs. previous month</div>
             </div>
           </div>
         </div>
@@ -225,7 +226,7 @@ export default function Dashboard() {
         <div className="glass flex flex-col gap-3.5 g-panel-20">
           <div className="flex items-center justify-between">
             <div className="g-title-16">Top products</div>
-            <span className="g-pill g-pill-ghost g-pill-h28">Este mes</span>
+            <span className="g-pill g-pill-ghost g-pill-h28">This month</span>
           </div>
           <div className="flex flex-col gap-3 flex-1">
             {TOP_PRODUCTS.map((r, i) => (
@@ -241,7 +242,7 @@ export default function Dashboard() {
         <div className="glass flex flex-col gap-3.5 g-panel-20">
           <div className="flex items-center justify-between">
             <div className="g-title-16">Sales channel</div>
-            <span className="g-pill g-pill-ghost g-pill-h28">Este mes</span>
+            <span className="g-pill g-pill-ghost g-pill-h28">This month</span>
           </div>
           <div className="flex items-center gap-4 flex-1">
             <Donut size={160} segments={CHANNEL_SEGS} total={formatCurrency(totalSales)} />
@@ -273,7 +274,7 @@ export default function Dashboard() {
         <div className="glass flex flex-col gap-3.5 g-panel">
           <div className="flex justify-between items-center">
             <div className="g-title-15">Inventory</div>
-            <Link to="/inventory" className="g-link g-val-12">Ver todo</Link>
+            <Link to="/inventory" className="g-link g-val-12">View all</Link>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
             <div>
@@ -303,7 +304,7 @@ export default function Dashboard() {
         {/* Payments */}
         <div className="glass flex flex-col gap-3 g-panel">
           <div className="flex justify-between items-center">
-            <div className="g-title-15">Pagos</div>
+            <div className="g-title-15">Payments</div>
             <Link to="/sales" className="g-link g-val-12">View all</Link>
           </div>
           <div className="flex flex-col gap-2">
@@ -311,7 +312,7 @@ export default function Dashboard() {
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <Wallet size={16} className="text-ink-500" />
-                  <span className="text-[13px] font-semibold text-ink-900">{m.method}</span>
+                  <span className="text-[13px] font-semibold text-ink-900">{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>
                 </div>
                 <span className="g-num-13">{formatCurrency(m.amount)}</span>
               </div>
@@ -387,7 +388,7 @@ export default function Dashboard() {
           </div>
           <div>
             <div className="font-bold g-val-14 text-g-ok flex items-center justify-center gap-1">
-              <CheckCircle size={14} /> Todo sincronizado
+              <CheckCircle size={14} /> Everything synchronized
             </div>
             <div className="h-meta mt-1">Last: &lt; 1 min ago</div>
           </div>

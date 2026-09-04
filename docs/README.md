@@ -15,6 +15,7 @@ ZAIPOS is an English-language, Bahrain-native point-of-sale platform.
 
 ## Documents
 
+- [Screenshots](screenshots/README.md)
 - [Architecture](ARCHITECTURE.md)
 - [Database](DATABASE.md)
 - [Business Flows](FLOWS.md)

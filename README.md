@@ -4,6 +4,28 @@ ZAIPOS is an offline-first, multi-tenant point-of-sale and operations platform d
 
 The application runs as a browser/PWA experience and as an Electron desktop application with hardware support.
 
+## Screenshots
+
+The screenshots below are rendered from the current ZAIPOS React application using deterministic Bahrain demonstration data. They contain no production records or credentials.
+
+### Point of Sale — Desktop
+
+![ZAIPOS Bahrain POS desktop](docs/screenshots/pos-desktop.png)
+
+### Dashboard
+
+![ZAIPOS Bahrain dashboard](docs/screenshots/dashboard.png)
+
+### Bahrain Digital Orders
+
+![ZAIPOS Talabat and WhatsApp digital orders](docs/screenshots/digital-orders.png)
+
+### Settings
+
+![ZAIPOS Bahrain business settings](docs/screenshots/settings.png)
+
+Additional captures, including the landing page and mobile POS, are available in [docs/screenshots](docs/screenshots/README.md).
+
 ## Bahrain Baseline
 
 ZAIPOS is intentionally opinionated around Bahrain business operations:
