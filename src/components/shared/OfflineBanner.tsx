@@ -78,7 +78,7 @@ export function OfflineBanner() {
         <span>{cfg.message}</span>
         {bannerState !== "done" && (
           <span className="ml-1 underline underline-offset-2 text-xs font-normal opacity-80">
-            Ver detalles
+            View details
           </span>
         )}
       </button>
