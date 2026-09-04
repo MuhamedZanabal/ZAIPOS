@@ -1,0 +1,170 @@
+name: Refresh ZAIPOS docs screenshots
+
+on:
+  push:
+    branches:
+      - docs/refresh-screenshots
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: docs/refresh-screenshots
+
+      - name: Prepare current Bahrain screenshot surfaces
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          dashboard = Path('src/modules/dashboard/Dashboard.tsx')
+          s = dashboard.read_text()
+          replacements = {
+              '"Classic Cappuccino"': '"Karak Tea"',
+              '"Croissant Mantequilla"': '"Cheese Croissant"',
+              '"Latte Vainilla"': '"Fresh Orange Juice"',
+              '"Cheesecake de Fresa"': '"Date Cake Slice"',
+              '"Pan de Masa Madre"': '"Arabic Bread Pack"',
+              'cat: "Postres"': 'cat: "Desserts"',
+              'Tendencia mensual ·': 'Monthly trend ·',
+              'Este mes': 'This month',
+              'vs. mes anterior': 'vs. previous month',
+              '>Ver todo</Link>': '>View all</Link>',
+              '>Pagos</div>': '>Payments</div>',
+              'Todo sincronizado': 'Everything synchronized',
+              '{ value: 52, color: "#1E63E6", label: "Physical Store"': '{ value: 52, color: "#1E63E6", label: "Physical POS"',
+              '{ value: 24, color: "#5B95FF", label: "Web"': '{ value: 24, color: "#5B95FF", label: "Talabat"',
+              '{ value: 16, color: "#9CC0FF", label: "Mobile App"': '{ value: 16, color: "#9CC0FF", label: "WhatsApp"',
+              '{ value:  8, color: "#FFB54A", label: "Delivery"': '{ value:  8, color: "#FFB54A", label: "In-house Delivery"',
+          }
+          for old, new in replacements.items():
+              s = s.replace(old, new)
+          anchor = 'const YMAX = 200;\n'
+          payment_labels = 'const PAYMENT_METHOD_LABELS: Record<string, string> = { cash: "Cash", card: "Card", qr: "BenefitPay", transfer: "Bank Transfer" };\n'
+          if payment_labels not in s:
+              s = s.replace(anchor, anchor + payment_labels)
+          s = s.replace('{m.method}</span>', '{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>')
+          dashboard.write_text(s)
+
+          landing = Path('src/pages/Landing.tsx')
+          s = landing.read_text()
+          s = s.replace('Multi-channel · Multi-branch · Offline-first.<br className="hidden sm:block" />', 'Built for Bahrain · Multi-channel · Multi-branch · Offline-first.<br className="hidden sm:block" />')
+          s = s.replace('price: "$149k",', 'price: "BHD 149",')
+          s = s.replace('sub: "BHD / month",', 'sub: "per month",')
+          landing.write_text(s)
+
+          audit = Path('scripts/audit-localization.mjs')
+          s = audit.read_text()
+          marker = '"Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",\n'
+          expanded = '"Responsable", "Movimientos manuales", "Hora", "Puntos", "Contacto", "Plataforma",\n  "Este mes", "Tendencia mensual", "mes anterior", "Ver todo", "Pagos", "Todo sincronizado",\n'
+          if expanded not in s:
+              s = s.replace(marker, expanded)
+          audit.write_text(s)
+
+          fixture = Path('scripts/screenshot-fixture/supabase.ts')
+          s = fixture.read_text()
+          s = s.replace(
+              'getSession: async () => ({ data: { session: { user } }, error: null }),',
+              'getSession: async () => ({ data: { session: window.location.pathname === "/" ? null : { user } }, error: null }),'
+          )
+          fixture.write_text(s)
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          screenshots = '''## Screenshots\n\nThe screenshots below are rendered from the current ZAIPOS React application using deterministic Bahrain demonstration data. They contain no production records or credentials.\n\n### Point of Sale — Desktop\n\n![ZAIPOS Bahrain POS desktop](docs/screenshots/pos-desktop.png)\n\n### Dashboard\n\n![ZAIPOS Bahrain dashboard](docs/screenshots/dashboard.png)\n\n### Bahrain Digital Orders\n\n![ZAIPOS Talabat and WhatsApp digital orders](docs/screenshots/digital-orders.png)\n\n### Settings\n\n![ZAIPOS Bahrain business settings](docs/screenshots/settings.png)\n\nAdditional captures, including the landing page and mobile POS, are available in [docs/screenshots](docs/screenshots/README.md).\n\n'''
+          if '## Screenshots\n' not in text:
+              text = text.replace('## Bahrain Baseline\n', screenshots + '## Bahrain Baseline\n')
+          readme.write_text(text)
+
+          docs_index = Path('docs/README.md')
+          text = docs_index.read_text()
+          if '- [Screenshots](screenshots/README.md)' not in text:
+              text = text.replace('## Documents\n\n', '## Documents\n\n- [Screenshots](screenshots/README.md)\n')
+          docs_index.write_text(text)
+
+          Path('docs/screenshots/README.md').write_text('''# ZAIPOS Screenshots\n\nThese screenshots are generated from the current ZAIPOS React routes with deterministic Bahrain demonstration data. They are documentation fixtures only: no production customer, payment, authentication, or business records are used.\n\nEvery published capture must show ZAIPOS branding, English user-facing text, Bahrain context, BHD formatting with three decimal places where money is visible, and Bahrain-supported payment/channel terminology.\n\n## Landing\n\n![ZAIPOS Bahrain landing page](landing.png)\n\n## Dashboard\n\n![ZAIPOS Bahrain dashboard](dashboard.png)\n\n## POS — Desktop\n\n![ZAIPOS Bahrain POS desktop](pos-desktop.png)\n\n## POS — Mobile\n\n![ZAIPOS Bahrain POS mobile](pos-mobile.png)\n\n## Digital Orders\n\n![ZAIPOS Talabat and WhatsApp digital orders](digital-orders.png)\n\n## Settings\n\n![ZAIPOS Bahrain business settings](settings.png)\n''')
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install screenshot browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start isolated documentation build
+        shell: bash
+        run: |
+          npx vite --config vite.docs-screenshots.config.ts --host 127.0.0.1 --port 4173 > /tmp/zaipos-docs-vite.log 2>&1 &
+          echo $! > /tmp/zaipos-docs-vite.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/zaipos-docs-vite.log
+          exit 1
+
+      - name: Capture current screenshots
+        run: node scripts/capture-docs-screenshots.mjs
+
+      - name: Verify screenshot files
+        shell: bash
+        run: |
+          test -s docs/screenshots/landing.png
+          test -s docs/screenshots/dashboard.png
+          test -s docs/screenshots/pos-desktop.png
+          test -s docs/screenshots/pos-mobile.png
+          test -s docs/screenshots/digital-orders.png
+          test -s docs/screenshots/settings.png
+
+      - name: Audit ZAIPOS Bahrain localization
+        run: node scripts/audit-localization.mjs
+
+      - name: Validate migrations
+        run: npm run validate:migrations
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Remove temporary screenshot harness
+        shell: bash
+        run: |
+          rm -f .github/workflows/refresh-doc-screenshots.yml
+          rm -f vite.docs-screenshots.config.ts
+          rm -f scripts/capture-docs-screenshots.mjs
+          rm -rf scripts/screenshot-fixture
+
+      - name: Commit refreshed screenshots
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/ src/modules/dashboard/Dashboard.tsx src/pages/Landing.tsx scripts/audit-localization.mjs .github/workflows/refresh-doc-screenshots.yml vite.docs-screenshots.config.ts scripts/capture-docs-screenshots.mjs scripts/screenshot-fixture || true
+          if git diff --cached --quiet; then
+            echo "No screenshot changes generated"
+            exit 1
+          fi
+          git commit -m "docs: refresh ZAIPOS Bahrain screenshots"
+          git push origin HEAD:docs/refresh-screenshots
