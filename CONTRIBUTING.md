@@ -1,45 +1,50 @@
-# Contributing to POS S360T
+# Contributing to ZAIPOS
 
-Thank you for your interest in contributing! This project is released under the MIT License.
+ZAIPOS is an English-language, Bahrain-native point-of-sale platform released under the MIT License.
+
+## Development Baseline
+
+All new application behavior must preserve these project-wide defaults unless a feature explicitly requires otherwise:
+
+- Product name: **ZAIPOS**
+- Primary market: **Kingdom of Bahrain**
+- User-facing language: **English**
+- Locale: `en-BH`
+- Currency: `BHD` with three decimal places
+- Standard VAT default: `10%`, while supporting valid zero-rated and exempt treatment
+- Bahrain telephone convention: `+973`
+- Local payment terminology: Cash, Card, BenefitPay, Bank Transfer
+- Bahrain channel terminology: Physical POS, Tables, Talabat, WhatsApp, In-house Delivery
+
+Do not introduce legacy POS S360T/POS360T/poss360t branding, Colombian/COP defaults, Latin-American demo data, or active Rappi/Didi/Uber integration code.
 
 ## How to Contribute
 
-1. **Fork** the repository on GitHub.
-2. **Clone** your fork locally.
-3. Create a new branch: `git checkout -b feat/short-description` or `fix/short-description`.
-4. Make your changes.
-5. Run the quality gates:
+1. Fork the repository.
+2. Clone your fork locally.
+3. Create a focused branch such as `feat/short-description` or `fix/short-description`.
+4. Make the change with tests where applicable.
+5. Run:
    ```bash
+   npm run validate:migrations
    npm run lint
    npm run test
    npm run build
-   npm run validate:migrations
    ```
-6. Commit with clear messages following [Conventional Commits](https://www.conventionalcommits.org/).
-7. Push to your fork and open a Pull Request.
+6. Commit with a clear Conventional Commit message.
+7. Push the branch and open a pull request.
 
 ## Code Style
 
 - TypeScript strict mode is enabled.
-- Use functional React components and hooks.
-- Keep UI components in `src/components/ui/` (shadcn/ui pattern) or `src/components/shared/`.
-- Business logic belongs in `src/modules/<feature>/`.
+- Prefer functional React components and hooks.
+- Keep reusable UI in `src/components/ui/` or `src/components/shared/`.
+- Keep feature behavior in `src/modules/<feature>/`.
 - Use Zustand for global client state and TanStack Query for server state.
-- All Supabase queries must respect tenant and branch scoping.
-
-## Reporting Issues
-
-When reporting bugs, please include:
-
-- Steps to reproduce
-- Expected vs actual behavior
-- Browser / OS / Node version
-- Screenshots or logs if relevant
+- Every Supabase query and mutation must respect tenant and branch isolation.
+- Monetary UI must use the shared formatting utilities instead of hard-coded currency symbols or decimal precision.
+- Bahrain-specific defaults belong in the shared Bahrain configuration layer rather than duplicated literals.
 
 ## Security
 
-If you discover a security issue, please do not open a public issue. Instead, contact the maintainers privately.
-
-## Questions
-
-For general questions, open a GitHub Discussion or ask in the issue tracker.
+Do not commit production credentials, API keys, access tokens, hard-coded demo passwords, or customer secrets. Security issues should be reported privately to the maintainers rather than through a public issue.
