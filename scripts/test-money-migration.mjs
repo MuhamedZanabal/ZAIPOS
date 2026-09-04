@@ -14,61 +14,63 @@ try {
     CREATE ROLE authenticated;
     CREATE ROLE service_role;
 
+    -- Mirror the production baseline: inherited monetary columns are NUMERIC(12,2).
+    -- Stage B must widen these compatibility columns before new 3-decimal BHD writes.
     CREATE TABLE public.products (
       id uuid PRIMARY KEY, tenant_id uuid NOT NULL,
-      price numeric NOT NULL, cost numeric NOT NULL
+      price numeric(12,2) NOT NULL, cost numeric(12,2) NOT NULL
     );
     CREATE TABLE public.branch_products (
-      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, local_price numeric
+      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, local_price numeric(12,2)
     );
     CREATE TABLE public.product_channel_prices (
-      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, price numeric NOT NULL
+      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, price numeric(12,2) NOT NULL
     );
     CREATE TABLE public.sales (
       id uuid PRIMARY KEY, tenant_id uuid NOT NULL,
-      subtotal numeric NOT NULL, tax_total numeric NOT NULL,
-      discount_total numeric NOT NULL, tip_amount numeric NOT NULL,
-      total numeric NOT NULL
+      subtotal numeric(12,2) NOT NULL, tax_total numeric(12,2) NOT NULL,
+      discount_total numeric(12,2) NOT NULL, tip_amount numeric(12,2) NOT NULL,
+      total numeric(12,2) NOT NULL
     );
     CREATE TABLE public.sale_items (
       id uuid PRIMARY KEY, tenant_id uuid NOT NULL,
-      unit_price numeric NOT NULL, discount numeric NOT NULL,
-      line_total numeric NOT NULL
+      unit_price numeric(12,2) NOT NULL, discount numeric(12,2) NOT NULL,
+      line_total numeric(12,2) NOT NULL
     );
     CREATE TABLE public.payments (
-      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, amount numeric NOT NULL
+      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, amount numeric(12,2) NOT NULL
     );
     CREATE TABLE public.cash_sessions (
       id uuid PRIMARY KEY, tenant_id uuid NOT NULL,
-      opening_amount numeric NOT NULL, closing_amount numeric,
-      expected_amount numeric, difference numeric,
-      total_cash numeric NOT NULL, total_card numeric NOT NULL,
-      total_transfer numeric NOT NULL, total_qr numeric NOT NULL,
-      total_in numeric NOT NULL, total_out numeric NOT NULL,
-      counted_cash numeric, counted_card numeric,
-      counted_transfer numeric, counted_qr numeric
+      opening_amount numeric(12,2) NOT NULL, closing_amount numeric(12,2),
+      expected_amount numeric(12,2), difference numeric(12,2),
+      total_cash numeric(12,2) NOT NULL, total_card numeric(12,2) NOT NULL,
+      total_transfer numeric(12,2) NOT NULL, total_qr numeric(12,2) NOT NULL,
+      total_in numeric(12,2) NOT NULL, total_out numeric(12,2) NOT NULL,
+      counted_cash numeric(12,2), counted_card numeric(12,2),
+      counted_transfer numeric(12,2), counted_qr numeric(12,2)
     );
     CREATE TABLE public.cash_movements (
-      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, amount numeric NOT NULL
+      id uuid PRIMARY KEY, tenant_id uuid NOT NULL, amount numeric(12,2) NOT NULL
     );
 
     INSERT INTO public.products VALUES
-      ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 12.650, 0.025);
+      ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 12.65, 0.02);
     INSERT INTO public.branch_products VALUES
       ('00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', NULL);
     INSERT INTO public.product_channel_prices VALUES
-      ('00000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 1.275);
+      ('00000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 1.27);
     INSERT INTO public.sales VALUES
-      ('00000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 10, 1, 0.250, 0.500, 11.250);
+      ('00000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 10, 1, 0.25, 0.50, 11.25);
     INSERT INTO public.sale_items VALUES
-      ('00000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 10, 0.250, 10.750);
+      ('00000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 10, 0.25, 10.75);
     INSERT INTO public.payments VALUES
-      ('00000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 11.250);
+      ('00000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 11.25);
     INSERT INTO public.cash_sessions VALUES
       ('00000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001',
-       10, NULL, NULL, NULL, 5, 3.500, 0, 2.750, 1, 0.500, NULL, NULL, NULL, NULL);
+       10, NULL, NULL, NULL, 5, 3.50, 0, 2.75, 1, 0.50, NULL, NULL, NULL, NULL);
     INSERT INTO public.cash_movements VALUES
-      ('00000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 0.025);
+      ('00000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 0.02);
   `);
 
   await db.exec(migration);
@@ -77,7 +79,7 @@ try {
     SELECT price_fils, cost_fils FROM public.products
     WHERE id = '00000000-0000-0000-0000-000000000001'
   `);
-  if (product.rows[0].price_fils !== 12_650 || product.rows[0].cost_fils !== 25) {
+  if (product.rows[0].price_fils !== 12_650 || product.rows[0].cost_fils !== 20) {
     throw new Error(`Unexpected product backfill: ${JSON.stringify(product.rows[0])}`);
   }
 
@@ -94,16 +96,18 @@ try {
     throw new Error(`Unexpected cash backfill: ${JSON.stringify(cash.rows[0])}`);
   }
 
+  // This is the production-critical red assertion: NUMERIC(12,2) cannot preserve
+  // a three-decimal BHD write, so Stage B must widen the compatibility columns.
   await db.exec(`
     UPDATE public.products SET price = 1.234
     WHERE id = '00000000-0000-0000-0000-000000000001'
   `);
   const synced = await db.query(`
-    SELECT price_fils FROM public.products
+    SELECT price, price_fils FROM public.products
     WHERE id = '00000000-0000-0000-0000-000000000001'
   `);
-  if (synced.rows[0].price_fils !== 1_234) {
-    throw new Error(`Legacy-write trigger failed: ${JSON.stringify(synced.rows[0])}`);
+  if (synced.rows[0].price !== "1.234" || synced.rows[0].price_fils !== 1_234) {
+    throw new Error(`Three-decimal BHD write was not preserved: ${JSON.stringify(synced.rows[0])}`);
   }
 
   let parityConstraintBlocked = false;
@@ -143,7 +147,7 @@ try {
     throw new Error(`Unexpected money migration privileges: ${JSON.stringify(privileges.rows[0])}`);
   }
 
-  console.log("PASS: Stage A money migration backfills, synchronizes and enforces parity.");
+  console.log("PASS: money migrations preserve exact three-decimal BHD writes and fils parity.");
 } finally {
   await db.close();
 }
