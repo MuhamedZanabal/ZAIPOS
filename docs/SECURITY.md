@@ -1,129 +1,49 @@
-# Security
+# ZAIPOS Security
 
-This document describes the security model of POS S360T and how secrets are managed.
+ZAIPOS is a multi-tenant transactional system. Security controls must protect tenant isolation, branch scope, payment integrity, credentials, and offline synchronization.
 
----
+## Tenant Isolation
 
-## 1. Threat Model
+- Tenant-scoped data uses `tenant_id`.
+- Branch-scoped data additionally uses `branch_id`.
+- Supabase Row Level Security is the primary database isolation boundary.
+- Role helpers must validate authenticated membership and branch scope.
+- Service-role access is restricted to server-side functions and operational tooling.
 
-POS S360T handles sales, inventory, customer data, and third-party integrations. Key concerns:
+## Credentials
 
-- Tenant data isolation
-- Protection of API keys and webhook secrets
-- Safe handling of customer phone numbers and emails
-- Prevention of duplicate or fraudulent transactions
-- Secure access to hardware peripherals in Electron
+Never commit:
 
----
+- Supabase service-role keys;
+- provider API secrets;
+- hard-coded production credentials;
+- hard-coded demo passwords;
+- customer credentials or payment secrets.
 
-## 2. Tenant and Branch Isolation
+Browser code may only receive credentials intended for public-client use.
 
-```mermaid
-flowchart LR
-    User["Authenticated User"] -->|JWT| RLS["Row Level Security"]
-    RLS -->|tenant_id + branch_id| DB[(PostgreSQL)]
-```
+## Transaction Integrity
 
-Every tenant-scoped table has RLS policies. Users can only read or write rows where:
+Checkout, returns, inventory mutations, and synchronization require authorization and idempotency. A retry must not duplicate sales, payments, BenefitPay records, or stock effects.
 
-- `tenant_id` matches one of their assigned tenants, and
-- `branch_id` matches one of their assigned branches (for branch-scoped tables).
+## Bahrain Payment Semantics
 
-The `super_admin` role bypasses tenant isolation for platform administration.
+BenefitPay is a user-facing payment method mapped to the existing internal QR accounting bucket for compatibility. Selecting BenefitPay in the POS is not equivalent to independently verified settlement unless a trusted provider response exists. Do not fabricate payment confirmation.
 
----
+Bank Transfer similarly records the selected method/reference state; settlement evidence must come from an authorized source when required.
 
-## 3. Secrets Management
+## External Platforms
 
-All secrets are read from environment variables. No secrets are committed to the repository.
+Talabat is represented as a Bahrain marketplace channel. ZAIPOS does not expose fabricated partner API actions. Any future direct marketplace integration must use documented partner credentials server-side and validate webhook authenticity.
 
-### Frontend build-time variables (`VITE_*`)
+## AI and WhatsApp
 
-These are embedded in the JavaScript bundle:
+AI tools must respect tenant and branch authorization. Prompts and tool output must not expose another tenant's data or invent transactional state. WhatsApp/provider credentials remain server-side.
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_BARCODE_LOOKUP_API_KEY` (optional)
+## Offline Security
 
-> Never put service-role keys or private API keys in a `VITE_*` variable.
+Local IndexedDB state is a continuity mechanism, not an authorization bypass. Replayed operations are revalidated by server-side controls. Sensitive local data should be minimized and cleared appropriately on sign-out.
 
-### Edge Function secrets
+## Reporting Security Issues
 
-These are configured in Supabase Dashboard or via the Supabase CLI:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `OPENROUTER_API_KEY`
-- `GEMINI_API_KEY`
-- `RAPPI_CLIENT_ID`
-- `RAPPI_CLIENT_SECRET`
-- `RAPPI_WEBHOOK_SECRET`
-- `EVOLUTION_API_URL`
-- `EVOLUTION_API_KEY`
-- `EVOLUTION_WEBHOOK_SECRET`
-
-### Local development
-
-Copy `.env.example` to `.env` and fill in your values. `.env` is ignored by Git.
-
----
-
-## 4. Webhook Security
-
-### Rappi
-
-- Verifies `X-Rappi-Signature` using HMAC-SHA256.
-- Validates `X-Rappi-Timestamp` freshness (5-minute window).
-- Rate-limits by IP.
-- Supports optional IP allowlist (`RAPPI_IP_ALLOWLIST`).
-
-### Evolution (WhatsApp)
-
-- Verifies `x-webhook-signature` or `x-evolution-signature`.
-- Validates timestamp freshness.
-- Rate-limits by IP.
-- Supports optional IP allowlist (`EVOLUTION_IP_ALLOWLIST`).
-
----
-
-## 5. Idempotency
-
-Critical write operations use idempotency keys to prevent duplicate execution on retries. The `operation_log` table stores:
-
-- idempotency key
-- operation name
-- payload hash
-- result
-- timestamp
-
-If the same key is received again, the stored result is returned without re-executing the operation.
-
----
-
-## 6. Input Validation
-
-- Zod schemas validate forms on the frontend.
-- RPC functions validate required fields and roles on the backend.
-- Edge Functions validate JWTs and payload shape before processing.
-
----
-
-## 7. Reporting Security Issues
-
-If you discover a security vulnerability, please do not open a public issue. Contact the maintainers privately with details and reproduction steps.
-
----
-
-## 8. Security Checklist for Production
-
-- [ ] Rotate all demo seed passwords.
-- [ ] Use strong Supabase database password.
-- [ ] Enable RLS on all tenant tables.
-- [ ] Disable `ALLOW_UNSIGNED_RAPPI_WEBHOOKS` in production.
-- [ ] Configure webhook IP allowlists.
-- [ ] Use HTTPS everywhere.
-- [ ] Keep dependencies updated.
-- [ ] Review Edge Function CORS settings.
-- [ ] Enable Supabase MFA for project members.
-- [ ] Set up audit logging and alerting.
+Security vulnerabilities should be disclosed privately to the maintainers. Do not post credentials, exploit details, or customer data in public issues.
