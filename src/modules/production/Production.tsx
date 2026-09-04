@@ -150,7 +150,7 @@ export default function Production() {
                   <div className="min-w-0">
                     <div className="g-prod-name truncate">{o.products?.name}</div>
                     <div className="g-prod-date">
-                      {new Date(o.created_at).toLocaleString("es-CO", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {new Date(o.created_at).toLocaleString("en-BH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
                 </div>

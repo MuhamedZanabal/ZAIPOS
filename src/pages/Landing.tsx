@@ -33,7 +33,7 @@ const FEATURES = [
     icon: Smartphone,
     sc: "sc-amber",
     title: "Digital orders",
-    desc: "Integration with Rappi, DiDi, Uber Eats, and WhatsApp. Real-time webhooks, commissions, and net revenue calculation.",
+    desc: "Bahrain order channels with Talabat, WhatsApp, and in-house delivery. Marketplace orders are tracked without inventing unsupported partner API actions.",
   },
   {
     icon: ChefHat,
@@ -82,7 +82,7 @@ const PLANS = [
   {
     name: "Pro",
     price: "$149k",
-    sub: "COP / month",
+    sub: "BHD / month",
     features: ["Unlimited branches", "Everything in Starter +", "Tables & orders", "Delivery & KDS", "Digital orders", "WhatsApp AI", "Advanced inventory"],
     cta: "Start 14-day free trial",
     accent: true,

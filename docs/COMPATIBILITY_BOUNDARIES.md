@@ -8,4 +8,4 @@ Allowed compatibility boundaries include:
 - historical PostgreSQL enum values that cannot be safely removed from already-deployed databases;
 - persisted local settings keys whose renaming would discard installed-device configuration.
 
-These values must not appear as active legacy product branding, Spanish UI, COP/Colombia defaults, or active foreign marketplace integrations.
+Compatibility values must never appear as active legacy branding, non-English UI, non-Bahrain defaults, or active removed marketplace integrations.

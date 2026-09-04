@@ -400,7 +400,7 @@ export default function POS() {
           const receiptConfig = (tenant?.receipt_config as Record<string, any>) ?? {};
           await printTicket({
             ticketNumber: sale?.ticket_number ?? saleId.slice(0, 8),
-            businessName: tenant?.name ?? "POSS360T",
+            businessName: tenant?.name ?? "ZAIPOS",
             branchName,
             items: lines.map((line) => ({
               name: line.product.name,
@@ -419,7 +419,7 @@ export default function POS() {
           });
           if (method === "cash") await openDrawer();
         } catch (hwErr: any) {
-          // La venta ya quedó registrada en BD; un fallo del hardware no debe
+          // La sale ya quedó registrada en BD; un fallo del hardware no debe
           // bloquear el cierre del ticket ni provocar que el cajero cobre dos veces.
           toast.warning("Sale recorded, but the printer or cash drawer failed", {
             description: hwErr?.message ?? "Check the hardware before the next ticket",
@@ -781,7 +781,7 @@ export default function POS() {
             ))}
           </div>
           <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { setUpsellProduct(null); setUpsellItems([]); }}>
-            No, gracias
+            No, thank you
           </Button>
         </DialogContent>
       </Dialog>

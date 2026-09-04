@@ -310,7 +310,7 @@ export default function Inventory() {
             <span className="h-label">Unidades totales</span>
             <div className="orb g-orb-38 orb-sq"><TrendingUp size={15} /></div>
           </div>
-          <div className="g-num-28">{totalValue.toLocaleString("es-CO", { maximumFractionDigits: 0 })}</div>
+          <div className="g-num-28">{totalValue.toLocaleString("en-BH", { maximumFractionDigits: 0 })}</div>
           <span className="h-meta">across all centers</span>
         </div>
 
@@ -523,7 +523,7 @@ export default function Inventory() {
             {filteredStocks.length > 0 && (
               <div className="px-5 py-3 flex items-center justify-between inv-table-footer">
                 <span className="h-meta">{filteredStocks.length} products shown</span>
-                <span className="h-meta">{filteredStocks.reduce((a: number, s: any) => a + Number(s.quantity), 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })} unidades en total</span>
+                <span className="h-meta">{filteredStocks.reduce((a: number, s: any) => a + Number(s.quantity), 0).toLocaleString("en-BH", { maximumFractionDigits: 0 })} units total</span>
               </div>
             )}
           </div>
@@ -545,7 +545,7 @@ export default function Inventory() {
             <span className="h-label">Center</span>
             <span className="h-label">Type</span>
             <span className="h-label">Quantity</span>
-            <span className="h-label">Motivo</span>
+            <span className="h-label">Reason</span>
             <span className="h-label">Source</span>
           </div>
 
@@ -561,7 +561,7 @@ export default function Inventory() {
                 className="grid items-center gap-3 px-5 py-3 inv-history-grid inv-table-row"
               >
                 <span className="h-meta g-mono inv-text-11">
-                  {new Date(m.created_at).toLocaleString("es-CO")}
+                  {new Date(m.created_at).toLocaleString("en-BH")}
                 </span>
                 <span className="font-semibold text-ink-900 truncate inv-text-13">
                   {m.products?.name}
@@ -751,7 +751,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
           </div>
         </div>
 
-        {/* Producto con búsqueda */}
+        {/* Product con búsqueda */}
         <div className="space-y-1.5">
           <Label>Product</Label>
           <div className="relative">
@@ -799,7 +799,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
           </Select>
         </div>
 
-        {/* Cantidad */}
+        {/* Quantity */}
         <div className="space-y-1.5">
           <Label>Quantity {selectedProduct?.unit_code ? `(${selectedProduct.unit_code})` : ""}</Label>
           <Input
@@ -810,9 +810,9 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
           />
         </div>
 
-        {/* Motivo */}
+        {/* Reason */}
         <div className="space-y-1.5">
-          <Label>Motivo <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+          <Label>Reason <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Textarea
             value={reason} onChange={(e) => setReason(e.target.value)}
             placeholder="E.g. Supplier purchase, physical count, etc."

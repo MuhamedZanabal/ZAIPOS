@@ -154,7 +154,7 @@ export default function Products() {
         });
         const { error: deleteError } = await supabase.from("products").delete().eq("tenant_id", tenantId);
         if (deleteError) {
-          console.error("Error al borrar productos:", deleteError);
+          console.error("Error al borrar products:", deleteError);
           if (deleteError.code === "23503") {
             throw new Error("Current products cannot be deleted because they are linked to existing orders, recipes, or inventory movements. Contact support for a deep cleanup.");
           }

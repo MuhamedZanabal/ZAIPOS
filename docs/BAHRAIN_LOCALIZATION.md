@@ -11,7 +11,7 @@ ZAIPOS is Bahrain-native by default and the user-facing interface is English.
 - Bahrain phone conventions: +973 and eight-digit local numbers.
 - Primary Bahrain payment labels: Cash, Card, BenefitPay, Bank Transfer.
 - Bahrain channels: POS, Tables, Talabat, WhatsApp, In-house Delivery.
-- No active Rappi, Didi Food, Uber Eats, COP, Colombia, `es-CO`, or legacy POS S360T product assumptions.
+- No active legacy product, non-Bahrain currency/locale, or removed marketplace assumptions.
 - Historical persisted values may remain only when required for backward compatibility and must not be exposed as active Bahrain product behavior.
 
 ## Verification

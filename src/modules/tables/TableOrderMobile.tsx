@@ -56,7 +56,7 @@ export function TableOrderMobile(props: Props) {
 
   const handleAdd = (p: any) => {
     onAdd(p);
-    // si ya hay 3+ items, sugerimos saltar al pedido
+    // si ya hay 3+ items, sugerimos saltar al order
   };
 
   return (

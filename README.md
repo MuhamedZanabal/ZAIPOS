@@ -20,7 +20,7 @@ ZAIPOS is intentionally opinionated around Bahrain business operations:
 - **Address examples and demo data:** Bahrain-based
 - **Receipt terminology:** CR, Bahrain address/contact details, VAT details when applicable
 
-The repository must not introduce legacy POS S360T/POS360T/poss360t branding, COP/Colombia defaults, Latin-American demo fixtures, or active Rappi/Didi/Uber integrations.
+The repository must not reintroduce legacy product identity, non-Bahrain defaults, foreign demo fixtures, or removed marketplace integrations.
 
 ## Core Capabilities
 
@@ -157,7 +157,7 @@ public/                    PWA and desktop assets
 
 ### Currency
 
-All new business defaults use `BHD`. Shared formatting uses `en-BH` and three fraction digits. Avoid hard-coded `$`, COP-scale shortcuts, or zero-decimal currency assumptions.
+All new business defaults use `BHD`. Shared formatting uses `en-BH` and three fraction digits. Avoid hard-coded foreign currency symbols, non-Bahrain shortcuts, or zero-decimal currency assumptions.
 
 ### VAT
 
@@ -169,7 +169,7 @@ The shared Bahrain helpers normalize local eight-digit Bahrain numbers to `+973`
 
 ### Addresses
 
-Demo and placeholder addresses use Bahrain areas such as Manama, Muharraq, Riffa, Isa Town, Hamad Town, Seef, Juffair, Amwaj Islands, and Saar rather than Colombian street conventions.
+Demo and placeholder addresses use Bahrain areas such as Manama, Muharraq, Riffa, Isa Town, Hamad Town, Seef, Juffair, Amwaj Islands, and Saar rather than Bahraini street conventions.
 
 ## Database Migrations
 

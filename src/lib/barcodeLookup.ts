@@ -36,7 +36,7 @@ async function lookupOpenFoodFacts(barcode: string): Promise<BarcodeProduct | nu
 
 export async function lookupEAN(barcode: string): Promise<BarcodeProduct | null> {
   if (!API_KEY) {
-    // Fallback gratuito: Open Food Facts (cubre EAN-13 de alimentos y muchos productos)
+    // Fallback gratuito: Open Food Facts (cubre EAN-13 de alimentos y muchos products)
     return lookupOpenFoodFacts(barcode);
   }
   const url = `${BASE_URL}?barcode=${encodeURIComponent(barcode)}&formatted=y&key=${API_KEY}`;

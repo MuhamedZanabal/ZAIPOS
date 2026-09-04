@@ -322,7 +322,7 @@ export default function QRMenu() {
                         )}
                       </div>
 
-                      {/* Controles de cantidad */}
+                      {/* Controles de quantity */}
                       <div className="shrink-0">
                         {outOfStock ? (
                           <Badge variant="outline" className="text-xs text-muted-foreground">Agotado</Badge>

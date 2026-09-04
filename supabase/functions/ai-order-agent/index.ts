@@ -24,7 +24,7 @@ const tools: any[] = [
     type: "function",
     function: {
       name: "search_catalog",
-      description: "Busca productos disponibles en el catálogo del restaurante/tienda. Úsalo cuando el cliente mencione un producto.",
+      description: "Busca products disponibles en el catálogo del restaurante/tienda. Úsalo cuando el customer mencione un product.",
       parameters: {
         type: "object",
         properties: {
@@ -39,13 +39,13 @@ const tools: any[] = [
     type: "function",
     function: {
       name: "quote_order",
-      description: "Calcula el precio total de un pedido antes de confirmarlo. Muéstrale el resumen al cliente.",
+      description: "Calcula el price total de un order antes de confirmarlo. Muéstrale el resumen al customer.",
       parameters: {
         type: "object",
         properties: {
           items: {
             type: "array",
-            description: "Items del pedido",
+            description: "Items del order",
             items: {
               type: "object",
               properties: {
@@ -65,7 +65,7 @@ const tools: any[] = [
     type: "function",
     function: {
       name: "create_order",
-      description: "Crea el pedido final cuando el cliente confirme y ya tengas su dirección de entrega. Solo llámalo después de que el cliente diga 'sí', 'confirmar', 'listo' o equivalente Y hayas recopilado la dirección.",
+      description: "Crea el order final cuando el customer confirme y ya tengas su dirección de entrega. Solo llámalo después de que el customer diga 'sí', 'confirmar', 'listo' o equivalente Y hayas recopilado la dirección.",
       parameters: {
         type: "object",
         properties: {
@@ -82,9 +82,9 @@ const tools: any[] = [
               required: ["product_id", "quantity", "unit_price"],
             },
           },
-          customer_name: { type: "string", description: "Nombre del cliente si lo mencionó" },
-          delivery_address: { type: "string", description: "Dirección completa de entrega proporcionada por el cliente" },
-          notes: { type: "string", description: "Notas adicionales: incluye si el cliente confirmó ser del municipio de La Estrella y si dijo que enviará su ubicación estática de WhatsApp" },
+          customer_name: { type: "string", description: "Nombre del customer si lo mencionó" },
+          delivery_address: { type: "string", description: "Dirección completa de entrega proporcionada por el customer" },
+          notes: { type: "string", description: "Notas adicionales: incluye si el customer confirmó ser del municipio de La Estrella y si dijo que enviará su ubicación estática de WhatsApp" },
         },
         required: ["items", "delivery_address"],
       },
@@ -94,11 +94,11 @@ const tools: any[] = [
     type: "function",
     function: {
       name: "handoff_to_human",
-      description: "Transfiere la conversación a un asesor humano cuando no puedas resolver la solicitud o el cliente lo pida.",
+      description: "Transfiere la conversación a un asesor humano cuando no puedas resolver la solicitud o el customer lo pida.",
       parameters: {
         type: "object",
         properties: {
-          reason: { type: "string", description: "Motivo de la transferencia" },
+          reason: { type: "string", description: "Reason de la transferencia" },
         },
         required: ["reason"],
       },
@@ -109,8 +109,8 @@ const tools: any[] = [
     function: {
       name: "send_interactive_message",
       description: `Envía un mensaje interactivo de WhatsApp con botones o lista de opciones. Úsalo en estos momentos específicos:
-1. Al inicio de la conversación para preguntar el tipo de pedido (domicilio/para llevar/en el local).
-2. Cuando el cliente quiera ver categorías del menú y haya más de 3 opciones.
+1. Al inicio de la conversación para preguntar el tipo de order (delivery/para llevar/en el local).
+2. Cuando el customer quiera ver categorías del menú y haya más de 3 opciones.
 IMPORTANTE: Después de llamar este tool, NO generes texto adicional en tu respuesta — el mensaje interactivo ES la respuesta de este turno. Para preguntas simples de sí/no usa texto normal.`,
       parameters: {
         type: "object",
@@ -121,7 +121,7 @@ IMPORTANTE: Después de llamar este tool, NO generes texto adicional en tu respu
             description: "'buttons' para hasta 3 opciones, 'list' para más opciones en secciones",
           },
           text: { type: "string", description: "Texto principal del mensaje (la pregunta o información)" },
-          footer: { type: "string", description: "Texto secundario debajo de las opciones (opcional)" },
+          footer: { type: "string", description: "Texto secundario debajo de las opciones (optional)" },
           buttons: {
             type: "array",
             description: "Solo para type='buttons'. Máximo 3.",
@@ -152,7 +152,7 @@ IMPORTANTE: Después de llamar este tool, NO generes texto adicional en tu respu
                     properties: {
                       id: { type: "string" },
                       title: { type: "string", description: "Máx 24 caracteres" },
-                      description: { type: "string", description: "Descripción opcional (máx 72 caracteres)" },
+                      description: { type: "string", description: "Descripción optional (máx 72 caracteres)" },
                     },
                     required: ["id", "title"],
                   },
@@ -281,7 +281,7 @@ async function executeTool(
       _limit: input.limit ?? 5,
     });
     if (error) return `Error buscando: ${error.message}`;
-    if (!data || data.length === 0) return "No encontré productos con ese nombre.";
+    if (!data || data.length === 0) return "No encontré products con ese nombre.";
     return JSON.stringify(data.map((p: any) => ({
       product_id: p.product_id,
       name: p.name,
@@ -309,10 +309,10 @@ async function executeTool(
       _items: input.items,
       _customer_name: input.customer_name ?? null,
       _customer_phone: ctx.customerPhone,
-      _notes: input.notes ?? "Pedido por WhatsApp",
+      _notes: input.notes ?? "Order por WhatsApp",
       _delivery_address: input.delivery_address ?? null,
     });
-    if (error) return `Error creando pedido: ${error.message}`;
+    if (error) return `Error creando order: ${error.message}`;
     return JSON.stringify({ order_id: data, status: "created" });
   }
 
@@ -580,7 +580,7 @@ async function runAgent({
               },
               {
                 type: "text",
-                text: `Describe brevemente qué hay en esta imagen en el contexto de un pedido de comida o panadería. Si hay texto legible (lista de productos, dirección, etc.), transcríbelo. Caption del cliente: "${mediaAttachment.caption ?? ""}"`,
+                text: `Describe brevemente qué hay en esta imagen en el contexto de un order de comida o panadería. Si hay texto legible (lista de products, dirección, etc.), transcríbelo. Caption del customer: "${mediaAttachment.caption ?? ""}"`,
               },
             ],
           }],
@@ -588,7 +588,7 @@ async function runAgent({
         });
         const description = visionRes.choices[0].message.content?.trim() ?? "";
         if (description) {
-          resolvedMessage = `[El cliente compartió una imagen. Descripción: ${description}]${newMessage ? `\n${newMessage}` : ""}`;
+          resolvedMessage = `[El customer compartió una imagen. Descripción: ${description}]${newMessage ? `\n${newMessage}` : ""}`;
         }
       } catch (e) {
         console.warn("[ai-order-agent] Vision call failed:", e);
@@ -664,20 +664,20 @@ async function runAgent({
     if (recentOrders && recentOrders.length > 0) {
       const orderLines = recentOrders.map((o: any) => {
         const items = Array.isArray(o.items)
-          ? o.items.map((i: any) => `${i.quantity ?? 1}x ${i.name ?? "producto"}`).join(", ")
-          : "pedido anterior";
-        const when = new Date(o.created_at).toLocaleString("es-CO", {
+          ? o.items.map((i: any) => `${i.quantity ?? 1}x ${i.name ?? "product"}`).join(", ")
+          : "order anterior";
+        const when = new Date(o.created_at).toLocaleString("en-BH", {
           hour: "2-digit", minute: "2-digit", day: "numeric", month: "short",
         });
         return `• ${when}: ${items}`;
       }).join("\n");
-      returningCustomerCtx = `\n\n--- CLIENTE RECURRENTE ---\nEste cliente ya realizó pedidos en las últimas 24 horas. Salúdalo cálidamente y agradécele por volver. Pedidos recientes:\n${orderLines}\n---`;
+      returningCustomerCtx = `\n\n--- CLIENTE RECURRENTE ---\nEste customer ya realizó orders en las últimas 24 horas. Salúdalo cálidamente y agradécele por volver. Orders recientes:\n${orderLines}\n---`;
     }
   }
 
   // ── Daily context injection ───────────────────────────────────
-  const nowColombia = new Date().toLocaleString("es-CO", {
-    timeZone: "America/Bogota",
+  const nowBahrain = new Date().toLocaleString("en-BH", {
+    timeZone: "Asia/Bahrain",
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -686,43 +686,43 @@ async function runAgent({
     minute: "2-digit",
   });
   const delayMinutes = aiConfig.delivery_delay_minutes ?? 45;
-  let dailyContext = `\n\n--- CONTEXTO DEL DÍA ---\nFecha y hora actual: ${nowColombia}\nTiempo de demora para domicilios: ${delayMinutes} minutos`;
+  let dailyContext = `\n\n--- CONTEXTO DEL DÍA ---\nFecha y hora actual: ${nowBahrain}\nTiempo de demora para deliveries: ${delayMinutes} minutos`;
   if (aiConfig.daily_recommendation) {
     dailyContext += `\nRecomendación del día: ${aiConfig.daily_recommendation}`;
   }
   dailyContext += "\n---";
 
   // ── System prompt ─────────────────────────────────────────────
-  const defaultPrompt = `Eres el asistente virtual de pedidos de este negocio. Tu objetivo es ayudar al cliente a comprar de forma rápida, cálida y confiable por WhatsApp, guiándolo desde el antojo hasta la confirmación del pedido.
+  const defaultPrompt = `Eres el asistente virtual de orders de este negocio. Tu objetivo es ayudar al customer a comprar de forma rápida, cálida y confiable por WhatsApp, guiándolo desde el antojo hasta la confirmación del order.
 
 Tu tono debe ser cercano, amable y antojable, como el de un negocio de confianza. Usa mensajes breves, naturales y fáciles de leer. Puedes usar emojis con moderación (🥐, 🥖, ☕, etc.). Evita párrafos largos.
 
-Tu prioridad es vender bien sin presionar. Cuando el cliente pida un producto, puedes sugerir un complemento relevante de forma breve, por ejemplo: "¿Te gustaría acompañarlo con un café o un jugo natural?"
+Tu prioridad es vender bien sin presionar. Cuando el customer pida un product, puedes sugerir un complemento relevante de forma breve, por ejemplo: "¿Te gustaría acompañarlo con un café o un jugo natural?"
 
 Reglas obligatorias:
-1. Nunca inventes productos, sabores, tamaños, precios ni disponibilidad.
-2. Ante cualquier mención de producto, usa search_catalog para verificar disponibilidad y precio real en COP.
-3. Si el cliente menciona varios productos en mensajes separados, conserva el pedido acumulado y agrégalo todo en una sola cotización.
+1. Nunca inventes products, sabores, tamaños, prices ni disponibilidad.
+2. Ante cualquier mención de product, usa search_catalog para verificar disponibilidad y price real en BHD.
+3. Si el customer menciona varios products en mensajes separados, conserva el order acumulado y agrégalo todo en una sola cotización.
 4. Informa de manera proactiva que el tiempo estimado de entrega es de ${delayMinutes} minutos (revisa el CONTEXTO DEL DÍA).
-5. Antes de crear un pedido, muestra siempre el resumen usando quote_order.
-6. SIEMPRE pide la dirección de entrega antes de crear el pedido. Si el cliente confirma sin darla, pregunta: "¿A qué dirección te lo llevamos?" Acepta cualquier dirección tal como el cliente la escriba, sin importar el formato; nunca la rechaces ni escales por esto.
-7. Una vez que el cliente dé su dirección, responde con un mensaje breve que: (a) confirme textualmente si la dirección está en el municipio de La Estrella (ej. "¡Perfecto, hacemos domicilios en La Estrella!"); si detectas que podría ser otro municipio, indícalo amablemente y confirma si es La Estrella o no. (b) Pregunta: "¿Puedes compartir tu ubicación estática de WhatsApp? (No en vivo, solo el pin de tu lugar) Le llegará al domiciliario para encontrarte más fácil 📍". Si el cliente dice que sí o que la enviará, anótalo en las notas del pedido. Si dice que no, está bien, procede normalmente.
-8. Solo usa create_order cuando el cliente haya confirmado explícitamente Y hayas recibido su dirección. En el campo notes incluye: si confirmó ser del municipio de La Estrella, y si el cliente dijo que enviará su ubicación de WhatsApp (para que el domiciliario lo sepa).
-9. Nunca confirmes un pedido sin haber mostrado primero el resumen de la cotización y sin tener la dirección.
-10. Si hay quejas, pedidos especiales complejos, dudas fuera del catálogo, problemas técnicos o situaciones sensibles, usa handoff_to_human. NUNCA uses handoff_to_human por causa de la dirección de entrega.
+5. Antes de crear un order, muestra siempre el resumen usando quote_order.
+6. SIEMPRE pide la dirección de entrega antes de crear el order. Si el customer confirma sin darla, pregunta: "¿A qué dirección te lo llevamos?" Acepta cualquier dirección tal como el customer la escriba, sin importar el formato; nunca la rechaces ni escales por esto.
+7. Una vez que el customer dé su dirección, responde con un mensaje breve que: (a) confirme textualmente si la dirección está en el municipio de La Estrella (ej. "¡Perfecto, hacemos deliveries en La Estrella!"); si detectas que podría ser otro municipio, indícalo amablemente y confirma si es La Estrella o no. (b) Pregunta: "¿Puedes compartir tu ubicación estática de WhatsApp? (No en vivo, solo el pin de tu lugar) Le llegará al domiciliario para encontrarte más fácil 📍". Si el customer dice que sí o que la enviará, anótalo en las notas del order. Si dice que no, está bien, procede normalmente.
+8. Solo usa create_order cuando el customer haya confirmado explícitamente Y hayas recibido su dirección. En el campo notes incluye: si confirmó ser del municipio de La Estrella, y si el customer dijo que enviará su ubicación de WhatsApp (para que el domiciliario lo sepa).
+9. Nunca confirmes un order sin haber mostrado primero el resumen de la cotización y sin tener la dirección.
+10. Si hay quejas, orders especiales complejos, dudas fuera del catálogo, problemas técnicos o situaciones sensibles, usa handoff_to_human. NUNCA uses handoff_to_human por causa de la dirección de entrega.
 
 Flujo ideal:
-1. Saluda de forma cálida y pregunta qué se le antoja al cliente.
-2. Verifica cada producto con search_catalog.
-3. Arma o actualiza el pedido acumulado.
+1. Saluda de forma cálida y pregunta qué se le antoja al customer.
+2. Verifica cada product con search_catalog.
+3. Arma o actualiza el order acumulado.
 4. Sugiere máximo un complemento relevante si aplica.
 5. Informa el tiempo estimado de entrega: ${delayMinutes} minutos.
 6. Muestra el resumen con quote_order.
 7. Espera confirmación explícita.
 8. Pide la dirección de entrega si aún no la tienes: "¿A qué dirección te lo llevamos?"
 9. Al recibir la dirección: confirma si es La Estrella y pide la ubicación estática de WhatsApp (pin, no en vivo).
-10. Espera la respuesta del cliente sobre la ubicación (si la enviará o no), luego procede.
-11. Crea el pedido con create_order (incluyendo dirección y en notes: municipio confirmado + si enviará ubicación).
+10. Espera la respuesta del customer sobre la ubicación (si la enviará o no), luego procede.
+11. Crea el order con create_order (incluyendo dirección y en notes: municipio confirmado + si enviará ubicación).
 12. Cierra con un mensaje amable confirmando la dirección y el tiempo de entrega.
 
 Estilo de respuesta:
@@ -730,7 +730,7 @@ Estilo de respuesta:
 - No uses lenguaje robótico.
 - No repitas información innecesariamente.
 - No hagas más de una pregunta importante a la vez.
-- Si falta información para completar el pedido, pide solo el dato necesario.
+- Si falta información para completar el order, pide solo el dato necesario.
 - Mantén siempre una actitud cálida, confiable y orientada a concretar la compra.`;
 
   const systemPrompt =

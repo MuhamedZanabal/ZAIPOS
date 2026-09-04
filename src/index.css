@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
-  POS S360T — Design System
+  ZAIPOS — Design System
   ─────────────────────────────────────────────────────────
   Azul Primario   #1469A1  → HSL 204 78% 35%
   Azul Profundo   #152C48  → HSL 213 55% 18%
@@ -26,7 +26,7 @@
     --popover:             0 0% 100%;
     --popover-foreground:  221 39% 11%;
 
-    /* ── Primario: Azul S360T ── */
+    /* ── Primario: Azul ZAIPOS ── */
     --primary:             204 78% 35%;   /* #1469A1 */
     --primary-foreground:  0 0% 100%;
     --primary-glow:        204 78% 48%;   /* hover / glow */
@@ -38,7 +38,7 @@
     --muted:               216 22% 93%;
     --muted-foreground:    221 18% 44%;
 
-    /* ── Acento: Azul S360T (superficies hover / tabs) ── */
+    /* ── Acento: Azul ZAIPOS (superficies hover / tabs) ── */
     --accent:              213 60% 94%;   /* superficie suave azul navy */
     --accent-foreground:   213 78% 28%;   /* texto sobre azul suave */
 
@@ -69,7 +69,7 @@
     --shadow-card:     0 1px 6px -1px hsl(213 55% 18% / 0.10);
     --shadow-elevated: 0 6px 20px -6px hsl(213 55% 18% / 0.22);
 
-    /* ── Sidebar: Azul Profundo S360T ── */
+    /* ── Sidebar: Azul Profundo ZAIPOS ── */
     --sidebar-background:          213 55% 18%;   /* #152C48 */
     --sidebar-foreground:          216 30% 88%;
     --sidebar-primary:             204 78% 55%;   /* Azul más claro sobre fondo oscuro */
@@ -232,7 +232,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   S360T DESIGN SYSTEM — Visual language from POS360T prototype
+   ZAIPOS DESIGN SYSTEM — Visual language from ZAIPOS prototype
    Navy #001B3D · Blue #007BFF · Green #10B981
    ═══════════════════════════════════════════════════════════ */
 
@@ -309,7 +309,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.26em;
-  color: #007BFF;          /* Azul S360T en light mode */
+  color: #007BFF;          /* Azul ZAIPOS en light mode */
   font-family: var(--font-sans);
 }
 .dark .eyebrow { color: #10B981; }  /* Verde signal en dark */
@@ -319,7 +319,7 @@
 .dark .eyebrow-blue  { color: #7AB6FF; }
 .dark .eyebrow-muted { color: hsl(var(--muted-foreground)); }
 
-/* ── S360T Brand pill ── */
+/* ── ZAIPOS Brand pill ── */
 .s-pill {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: 9999px;
@@ -564,7 +564,7 @@
 .pay-nequi     { --pay-color: #8B5CF6; }
 .pay-daviplata { --pay-color: #E11D48; }
 .pay-transfer  { --pay-color: #06B6D4; }
-.pay-rappi     { --pay-color: #FF441F; }
+.pay-marketplace     { --pay-color: #FF441F; }
 .pay-online    { --pay-color: #F59E0B; }
 .pay-other     { --pay-color: #64748B; }
 .pay-segment   { background: var(--pay-color, #64748B); }
@@ -661,7 +661,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SIDEBAR — S360T brand sidebar classes
+   SIDEBAR — ZAIPOS brand sidebar classes
    ═══════════════════════════════════════════════════════════ */
 
 /* Brand lockup */
@@ -683,22 +683,22 @@
   margin-top: 2px;
 }
 
-/* Sucursal card */
-.sb-sucursal-card {
+/* Branch card */
+.sb-branch-card {
   margin: 12px 12px 4px;
   border-radius: 12px;
   padding: 10px 12px;
   background: hsl(216 60% 14% / 0.8);
   border: 1px solid hsl(215 45% 22% / 0.6);
 }
-.sb-sucursal-label {
+.sb-branch-label {
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.22em;
   color: #38BDF8;   /* Azul claro sobre fondo navy */
 }
-.sb-sucursal-name {
+.sb-branch-name {
   font-size: 13px;
   font-weight: 600;
   color: hsl(var(--sidebar-foreground));
@@ -707,7 +707,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sb-sucursal-status {
+.sb-branch-status {
   font-size: 10px;
   color: hsl(var(--sidebar-foreground) / 0.5);
   margin-top: 6px;
@@ -1022,7 +1022,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   PAGE HEADER — enhanced S360T page headers
+   PAGE HEADER — enhanced ZAIPOS page headers
    ═══════════════════════════════════════════════════════════ */
 .page-header {
   display: flex;
@@ -1055,7 +1055,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   KPI CARD — S360T metric card style
+   KPI CARD — ZAIPOS metric card style
    ═══════════════════════════════════════════════════════════ */
 .kpi-s360 {
   border-radius: var(--radius);
@@ -1494,7 +1494,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   GLASSMORPHISM DESIGN SYSTEM — POS-S360T v1 Redesign
+   GLASSMORPHISM DESIGN SYSTEM — ZAIPOS v1 Redesign
    Brand: #2B7CFF · Ink: #0E1F3D · Background: #E9F0FB
    ═══════════════════════════════════════════════════════════ */
 

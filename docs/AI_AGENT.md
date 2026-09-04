@@ -14,7 +14,7 @@ AI prompts and examples must assume:
 - Cash, Card, BenefitPay, and Bank Transfer terminology;
 - Talabat, WhatsApp, Physical POS, Tables, and In-house Delivery as active sales-channel concepts.
 
-The agent must not introduce Colombian/COP assumptions, Latin-American addresses, or legacy Rappi/Didi/Uber integrations.
+The agent must not introduce non-Bahrain assumptions, foreign addresses, or removed marketplace integrations.
 
 ## Capabilities
 

@@ -46,16 +46,16 @@ const electronAPI = {
     return () => ipcRenderer.removeListener(IPC_EVENTS.BARCODE_SCANNED, handler);
   },
 
-  // ── Configuración Global ───────────────────────────────────────────────
+  // ── Configuration Global ───────────────────────────────────────────────
 
   /**
-   * Obtiene la configuración de la app (impresora, escáner, kiosk).
+   * Obtiene la configuration de la app (impresora, escáner, kiosk).
    */
   getSettings: (): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC_HANDLERS.GET_SETTINGS),
 
   /**
-   * Guarda la configuración de la app.
+   * Guarda la configuration de la app.
    */
   saveSettings: (settings: Partial<AppSettings>): Promise<void> =>
     ipcRenderer.invoke(IPC_HANDLERS.SAVE_SETTINGS, settings),
@@ -110,7 +110,7 @@ const electronAPI = {
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke(IPC_HANDLERS.GET_APP_VERSION),
 
-  /** Plataforma del SO: 'linux' | 'darwin' | 'win32' */
+  /** Marketplace del SO: 'linux' | 'darwin' | 'win32' */
   platform: process.platform as NodeJS.Platform,
 };
 

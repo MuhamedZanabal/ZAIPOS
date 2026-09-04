@@ -3,7 +3,7 @@ import { useNetworkStore } from '@/stores/network';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-// Asegúrate de importar tu cliente de supabase real
+// Asegúrate de importar tu customer de supabase real
 import { supabase } from '@/integrations/supabase/client';
 
 export function useSyncEngine() {

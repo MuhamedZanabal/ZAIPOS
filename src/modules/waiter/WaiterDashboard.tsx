@@ -188,7 +188,7 @@ function TableCard({ table, order, items, isMine, onOpen }: {
 /* ─── Quick action config ─────────────────────────────────────── */
 const QUICK_ACTIONS = [
   { icon: Plus,     label: "New",     scClass: "sc-blue",   to: "/tables"   },
-  { icon: Bike,     label: "Domicilio", scClass: "sc-green",  to: "/delivery" },
+  { icon: Bike,     label: "Delivery", scClass: "sc-green",  to: "/delivery" },
   { icon: ScanLine, label: "Escanear",  scClass: "sc-purple", to: "/pos"      },
   { icon: Receipt,  label: "Cobrar",    scClass: "sc-amber",  to: "/cash"     },
 ] as const;

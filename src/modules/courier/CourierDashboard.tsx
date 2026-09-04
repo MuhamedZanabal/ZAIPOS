@@ -43,7 +43,7 @@ export default function CourierDashboard() {
   const [method, setMethod] = useState<PayMethod>("cash");
   const [submitting, setSubmitting] = useState(false);
 
-  // Buscar el employee_id del courier basado en el user_id
+  // Search el employee_id del courier basado en el user_id
   const { data: employee } = useQuery({
     queryKey: ["courier-employee", user?.id, tenantId],
     enabled: !!user && !!tenantId && !isSuperAdmin,
@@ -182,7 +182,7 @@ export default function CourierDashboard() {
 
         {o.status === "assigned" && (
           <button type="button" className="g-btn g-btn-primary w-full" onClick={() => updateStatus(o.id, "on_way")}>
-            <Bike className="h-3.5 w-3.5 mr-1" /> Salir / En camino
+            <Bike className="h-3.5 w-3.5 mr-1" /> Salir / On the way
           </button>
         )}
         {o.status === "on_way" && (
@@ -214,7 +214,7 @@ export default function CourierDashboard() {
           <div className="h-num text-2xl text-[var(--brand-600)]">{grouped.active.length}</div>
         </div>
         <div className="glass g-kpi">
-          <div className="h-label uppercase tracking-wider">En camino</div>
+          <div className="h-label uppercase tracking-wider">On the way</div>
           <div className="h-num text-2xl">{grouped.active.filter((o: any) => o.status === "on_way").length}</div>
         </div>
         <div className="glass g-kpi">

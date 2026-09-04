@@ -82,7 +82,7 @@ async function setupSerialMode(
   }
 }
 
-// ─── Cierre de Puerto Serie ───────────────────────────────────────────────────
+// ─── Closing de Puerto Serie ───────────────────────────────────────────────────
 
 export function closeBarcodeScanner(): void {
   if (serialPortInstance && serialPortInstance.isOpen) {

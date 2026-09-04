@@ -32,7 +32,7 @@ Core defaults:
 - standard VAT default 10%
 - `+973` telephone convention
 
-Feature modules should call shared formatting/normalization helpers rather than hard-code `$`, COP values, foreign phone formats, or non-Bahrain locale strings.
+Feature modules should call shared formatting/normalization helpers rather than hard-code foreign currency symbols, non-Bahrain values, foreign phone formats, or non-Bahrain locale strings.
 
 ## Tenant and Branch Model
 

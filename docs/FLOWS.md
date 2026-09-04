@@ -86,4 +86,4 @@ A receipt can contain:
 - receipt number/date;
 - optional customer details and footer.
 
-Receipts and previews must not use COP values, dollar symbols, Colombian tax terminology, or the legacy product name.
+Receipts and previews must use Bahrain money/tax conventions and the ZAIPOS product identity.

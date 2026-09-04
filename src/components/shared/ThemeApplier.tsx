@@ -58,7 +58,7 @@ export function ThemeApplier() {
     if (accent === 'azul' && primaryColor) {
       const hsl = hexToHsl(primaryColor)
       // Only accept colors in a "cool" hue range (blue 170°–270°, teal 150°–195°).
-      // Olive / yellow-green (40°–140°) are off-brand and get rejected → fall back to S360T blue.
+      // Olive / yellow-green (40°–140°) are off-brand and get rejected → fall back to ZAIPOS blue.
       const isBrandHue = hsl && hsl.s >= 35 && (hsl.h >= 150 && hsl.h <= 270)
       if (hsl && isBrandHue) {
         const glowL = Math.min(hsl.l + 11, 95)

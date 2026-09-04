@@ -244,7 +244,7 @@ export default function Suppliers() {
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_72px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
                 <span>Name</span>
                 <span>NIT</span>
-                <span>Contacto</span>
+                <span>Contact</span>
                 <span>Phone</span>
                 <span>Payment terms</span>
                 <span />
@@ -315,7 +315,7 @@ export default function Suppliers() {
                 key={o.id}
                 className={`grid grid-cols-[1fr_2fr_100px_2fr_120px_100px] gap-3 px-4 py-3 items-center hover:bg-white/5 transition-colors${idx < orders.length - 1 ? " border-b border-white/10" : ""}`}
               >
-                <span className="text-sm tabular-nums text-ink-500">{new Date(o.created_at).toLocaleDateString("es-CO")}</span>
+                <span className="text-sm tabular-nums text-ink-500">{new Date(o.created_at).toLocaleDateString("en-BH")}</span>
                 <span className="font-medium text-sm text-ink-900">{o.suppliers?.name ?? "No supplier"}</span>
                 <span>
                   {o.status === "received" && <span className="g-pill g-pill-ok">Recibida</span>}
@@ -363,7 +363,7 @@ export default function Suppliers() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Contacto</Label>
+                <Label>Contact</Label>
                 <Input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))} placeholder="John Smith" />
               </div>
               <div className="space-y-1.5">
@@ -418,7 +418,7 @@ export default function Suppliers() {
                 <div className="space-y-1">
                   <Label className="text-xs">Product</Label>
                   <Select value={itemProductId} onValueChange={(v) => { setItemProductId(v); const p = products.find((x) => x.id === v); if (p) setItemCost(String(p.cost)); }}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>

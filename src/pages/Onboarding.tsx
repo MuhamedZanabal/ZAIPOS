@@ -18,7 +18,7 @@ export default function Onboarding() {
   const { setTenant, setBranch } = useTenantStore();
 
   useEffect(() => {
-    document.title = "Business Setup | POS S360T";
+    document.title = "Business Setup | ZAIPOS";
   }, []);
 
   const [checking, setChecking] = useState(true);

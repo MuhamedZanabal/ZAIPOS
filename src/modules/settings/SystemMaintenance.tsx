@@ -26,7 +26,7 @@ export function SystemMaintenance() {
   const auditInventoryDrift = async () => {
     setLoading("inventory");
     try {
-      // Este RPC asegura que todos los productos activos tengan un registro en inventory_stocks
+      // Este RPC asegura que todos los products activos tengan un registro en inventory_stocks
       const { data, error } = await supabase.rpc("audit_inventory_drift", {
         _tenant_id: tenantId,
         _branch_id: branchId

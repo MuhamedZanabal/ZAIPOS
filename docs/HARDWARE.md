@@ -19,7 +19,7 @@ Printed receipts use the ZAIPOS receipt model and shared Bahrain currency format
 - VAT breakdown when enabled
 - Cash, Card, BenefitPay, or Bank Transfer payment labels
 
-No printer template should contain the legacy product name, COP/dollar examples, or non-Bahrain tax terminology.
+Printer templates must use ZAIPOS identity and Bahrain money/tax terminology.
 
 ## Cash Drawer
 

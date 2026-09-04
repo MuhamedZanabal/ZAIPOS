@@ -27,7 +27,7 @@ const DATA_SOURCES = [
   { icon: TrendingUp, label: "POS Sales", sub: "transactions this month" },
   { icon: Package,   label: "Inventory",  sub: "active SKUs" },
   { icon: Users,     label: "Customer CRM", sub: "active customers" },
-  { icon: Truck,     label: "Digital orders", sub: "Rappi · DiDi · Uber" },
+  { icon: Truck,     label: "Digital orders", sub: "Talabat · WhatsApp · In-house delivery" },
   { icon: Wallet,    label: "Cash register and payments", sub: "sessions today" },
 ];
 
@@ -88,7 +88,7 @@ export default function AIAgent() {
     {
       id: "welcome",
       role: "ai",
-      text: "Hello, I'm the S360T Agent. I have access to your sales, inventory, customers, and more. How can I help you today?",
+      text: "Hello, I'm the ZAIPOS Agent for your Bahrain operations. I can help with sales, inventory, customers, BHD reporting, and operational questions. How can I help?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -111,7 +111,7 @@ export default function AIAgent() {
 
     const lower = text.toLowerCase();
     let aiMsg: Message;
-    if (lower.includes("margin") || lower.includes("product") || lower.includes("margen") || lower.includes("producto")) {
+    if (lower.includes("margin") || lower.includes("product") || lower.includes("margen") || lower.includes("product")) {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",
@@ -123,7 +123,7 @@ export default function AIAgent() {
         ],
         actions: ["Create transfer", "Export report"],
       };
-    } else if (lower.includes("sale") || lower.includes("today") || lower.includes("venta") || lower.includes("hoy")) {
+    } else if (lower.includes("sale") || lower.includes("today") || lower.includes("sale") || lower.includes("hoy")) {
       aiMsg = {
         id: crypto.randomUUID(),
         role: "ai",
@@ -151,7 +151,7 @@ export default function AIAgent() {
           <AiOrb size={50} />
           <div className="g-ai-header-info">
             <div className="g-ai-header-title h-display">
-              Agente S360T
+              Agent ZAIPOS
               <span className="pill pill-brand g-kds-pill-micro">BETA</span>
             </div>
             <div className="h-meta">Connected to your inventory, sales, and CRM</div>
@@ -219,7 +219,7 @@ export default function AIAgent() {
         {/* Composer */}
         <div className="glass-strong g-ai-composer">
           <div className="g-ai-composer-row">
-            <button type="button" title="Adjuntar archivo" className="g-btn g-btn-ghost g-ai-composer-btn-attach">
+            <button type="button" title="Adjuntar file" className="g-btn g-btn-ghost g-ai-composer-btn-attach">
               <Plus size={16} />
             </button>
             <input

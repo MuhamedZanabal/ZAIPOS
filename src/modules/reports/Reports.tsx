@@ -69,10 +69,10 @@ export default function Reports() {
 
     if (type === 'days') {
       csv = "Date,Tickets,Total\n" + data.days.map(d => `${d.date},${d.tickets},${d.total}`).join("\n");
-      filename = `reporte_ventas_${dateFrom}_a_${dateTo}.csv`;
+      filename = `reporte_sales_${dateFrom}_a_${dateTo}.csv`;
     } else {
       csv = "Product,Quantity,Total\n" + data.top.map(p => `${p.name},${p.qty},${p.total}`).join("\n");
-      filename = `reporte_productos_${dateFrom}_a_${dateTo}.csv`;
+      filename = `reporte_products_${dateFrom}_a_${dateTo}.csv`;
     }
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -82,7 +82,7 @@ export default function Reports() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Archivo exportado correctamente");
+    toast.success("File exportado correctamente");
   };
 
   return (
@@ -160,7 +160,7 @@ export default function Reports() {
             {(data?.days ?? []).map((d) => (
               <div key={d.date} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm hover:bg-white/5 transition-colors">
                 <div className="font-medium text-ink-900">
-                  {new Date(d.date).toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short" })}
+                  {new Date(d.date).toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short" })}
                 </div>
                 <div className="text-right tabular-nums text-ink-500">{d.tickets}</div>
                 <div className="text-right tabular-nums font-bold text-ink-900">{formatCurrency(d.total)}</div>

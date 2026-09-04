@@ -90,7 +90,7 @@ export function EanImportDialog({ tenantId, branchId, userId, centers, defaultCe
     setLines(prev => [...prev, line]);
     setBarcodeInput("");
 
-    // Buscar en productos existentes primero
+    // Search en products existentes primero
     const local = existingProducts.find(p => p.barcode === barcode);
     if (local) {
       setLines(prev => prev.map(l =>

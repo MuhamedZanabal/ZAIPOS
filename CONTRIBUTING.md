@@ -16,7 +16,7 @@ All new application behavior must preserve these project-wide defaults unless a 
 - Local payment terminology: Cash, Card, BenefitPay, Bank Transfer
 - Bahrain channel terminology: Physical POS, Tables, Talabat, WhatsApp, In-house Delivery
 
-Do not introduce legacy POS S360T/POS360T/poss360t branding, Colombian/COP defaults, Latin-American demo data, or active Rappi/Didi/Uber integration code.
+Do not introduce legacy product identity, non-Bahrain currency defaults, foreign demo data, or removed marketplace integration code.
 
 ## How to Contribute
 

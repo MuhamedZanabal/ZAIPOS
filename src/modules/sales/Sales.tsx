@@ -74,7 +74,7 @@ export default function Sales() {
             <div key={s.id} className="g-sales-row">
               <span className="g-sales-ticket">#{s.ticket_number}</span>
               <span className="g-sales-date">
-                {new Date(s.created_at).toLocaleString("es-CO")}
+                {new Date(s.created_at).toLocaleString("en-BH")}
               </span>
               <span className="g-sales-count">
                 {s.sale_items?.length ?? 0} prod.

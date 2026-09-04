@@ -4,7 +4,7 @@ export default function AppearanceSettings() {
       <div>
         <h3 className="text-sm font-semibold text-foreground">Appearance</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          POS-S360T uses the brand's light glassmorphism design. Dark mode is
+          ZAIPOS uses the brand's light glassmorphism design. Dark mode is
           disabled to maintain the system’s visual consistency.
         </p>
       </div>

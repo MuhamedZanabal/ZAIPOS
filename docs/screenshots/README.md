@@ -10,8 +10,8 @@ New screenshots added here must be captured from the current ZAIPOS build and mu
 - BHD monetary formatting with three decimal places;
 - Bahrain payment terminology such as BenefitPay and Bank Transfer where visible;
 - Bahrain sales-channel terminology such as Talabat where visible;
-- no legacy POS S360T/POS360T/poss360t branding;
-- no COP/Colombia/Latin-American demo content;
-- no Rappi/Didi/Uber active integration UI.
+- current ZAIPOS branding only;
+- no BHD/Bahrain/Latin-American demo content;
+- Bahrain-supported active channel UI only.
 
 Do not reuse screenshots from the pre-Bahrain application.

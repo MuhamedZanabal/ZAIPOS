@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
             caption: imageMsg.caption,
           };
         }
-        text = imageMsg.caption?.trim() || "[Imagen compartida por el cliente]";
+        text = imageMsg.caption?.trim() || "[Imagen compartida por el customer]";
       }
     }
 

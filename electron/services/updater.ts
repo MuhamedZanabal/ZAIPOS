@@ -1,17 +1,17 @@
 /**
  * electron/services/updater.ts
  * Auto-actualizaciones usando electron-updater.
- * Descarga desde GitHub Releases (o cualquier proveedor configurado en electron-builder).
+ * Descarga desde GitHub Releases (o cualquier supplier configurado en electron-builder).
  *
  * CONFIGURACIÓN:
- * Para habilitarlo, configura un proveedor publish real en electron-builder
+ * Para habilitarlo, configura un supplier publish real en electron-builder
  * y lanza la app con POS_ENABLE_AUTO_UPDATE=true.
  *
  * Ejemplo:
  *   "publish": {
  *     "provider": "github",
- *     "owner": "tu-usuario",
- *     "repo": "poss360t-releases"
+ *     "owner": "tu-user",
+ *     "repo": "zaipos-releases"
  *   }
  */
 

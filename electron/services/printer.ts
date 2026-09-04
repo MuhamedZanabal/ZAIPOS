@@ -118,7 +118,7 @@ export async function printTicket(
         : qtyName;
       printer.println(padLine(displayName, totalStr, width));
 
-      // Precio unitario si la cantidad es > 1
+      // Price unitario si la quantity es > 1
       if (item.quantity > 1) {
         printer.println(`   @ ${formatCurrency(item.unitPrice)} c/u`);
       }
@@ -136,7 +136,7 @@ export async function printTicket(
       printer.println(padLine('IVA', formatCurrency(data.taxTotal), width));
     }
     if (data.tipAmount > 0) {
-      printer.println(padLine('Propina', formatCurrency(data.tipAmount), width));
+      printer.println(padLine('Tip', formatCurrency(data.tipAmount), width));
     }
 
     printer.bold(true);
@@ -202,7 +202,7 @@ export async function printTicket(
   }
 }
 
-// ─── Apertura de Gaveta ──────────────────────────────────────────────────────
+// ─── Opening de Gaveta ──────────────────────────────────────────────────────
 
 export async function openCashDrawer(config: PrinterConfig): Promise<PrintResult> {
   try {

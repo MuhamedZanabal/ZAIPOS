@@ -209,8 +209,8 @@ export default function Shifts() {
               <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(1)}>Siguiente →</button>
             </div>
             <div className="h-meta text-sm text-ink-500">
-              {weekStart.toLocaleDateString("es-CO", { day: "numeric", month: "short" })} —{" "}
-              {new Date(weekEnd.getTime() - 1).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
+              {weekStart.toLocaleDateString("en-BH", { day: "numeric", month: "short" })} —{" "}
+              {new Date(weekEnd.getTime() - 1).toLocaleDateString("en-BH", { day: "numeric", month: "short", year: "numeric" })}
             </div>
           </div>
 
@@ -224,7 +224,7 @@ export default function Shifts() {
                   className={`glass${isToday ? "-strong" : ""} rounded-xl p-2 min-h-[180px]`}
                 >
                   <div className="text-xs font-semibold uppercase tracking-wider text-ink-400 mb-2">
-                    {d.toLocaleDateString("es-CO", { weekday: "short" })}
+                    {d.toLocaleDateString("en-BH", { weekday: "short" })}
                     <span className={`ml-1 ${isToday ? "text-brand-600" : "text-ink-900"}`}>{d.getDate()}</span>
                   </div>
                   <div className="space-y-1.5">
@@ -276,10 +276,10 @@ export default function Shifts() {
                   className={`grid grid-cols-[2fr_1.5fr_1.5fr_1fr_1fr_100px_120px] gap-3 px-4 py-3 items-center hover:bg-white/5 transition-colors${idx < shiftList.length - 1 ? " border-b border-white/10" : ""}`}
                 >
                   <span className="font-medium text-sm text-ink-900">{s.employees?.full_name ?? "—"}</span>
-                  <span className="text-sm tabular-nums text-ink-700">{new Date(s.scheduled_start).toLocaleString("es-CO")}</span>
-                  <span className="text-sm tabular-nums text-ink-700">{new Date(s.scheduled_end).toLocaleString("es-CO")}</span>
-                  <span className="text-sm tabular-nums text-ink-500">{s.check_in ? new Date(s.check_in).toLocaleTimeString("es-CO") : "—"}</span>
-                  <span className="text-sm tabular-nums text-ink-500">{s.check_out ? new Date(s.check_out).toLocaleTimeString("es-CO") : "—"}</span>
+                  <span className="text-sm tabular-nums text-ink-700">{new Date(s.scheduled_start).toLocaleString("en-BH")}</span>
+                  <span className="text-sm tabular-nums text-ink-700">{new Date(s.scheduled_end).toLocaleString("en-BH")}</span>
+                  <span className="text-sm tabular-nums text-ink-500">{s.check_in ? new Date(s.check_in).toLocaleTimeString("en-BH") : "—"}</span>
+                  <span className="text-sm tabular-nums text-ink-500">{s.check_out ? new Date(s.check_out).toLocaleTimeString("en-BH") : "—"}</span>
                   <span className={st.pill}>{st.label}</span>
                   <div className="flex gap-1 justify-end">
                     {!s.check_in && (
@@ -332,7 +332,7 @@ export default function Shifts() {
                 key={a.id}
                 className={`grid grid-cols-[2fr_2fr_120px] gap-3 px-4 py-3 items-center hover:bg-white/5 transition-colors${idx < attendanceList.length - 1 ? " border-b border-white/10" : ""}`}
               >
-                <span className="text-sm tabular-nums text-ink-500">{new Date(a.created_at).toLocaleString("es-CO")}</span>
+                <span className="text-sm tabular-nums text-ink-500">{new Date(a.created_at).toLocaleString("en-BH")}</span>
                 <span className="font-medium text-sm text-ink-900">{a.employees?.full_name ?? "—"}</span>
                 <span>
                   {a.type === "check_in"

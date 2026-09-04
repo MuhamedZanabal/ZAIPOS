@@ -179,7 +179,7 @@ export default function WhatsAppInbox() {
   };
 
   const insertProductText = (product: any) => {
-    const formatted = `📦 *${product.name}* — $${Number(product.price).toLocaleString("es-CO")} COP`;
+    const formatted = `📦 *${product.name}* — BHD ${Number(product.price).toLocaleString("en-BH", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
     setReply((prev) => (prev ? `${prev}\n${formatted}` : formatted));
     setProductSearchOpen(false);
     setProductQuery("");
@@ -331,7 +331,7 @@ export default function WhatsAppInbox() {
                       )}
                       <p className="whitespace-pre-wrap">{msg.body}</p>
                       <p className={cn("text-[10px] mt-1", isInbound ? "text-muted-foreground" : "opacity-60")}>
-                        {new Date(msg.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(msg.created_at).toLocaleTimeString("en-BH", { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                   </div>
@@ -385,7 +385,7 @@ export default function WhatsAppInbox() {
                       >
                         <span className="truncate">{p.name}</span>
                         <span className="text-xs text-muted-foreground shrink-0">
-                          ${Number(p.price).toLocaleString("es-CO")}
+                          ${Number(p.price).toLocaleString("en-BH")}
                         </span>
                       </button>
                     ))}

@@ -126,7 +126,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
                 <div className="flex items-center gap-2">
                   {o.price_delta !== 0 && (
                     <span className="text-xs text-muted-foreground">
-                      {o.price_delta > 0 ? "+" : ""}${Number(o.price_delta).toLocaleString("es-CO")}
+                      {o.price_delta > 0 ? "+" : ""}BHD {Number(o.price_delta).toLocaleString("en-BH", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     </span>
                   )}
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive"
@@ -168,7 +168,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
         </div>
       ))}
 
-      {/* Nuevo grupo */}
+      {/* New grupo */}
       <div className="glass p-3 space-y-2 border-dashed">
         <p className="text-xs font-medium text-muted-foreground">New modifier group</p>
         <div className="flex gap-2">

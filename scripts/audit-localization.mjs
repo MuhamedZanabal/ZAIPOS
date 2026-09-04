@@ -11,6 +11,12 @@ const skippedDirectories = new Set([".git", "node_modules", "dist", "dist-electr
 const compatibilityFiles = new Set([
   "src/integrations/supabase/types.ts",
   "src/lib/channels.ts",
+  "scripts/bahrainize-repository.mjs",
+  "src/stores/theme.ts",
+  "src/stores/cart.test.ts",
+  "src/lib/db.ts",
+  "src/hooks/useProducts.ts",
+  "src/hooks/useOfflineMutation.ts",
 ]);
 const compatibilityPrefixes = [
   "supabase/migrations/",

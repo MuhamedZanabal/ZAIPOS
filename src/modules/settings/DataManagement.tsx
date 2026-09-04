@@ -19,7 +19,7 @@ export function DataManagement() {
   const [selectedCenterId, setSelectedCenterId] = useState<string>("");
   const [progress, setProgress] = useState<{ total: number; current: number } | null>(null);
 
-  // Auto-seleccionar centro por defecto
+  // Auto-select centro por defecto
   if (!selectedCenterId && defaultCenter) {
     setSelectedCenterId(defaultCenter.id);
   }
@@ -95,7 +95,7 @@ export function DataManagement() {
             name: row.name || row.nombre,
             sku: row.sku || null,
             barcode: row.barcode || row.codigo_barras || null,
-            price: Number(row.price || row.precio || 0),
+            price: Number(row.price || row.price || 0),
             cost: Number(row.cost || row.costo || 0),
             tax_rate: Number(row.tax_rate || row.iva || 0),
             min_stock: Number(row.min_stock || row.stock_minimo || 0),
@@ -157,11 +157,11 @@ export function DataManagement() {
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           const sku = row.sku;
-          const qty = Number(row.quantity || row.cantidad || 0);
+          const qty = Number(row.quantity || row.quantity || 0);
 
           if (!sku) continue;
 
-          // Buscar producto por SKU
+          // Search product por SKU
           const { data: product } = await supabase
             .from("products")
             .select("id")
@@ -253,7 +253,7 @@ export function DataManagement() {
             </div>
         </div>
 
-        {/* Stock de Inventario */}
+        {/* Stock de Insalerio */}
         <div className="glass rounded-2xl p-5 space-y-4">
           <div>
             <div className="flex items-center gap-2 text-brand-600">

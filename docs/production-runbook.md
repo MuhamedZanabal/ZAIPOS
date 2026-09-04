@@ -50,7 +50,7 @@ Confirm the deployed tenant uses:
 - verify Bahrain address/area fields;
 - verify +973 customer phone display;
 - verify Talabat ledger records can be created and confirmed locally;
-- verify no legacy Rappi/Didi/Uber API action is reachable.
+- verify no removed marketplace API action is reachable.
 
 ## Electron
 

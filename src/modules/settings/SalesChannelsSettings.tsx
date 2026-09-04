@@ -95,8 +95,7 @@ export default function SalesChannelsSettings() {
             Bahrain Sales Channels
           </h2>
           <p className="h-meta mt-1 max-w-3xl">
-            ZAIPOS exposes channels that are relevant to Bahrain operations. Legacy Rappi, Didi Food,
-            and Uber Eats channels are not available in the Bahrain-native interface.
+            ZAIPOS exposes only Bahrain-relevant active channels in the Bahrain-native interface.
           </p>
         </div>
 

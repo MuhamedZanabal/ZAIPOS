@@ -116,7 +116,7 @@ export default function ChannelPrices() {
     <div className="flex flex-col gap-5">
       <PageHeader
         eyebrow="CATALOG · PRICES"
-        title="Precios por canal"
+        title="Prices por canal"
         description="Set a different price for each sales channel. Leave blank to use the base price."
         actions={
           <Select value={branchScope} onValueChange={setBranchScope}>

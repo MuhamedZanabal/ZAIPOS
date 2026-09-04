@@ -38,7 +38,7 @@ function Shell() {
     refetchInterval: 15000,
   });
 
-  const today = new Date().toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const today = new Date().toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const roleInitials = (roles[0] ?? "U").slice(0, 2).toUpperCase();
   const branchName = branches.find((b) => b.id === branchId)?.name ?? "—";
 

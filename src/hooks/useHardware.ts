@@ -18,7 +18,7 @@
  *
  * // Escuchar escáner
  * useEffect(() => {
- *   return onBarcodeScanned((code) => buscarProducto(code));
+ *   return onBarcodeScanned((code) => searchProduct(code));
  * }, []);
  * ```
  */
@@ -78,7 +78,7 @@ function setupHIDListener(
     // Ignorar teclas especiales (Shift, Ctrl, etc.)
     if (e.key.length !== 1) return;
 
-    // Si el tiempo entre teclas es mayor al umbral, el usuario está tipeando
+    // Si el tiempo entre teclas es mayor al umbral, el user está tipeando
     if (buffer.length > 0 && timeDelta > HID_MAX_CHAR_MS) {
       // Resetear: es tipeo humano, no un escáner
       buffer = e.key;
@@ -119,9 +119,9 @@ interface UseHardwareReturn {
    * Retorna la función de cleanup.
    */
   onBarcodeScanned: (callback: (code: string) => void) => () => void;
-  /** Obtiene la configuración de hardware (solo en Electron) */
+  /** Obtiene la configuration de hardware (solo en Electron) */
   getSettings: () => Promise<AppSettings | null>;
-  /** Guarda la configuración de hardware (solo en Electron) */
+  /** Guarda la configuration de hardware (solo en Electron) */
   saveSettings: (settings: Partial<AppSettings>) => Promise<void>;
   /** Activa/desactiva el modo kiosco (solo Admin en Electron) */
   setKiosk: (enabled: boolean) => Promise<void>;
@@ -192,7 +192,7 @@ export function useHardware(): UseHardwareReturn {
   const onBarcodeScanned = useCallback(
     (callback: (code: string) => void): (() => void) => {
       if (!available || !hardware) {
-        // En web: solo HID (el usuario tiene teclado, el escáner también emula teclado)
+        // En web: solo HID (el user tiene teclado, el escáner también emula teclado)
         webBarcodeListenerFallback(callback);
         // Aun así configuramos el listener HID por si el escáner está conectado
         return setupHIDListener(callback);

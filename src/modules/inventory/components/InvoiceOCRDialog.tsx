@@ -194,7 +194,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => fileInputRef.current?.click()} variant="outline">
-                    <Upload className="h-4 w-4 mr-2" /> Seleccionar archivo
+                    <Upload className="h-4 w-4 mr-2" /> Select file
                   </Button>
                   <Button onClick={() => fileInputRef.current?.click()} className="md:hidden">
                     <Camera className="h-4 w-4 mr-2" /> Tomar foto
@@ -268,7 +268,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{Number(p.quantity).toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums">${Number(p.unit_price).toLocaleString("es-CO")}</TableCell>
+                    <TableCell className="text-right tabular-nums">BHD {Number(p.unit_price).toLocaleString("en-BH", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
                         title={p.skipped ? "Incluir" : "Saltar"} onClick={() => toggleSkip(idx)}>

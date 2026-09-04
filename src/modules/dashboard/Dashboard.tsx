@@ -345,7 +345,7 @@ export default function Dashboard() {
                   <div className="min-w-0">
                     <div className="text-[12px] font-semibold text-ink-900 truncate">#{s.ticket_number ?? s.id.slice(0, 6)}</div>
                     <div className="h-meta g-val-10">
-                      {new Date(s.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(s.created_at).toLocaleTimeString("en-BH", { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
                 </div>
@@ -398,7 +398,7 @@ export default function Dashboard() {
       </div>
 
       <p className="g-footer-note">
-        POS-S360T © 2026 — POS S360T Contributors · Apache 2.0
+        ZAIPOS © 2026 — ZAIPOS Contributors · MIT
       </p>
     </div>
   );

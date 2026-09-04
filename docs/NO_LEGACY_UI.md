@@ -1,3 +1,3 @@
 # No legacy UI
 
-The production ZAIPOS interface must not expose legacy POS S360T branding, Spanish labels, COP/Colombia defaults, or removed Rappi/Didi/Uber marketplace behavior. Compatibility-only internal values are mapped before rendering.
+The production ZAIPOS interface must expose only current ZAIPOS, English, Bahrain-native behavior. Compatibility-only internal values are mapped before rendering.

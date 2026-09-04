@@ -1,4 +1,4 @@
-// Estados del ciclo de un item de pedido en mesa
+// Estados del ciclo de un item de order en mesa
 export type TableItemStatus = "pending" | "preparing" | "ready" | "dispatched" | "cancelled";
 
 export const ITEM_STATUS_META: Record<
