@@ -5,6 +5,13 @@ const baseUrl = process.env.DOCS_APP_URL || "http://127.0.0.1:4173";
 const outDir = "docs/screenshots";
 fs.mkdirSync(outDir, { recursive: true });
 
+const fixtureTenantId = "11111111-1111-4111-8111-111111111111";
+const fixtureBranchId = "22222222-2222-4222-8222-222222222222";
+const tenantState = JSON.stringify({
+  state: { tenantId: fixtureTenantId, branchId: fixtureBranchId },
+  version: 0,
+});
+
 const specs = [
   { file: "landing.png", path: "/", viewport: { width: 1440, height: 900 }, expected: ["ZAIPOS", "Run your sales like"] },
   { file: "dashboard.png", path: "/dashboard", viewport: { width: 1440, height: 1000 }, expected: ["Today's sales", "BHD", "Talabat"] },
@@ -21,6 +28,11 @@ async function capture(browser, spec) {
     colorScheme: "light",
     reducedMotion: "reduce",
   });
+
+  await context.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value);
+  }, { key: "foodpos-tenant", value: tenantState });
+
   const page = await context.newPage();
   const runtimeErrors = [];
 
