@@ -7,16 +7,25 @@ export default defineConfig(async (env) => {
     ? await productionConfig(env)
     : productionConfig;
 
+  const screenshotAliases = [
+    {
+      find: "@/components/layout/ProtectedRoute",
+      replacement: path.resolve(__dirname, "scripts/screenshot-fixture/ProtectedRoute.tsx"),
+    },
+    {
+      find: "@/integrations/supabase/client",
+      replacement: path.resolve(__dirname, "scripts/screenshot-fixture/supabase.ts"),
+    },
+  ];
+
   const existingAlias = configured.resolve?.alias;
   const alias = Array.isArray(existingAlias)
-    ? [
-        {
-          find: "@/integrations/supabase/client",
-          replacement: path.resolve(__dirname, "scripts/screenshot-fixture/supabase.ts"),
-        },
-        ...existingAlias,
-      ]
+    ? [...screenshotAliases, ...existingAlias]
     : {
+        "@/components/layout/ProtectedRoute": path.resolve(
+          __dirname,
+          "scripts/screenshot-fixture/ProtectedRoute.tsx",
+        ),
         "@/integrations/supabase/client": path.resolve(
           __dirname,
           "scripts/screenshot-fixture/supabase.ts",
