@@ -30,6 +30,9 @@ jobs:
       - name: Validate migrations
         run: npm run validate:migrations
 
+      - name: Test exact-money migration
+        run: npm run test:migrations:money
+
       - name: Lint
         run: npm run lint
 

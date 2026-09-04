@@ -39,6 +39,7 @@
     "audit:localization": "node scripts/audit-localization.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
+    "test:migrations:money": "node scripts/test-money-migration.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir"
@@ -108,6 +109,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",

@@ -369,6 +369,7 @@ export type Database = {
           id: string
           is_available: boolean
           local_price: number | null
+          local_price_fils: number | null
           product_id: string
           tenant_id: string
           updated_at: string
@@ -379,6 +380,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           local_price?: number | null
+          local_price_fils?: number | null
           product_id: string
           tenant_id: string
           updated_at?: string
@@ -389,6 +391,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           local_price?: number | null
+          local_price_fils?: number | null
           product_id?: string
           tenant_id?: string
           updated_at?: string
@@ -442,6 +445,7 @@ export type Database = {
       cash_movements: {
         Row: {
           amount: number
+          amount_fils: number
           created_at: string
           id: string
           reason: string | null
@@ -452,6 +456,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_fils?: number
           created_at?: string
           id?: string
           reason?: string | null
@@ -462,6 +467,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_fils?: number
           created_at?: string
           id?: string
           reason?: string | null
@@ -534,75 +540,117 @@ export type Database = {
           branch_id: string
           closed_at: string | null
           closing_amount: number | null
+          closing_amount_fils: number | null
           counted_card: number | null
+          counted_card_fils: number | null
           counted_cash: number | null
+          counted_cash_fils: number | null
           counted_qr: number | null
+          counted_qr_fils: number | null
           counted_transfer: number | null
+          counted_transfer_fils: number | null
           difference: number | null
+          difference_fils: number | null
           expected_amount: number | null
+          expected_amount_fils: number | null
           id: string
           notes: string | null
           opened_at: string
           opening_amount: number
+          opening_amount_fils: number
           register_id: string | null
           status: Database["public"]["Enums"]["cash_session_status"]
           tenant_id: string
           total_card: number
+          total_card_fils: number
           total_cash: number
+          total_cash_fils: number
           total_in: number
+          total_in_fils: number
           total_out: number
+          total_out_fils: number
           total_qr: number
+          total_qr_fils: number
           total_transfer: number
+          total_transfer_fils: number
           user_id: string
         }
         Insert: {
           branch_id: string
           closed_at?: string | null
           closing_amount?: number | null
+          closing_amount_fils?: number | null
           counted_card?: number | null
+          counted_card_fils?: number | null
           counted_cash?: number | null
+          counted_cash_fils?: number | null
           counted_qr?: number | null
+          counted_qr_fils?: number | null
           counted_transfer?: number | null
+          counted_transfer_fils?: number | null
           difference?: number | null
+          difference_fils?: number | null
           expected_amount?: number | null
+          expected_amount_fils?: number | null
           id?: string
           notes?: string | null
           opened_at?: string
           opening_amount?: number
+          opening_amount_fils?: number
           register_id?: string | null
           status?: Database["public"]["Enums"]["cash_session_status"]
           tenant_id: string
           total_card?: number
+          total_card_fils?: number
           total_cash?: number
+          total_cash_fils?: number
           total_in?: number
+          total_in_fils?: number
           total_out?: number
+          total_out_fils?: number
           total_qr?: number
+          total_qr_fils?: number
           total_transfer?: number
+          total_transfer_fils?: number
           user_id: string
         }
         Update: {
           branch_id?: string
           closed_at?: string | null
           closing_amount?: number | null
+          closing_amount_fils?: number | null
           counted_card?: number | null
+          counted_card_fils?: number | null
           counted_cash?: number | null
+          counted_cash_fils?: number | null
           counted_qr?: number | null
+          counted_qr_fils?: number | null
           counted_transfer?: number | null
+          counted_transfer_fils?: number | null
           difference?: number | null
+          difference_fils?: number | null
           expected_amount?: number | null
+          expected_amount_fils?: number | null
           id?: string
           notes?: string | null
           opened_at?: string
           opening_amount?: number
+          opening_amount_fils?: number
           register_id?: string | null
           status?: Database["public"]["Enums"]["cash_session_status"]
           tenant_id?: string
           total_card?: number
+          total_card_fils?: number
           total_cash?: number
+          total_cash_fils?: number
           total_in?: number
+          total_in_fils?: number
           total_out?: number
+          total_out_fils?: number
           total_qr?: number
+          total_qr_fils?: number
           total_transfer?: number
+          total_transfer_fils?: number
           user_id?: string
         }
         Relationships: [
@@ -1092,6 +1140,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          amount_fils: number
           created_at: string
           id: string
           method: Database["public"]["Enums"]["payment_method"]
@@ -1101,6 +1150,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_fils?: number
           created_at?: string
           id?: string
           method: Database["public"]["Enums"]["payment_method"]
@@ -1110,6 +1160,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_fils?: number
           created_at?: string
           id?: string
           method?: Database["public"]["Enums"]["payment_method"]
@@ -1141,6 +1192,7 @@ export type Database = {
           created_at: string
           id: string
           price: number
+          price_fils: number
           product_id: string
           tenant_id: string
           updated_at: string
@@ -1151,6 +1203,7 @@ export type Database = {
           created_at?: string
           id?: string
           price: number
+          price_fils?: number
           product_id: string
           tenant_id: string
           updated_at?: string
@@ -1161,6 +1214,7 @@ export type Database = {
           created_at?: string
           id?: string
           price?: number
+          price_fils?: number
           product_id?: string
           tenant_id?: string
           updated_at?: string
@@ -1344,6 +1398,7 @@ export type Database = {
           category_id: string | null
           color: string | null
           cost: number
+          cost_fils: number
           created_at: string
           description: string | null
           id: string
@@ -1351,6 +1406,7 @@ export type Database = {
           min_stock: number | null
           name: string
           price: number
+          price_fils: number
           product_type: Database["public"]["Enums"]["product_type"]
           rappi_product_id: string | null
           sku: string | null
@@ -1368,6 +1424,7 @@ export type Database = {
           category_id?: string | null
           color?: string | null
           cost?: number
+          cost_fils?: number
           created_at?: string
           description?: string | null
           id?: string
@@ -1375,6 +1432,7 @@ export type Database = {
           min_stock?: number | null
           name: string
           price?: number
+          price_fils?: number
           product_type?: Database["public"]["Enums"]["product_type"]
           rappi_product_id?: string | null
           sku?: string | null
@@ -1392,6 +1450,7 @@ export type Database = {
           category_id?: string | null
           color?: string | null
           cost?: number
+          cost_fils?: number
           created_at?: string
           description?: string | null
           id?: string
@@ -1399,6 +1458,7 @@ export type Database = {
           min_stock?: number | null
           name?: string
           price?: number
+          price_fils?: number
           product_type?: Database["public"]["Enums"]["product_type"]
           rappi_product_id?: string | null
           sku?: string | null
@@ -1571,8 +1631,10 @@ export type Database = {
         Row: {
           created_at: string
           discount: number
+          discount_fils: number
           id: string
           line_total: number
+          line_total_fils: number
           modifiers: Json
           product_id: string
           product_name: string
@@ -1582,12 +1644,15 @@ export type Database = {
           tax_rate: number
           tenant_id: string
           unit_price: number
+          unit_price_fils: number
         }
         Insert: {
           created_at?: string
           discount?: number
+          discount_fils?: number
           id?: string
           line_total: number
+          line_total_fils?: number
           modifiers?: Json
           product_id: string
           product_name: string
@@ -1597,12 +1662,15 @@ export type Database = {
           tax_rate?: number
           tenant_id: string
           unit_price: number
+          unit_price_fils?: number
         }
         Update: {
           created_at?: string
           discount?: number
+          discount_fils?: number
           id?: string
           line_total?: number
+          line_total_fils?: number
           modifiers?: Json
           product_id?: string
           product_name?: string
@@ -1612,6 +1680,7 @@ export type Database = {
           tax_rate?: number
           tenant_id?: string
           unit_price?: number
+          unit_price_fils?: number
         }
         Relationships: [
           {
@@ -1646,16 +1715,21 @@ export type Database = {
           created_at: string
           customer_id: string | null
           discount_total: number
+          discount_total_fils: number
           id: string
           notes: string | null
           session_id: string | null
           status: Database["public"]["Enums"]["sale_status"]
           subtotal: number
+          subtotal_fils: number
           tax_total: number
+          tax_total_fils: number
           tenant_id: string
           ticket_number: number
           tip_amount: number
+          tip_amount_fils: number
           total: number
+          total_fils: number
           updated_at: string
           user_id: string
         }
@@ -1667,16 +1741,21 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           discount_total?: number
+          discount_total_fils?: number
           id?: string
           notes?: string | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal?: number
+          subtotal_fils?: number
           tax_total?: number
+          tax_total_fils?: number
           tenant_id: string
           ticket_number?: number
           tip_amount?: number
+          tip_amount_fils?: number
           total?: number
+          total_fils?: number
           updated_at?: string
           user_id: string
         }
@@ -1688,16 +1767,21 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           discount_total?: number
+          discount_total_fils?: number
           id?: string
           notes?: string | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal?: number
+          subtotal_fils?: number
           tax_total?: number
+          tax_total_fils?: number
           tenant_id?: string
           ticket_number?: number
           tip_amount?: number
+          tip_amount_fils?: number
           total?: number
+          total_fils?: number
           updated_at?: string
           user_id?: string
         }
