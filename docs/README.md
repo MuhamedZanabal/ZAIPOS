@@ -1,29 +1,28 @@
-# POS S360T Documentation
+# ZAIPOS Documentation
 
-Welcome to the POS S360T documentation. These guides cover architecture, business flows, setup, security, and more.
+ZAIPOS is an English-language, Bahrain-native point-of-sale platform.
 
-## Getting Started
+## Project Baseline
 
-- [Setup Guide](SETUP.md) — Install, configure, and run the project locally or in production.
-- [Architecture](ARCHITECTURE.md) — High-level system architecture and technology decisions.
+- Product: **ZAIPOS**
+- Market: **Kingdom of Bahrain**
+- Locale: `en-BH`
+- Currency: `BHD` with three decimal places
+- Standard VAT default: `10%`
+- Phone convention: `+973`
+- Payments: Cash, Card, BenefitPay, Bank Transfer
+- Channels: Physical POS, Tables, Talabat, WhatsApp, In-house Delivery
 
-## Business and Data
+## Documents
 
-- [Business Flows](FLOWS.md) — Sequence diagrams for POS, tables, delivery, Rappi, production, cash, AI orders, QR, and OCR.
-- [Database Guide](DATABASE.md) — Schema overview, RLS, and key RPC functions.
+- [Architecture](ARCHITECTURE.md)
+- [Database](DATABASE.md)
+- [Business Flows](FLOWS.md)
+- [AI Agent](AI_AGENT.md)
+- [Offline Sync](OFFLINE_SYNC.md)
+- [Hardware](HARDWARE.md)
+- [Security](SECURITY.md)
+- [Setup](SETUP.md)
+- [Production Runbook](production-runbook.md)
 
-## Deep Dives
-
-- [Offline-First Sync](OFFLINE_SYNC.md) — How the app works without connectivity.
-- [AI Agent](AI_AGENT.md) — WhatsApp conversational ordering and RAG knowledge base.
-- [Hardware Integration](HARDWARE.md) — Thermal printers, cash drawers, and barcode scanners in Electron.
-- [Security](SECURITY.md) — RLS, secrets, webhooks, and production checklist.
-
-## Operations
-
-- [Production Runbook](production-runbook.md) — Release process, quality gates, and rollback.
-- [Deployments](deployments/) — Docker Compose templates for multi-tenant hosting.
-
-## Contributing
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
+Historical non-Bahrain branding, country-specific demo data, and inactive marketplace integrations are not part of the supported ZAIPOS runtime.
