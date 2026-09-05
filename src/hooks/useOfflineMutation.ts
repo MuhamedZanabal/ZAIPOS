@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import {
   isActiveQueueStatus,
   isTransientNetworkFailure,
+  OfflineOperationConflictError,
   syncQueueItemBelongsToTenant,
+  syncQueuePayloadsEqual,
   syncQueueScopeFromPayload,
 } from '@/lib/syncQueue';
 
@@ -62,11 +64,18 @@ export async function queueOfflineMutation<TVariables>(
   const clientMutationId = (payload as any)?._client_mutation_id as string | undefined;
   const { tenantId, branchId } = syncQueueScopeFromPayload(payload);
 
-  const existing = clientMutationId
-    ? await db.sync_queue.where('clientMutationId').equals(clientMutationId).first()
-    : undefined;
+  await db.transaction('rw', db.sync_queue, async () => {
+    const existing = clientMutationId
+      ? await db.sync_queue.where('clientMutationId').equals(clientMutationId).first()
+      : undefined;
 
-  if (!existing) {
+    if (existing) {
+      if (existing.type !== type || !syncQueuePayloadsEqual(existing.payload, payload)) {
+        throw new OfflineOperationConflictError(clientMutationId!);
+      }
+      return;
+    }
+
     const now = new Date().toISOString();
     await db.sync_queue.add({
       type,
@@ -80,7 +89,7 @@ export async function queueOfflineMutation<TVariables>(
       tenantId,
       branchId,
     });
-  }
+  });
 
   const count = (await db.sync_queue.toArray()).filter((item) =>
     isActiveQueueStatus(item.status)
