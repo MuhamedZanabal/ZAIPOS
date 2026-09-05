@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { useInventoryCenters } from "@/hooks/useInventoryCenters";
+import { receivePurchaseOrderV2 } from "@/lib/inventory";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +29,7 @@ const emptySupplier: SupplierForm = { name: "", tax_id: "", contact_name: "", ph
 
 export default function Suppliers() {
   const { tenantId, branchId } = useTenantContext();
+  const { defaultCenter } = useInventoryCenters();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"suppliers" | "orders">("suppliers");
   const [search, setSearch] = useState("");
@@ -130,22 +133,19 @@ export default function Suppliers() {
 
   const receiveOrder = useMutation({
     mutationFn: async (order: PurchaseOrder) => {
-      const { data: items } = await supabase.from("purchase_order_items").select("*").eq("order_id", order.id);
-      const { error } = await supabase.from("purchase_orders").update({ status: "received", received_at: new Date().toISOString() }).eq("id", order.id);
-      if (error) throw error;
-      for (const item of items ?? []) {
-        if (!item.product_id) continue;
-        await supabase.rpc("apply_inventory_movement", {
-          _tenant_id: tenantId!, _branch_id: branchId!, _product_id: item.product_id,
-          _movement_type: "purchase", _quantity: Number(item.quantity), _reason: `OC #${order.id.slice(0, 8)}`,
-          _reference_type: "purchase_order", _reference_id: order.id, _user_id: null,
-        });
-      }
+      if (!defaultCenter?.id) throw new Error("No active inventory center is configured for this branch");
+      return receivePurchaseOrderV2({
+        orderId: order.id,
+        inventoryCenterId: defaultCenter.id,
+        clientMutationId: `purchase-order-receive-${order.id}`,
+      });
     },
     onSuccess: () => {
-      toast.success("Order received · Inventory updated");
+      toast.success("Order received · Inventory updated exactly once");
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+      qc.invalidateQueries({ queryKey: ["stocks"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error receiving order"),
   });
@@ -424,11 +424,11 @@ export default function Suppliers() {
                 </div>
                 <div className="space-y-1 w-24">
                   <Label className="text-xs">Quantity</Label>
-                  <Input type="number" min="0.01" value={itemQty} onChange={(e) => setItemQty(e.target.value)} placeholder="0" />
+                  <Input type="number" step="0.001" min="0.001" value={itemQty} onChange={(e) => setItemQty(e.target.value)} placeholder="0" />
                 </div>
                 <div className="space-y-1 w-28">
                   <Label className="text-xs">Unit cost</Label>
-                  <Input type="number" min="0" value={itemCost} onChange={(e) => setItemCost(e.target.value)} placeholder="0" />
+                  <Input type="number" step="0.001" min="0" value={itemCost} onChange={(e) => setItemCost(e.target.value)} placeholder="0" />
                 </div>
                 <button
                   type="button"

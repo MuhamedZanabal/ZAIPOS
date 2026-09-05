@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Loader2, Camera, Upload, Trash2, CheckCircle2, SkipForward } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { applyInventoryMovement } from "@/lib/inventory";
+import { createInventoryMutationId, recordInventoryBatchV2 } from "@/lib/inventory";
 
 interface OCRProduct {
   name: string;
@@ -28,7 +28,7 @@ interface InvoiceMeta {
   invoice_date?: string | null;
 }
 
-export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultCenterId, onClose }: any) {
+export function InvoiceOCRDialog({ tenantId, branchId, userId: _userId, centers, defaultCenterId, onClose }: any) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -37,6 +37,11 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
   const [centerId, setCenterId] = useState<string>(defaultCenterId || "");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inventoryMutationId = useRef<string | null>(null);
+
+  const resetInventoryMutation = () => {
+    inventoryMutationId.current = null;
+  };
 
   const { data: catalog = [] } = useQuery({
     queryKey: ["full-catalog-ocr", tenantId],
@@ -55,6 +60,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    resetInventoryMutation();
     setFile(f);
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result as string);
@@ -80,6 +86,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
 
   const processInvoice = async () => {
     if (!preview) return;
+    resetInventoryMutation();
     setProcessing(true);
     try {
       const base64 = preview.split(",")[1];
@@ -111,12 +118,14 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
   };
 
   const updateMapping = (index: number, productId: string) => {
+    resetInventoryMutation();
     setProducts(prev => prev.map((p, i) =>
       i === index ? { ...p, mapped_product_id: productId, skipped: false } : p
     ));
   };
 
   const toggleSkip = (index: number) => {
+    resetInventoryMutation();
     setProducts(prev => prev.map((p, i) =>
       i === index
         ? { ...p, skipped: !p.skipped, mapped_product_id: p.skipped ? p.mapped_product_id : undefined }
@@ -133,21 +142,26 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
 
     setSaving(true);
     try {
-      for (const p of toSave) {
-        await applyInventoryMovement({
-          tenantId, branchId, userId,
+      if (!inventoryMutationId.current) inventoryMutationId.current = createInventoryMutationId("inventory-ocr");
+      const reason = ["AI Invoice", meta.supplier && `Supplier: ${meta.supplier}`, meta.invoice_number && `#${meta.invoice_number}`]
+        .filter(Boolean).join(" · ");
+      await recordInventoryBatchV2({
+        tenantId,
+        branchId,
+        inventoryCenterId: centerId,
+        clientMutationId: inventoryMutationId.current,
+        reason,
+        movements: toSave.map((p, index) => ({
           productId: p.mapped_product_id!,
-          inventoryCenterId: centerId,
           type: "purchase",
           quantity: p.quantity,
-          reason: ["AI Invoice", meta.supplier && `Supplier: ${meta.supplier}`, meta.invoice_number && `#${meta.invoice_number}`]
-            .filter(Boolean).join(" · "),
-          referenceType: "ai_ocr",
-        });
-      }
-      toast.success("Inventory updated", {
-        description: `${toSave.length} movement(s) recorded${products.length - toSave.length > 0 ? `, ${products.length - toSave.length} skipped` : ""}`,
+          effectKey: `ocr-line-${index}-${p.mapped_product_id}`,
+        })),
       });
+      toast.success("Inventory updated", {
+        description: `${toSave.length} movement(s) recorded atomically${products.length - toSave.length > 0 ? `, ${products.length - toSave.length} skipped` : ""}`,
+      });
+      resetInventoryMutation();
       onClose();
     } catch (err: any) {
       toast.error(err.message);
@@ -177,7 +191,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                 <img src={preview} alt="Preview" className="max-h-64 rounded-lg shadow-md" />
                 <Button variant="destructive" size="icon"
                   className="absolute -top-2 -right-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => { setFile(null); setPreview(null); }}>
+                  onClick={() => { resetInventoryMutation(); setFile(null); setPreview(null); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -197,7 +211,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                     <Upload className="h-4 w-4 mr-2" /> Select file
                   </Button>
                   <Button onClick={() => fileInputRef.current?.click()} className="md:hidden">
-                    <Camera className="h-4 w-4 mr-2" /> Tomar foto
+                    <Camera className="h-4 w-4 mr-2" /> Take photo
                   </Button>
                 </div>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange}
@@ -223,7 +237,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
 
           <div className="max-w-xs">
             <Label className="text-xs mb-1.5 block">Inventory center</Label>
-            <Select value={centerId} onValueChange={setCenterId}>
+            <Select value={centerId} onValueChange={(value) => { resetInventoryMutation(); setCenterId(value); }}>
               <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent>
                 {centers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -237,7 +251,7 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                 <TableRow>
                   <TableHead>Product (invoice)</TableHead>
                   <TableHead>Product in system</TableHead>
-                  <TableHead className="text-right">Cant.</TableHead>
+                  <TableHead className="text-right">Qty.</TableHead>
                   <TableHead className="text-right">Unit cost</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -251,11 +265,11 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                     </TableCell>
                     <TableCell>
                       {p.skipped ? (
-                        <span className="text-xs text-muted-foreground italic">Saltado</span>
+                        <span className="text-xs text-muted-foreground italic">Skipped</span>
                       ) : (
                         <Select value={p.mapped_product_id ?? ""} onValueChange={v => updateMapping(idx, v)}>
                           <SelectTrigger className={p.mapped_product_id ? "border-success/60" : "border-destructive/40"}>
-                            <SelectValue placeholder="Vincular..." />
+                            <SelectValue placeholder="Link..." />
                           </SelectTrigger>
                           <SelectContent>
                             {(catalog as any[]).map((ep: any) => (
@@ -267,11 +281,11 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{Number(p.quantity).toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{Number(p.quantity).toFixed(3)}</TableCell>
                     <TableCell className="text-right tabular-nums">BHD {Number(p.unit_price).toLocaleString("en-BH", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
-                        title={p.skipped ? "Incluir" : "Saltar"} onClick={() => toggleSkip(idx)}>
+                        title={p.skipped ? "Include" : "Skip"} onClick={() => toggleSkip(idx)}>
                         <SkipForward className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>
@@ -284,16 +298,16 @@ export function InvoiceOCRDialog({ tenantId, branchId, userId, centers, defaultC
           <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg flex-wrap gap-3">
             <div className="flex items-center gap-3 text-sm">
               <span className="flex items-center gap-1 text-success">
-                <CheckCircle2 className="h-4 w-4" /> {mappedCount} vinculados
+                <CheckCircle2 className="h-4 w-4" /> {mappedCount} linked
               </span>
-              {skippedCount > 0 && <Badge variant="secondary">{skippedCount} saltados</Badge>}
+              {skippedCount > 0 && <Badge variant="secondary">{skippedCount} skipped</Badge>}
               {pendingCount > 0 && <Badge variant="destructive">{pendingCount} unlinked</Badge>}
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setProducts([])}>Back</Button>
+              <Button variant="ghost" onClick={() => { resetInventoryMutation(); setProducts([]); }}>Back</Button>
               <Button onClick={saveInventory} disabled={saving || pendingCount > 0 || !centerId || mappedCount === 0}>
                 {saving
-                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Guardando...</>
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
                   : `Load ${mappedCount} into inventory`}
               </Button>
             </div>

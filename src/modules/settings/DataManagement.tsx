@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Download, Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, Box } from "lucide-react";
+import { Download, Loader2, AlertCircle, FileSpreadsheet, Box } from "lucide-react";
 import { exportToCsv, parseCsv } from "@/lib/csv";
-import { applyInventoryMovement } from "@/lib/inventory";
+import { createInventoryMutationId, reconcileInventoryLevelsV2 } from "@/lib/inventory";
 import { toast } from "sonner";
 import { useInventoryCenters } from "@/hooks/useInventoryCenters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -108,7 +108,6 @@ export function DataManagement() {
           if (id) {
             await supabase.from("products").update(productData).eq("id", id).eq("tenant_id", tenantId!);
           } else if (productData.sku) {
-            // Upsert por SKU si no hay ID
             const { data: existing } = await supabase.from("products").select("id").eq("sku", productData.sku).eq("tenant_id", tenantId!).maybeSingle();
             if (existing) {
               await supabase.from("products").update(productData).eq("id", existing.id);
@@ -138,74 +137,79 @@ export function DataManagement() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!tenantId || !branchId) {
+      toast.error("Tenant and branch context are required");
+      e.target.value = "";
+      return;
+    }
+
     if (!selectedCenterId) {
       toast.error("You must select an inventory center");
+      e.target.value = "";
       return;
     }
 
     setLoading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const content = event.target?.result as string;
-        const rows = parseCsv(content);
-        
-        setProgress({ total: rows.length, current: 0 });
+      const rows = parseCsv(await file.text());
+      if (rows.length === 0) throw new Error("The file is empty or has an invalid format");
 
-        const { data: { user } } = await supabase.auth.getUser();
+      setProgress({ total: rows.length, current: 0 });
+      const targets: { productId: string; targetQuantity: number; effectKey: string }[] = [];
+      const seenSkus = new Set<string>();
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          const sku = row.sku;
-          const qty = Number(row.quantity || row.quantity || 0);
-
-          if (!sku) continue;
-
-          // Search product por SKU
-          const { data: product } = await supabase
-            .from("products")
-            .select("id")
-            .eq("sku", sku)
-            .eq("tenant_id", tenantId!)
-            .maybeSingle();
-
-          if (product) {
-            // Obtener stock actual para calcular el ajuste
-            const { data: stock } = await supabase
-              .from("inventory_stocks")
-              .select("quantity")
-              .eq("product_id", product.id)
-              .eq("inventory_center_id", selectedCenterId)
-              .maybeSingle();
-
-            const currentQty = Number(stock?.quantity || 0);
-            const diff = qty - currentQty;
-
-            if (diff !== 0) {
-              await applyInventoryMovement({
-                tenantId: tenantId!,
-                branchId: branchId!,
-                productId: product.id,
-                inventoryCenterId: selectedCenterId,
-                type: "adjustment",
-                quantity: diff,
-                reason: "Bulk data import",
-                userId: user?.id || "",
-              });
-            }
-          }
-
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const sku = String(row.sku ?? "").trim();
+        if (!sku) {
           setProgress(p => p ? { ...p, current: i + 1 } : null);
+          continue;
+        }
+        if (seenSkus.has(sku)) throw new Error(`Duplicate SKU in inventory import: ${sku}`);
+        seenSkus.add(sku);
+
+        const targetQuantity = Number(row.quantity ?? 0);
+        if (!Number.isFinite(targetQuantity) || targetQuantity < 0 || Math.round(targetQuantity * 1000) / 1000 !== targetQuantity) {
+          throw new Error(`Invalid physical quantity for SKU ${sku}: use a non-negative value with at most three decimals`);
         }
 
-        toast.success(`Inventory adjustment complete`);
-        setProgress(null);
-      };
-      reader.readAsText(file);
+        const { data: product, error } = await supabase
+          .from("products")
+          .select("id")
+          .eq("sku", sku)
+          .eq("tenant_id", tenantId)
+          .maybeSingle();
+        if (error) throw error;
+
+        if (product) {
+          targets.push({
+            productId: product.id,
+            targetQuantity,
+            effectKey: `sku:${sku}`,
+          });
+        }
+
+        setProgress(p => p ? { ...p, current: i + 1 } : null);
+      }
+
+      if (targets.length === 0) throw new Error("No matching products were found for the imported SKUs");
+
+      await reconcileInventoryLevelsV2({
+        tenantId,
+        branchId,
+        inventoryCenterId: selectedCenterId,
+        targets,
+        clientMutationId: createInventoryMutationId("inventory-reconcile"),
+        reason: "Bulk physical inventory import",
+      });
+
+      toast.success(`Inventory reconciliation complete: ${targets.length} product(s) set to their physical counts`);
+      setProgress(null);
     } catch (err: any) {
       toast.error("Error importing inventory: " + err.message);
     } finally {
       setLoading(false);
+      setProgress(null);
       e.target.value = "";
     }
   };
@@ -301,7 +305,7 @@ export function DataManagement() {
                 />
                 <p className="text-[10px] text-muted-foreground">
                   * The file must contain 'sku' and 'quantity' columns. 
-                  An adjustment movement will be generated automatically.
+                  Each quantity is treated as the authoritative physical count for the selected center.
                 </p>
               </div>
             </div>
