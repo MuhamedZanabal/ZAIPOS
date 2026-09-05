@@ -4,7 +4,7 @@ This inventory is evidence-based. An unchecked item may have partial code but la
 
 ## Baseline controls
 
-- [x] Current implementation baseline verified from `main`: `fe512eca9b3e62597761696fdbbbbb6777e35373`
+- [x] Current implementation baseline verified from `main`: `98ba7a07495be218128b351879ea864002b26453`
 - [x] Repository, 48 migrations, CI, package configuration, checkout path, money kernel and existing automated tests inspected
 - [x] Scan-to-receipt and offline replay path mapped
 - [ ] Full database migration chain executed on clean and supported-upgrade production-shaped databases
@@ -20,8 +20,8 @@ This inventory is evidence-based. An unchecked item may have partial code but la
 - [ ] Integer-fils authoritative application/server cutover
 - [x] Server-authoritative atomic validate/commit checkout through `checkout_sale_v2`
 - [x] Split-payment UI and exact server persistence for Cash, Card, BenefitPay and Bank Transfer
-- [ ] Concurrent idempotent replay returning the original result
-- [ ] Explicit offline state/failure matrix
+- [x] Concurrent/idempotent checkout replay returns the original result and rejects local operation-ID payload conflicts
+- [x] Explicit offline queue state/failure matrix with durable commit evidence, crash recovery, tenant isolation and operator review states
 - [ ] Exactly-once inventory operation constraint and integration tests
 - [ ] Void command
 - [ ] Cumulative partial-refund ceiling and compensating payment records
@@ -29,6 +29,16 @@ This inventory is evidence-based. An unchecked item may have partial code but la
 - [ ] Tenant and branch relational consistency constraints/tests
 - [ ] Complete sensitive-mutation audit contract
 - [ ] POS transaction E2E and stock concurrency tests
+
+### P0.5 verification evidence
+
+- Implementation PR: #10 (`feat/offline-checkout-replay`)
+- Final reviewed PR head: `6dd95e537c0acfe2cec201970d8937621d8f3766`
+- RED CI 121: proved operation-ID payload-conflict and concurrent local enqueue defects before the fix
+- Final branch CI 123: green; 48 migrations, exact-money contract, atomic/stale checkout contract, checkout-operation RLS, lint, 99/99 Vitest tests and production build passed
+- Squash merge: `98ba7a07495be218128b351879ea864002b26453`
+- Post-merge `main` CI 124: green
+- Scope boundary: true simultaneous multi-connection stock contention remains part of the P0.7 concurrency gate
 
 ## P0 release
 
