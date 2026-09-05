@@ -13,10 +13,20 @@ if (baselineIndex < 0) throw new Error(`Supported baseline migration is missing:
 if (migrations.length < 55) throw new Error(`Expected at least 55 migrations, found ${migrations.length}`);
 
 const adminUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
+const usePlatformDatabase = process.env.MIGRATION_CHAIN_PLATFORM_DATABASE === "1";
+const platformDatabase = new URL(adminUrl).pathname.replace(/^\/+/, "") || "postgres";
 
 function databaseUrl(name) {
   const url = new URL(adminUrl);
-  url.pathname = `/${name}`;
+  url.pathname = `/${usePlatformDatabase ? platformDatabase : name}`;
+  return url.toString();
+}
+
+function privilegedDatabaseUrl() {
+  const url = new URL(adminUrl);
+  url.username = "supabase_admin";
+  url.password = "postgres";
+  url.pathname = `/${platformDatabase}`;
   return url.toString();
 }
 
@@ -25,6 +35,15 @@ function psql(database, args = [], options = {}) {
     cwd: root,
     encoding: "utf8",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
+    env: { ...process.env, PGPASSWORD: "postgres" },
+  });
+}
+
+function privilegedSql(statement) {
+  return execFileSync("psql", [privilegedDatabaseUrl(), "-X", "-v", "ON_ERROR_STOP=1", "-c", statement], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: "inherit",
     env: { ...process.env, PGPASSWORD: "postgres" },
   });
 }
@@ -62,7 +81,23 @@ function createClusterRoles() {
   `);
 }
 
+function resetPlatformDatabase(label) {
+  process.stdout.write(`[platform-reset:${label}] ${platformDatabase}\n`);
+  privilegedSql(`
+    DROP SCHEMA IF EXISTS public CASCADE;
+    CREATE SCHEMA public AUTHORIZATION postgres;
+    GRANT ALL ON SCHEMA public TO postgres;
+    GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+    DELETE FROM auth.users WHERE id = '30000000-0000-0000-0000-000000000091';
+  `);
+}
+
 function recreateDatabase(name) {
+  if (usePlatformDatabase) {
+    resetPlatformDatabase(name);
+    return;
+  }
+
   sql("postgres", `DROP DATABASE IF EXISTS ${name} WITH (FORCE);`);
   sql("postgres", `CREATE DATABASE ${name};`);
   sql(name, `
@@ -207,6 +242,12 @@ function verifyFinalShape(database) {
 }
 
 createClusterRoles();
+
+if (usePlatformDatabase) {
+  assertEqual("Supabase platform database", platformDatabase, "postgres");
+  assertEqual("Supabase platform pg_cron", scalar("postgres", "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='pg_cron');"), "t");
+  assertEqual("Supabase platform pg_net", scalar("postgres", "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='pg_net');"), "t");
+}
 
 recreateDatabase("zaipos_clean");
 apply("zaipos_clean", migrations);
