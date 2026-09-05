@@ -1,16 +1,13 @@
 import { spawn, execFileSync } from "node:child_process";
 
-const adminUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
-const database = "zaipos_clean";
-const url = new URL(adminUrl);
-url.pathname = `/${database}`;
-const dbUrl = url.toString();
+const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 
 const IDS = {
   tenant: "10000000-0000-0000-0000-000000000099",
   branch: "20000000-0000-0000-0000-000000000099",
   cashier: "30000000-0000-0000-0000-000000000099",
   session: "40000000-0000-0000-0000-000000000099",
+  center: "45000000-0000-0000-0000-000000000099",
   product: "50000000-0000-0000-0000-000000000099",
 };
 
@@ -87,6 +84,7 @@ sql(`
   DELETE FROM public.inventory_stocks WHERE tenant_id='${IDS.tenant}'::uuid;
   DELETE FROM public.cash_sessions WHERE tenant_id='${IDS.tenant}'::uuid;
   DELETE FROM public.user_roles WHERE tenant_id='${IDS.tenant}'::uuid;
+  DELETE FROM public.inventory_centers WHERE tenant_id='${IDS.tenant}'::uuid;
   DELETE FROM public.products WHERE tenant_id='${IDS.tenant}'::uuid;
   DELETE FROM public.branches WHERE tenant_id='${IDS.tenant}'::uuid;
   DELETE FROM public.tenants WHERE id='${IDS.tenant}'::uuid;
@@ -102,10 +100,12 @@ sql(`
   VALUES ('${IDS.cashier}','${IDS.tenant}','${IDS.branch}','cashier');
   INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id,status)
   VALUES ('${IDS.session}','${IDS.tenant}','${IDS.branch}','${IDS.cashier}','open');
+  INSERT INTO public.inventory_centers(id,tenant_id,branch_id,name,type,status)
+  VALUES ('${IDS.center}','${IDS.tenant}','${IDS.branch}','Concurrency POS','point_of_sale','active');
   INSERT INTO public.products(id,tenant_id,name,product_type,price,cost,tax_rate,status)
   VALUES ('${IDS.product}','${IDS.tenant}','Last Unit Product','simple',1.000,0.500,0,'active');
-  INSERT INTO public.inventory_stocks(tenant_id,branch_id,product_id,quantity)
-  VALUES ('${IDS.tenant}','${IDS.branch}','${IDS.product}',1.000);
+  INSERT INTO public.inventory_stocks(tenant_id,branch_id,inventory_center_id,product_id,quantity)
+  VALUES ('${IDS.tenant}','${IDS.branch}','${IDS.center}','${IDS.product}',1.000);
 `);
 
 // Two independent connections race for one unit. Exactly one may commit.
@@ -122,7 +122,7 @@ const loserMessage = String(stockLosers[0].reason?.message ?? stockLosers[0].rea
 if (!/stock|insuficiente/i.test(loserMessage)) {
   throw new Error(`stock-race loser failed for the wrong reason: ${loserMessage}`);
 }
-assertEqual("stock after contention", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE branch_id='${IDS.branch}' AND product_id='${IDS.product}';`), "0.000");
+assertEqual("stock after contention", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${IDS.center}' AND product_id='${IDS.product}';`), "0.000");
 assertEqual("sales after contention", scalar(`SELECT count(*)::text FROM public.sales WHERE tenant_id='${IDS.tenant}' AND client_mutation_id IN ('checkout-race-stock-a','checkout-race-stock-b');`), "1");
 assertEqual("payments after contention", scalar(`SELECT count(*)::text FROM public.payments p JOIN public.sales s ON s.id=p.sale_id WHERE s.tenant_id='${IDS.tenant}' AND s.client_mutation_id IN ('checkout-race-stock-a','checkout-race-stock-b');`), "1");
 assertEqual("stock movements after contention", scalar(`SELECT count(*)::text FROM public.inventory_movements WHERE tenant_id='${IDS.tenant}' AND movement_type='sale';`), "1");
@@ -130,7 +130,7 @@ assertEqual("cash bucket after contention", scalar(`SELECT total_cash_fils::text
 
 // Reset business state and race an identical idempotency key from two connections.
 sql(`
-  UPDATE public.inventory_stocks SET quantity=1.000 WHERE branch_id='${IDS.branch}' AND product_id='${IDS.product}';
+  UPDATE public.inventory_stocks SET quantity=1.000 WHERE inventory_center_id='${IDS.center}' AND product_id='${IDS.product}';
   UPDATE public.cash_sessions SET total_cash=0,total_cash_fils=0 WHERE id='${IDS.session}';
   DELETE FROM public.inventory_movements WHERE tenant_id='${IDS.tenant}';
   DELETE FROM public.payments WHERE sale_id IN (SELECT id FROM public.sales WHERE tenant_id='${IDS.tenant}');
@@ -149,7 +149,7 @@ if (!replayRace[0] || replayRace[0] !== replayRace[1]) {
 assertEqual("same-operation sales", scalar(`SELECT count(*)::text FROM public.sales WHERE tenant_id='${IDS.tenant}' AND client_mutation_id='checkout-race-same-operation';`), "1");
 assertEqual("same-operation payment effects", scalar(`SELECT count(*)::text FROM public.payments WHERE sale_id='${replayRace[0]}'::uuid;`), "1");
 assertEqual("same-operation inventory effects", scalar(`SELECT count(*)::text FROM public.inventory_movements WHERE reference_id='${replayRace[0]}'::uuid AND movement_type='sale';`), "1");
-assertEqual("same-operation final stock", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE branch_id='${IDS.branch}' AND product_id='${IDS.product}';`), "0.000");
+assertEqual("same-operation final stock", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${IDS.center}' AND product_id='${IDS.product}';`), "0.000");
 assertEqual("same-operation cash bucket", scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${IDS.session}';`), "1000");
 assertEqual("same-operation audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE tenant_id='${IDS.tenant}' AND action='sale.checkout_committed' AND entity_id='${replayRace[0]}'::uuid;`), "1");
 
