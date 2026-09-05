@@ -8,7 +8,7 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - [x] Exact BHD fils money Stage A sidecars/parity
 - [x] Exact BHD three-decimal compatibility precision Stage B
 - [x] Atomic server-authoritative checkout v2
-- [ ] Native split/mixed payments cashier UI
+- [x] Native split/mixed payments cashier UI
 - [ ] Checkout idempotency/offline replay full failure matrix
 - [ ] Concurrent checkout/stock-conflict tests
 - [ ] Void transaction lifecycle
@@ -78,3 +78,12 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - Final branch CI: run 102
 - Post-merge `main` CI: run 103
 - Verified gates: localization, 48 migration validations, exact-money database contract, atomic checkout + installed-client adapter contract, branch-scoped checkout-operation RLS, lint, full Vitest suite, production build
+
+### Split and mixed payments
+
+- PR: #8
+- Merge SHA: `fe512eca9b3e62597761696fdbbbbb6777e35373`
+- Final branch CI: run 116
+- Post-merge `main` CI: run 117
+- Tests at merge: 13 Vitest files, 71 tests
+- Verified gates: Cash/Card/BenefitPay/Bank Transfer allocation rules, cash over-tender/change, live POS v2 wiring, split receipt, cash-drawer intent, shared table-checkout compatibility, exact payment rows, isolated till buckets, replay stability, localization, 48 migration validations, RLS, lint and production build
