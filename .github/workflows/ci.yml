@@ -48,6 +48,9 @@ jobs:
       - name: Test void sale lifecycle
         run: npm run test:migrations:void
 
+      - name: Test return/void access hardening
+        run: npm run test:migrations:return-void-access
+
       - name: Lint
         run: npm run lint
 
