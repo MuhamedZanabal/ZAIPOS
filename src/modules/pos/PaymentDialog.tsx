@@ -1,20 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/format";
-import { Banknote, CreditCard, Smartphone, QrCode, Loader2, Heart, Tag } from "lucide-react";
+import { Banknote, CreditCard, Smartphone, QrCode, Loader2, Heart, Tag, X } from "lucide-react";
 import { NumPad } from "./NumPad";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BHD_CASH_SHORTCUTS, roundBhd } from "@/lib/bahrain";
+import {
+  BHD_CASH_SHORTCUTS,
+  bhdToFils,
+  filsToBhd,
+  formatFils,
+  roundBhd,
+  subtractMoney,
+} from "@/lib/bahrain";
+import {
+  addPaymentAllocation,
+  remainingPaymentFils,
+  type PaymentAllocation,
+  type PayMethod,
+} from "./paymentAllocations";
 
 /**
  * Database-compatible payment buckets.
  * `qr` is the Bahrain BenefitPay bucket and `transfer` is Bank Transfer.
  * Keeping these storage values preserves cash-session and historical-report compatibility.
  */
-export type PayMethod = "cash" | "card" | "transfer" | "qr";
+export type { PayMethod } from "./paymentAllocations";
 
 export const paymentMethodLabel = (method: PayMethod) => {
   switch (method) {
@@ -31,7 +44,12 @@ interface PaymentDialogProps {
   total: number;
   tenantId?: string | null;
   submitting: boolean;
-  onConfirm: (method: PayMethod, tendered: number, tip: number, couponCode?: string, discount?: number) => void;
+  onConfirm: (
+    allocations: PaymentAllocation[],
+    tip: number,
+    couponCode?: string,
+    discount?: number,
+  ) => void;
 }
 
 const METHODS = [
@@ -49,42 +67,56 @@ const TIP_SUGGESTIONS = [
 ];
 
 const SHORTCUTS = [...BHD_CASH_SHORTCUTS];
-
 const amountText = (value: number) => roundBhd(value).toFixed(3);
 
 export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting, onConfirm }: PaymentDialogProps) {
   const [method, setMethod] = useState<PayMethod>("cash");
-  const [tendered, setTendered] = useState<string>("");
-  const [tip, setTip] = useState<number>(0);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
+  const [tip, setTip] = useState(0);
   const [coupon, setCoupon] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setMethod("cash");
-      setTendered(amountText(total));
-      setTip(0);
-      setCoupon("");
-      setCouponDiscount(0);
-    }
-  }, [open, total]);
-
-  const tenderedNum = roundBhd(Number(tendered) || 0);
   const discountedTotal = roundBhd(Math.max(0, total - couponDiscount));
   const grandTotal = roundBhd(discountedTotal + tip);
-  const change = method === "cash" ? roundBhd(Math.max(0, tenderedNum - grandTotal)) : 0;
-  const insufficient = method === "cash" && tenderedNum < grandTotal;
+  const payableFils = bhdToFils(amountText(grandTotal));
+  const remainingFils = remainingPaymentFils(payableFils, allocations);
+  const allocatedFils = subtractMoney(payableFils, remainingFils);
+  const paymentAmountFils = useMemo(() => {
+    try {
+      return bhdToFils(paymentAmount || "0");
+    } catch {
+      return 0;
+    }
+  }, [paymentAmount]);
+  const previewCashChangeFils = method === "cash"
+    ? Math.max(0, paymentAmountFils - remainingFils)
+    : 0;
+  const totalsLocked = allocations.length > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    setMethod("cash");
+    setAllocations([]);
+    setTip(0);
+    setCoupon("");
+    setCouponDiscount(0);
+    setPaymentAmount(amountText(total));
+  }, [open, total]);
+
+  useEffect(() => {
+    if (!open || totalsLocked) return;
+    setPaymentAmount(filsToBhd(payableFils));
+  }, [open, payableFils, totalsLocked]);
 
   const handleTipPercent = (percent: number) => {
+    if (totalsLocked) return;
     setTip(roundBhd(discountedTotal * percent));
   };
 
-  useEffect(() => {
-    if (method !== "cash") setTendered(amountText(grandTotal));
-  }, [grandTotal, method]);
-
   const applyCoupon = async () => {
+    if (totalsLocked) return;
     const code = coupon.trim().toUpperCase();
     if (!code) {
       setCouponDiscount(0);
@@ -129,9 +161,42 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
     }
   };
 
+  const selectMethod = (nextMethod: PayMethod) => {
+    setMethod(nextMethod);
+    setPaymentAmount(filsToBhd(remainingFils));
+  };
+
+  const addAllocation = () => {
+    try {
+      const tenderedFils = bhdToFils(paymentAmount);
+      const next = addPaymentAllocation(payableFils, allocations, method, tenderedFils);
+      setAllocations(next.allocations);
+      setPaymentAmount(next.remainingFils > 0 ? filsToBhd(next.remainingFils) : "0.000");
+    } catch (error: any) {
+      toast.error(error?.message ?? "Could not add payment");
+    }
+  };
+
+  const removeAllocation = (index: number) => {
+    const next = allocations.filter((_, allocationIndex) => allocationIndex !== index);
+    setAllocations(next);
+    const nextRemaining = remainingPaymentFils(payableFils, next);
+    setPaymentAmount(filsToBhd(nextRemaining));
+  };
+
+  const completeSale = () => {
+    if (remainingFils !== 0 || allocations.length === 0) return;
+    onConfirm(
+      allocations,
+      tip,
+      couponDiscount > 0 ? coupon.trim().toUpperCase() : undefined,
+      couponDiscount,
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-[var(--g-hairline)]">
           <DialogTitle className="text-xl flex items-baseline justify-between">
             <span className="h-display text-xl">Charge sale</span>
@@ -142,8 +207,46 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-0 h-[500px]">
-          <div className="p-6 border-r border-[var(--g-hairline)] overflow-y-auto space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-0 min-h-[560px] max-h-[78vh]">
+          <div className="p-6 border-r border-[var(--g-hairline)] overflow-y-auto space-y-5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="glass rounded-xl px-4 py-3">
+                <div className="h-label uppercase tracking-widest mb-1">Allocated</div>
+                <div className="h-num text-2xl">{formatFils(allocatedFils)}</div>
+              </div>
+              <div className="glass rounded-xl px-4 py-3">
+                <div className="h-label uppercase tracking-widest mb-1">Remaining</div>
+                <div className={cn("h-num text-2xl", remainingFils === 0 && "text-[var(--g-ok)]")}>{formatFils(remainingFils)}</div>
+              </div>
+            </div>
+
+            {allocations.length > 0 && (
+              <div className="space-y-2">
+                <div className="h-label uppercase tracking-widest">Payment allocations</div>
+                {allocations.map((allocation, index) => {
+                  const label = paymentMethodLabel(allocation.method);
+                  return (
+                    <div key={`${allocation.method}-${index}`} className="glass rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold">{label} · {formatFils(allocation.amountFils)}</div>
+                        {allocation.changeFils > 0 && (
+                          <div className="text-xs font-semibold text-[var(--g-ok)]">Change · {formatFils(allocation.changeFils)}</div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${label} payment`}
+                        className="g-btn g-btn-ghost h-8 w-8 p-0 shrink-0"
+                        onClick={() => removeAllocation(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="h-label uppercase tracking-widest">Payment method</div>
               <div className="grid grid-cols-2 gap-2">
@@ -153,15 +256,12 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => {
-                        setMethod(option.id);
-                        if (option.id !== "cash") setTendered(amountText(grandTotal));
-                      }}
+                      onClick={() => selectMethod(option.id)}
                       className={cn(
                         "flex flex-col items-center justify-center gap-2 h-20 rounded-xl border-2 transition-all active:scale-95",
                         active
                           ? "border-[var(--brand-600)] glass-strong text-[var(--ink-900)] shadow-md"
-                          : "border-[var(--g-hairline)] glass text-[var(--ink-500)] hover:border-[var(--brand-600)]/40"
+                          : "border-[var(--g-hairline)] glass text-[var(--ink-500)] hover:border-[var(--brand-600)]/40",
                       )}
                     >
                       <option.icon className="h-6 w-6" />
@@ -191,6 +291,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                     <button
                       key={suggestion.label}
                       type="button"
+                      disabled={totalsLocked}
                       className={cn("g-pill g-pill-h28 transition-all", isActive ? "g-pill-bad" : "g-pill-ghost")}
                       onClick={() => suggestion.percent !== undefined
                         ? handleTipPercent(suggestion.percent)
@@ -210,6 +311,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   placeholder="Custom amount"
                   className="pl-12"
                   value={tip || ""}
+                  disabled={totalsLocked}
                   onChange={(e) => setTip(roundBhd(Number(e.target.value) || 0))}
                 />
               </div>
@@ -223,6 +325,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                 <Input
                   placeholder="Enter code..."
                   value={coupon}
+                  disabled={totalsLocked}
                   onChange={(e) => {
                     setCoupon(e.target.value.toUpperCase());
                     setCouponDiscount(0);
@@ -233,7 +336,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   type="button"
                   className="g-btn g-btn-ghost px-4"
                   onClick={applyCoupon}
-                  disabled={validatingCoupon}
+                  disabled={validatingCoupon || totalsLocked}
                 >
                   {validatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                 </button>
@@ -243,48 +346,59 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   Discount applied: -{formatCurrency(couponDiscount)}
                 </div>
               )}
+              {totalsLocked && (
+                <div className="text-xs text-muted-foreground">Remove payments to edit tip or coupon.</div>
+              )}
             </div>
           </div>
 
-          <div className="p-6 glass-thin flex flex-col justify-between">
+          <div className="p-6 glass-thin flex flex-col justify-between overflow-y-auto">
             <div className="space-y-4">
               <div className="glass rounded-xl px-4 py-3">
-                <div className="h-label uppercase tracking-widest mb-1">
-                  {method === "cash" ? "Cash received" : `${paymentMethodLabel(method)} amount`}
-                </div>
-                <div className="h-num text-3xl">{formatCurrency(tenderedNum)}</div>
+                <div className="h-label uppercase tracking-widest mb-1">{paymentMethodLabel(method)} amount</div>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  aria-label="Payment amount"
+                  value={paymentAmount}
+                  onChange={(event) => setPaymentAmount(event.target.value)}
+                  className="h-num text-2xl"
+                  disabled={remainingFils === 0}
+                />
               </div>
 
               <NumPad
-                value={tendered}
-                onChange={setTendered}
+                value={paymentAmount}
+                onChange={setPaymentAmount}
                 shortcuts={method === "cash" ? SHORTCUTS : undefined}
-                onShortcut={(amount) => setTendered(amountText(tenderedNum + amount))}
+                onShortcut={(amount) => setPaymentAmount(amountText((Number(paymentAmount) || 0) + amount))}
               />
 
-              {method === "cash" && (
+              {method === "cash" && previewCashChangeFils > 0 && remainingFils > 0 && (
                 <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
                   <span className="h-label uppercase tracking-wider">Change</span>
-                  <span className={cn("h-num text-xl", insufficient ? "text-[var(--g-bad)]" : "text-[var(--g-ok)]")}>
-                    {insufficient ? "Remaining " + formatCurrency(roundBhd(grandTotal - tenderedNum)) : formatCurrency(change)}
-                  </span>
+                  <span className="h-num text-xl text-[var(--g-ok)]">{formatFils(previewCashChangeFils)}</span>
                 </div>
               )}
+
+              <button
+                type="button"
+                className="g-btn g-btn-ghost g-btn-touch w-full font-bold"
+                disabled={submitting || remainingFils === 0}
+                onClick={addAllocation}
+              >
+                Add {paymentMethodLabel(method)} payment
+              </button>
             </div>
 
             <button
               type="button"
               className="g-btn g-btn-primary g-btn-touch w-full text-lg font-black shadow-lg mt-4"
-              disabled={submitting || insufficient}
-              onClick={() => onConfirm(
-                method,
-                tenderedNum,
-                tip,
-                couponDiscount > 0 ? coupon.trim().toUpperCase() : undefined,
-                couponDiscount
-              )}
+              disabled={submitting || allocations.length === 0 || remainingFils !== 0}
+              onClick={completeSale}
             >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>PAY {formatCurrency(grandTotal)}</>}
+              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Complete sale"}
             </button>
           </div>
         </div>
