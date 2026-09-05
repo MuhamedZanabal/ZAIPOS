@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { migrateLegacySyncQueueItem, type SyncFailureCode } from './syncQueue';
 
 export interface SyncQueueItem {
   id?: number;
@@ -11,9 +12,21 @@ export interface SyncQueueItem {
   retryCount: number;
   clientMutationId?: string;
   deviceId?: string;
+  tenantId?: string;
+  branchId?: string;
+  lastAttemptAt?: string;
+  committedAt?: string;
+  serverResult?: unknown;
+  failureCode?: SyncFailureCode;
 }
 
-export type SyncQueueStatus = 'pending' | 'failed' | 'success';
+export type SyncQueueStatus =
+  | 'queued'
+  | 'sending'
+  | 'committed'
+  | 'retrying'
+  | 'failed'
+  | 'requires_review';
 
 export interface CachedProduct {
   id: string;
@@ -83,6 +96,16 @@ export class POSDatabase extends Dexie {
       products: 'id, tenant_id, category_id, name, status, product_type',
       categories: 'id, tenant_id, name, status',
       branch_products: 'id, product_id, branch_id',
+    });
+    this.version(4).stores({
+      sync_queue: '++id, type, status, createdAt, updatedAt, clientMutationId, deviceId, tenantId, branchId',
+      products: 'id, tenant_id, category_id, name, status, product_type',
+      categories: 'id, tenant_id, name, status',
+      branch_products: 'id, product_id, branch_id',
+    }).upgrade((transaction) => {
+      return transaction.table('sync_queue').toCollection().modify((item) => {
+        Object.assign(item, migrateLegacySyncQueueItem(item));
+      });
     });
   }
 }

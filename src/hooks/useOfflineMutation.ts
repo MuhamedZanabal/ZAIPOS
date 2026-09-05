@@ -2,6 +2,14 @@ import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/re
 import { useNetworkStore } from '@/stores/network';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
+import {
+  isActiveQueueStatus,
+  isTransientNetworkFailure,
+  OfflineOperationConflictError,
+  syncQueueItemBelongsToTenant,
+  syncQueuePayloadsEqual,
+  syncQueueScopeFromPayload,
+} from '@/lib/syncQueue';
 
 interface OfflineMutationConfig<TData, TError, TVariables, TContext> 
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
@@ -53,19 +61,40 @@ export async function queueOfflineMutation<TVariables>(
 ): Promise<OfflineQueuedResult> {
   const deviceId = getDeviceId();
   const payload = withClientMutationId(variables, deviceId);
+  const clientMutationId = (payload as any)?._client_mutation_id as string | undefined;
+  const { tenantId, branchId } = syncQueueScopeFromPayload(payload);
 
-  await db.sync_queue.add({
-    type,
-    payload,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    retryCount: 0,
-    clientMutationId: (payload as any)?._client_mutation_id,
-    deviceId,
+  await db.transaction('rw', db.sync_queue, async () => {
+    const existing = clientMutationId
+      ? await db.sync_queue.where('clientMutationId').equals(clientMutationId).first()
+      : undefined;
+
+    if (existing) {
+      if (existing.type !== type || !syncQueuePayloadsEqual(existing.payload, payload)) {
+        throw new OfflineOperationConflictError(clientMutationId!);
+      }
+      return;
+    }
+
+    const now = new Date().toISOString();
+    await db.sync_queue.add({
+      type,
+      payload,
+      status: 'queued',
+      createdAt: now,
+      updatedAt: now,
+      retryCount: 0,
+      clientMutationId,
+      deviceId,
+      tenantId,
+      branchId,
+    });
   });
 
-  const count = await db.sync_queue.where('status').anyOf('pending', 'failed').count();
+  const count = (await db.sync_queue.toArray()).filter((item) =>
+    isActiveQueueStatus(item.status)
+    && (!tenantId || syncQueueItemBelongsToTenant(item, tenantId))
+  ).length;
   setPendingSyncCount(count);
 
   return { offline: true, queued: true };
@@ -76,12 +105,7 @@ export function isBrowserOffline() {
 }
 
 export function isTransientNetworkError(error: unknown) {
-  if (isBrowserOffline()) return true;
-  const message = error instanceof Error
-    ? `${error.name} ${error.message}`
-    : String(error ?? '');
-
-  return /failed to fetch|fetch failed|networkerror|network error|load failed|err_network|internet disconnected/i.test(message);
+  return isTransientNetworkFailure(error);
 }
 
 function getDeviceId() {
