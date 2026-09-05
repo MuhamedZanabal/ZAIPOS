@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PaymentDialog } from "./PaymentDialog";
 
@@ -34,13 +34,18 @@ describe("PaymentDialog split payments", () => {
     );
   }
 
+  function balanceValue(label: "Allocated" | "Remaining") {
+    const labelNode = screen.getByText(label);
+    const container = labelNode.parentElement;
+    if (!container) throw new Error(`${label} balance container is missing`);
+    return within(container);
+  }
+
   it("shows exact allocated and remaining balances and prevents premature completion", () => {
     renderDialog();
 
-    expect(screen.getByText("Allocated")).toBeInTheDocument();
-    expect(screen.getByText("Remaining")).toBeInTheDocument();
-    expect(screen.getByText("BHD 0.000")).toBeInTheDocument();
-    expect(screen.getByText("BHD 8.500")).toBeInTheDocument();
+    expect(balanceValue("Allocated").getByText("BHD 0.000")).toBeInTheDocument();
+    expect(balanceValue("Remaining").getByText("BHD 8.500")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /complete sale/i })).toBeDisabled();
   });
 
@@ -53,7 +58,7 @@ describe("PaymentDialog split payments", () => {
     fireEvent.click(screen.getByRole("button", { name: /add benefitpay payment/i }));
 
     expect(screen.getByText("BenefitPay · BHD 3.500")).toBeInTheDocument();
-    expect(screen.getByText("BHD 5.000")).toBeInTheDocument();
+    expect(balanceValue("Remaining").getByText("BHD 5.000")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /complete sale/i })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Cash" }));
@@ -64,8 +69,8 @@ describe("PaymentDialog split payments", () => {
 
     expect(screen.getByText("Cash · BHD 5.000")).toBeInTheDocument();
     expect(screen.getByText("Change · BHD 5.000")).toBeInTheDocument();
-    expect(screen.getByText("BHD 8.500")).toBeInTheDocument();
-    expect(screen.getByText("BHD 0.000")).toBeInTheDocument();
+    expect(balanceValue("Allocated").getByText("BHD 8.500")).toBeInTheDocument();
+    expect(balanceValue("Remaining").getByText("BHD 0.000")).toBeInTheDocument();
 
     const complete = screen.getByRole("button", { name: /complete sale/i });
     expect(complete).toBeEnabled();
@@ -105,12 +110,12 @@ describe("PaymentDialog split payments", () => {
     fireEvent.click(screen.getByRole("button", { name: /add card payment/i }));
 
     expect(screen.getByText("Card · BHD 3.500")).toBeInTheDocument();
-    expect(screen.getByText("BHD 5.000")).toBeInTheDocument();
+    expect(balanceValue("Remaining").getByText("BHD 5.000")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /remove card payment/i }));
 
     expect(screen.queryByText("Card · BHD 3.500")).not.toBeInTheDocument();
-    expect(screen.getByText("BHD 8.500")).toBeInTheDocument();
+    expect(balanceValue("Remaining").getByText("BHD 8.500")).toBeInTheDocument();
   });
 
   it("locks total-changing tip and coupon controls once a partial payment exists", () => {
