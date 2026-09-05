@@ -78,7 +78,7 @@ jobs:
         run: node scripts/test-inventory-client-cutover.mjs
 
       - name: Test production PostgreSQL migration chain
-        run: node scripts/test-production-migration-chain.mjs
+        run: node scripts/test-production-migration-chain-supabase.mjs
 
       - name: Test real checkout concurrency
         run: node scripts/test-checkout-concurrency.mjs
