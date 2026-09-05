@@ -52,6 +52,7 @@ const sale = {
   total_fils: 10250,
   tip_amount_fils: 250,
   status: "completed",
+  customer_id: null as string | null,
   created_at: "2026-09-05T09:00:00Z",
   sale_items: [
     {
@@ -138,5 +139,14 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
 
     const [, payload] = state.rpc.mock.calls[0];
     expect(payload._items).toEqual([{ sale_item_id: sale.sale_items[0].id, quantity: 1 }]);
+  });
+
+  it("fails closed in the UI for customer-linked sales until loyalty reversal evidence exists", async () => {
+    renderDialog({ customer_id: "90000000-0000-0000-0000-000000000001" });
+
+    expect(await screen.findByText(/loyalty reversal evidence/i)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Process return/i })).toBeDisabled();
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 });
