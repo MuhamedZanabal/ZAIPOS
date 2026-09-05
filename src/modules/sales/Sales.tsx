@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatCurrency } from "@/lib/format";
-import { Receipt, Undo2 } from "lucide-react";
+import { Ban, Receipt, Undo2 } from "lucide-react";
 import { ReturnDialog } from "./ReturnDialog";
+import { VoidSaleDialog } from "./VoidSaleDialog";
 
 type SaleItem = {
   id: string;
@@ -20,15 +21,31 @@ type Sale = {
   id: string;
   ticket_number: number;
   total: number;
+  total_fils: number;
+  tip_amount_fils: number;
   status: string;
+  channel: string;
+  session_id: string | null;
+  customer_id: string | null;
   created_at: string;
   sale_items: SaleItem[];
   payments: { method: string; amount: number }[];
 };
 
+const RETURNABLE_STATUSES = new Set(["completed", "partially_refunded"]);
+
+function statusLabel(status: string): string {
+  if (status === "completed") return "Completed";
+  if (status === "partially_refunded") return "Partially refunded";
+  if (status === "refunded") return "Refunded";
+  if (status === "cancelled") return "Cancelled";
+  return status;
+}
+
 export default function Sales() {
   const { branchId } = useTenantContext();
   const [returnSale, setReturnSale] = useState<Sale | null>(null);
+  const [voidSale, setVoidSale] = useState<Sale | null>(null);
 
   const { data: sales } = useQuery<Sale[]>({
     queryKey: ["sales", branchId],
@@ -37,7 +54,7 @@ export default function Sales() {
       ((await supabase
         .from("sales")
         .select(
-          "id, ticket_number, total, status, created_at, sale_items(id, product_id, product_name, quantity, unit_price, line_total), payments(method, amount)"
+          "id, ticket_number, total, total_fils, tip_amount_fils, status, channel, session_id, customer_id, created_at, sale_items(id, product_id, product_name, quantity, unit_price, line_total), payments(method, amount)"
         )
         .eq("branch_id", branchId!)
         .order("created_at", { ascending: false })
@@ -77,7 +94,7 @@ export default function Sales() {
                 {new Date(s.created_at).toLocaleString("en-BH")}
               </span>
               <span className="g-sales-count">
-                {s.sale_items?.length ?? 0} prod.
+                {s.sale_items?.length ?? 0} products
               </span>
               <span className="g-sales-pay">
                 {s.payments?.map((p) => p.method).join(", ") || "—"}
@@ -87,18 +104,28 @@ export default function Sales() {
               </span>
               <span>
                 <span className={s.status === "completed" ? "g-pill g-pill-ok" : "g-pill g-pill-ghost"}>
-                  {s.status === "completed" ? "Completed" : s.status}
+                  {statusLabel(s.status)}
                 </span>
               </span>
-              <span>
-                {s.status === "completed" && (
+              <span className="flex flex-wrap gap-1.5">
+                {RETURNABLE_STATUSES.has(s.status) && (
                   <button
                     type="button"
                     className="g-sales-return"
                     onClick={() => setReturnSale(s)}
                   >
                     <Undo2 size={13} />
-                    Devolver
+                    Return
+                  </button>
+                )}
+                {s.status === "completed" && (
+                  <button
+                    type="button"
+                    className="g-sales-return"
+                    onClick={() => setVoidSale(s)}
+                  >
+                    <Ban size={13} />
+                    Void
                   </button>
                 )}
               </span>
@@ -112,6 +139,14 @@ export default function Sales() {
         onOpenChange={(v) => { if (!v) setReturnSale(null); }}
         sale={returnSale}
       />
+
+      {voidSale && (
+        <VoidSaleDialog
+          open
+          onOpenChange={(v) => { if (!v) setVoidSale(null); }}
+          sale={voidSale}
+        />
+      )}
     </div>
   );
 }

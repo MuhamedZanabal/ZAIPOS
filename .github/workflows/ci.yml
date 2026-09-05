@@ -39,6 +39,21 @@ jobs:
       - name: Test checkout operation RLS
         run: npm run test:migrations:checkout-rls
 
+      - name: Test return/refund lifecycle
+        run: npm run test:migrations:returns
+
+      - name: Test customer return loyalty guard
+        run: npm run test:migrations:return-loyalty
+
+      - name: Test void sale lifecycle
+        run: npm run test:migrations:void
+
+      - name: Test return/void access hardening
+        run: npm run test:migrations:return-void-access
+
+      - name: Test cash-session reconciliation
+        run: node scripts/test-cash-session-reconciliation.mjs
+
       - name: Lint
         run: npm run lint
 
