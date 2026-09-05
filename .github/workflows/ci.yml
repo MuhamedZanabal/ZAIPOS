@@ -36,6 +36,9 @@ jobs:
       - name: Test atomic checkout migration
         run: npm run test:migrations:checkout
 
+      - name: Test checkout operation RLS
+        run: npm run test:migrations:checkout-rls
+
       - name: Lint
         run: npm run lint
 
