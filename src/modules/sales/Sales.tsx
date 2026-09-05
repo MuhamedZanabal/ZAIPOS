@@ -21,10 +21,21 @@ type Sale = {
   ticket_number: number;
   total: number;
   status: string;
+  channel: string;
   created_at: string;
   sale_items: SaleItem[];
   payments: { method: string; amount: number }[];
 };
+
+const RETURNABLE_STATUSES = new Set(["completed", "partially_refunded"]);
+
+function statusLabel(status: string): string {
+  if (status === "completed") return "Completed";
+  if (status === "partially_refunded") return "Partially refunded";
+  if (status === "refunded") return "Refunded";
+  if (status === "cancelled") return "Cancelled";
+  return status;
+}
 
 export default function Sales() {
   const { branchId } = useTenantContext();
@@ -37,7 +48,7 @@ export default function Sales() {
       ((await supabase
         .from("sales")
         .select(
-          "id, ticket_number, total, status, created_at, sale_items(id, product_id, product_name, quantity, unit_price, line_total), payments(method, amount)"
+          "id, ticket_number, total, status, channel, created_at, sale_items(id, product_id, product_name, quantity, unit_price, line_total), payments(method, amount)"
         )
         .eq("branch_id", branchId!)
         .order("created_at", { ascending: false })
@@ -77,7 +88,7 @@ export default function Sales() {
                 {new Date(s.created_at).toLocaleString("en-BH")}
               </span>
               <span className="g-sales-count">
-                {s.sale_items?.length ?? 0} prod.
+                {s.sale_items?.length ?? 0} products
               </span>
               <span className="g-sales-pay">
                 {s.payments?.map((p) => p.method).join(", ") || "—"}
@@ -87,18 +98,18 @@ export default function Sales() {
               </span>
               <span>
                 <span className={s.status === "completed" ? "g-pill g-pill-ok" : "g-pill g-pill-ghost"}>
-                  {s.status === "completed" ? "Completed" : s.status}
+                  {statusLabel(s.status)}
                 </span>
               </span>
               <span>
-                {s.status === "completed" && (
+                {RETURNABLE_STATUSES.has(s.status) && (
                   <button
                     type="button"
                     className="g-sales-return"
                     onClick={() => setReturnSale(s)}
                   >
                     <Undo2 size={13} />
-                    Devolver
+                    Return
                   </button>
                 )}
               </span>
