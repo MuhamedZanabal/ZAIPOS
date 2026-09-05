@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { useOpenSession } from "@/hooks/useOpenSession";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -24,8 +25,24 @@ type Sale = {
   ticket_number: number;
   total: number;
   created_at: string;
+  channel?: string;
   sale_items: SaleItem[];
 };
+
+type ReturnReasonCode = "damaged" | "wrong_item" | "quality" | "customer_request" | "other";
+
+type SubmissionAttempt = {
+  operationId: string;
+  evidencePath: string | null;
+};
+
+const REASON_OPTIONS: ReadonlyArray<{ value: ReturnReasonCode; label: string }> = [
+  { value: "customer_request", label: "Customer request" },
+  { value: "damaged", label: "Damaged product" },
+  { value: "wrong_item", label: "Wrong item" },
+  { value: "quality", label: "Quality issue" },
+  { value: "other", label: "Other" },
+];
 
 interface ReturnDialogProps {
   open: boolean;
@@ -35,57 +52,86 @@ interface ReturnDialogProps {
 
 export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
   const { tenantId, branchId } = useTenantContext();
+  const { data: openSession } = useOpenSession(branchId);
   const qc = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reasonCode, setReasonCode] = useState<ReturnReasonCode>("customer_request");
   const [reason, setReason] = useState("");
-  const [supervisorPin, setSupervisorPin] = useState("");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const submissionAttempt = useRef<SubmissionAttempt | null>(null);
 
-  const toggle = (id: string) =>
+  const resetAttempt = () => {
+    submissionAttempt.current = null;
+  };
+
+  const resetForm = () => {
+    setSelectedIds(new Set());
+    setReasonCode("customer_request");
+    setReason("");
+    setEvidenceFile(null);
+    resetAttempt();
+  };
+
+  const toggle = (id: string) => {
+    resetAttempt();
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  };
 
   const selectedItems = sale?.sale_items.filter((i) => selectedIds.has(i.id)) ?? [];
-  const returnTotal = selectedItems.reduce((s, i) => s + Number(i.line_total), 0);
+  const isInPersonSale = !sale?.channel || sale.channel === "pos" || sale.channel === "tables";
+  const hasRequiredSession = !isInPersonSale || !!openSession?.id;
 
   const processReturn = useMutation({
     mutationFn: async () => {
       if (!sale || !tenantId || !branchId || selectedItems.length === 0) return;
-
-      let evidenceUrl: string | null = null;
-      if (evidenceFile) {
-        const ext = evidenceFile.name.split(".").pop() || "jpg";
-        const path = `${tenantId}/${sale.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("return-evidence")
-          .upload(path, evidenceFile, { upsert: false });
-        if (uploadError) throw uploadError;
-        evidenceUrl = path;
+      if (isInPersonSale && !openSession?.id) {
+        throw new Error("An open cash session is required to process this return.");
       }
 
-      const { error } = await supabase.rpc("process_sale_return" as any, {
+      if (!submissionAttempt.current) {
+        const ext = evidenceFile?.name.split(".").pop() || "jpg";
+        submissionAttempt.current = {
+          operationId: `return-${crypto.randomUUID()}`,
+          evidencePath: evidenceFile
+            ? `${tenantId}/${sale.id}/${crypto.randomUUID()}.${ext}`
+            : null,
+        };
+      }
+
+      const attempt = submissionAttempt.current;
+      let evidenceUrl: string | null = null;
+      if (evidenceFile && attempt.evidencePath) {
+        const { error: uploadError } = await supabase.storage
+          .from("return-evidence")
+          .upload(attempt.evidencePath, evidenceFile, { upsert: true });
+        if (uploadError) throw uploadError;
+        evidenceUrl = attempt.evidencePath;
+      }
+
+      const { data, error } = await supabase.rpc("process_sale_return_v2" as any, {
         _sale_id: sale.id,
         _items: selectedItems.map((i) => ({ sale_item_id: i.id, quantity: i.quantity })),
+        _reason_code: reasonCode,
+        _client_mutation_id: attempt.operationId,
+        _cash_session_id: isInPersonSale ? openSession?.id ?? null : null,
         _reason: reason.trim() || null,
-        _supervisor_pin: supervisorPin || null,
         _evidence_url: evidenceUrl,
-        _refund_method: "original",
       });
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
-      toast.success(`Return recorded · ${formatCurrency(returnTotal)}`);
+      toast.success("Return recorded with server-authoritative refund accounting.");
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
+      qc.invalidateQueries({ queryKey: ["open-session", branchId] });
       onOpenChange(false);
-      setSelectedIds(new Set());
-      setReason("");
-      setSupervisorPin("");
-      setEvidenceFile(null);
+      resetForm();
     },
     onError: (e: any) => toast.error(e.message ?? "Error processing return"),
   });
@@ -97,12 +143,7 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
       open={open}
       onOpenChange={(v) => {
         onOpenChange(v);
-        if (!v) {
-          setSelectedIds(new Set());
-          setReason("");
-          setSupervisorPin("");
-          setEvidenceFile(null);
-        }
+        if (!v) resetForm();
       }}
     >
       <DialogContent className="max-w-lg">
@@ -139,44 +180,63 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
             ))}
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Return reason</Label>
-            <Input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="E.g. Damaged product, order error..."
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>PIN supervisor</Label>
-              <Input
-                type="password"
-                inputMode="numeric"
-                value={supervisorPin}
-                onChange={(e) => setSupervisorPin(e.target.value)}
-                placeholder="Required depending on amount"
-              />
+              <Label htmlFor="return-reason-code">Reason category</Label>
+              <select
+                id="return-reason-code"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={reasonCode}
+                onChange={(e) => {
+                  resetAttempt();
+                  setReasonCode(e.target.value as ReturnReasonCode);
+                }}
+              >
+                {REASON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
-                <Camera className="h-3.5 w-3.5" /> Foto soporte
+                <Camera className="h-3.5 w-3.5" /> Supporting photo
               </Label>
               <Input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                onChange={(e) => setEvidenceFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  resetAttempt();
+                  setEvidenceFile(e.target.files?.[0] ?? null);
+                }}
               />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label>Return notes</Label>
+            <Input
+              value={reason}
+              onChange={(e) => {
+                resetAttempt();
+                setReason(e.target.value);
+              }}
+              placeholder="Optional return details"
+            />
+          </div>
+
+          {!hasRequiredSession && (
+            <div className="flex items-center gap-2 p-3 rounded-xl text-sm g-return-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0 g-return-warning-icon" />
+              <span>Open a cash session for this branch before processing an in-person return.</span>
+            </div>
+          )}
 
           {selectedItems.length > 0 && (
             <div className="flex items-center gap-2 p-3 rounded-xl text-sm g-return-warning">
               <AlertTriangle className="h-4 w-4 shrink-0 g-return-warning-icon" />
               <span>
                 Inventory will be restored for <strong>{selectedItems.length}</strong>{" "}
-                product(s) for <strong>{formatCurrency(returnTotal)}</strong>.
+                product(s). The exact refund is calculated by the server from the original sale and payment ledger.
               </span>
             </div>
           )}
@@ -184,12 +244,12 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
           <button
             type="button"
             className="g-btn g-btn-primary w-full g-btn-touch"
-            disabled={selectedItems.length === 0 || processReturn.isPending}
+            disabled={selectedItems.length === 0 || !hasRequiredSession || processReturn.isPending}
             onClick={() => processReturn.mutate()}
           >
             {processReturn.isPending
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> Procesando…</>
-              : `Process return · ${formatCurrency(returnTotal)}`}
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</>
+              : "Process return"}
           </button>
         </div>
       </DialogContent>
