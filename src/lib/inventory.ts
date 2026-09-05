@@ -9,6 +9,12 @@ export type InventoryBatchMovement = {
   effectKey: string;
 };
 
+export type InventoryLevelTarget = {
+  productId: string;
+  targetQuantity: number;
+  effectKey: string;
+};
+
 export function createInventoryMutationId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
@@ -30,6 +36,30 @@ export async function recordInventoryBatchV2(args: {
       movement_type: movement.type,
       quantity: movement.quantity,
       effect_key: movement.effectKey,
+    })),
+    _client_mutation_id: args.clientMutationId,
+    _reason: args.reason ?? null,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function reconcileInventoryLevelsV2(args: {
+  tenantId: string;
+  branchId: string;
+  inventoryCenterId: string;
+  targets: InventoryLevelTarget[];
+  clientMutationId: string;
+  reason?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("reconcile_inventory_levels_v2" as any, {
+    _tenant_id: args.tenantId,
+    _branch_id: args.branchId,
+    _inventory_center_id: args.inventoryCenterId,
+    _targets: args.targets.map((target) => ({
+      product_id: target.productId,
+      target_quantity: target.targetQuantity,
+      effect_key: target.effectKey,
     })),
     _client_mutation_id: args.clientMutationId,
     _reason: args.reason ?? null,
