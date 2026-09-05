@@ -28,6 +28,7 @@ type Sale = {
   total_fils?: number;
   tip_amount_fils?: number;
   status?: string;
+  customer_id?: string | null;
   created_at: string;
   channel?: string;
   sale_items: SaleItem[];
@@ -131,8 +132,11 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
     Number(item.quantity) - (returnLedger.data?.returnedQuantityBySaleItem[item.id] ?? 0),
   ));
 
+  const hasUnsupportedCustomerLedger = !!sale?.customer_id;
+
   const toggle = (item: SaleItem) => {
     resetAttempt();
+    if (hasUnsupportedCustomerLedger) return;
     const available = remainingQuantity(item);
     if (available <= 0) return;
 
@@ -176,6 +180,9 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
   const processReturn = useMutation({
     mutationFn: async () => {
       if (!sale || !tenantId || !branchId || selectedItems.length === 0) return;
+      if (hasUnsupportedCustomerLedger) {
+        throw new Error("Customer-linked returns require exact loyalty reversal evidence before they can be processed.");
+      }
       if (!ledgerReady) throw new Error("Return history is still loading. Try again after it is verified.");
       if (returnLedger.error) throw new Error("Return history could not be verified. The return was not submitted.");
       if (isInPersonSale && !openSession?.id) {
@@ -265,6 +272,13 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
             </span>
           </div>
 
+          {hasUnsupportedCustomerLedger && (
+            <div className="flex items-center gap-2 p-3 rounded-xl text-sm g-return-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0 g-return-warning-icon" />
+              <span>Customer-linked returns require exact loyalty reversal evidence before they can be processed.</span>
+            </div>
+          )}
+
           {returnLedger.isError && (
             <div className="flex items-center gap-2 p-3 rounded-xl text-sm g-return-warning">
               <AlertTriangle className="h-4 w-4 shrink-0 g-return-warning-icon" />
@@ -283,7 +297,11 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
                 >
                   <Checkbox
                     checked={selected}
-                    disabled={available <= 0 || (requiresLoadedLedger && !returnLedger.isSuccess)}
+                    disabled={
+                      hasUnsupportedCustomerLedger
+                      || available <= 0
+                      || (requiresLoadedLedger && !returnLedger.isSuccess)
+                    }
                     onCheckedChange={() => toggle(item)}
                   />
                   <div className="flex-1 min-w-0">
@@ -384,7 +402,8 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
             type="button"
             className="g-btn g-btn-primary w-full g-btn-touch"
             disabled={
-              selectedItems.length === 0
+              hasUnsupportedCustomerLedger
+              || selectedItems.length === 0
               || !hasRequiredSession
               || !ledgerReady
               || returnLedger.isError
