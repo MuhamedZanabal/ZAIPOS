@@ -37,6 +37,23 @@ function scalar(database, statement) {
   return psql(database, ["-At", "-c", statement], { capture: true }).trim();
 }
 
+function annotationEscape(value) {
+  return String(value)
+    .replaceAll("%", "%25")
+    .replaceAll("\r", "%0D")
+    .replaceAll("\n", "%0A");
+}
+
+function commandErrorDetails(error) {
+  const stderr = typeof error?.stderr === "string" ? error.stderr : error?.stderr?.toString?.() ?? "";
+  const stdout = typeof error?.stdout === "string" ? error.stdout : error?.stdout?.toString?.() ?? "";
+  const details = [stderr, stdout, error?.message ?? ""]
+    .flatMap((value) => value.split(/\r?\n/))
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return details.slice(-10).join(" | ") || "psql exited non-zero";
+}
+
 function createClusterRoles() {
   sql("postgres", `
     DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -103,7 +120,16 @@ function recreateDatabase(name) {
 function apply(database, filenames) {
   for (const name of filenames) {
     process.stdout.write(`[migration:${database}] ${name}\n`);
-    psql(database, ["-f", path.join(migrationsDir, name)]);
+    try {
+      psql(database, ["-f", path.join(migrationsDir, name)], { capture: true });
+    } catch (error) {
+      const detail = commandErrorDetails(error);
+      const title = annotationEscape(`Migration chain ${database}`);
+      const message = annotationEscape(`${name}: ${detail}`);
+      process.stderr.write(`::error title=${title}::${message}\n`);
+      process.stderr.write(`[migration-failure:${database}] ${name}: ${detail}\n`);
+      throw error;
+    }
   }
 }
 
