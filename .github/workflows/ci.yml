@@ -39,6 +39,9 @@ jobs:
       - name: Test checkout operation RLS
         run: npm run test:migrations:checkout-rls
 
+      - name: Test return/refund lifecycle
+        run: npm run test:migrations:returns
+
       - name: Lint
         run: npm run lint
 
