@@ -41,7 +41,12 @@ async function expectReject(label, sql, expectedMessage) {
 
 function checkoutSql({
   operationId,
-  payments = [{ method: "cash", amount_fils: 500 }, { method: "qr", amount_fils: 628 }],
+  payments = [
+    { method: "cash", amount_fils: 500 },
+    { method: "card", amount_fils: 300 },
+    { method: "qr", amount_fils: 250 },
+    { method: "transfer", amount_fils: 78 },
+  ],
   customerId = null,
   sessionId = IDS.sessionA,
   quantity = "1.000",
@@ -434,11 +439,44 @@ try {
   }
 
   const payment = await db.query(`
-    SELECT count(*)::int AS count, sum(amount_fils)::bigint AS total_fils
+    SELECT
+      count(*)::int AS count,
+      sum(amount_fils)::bigint AS total_fils,
+      sum(amount_fils) FILTER (WHERE method = 'cash')::bigint AS cash_fils,
+      sum(amount_fils) FILTER (WHERE method = 'card')::bigint AS card_fils,
+      sum(amount_fils) FILTER (WHERE method = 'qr')::bigint AS qr_fils,
+      sum(amount_fils) FILTER (WHERE method = 'transfer')::bigint AS transfer_fils
     FROM public.payments WHERE sale_id = '${saleId}'
   `);
-  if (payment.rows[0].count !== 2 || payment.rows[0].total_fils !== 1_128) {
+  if (
+    payment.rows[0].count !== 4
+    || payment.rows[0].total_fils !== 1_128
+    || payment.rows[0].cash_fils !== 500
+    || payment.rows[0].card_fils !== 300
+    || payment.rows[0].qr_fils !== 250
+    || payment.rows[0].transfer_fils !== 78
+  ) {
     throw new Error(`Split allocations were not persisted exactly: ${JSON.stringify(payment.rows[0])}`);
+  }
+
+  const tillBuckets = await db.query(`
+    SELECT total_cash, total_cash_fils,
+           total_card, total_card_fils,
+           total_qr, total_qr_fils,
+           total_transfer, total_transfer_fils
+    FROM public.cash_sessions WHERE id = '${IDS.sessionA}'
+  `);
+  if (
+    tillBuckets.rows[0].total_cash !== "0.500"
+    || tillBuckets.rows[0].total_cash_fils !== 500
+    || tillBuckets.rows[0].total_card !== "0.300"
+    || tillBuckets.rows[0].total_card_fils !== 300
+    || tillBuckets.rows[0].total_qr !== "0.250"
+    || tillBuckets.rows[0].total_qr_fils !== 250
+    || tillBuckets.rows[0].total_transfer !== "0.078"
+    || tillBuckets.rows[0].total_transfer_fils !== 78
+  ) {
+    throw new Error(`Split allocations contaminated cash-session buckets: ${JSON.stringify(tillBuckets.rows[0])}`);
   }
 
   const stock = await db.query(`
@@ -463,8 +501,21 @@ try {
       (SELECT count(*)::int FROM public.payments WHERE sale_id = '${saleId}') AS payments,
       (SELECT count(*)::int FROM public.inventory_movements WHERE reference_id = '${saleId}') AS movements
   `);
-  if (replayCounts.rows[0].sales !== 1 || replayCounts.rows[0].payments !== 2 || replayCounts.rows[0].movements !== 1) {
+  if (replayCounts.rows[0].sales !== 1 || replayCounts.rows[0].payments !== 4 || replayCounts.rows[0].movements !== 1) {
     throw new Error(`Replay duplicated financial effects: ${JSON.stringify(replayCounts.rows[0])}`);
+  }
+
+  const replayTillBuckets = await db.query(`
+    SELECT total_cash_fils, total_card_fils, total_qr_fils, total_transfer_fils
+    FROM public.cash_sessions WHERE id = '${IDS.sessionA}'
+  `);
+  if (
+    replayTillBuckets.rows[0].total_cash_fils !== 500
+    || replayTillBuckets.rows[0].total_card_fils !== 300
+    || replayTillBuckets.rows[0].total_qr_fils !== 250
+    || replayTillBuckets.rows[0].total_transfer_fils !== 78
+  ) {
+    throw new Error(`Idempotent replay duplicated till buckets: ${JSON.stringify(replayTillBuckets.rows[0])}`);
   }
 
   await expectReject(
@@ -555,6 +606,19 @@ try {
     throw new Error(`Compatibility replay duplicated effects: ${JSON.stringify(compatCounts.rows[0])}`);
   }
 
+  const finalTillBuckets = await db.query(`
+    SELECT total_cash_fils, total_card_fils, total_qr_fils, total_transfer_fils
+    FROM public.cash_sessions WHERE id = '${IDS.sessionA}'
+  `);
+  if (
+    finalTillBuckets.rows[0].total_cash_fils !== 1_628
+    || finalTillBuckets.rows[0].total_card_fils !== 300
+    || finalTillBuckets.rows[0].total_qr_fils !== 250
+    || finalTillBuckets.rows[0].total_transfer_fils !== 78
+  ) {
+    throw new Error(`Compatibility checkout or replay corrupted till buckets: ${JSON.stringify(finalTillBuckets.rows[0])}`);
+  }
+
   await expectReject(
     "compatibility one-fils payment mismatch",
     legacyCheckoutSql({ operationId: "checkout-compat-0002", paymentAmount: "1.127" }),
@@ -571,7 +635,7 @@ try {
     "Multiple open cash sessions exist for this branch",
   );
 
-  console.log("PASS: checkout v2 and installed-client compatibility adapter enforce exact fils, authoritative pricing, tenant/session scope, and exactly-once effects.");
+  console.log("PASS: checkout v2 enforces exact mixed-payment persistence and till buckets, authoritative pricing, tenant/session scope, and exactly-once effects.");
 } finally {
   await db.close();
 }

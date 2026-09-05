@@ -1,6 +1,6 @@
 import type { CartLine } from "@/stores/cart";
 import type { SalesChannel } from "@/lib/channels";
-import type { PayMethod } from "./PaymentDialog";
+import type { PayMethod } from "./paymentAllocations";
 import {
   addMoney,
   assertPaymentsReconcileFils,

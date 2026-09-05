@@ -12,7 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CategoryBar } from "./CategoryBar";
 import { ProductGrid } from "./ProductGrid";
 import { TicketPanel } from "./TicketPanel";
-import { PaymentDialog, type PayMethod } from "./PaymentDialog";
+import { PaymentDialog } from "./PaymentDialog";
+import type { PaymentAllocation } from "./paymentAllocations";
+import {
+  POS_CHECKOUT_QUEUE_TYPE,
+  POS_CHECKOUT_RPC,
+  buildPosCheckoutCommand,
+} from "./posCheckout";
 import { useOfflineMutation } from "@/hooks/useOfflineMutation";
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
@@ -343,45 +349,37 @@ export default function POS() {
   const canCharge = isPos ? !!openSession : true;
 
   const checkoutMutation = useOfflineMutation({
-    type: 'CHECKOUT_SALE',
+    type: POS_CHECKOUT_QUEUE_TYPE,
     mutationFn: async (payload: any) => {
-      const { data, error } = await supabase.rpc("checkout_sale", payload);
+      const { data, error } = await supabase.rpc(POS_CHECKOUT_RPC, payload);
       if (error) throw error;
       return data as string;
     }
   });
 
-  const finalize = async (method: PayMethod, _tendered: number, tipAmount: number, couponCode?: string, discountAmount = 0) => {
+  const finalize = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {
     if (!tenantId || !branchId) return;
     if (lines.length === 0) return toast.error("Add products to the ticket");
     if (isPos && !openSession) return toast.error("You must open the register before making in-person sales");
 
     setSubmitting(true);
     try {
-      const items = lines.map((l) => ({
-        product_id: l.product.id,
-        quantity: l.quantity,
-        unit_price: Number(l.product.price),
-        tax_rate: Number(l.product.tax_rate),
-        discount: l.discount || 0,
-        modifiers: l.product._modifiers ?? [],
-      }));
-      const payableTotal = Math.max(0, totalNum - discountAmount + tipAmount);
-      const payments = [{ method, amount: payableTotal, reference: null as string | null }];
-      
-      const saleId = await checkoutMutation.mutateAsync({
-        _tenant_id: tenantId,
-        _branch_id: branchId,
-        _items: items,
-        _payments: payments,
-        _discount_total: discountAmount,
-        _notes: null,
-        _customer_id: customerId,
-        _channel: channel,
-        _tip_amount: tipAmount,
-        _coupon_code: couponCode ?? null,
-        _client_mutation_id: crypto.randomUUID(),
+      const command = buildPosCheckoutCommand({
+        tenantId,
+        branchId,
+        cashSessionId: openSession?.id ?? null,
+        customerId,
+        channel,
+        lines,
+        allocations,
+        discountAmountBhd: discountAmount,
+        tipAmountBhd: tipAmount,
+        couponCode: couponCode ?? null,
+        clientMutationId: crypto.randomUUID(),
       });
+      const payableTotal = command.receiptPayments.reduce((sum, payment) => sum + payment.amount, 0);
+
+      const saleId = await checkoutMutation.mutateAsync(command.payload);
 
       const queuedOffline = !saleId || typeof saleId !== "string";
       toast.success(
@@ -413,11 +411,11 @@ export default function POS() {
             taxTotal: Number(sale?.tax_total ?? 0),
             tipAmount: Number(sale?.tip_amount ?? tipAmount),
             total: Number(sale?.total ?? payableTotal),
-            payments: payments.map((payment) => ({ method: payment.method, amount: payment.amount })),
+            payments: command.receiptPayments,
             notes: receiptConfig.footer_text || undefined,
             date: new Date().toISOString(),
           });
-          if (method === "cash") await openDrawer();
+          if (command.hasCashPayment) await openDrawer();
         } catch (hwErr: any) {
           // La sale ya quedó registrada en BD; un fallo del hardware no debe
           // bloquear el cierre del ticket ni provocar que el cajero cobre dos veces.

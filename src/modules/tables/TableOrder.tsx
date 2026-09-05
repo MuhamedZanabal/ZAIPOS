@@ -12,7 +12,11 @@ import { ArrowLeft, Search, Plus, Minus, Trash2, Send, CreditCard, ChefHat, Bell
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOfflineMutation } from "@/hooks/useOfflineMutation";
-import { PaymentDialog, type PayMethod } from "@/modules/pos/PaymentDialog";
+import { PaymentDialog } from "@/modules/pos/PaymentDialog";
+import {
+  paymentAllocationsToBhdRows,
+  type PaymentAllocation,
+} from "@/modules/pos/paymentAllocations";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -316,8 +320,7 @@ export default function TableOrder() {
   });
 
   const charge = async (
-    method: PayMethod,
-    _tendered: number,
+    allocations: PaymentAllocation[],
     tipAmount: number,
     couponCode?: string,
     discountAmount = 0,
@@ -329,7 +332,7 @@ export default function TableOrder() {
       const payableTotal = Math.max(0, baseTotal - discountAmount + tipAmount);
       await checkoutTableMutation.mutateAsync({
         _order_id: orderId,
-        _payments: [{ method, amount: payableTotal, reference: null }] as any,
+        _payments: paymentAllocationsToBhdRows(allocations) as any,
         _tip_amount: tipAmount,
         _discount_total: discountAmount,
         _coupon_code: couponCode ?? null,

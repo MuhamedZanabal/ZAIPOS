@@ -4,7 +4,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import { CreditCard, Eye, Users, Clock, UtensilsCrossed } from "lucide-react";
-import { PaymentDialog, type PayMethod } from "@/modules/pos/PaymentDialog";
+import { PaymentDialog } from "@/modules/pos/PaymentDialog";
+import {
+  paymentAllocationsToBhdRows,
+  type PaymentAllocation,
+} from "@/modules/pos/paymentAllocations";
 import { toast } from "sonner";
 
 interface Props {
@@ -58,14 +62,14 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
     return () => { supabase.removeChannel(ch); };
   }, [branchId, qc]);
 
-  const charge = async (method: PayMethod, _tendered: number, tipAmount: number, couponCode?: string, discountAmount = 0) => {
+  const charge = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {
     if (!payOrder) return;
     setSubmitting(true);
     try {
       const payableTotal = Math.max(0, Number(payOrder.total) - discountAmount + tipAmount);
       const { error } = await supabase.rpc("checkout_table_order", {
         _order_id: payOrder.id,
-        _payments: [{ method, amount: payableTotal, reference: null }] as any,
+        _payments: paymentAllocationsToBhdRows(allocations) as any,
         _tip_amount: tipAmount,
         _discount_total: discountAmount,
         _coupon_code: couponCode ?? null,
