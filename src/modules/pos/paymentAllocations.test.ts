@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addPaymentAllocation,
+  paymentAllocationsToBhdRows,
   remainingPaymentFils,
   type PaymentAllocation,
 } from "./paymentAllocations";
@@ -70,5 +71,17 @@ describe("split payment allocations", () => {
     ];
 
     expect(() => remainingPaymentFils(1_000, invalid)).toThrow(/exceed the payable total by 1 fils/i);
+  });
+
+  it("converts shared table checkout allocations to exact three-decimal BHD rows", () => {
+    const allocations: PaymentAllocation[] = [
+      { method: "qr", amountFils: 25, tenderedFils: 25, changeFils: 0, reference: "BP-25" },
+      { method: "cash", amountFils: 1_003, tenderedFils: 2_000, changeFils: 997, reference: null },
+    ];
+
+    expect(paymentAllocationsToBhdRows(allocations)).toEqual([
+      { method: "qr", amount: "0.025", reference: "BP-25" },
+      { method: "cash", amount: "1.003", reference: null },
+    ]);
   });
 });

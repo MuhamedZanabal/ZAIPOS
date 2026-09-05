@@ -1,4 +1,4 @@
-import { addMoney, subtractMoney } from "@/lib/bahrain";
+import { addMoney, filsToBhd, subtractMoney } from "@/lib/bahrain";
 
 export type PayMethod = "cash" | "card" | "transfer" | "qr";
 
@@ -18,6 +18,26 @@ export interface AddPaymentAllocationResult {
   allocations: PaymentAllocation[];
   remainingFils: number;
   changeFils: number;
+}
+
+export interface PaymentAllocationBhdRow {
+  method: PayMethod;
+  amount: string;
+  reference: string | null;
+}
+
+/**
+ * Compatibility shape for checkout_table_order, whose public RPC still accepts
+ * decimal BHD JSON and delegates into the exact-fils checkout core.
+ */
+export function paymentAllocationsToBhdRows(
+  allocations: ReadonlyArray<PaymentAllocation>,
+): PaymentAllocationBhdRow[] {
+  return allocations.map((allocation) => ({
+    method: allocation.method,
+    amount: filsToBhd(assertPositive(allocation.amountFils, "Payment allocation (fils)")),
+    reference: allocation.reference,
+  }));
 }
 
 function assertSafeInteger(value: number, label: string): number {
