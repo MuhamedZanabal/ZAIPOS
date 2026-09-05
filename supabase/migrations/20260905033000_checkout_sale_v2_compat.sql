@@ -68,8 +68,8 @@ BEGIN
   WHERE id = _tenant_id;
 
   IF _channel IN ('pos','tables') THEN
-    SELECT count(*)::integer, min(id)
-    INTO _open_session_count, _cash_session_id
+    SELECT count(*)::integer
+    INTO _open_session_count
     FROM public.cash_sessions
     WHERE tenant_id = _tenant_id
       AND branch_id = _branch_id
@@ -82,6 +82,14 @@ BEGIN
       END IF;
     ELSIF _open_session_count > 1 THEN
       RAISE EXCEPTION 'Multiple open cash sessions exist for this branch; resolve the register state before checkout';
+    ELSE
+      SELECT id
+      INTO _cash_session_id
+      FROM public.cash_sessions
+      WHERE tenant_id = _tenant_id
+        AND branch_id = _branch_id
+        AND status = 'open'
+      LIMIT 1;
     END IF;
   ELSE
     _cash_session_id := NULL;
