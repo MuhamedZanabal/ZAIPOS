@@ -1,7 +1,7 @@
 # P0 transaction map
 
 Historical baseline originally inspected: `main` at `171d7d04a1627dead99c5d06a05f42dde69fb24a`.
-Current production baseline before P0.6: `main` at `3ca52663c98e1f5bad03861249cd0edd9f62e1f3`.
+Current production baseline after P0.6 implementation: `main` at `76ce641a847afa8fb94bad54b050fdcbde1aa682`.
 
 ## Baseline end-to-end path
 
@@ -15,24 +15,24 @@ Current production baseline before P0.6: `main` at `3ca52663c98e1f5bad03861249cd
 | Checkout server | `checkout_sale_v2` | One database transaction creates sale/items/payments, changes stock/session totals, operation evidence and audit | Server resolves current price/tax and requires exact payment equality. True simultaneous multi-connection stock-contention coverage remains open. |
 | Sale rows | `sales`, `sale_items`, `payments` | Historical sale snapshot plus allocations | Core checkout money has fils sidecars/parity and v2 commands use exact fils; wider application/server money cutover remains incomplete. |
 | Inventory | checkout/return/void commands → `apply_inventory_movement` | `inventory_stocks` plus append-only `inventory_movements` | Checkout/return/void effects are operation-keyed; a universal exactly-once invariant across every inventory mutation class remains open. |
-| Cash session | checkout, return and void update per-method buckets; `close_cash_session` reconciles exact sidecars | `cash_sessions` | P0.6 branch close path is fils-authoritative and rejects sub-fils counted input; production merge/post-merge proof remains pending. |
+| Cash session | checkout, return and void update per-method buckets; `close_cash_session` reconciles exact sidecars | `cash_sessions` | P0.6 close path is production-verified and fils-authoritative; wider cash-operation hardening remains part of later global mutation review. |
 | Receipt | committed sale fetched in `POS.tsx` → `useHardware` → Electron printer | Printed receipt | Split allocations are printed; historical reprint fidelity/audit remains a later gap. |
 | Offline replay | `useOfflineMutation.ts` → Dexie `sync_queue` → `useSyncEngine.ts` | Durable six-state queue and committed result evidence | Checkout replay/state matrix is implemented; other mutation families are not all offline-enabled. |
 
 ## P0 transaction invariants and evidence
 
-| Invariant | Current evidence | State before P0.6 production merge |
+| Invariant | Current evidence | State after P0.6 implementation merge |
 | --- | --- | --- |
-| Payment allocations equal committed sale total | `checkout_sale_v2` exact integer-fils equality | Verified for checkout |
+| Payment allocations equal committed sale total | `checkout_sale_v2` exact integer-fils equality | Verified |
 | Transaction money uses exact fils | Shared TypeScript kernel, Stage A/B parity, fils-native checkout/return/void/close calculations | Verified for transaction core; wider money surfaces remain |
 | Sale changes inventory once | Checkout operation idempotency and transaction tests | Verified for checkout path; universal inventory mutation gate remains |
-| Refund cannot exceed remainder | `process_sale_return_v2` cumulative item quantity and exact merchandise-value ceilings | Branch verified in PR #12 |
-| Return/void payment compensation is exact | Relational `payment_refunds`/`payment_voids` with original-allocation fils | Branch verified in PR #12 |
-| Return/void cannot duplicate stock/till effects | Stable operation IDs, sale row locking, unique effect keys and regression harnesses | Branch verified in PR #12 |
-| Tenant/branch compensation evidence is isolated | Branch-role RLS plus SELECT-only authenticated grants on return/void ledgers | Branch verified in PR #12 |
-| Customer loyalty is never guessed during compensation | Customer-linked return/void fails closed until exact immutable loyalty award evidence exists | Branch verified in PR #12 |
-| Composite reversal does not use mutable current recipes | Composite return/void fails closed without historical component snapshots | Branch verified in PR #12 |
-| Register closing reconciles to the fils | `close_cash_session` computes from exact sidecars, rejects >3-decimal counts and audits expected/count/difference fils | Branch verified in PR #12 |
+| Refund cannot exceed remainder | `process_sale_return_v2` cumulative item quantity and exact merchandise-value ceilings | Production verified |
+| Return/void payment compensation is exact | Relational `payment_refunds`/`payment_voids` with original-allocation fils | Production verified |
+| Return/void cannot duplicate stock/till effects | Stable operation IDs, sale row locking, unique effect keys and regression harnesses | Production verified |
+| Tenant/branch compensation evidence is isolated | Branch-role RLS plus SELECT-only authenticated grants on return/void ledgers | Production verified |
+| Customer loyalty is never guessed during compensation | Customer-linked return/void fails closed until exact immutable loyalty award evidence exists | Production verified fail-closed boundary |
+| Composite reversal does not use mutable current recipes | Composite return/void fails closed without historical component snapshots | Production verified fail-closed boundary |
+| Register closing reconciles to the fils | `close_cash_session` computes from exact sidecars, rejects >3-decimal counts and audits expected/count/difference fils | Production verified |
 | Sensitive mutations are fully audited | Checkout, return, void and cash close emit audit evidence | Partial globally; complete mutation-family audit contract remains open |
 
 ## Production state after P0.4
@@ -44,12 +44,12 @@ Verified on `main` at `fe512eca9b3e62597761696fdbbbbb6777e35373` with post-merge
 | Payment UI | `PaymentDialog.tsx` → `PaymentAllocation[]` | Cash, Card, BenefitPay and Bank Transfer can be combined with exact Allocated/Remaining fils; cash over-tender shows change. | Payment references are not yet captured by the cashier UI. |
 | Checkout client | `POS.tsx` → `buildPosCheckoutCommand` → `useOfflineMutation(CHECKOUT_SALE_V2)` | Sends product/quantity/modifier IDs, exact discount/tip/payment fils, cash-session ID and UUID operation ID; sends no unit price or tax authority. | Wider mutation families are not all on the same durable offline lifecycle. |
 | Checkout server | `checkout_sale_v2` | Server resolves product price and tax, validates tenant/branch/session/payment equality, and atomically persists sale, payments, stock, till totals, operation and audit. | Full concurrent multi-connection stock-conflict coverage remains open. |
-| Payment persistence | `payments` and `cash_sessions` | One row per allocation; only the matching cash/card/qr/transfer till bucket changes; replay does not duplicate rows or bucket totals. | P0.6 compensation remains branch-verified until merged. |
+| Payment persistence | `payments` and `cash_sessions` | One row per allocation; only the matching cash/card/qr/transfer till bucket changes; replay does not duplicate rows or bucket totals. | None within P0.4; compensation is covered by P0.6. |
 | Receipt/hardware | committed sale lookup → `printTicket` / `openDrawer` | Receipt lists every allocation; any cash allocation requests the drawer; hardware runs after commit. | Historical reprint fidelity and reprint audit remain open. |
 
-## P0.6 branch transaction path — pending production merge
+## Production state after P0.6
 
-PR #12 (`feat/transaction-lifecycle`) extends the transaction graph with compensating operations rather than destructive edits:
+Implementation PR #12 (`feat/transaction-lifecycle`) was squash-merged as `76ce641a847afa8fb94bad54b050fdcbde1aa682`. Post-merge `main` CI 163 passed the full transaction/RLS/cash/lint/Vitest/build gate.
 
 1. **Return/refund** — `Sales.tsx` → `ReturnDialog.tsx` → `process_sale_return_v2`.
    - Manager/owner/admin authorization and branch/session validation are server-side.
@@ -73,4 +73,4 @@ PR #12 (`feat/transaction-lifecycle`) extends the transaction graph with compens
 
 4. **Cash close** — the existing `close_cash_session` RPC signature is preserved, but reconciliation is performed from exact integer-fils sidecars. Counted values with more than three decimal places or negative counts are rejected. Audit metadata records exact expected cash, expected total, counted total and difference in fils.
 
-Branch evidence includes RED/GREEN cycles through CI 160. Production completion requires final documentation-head CI, merge of PR #12, exact merge-SHA `main` CI, and the evidence burn-down update.
+Verification chain: return/refund RED 127 → GREEN 129; return UI through 137; void RED 140 → GREEN 141; void UI through 144; loyalty-safety RED 147/149 → GREEN 150; access hardening RED 156 → GREEN 157; cash close RED 159 → GREEN 160; final reviewed branch CI 162; implementation merge `76ce641a847afa8fb94bad54b050fdcbde1aa682`; post-merge `main` CI 163.
