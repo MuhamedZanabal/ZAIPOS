@@ -28,6 +28,7 @@ requireText("helper", 'record_inventory_batch_v2', "record_inventory_batch_v2 he
 requireText("helper", 'transfer_inventory_v2', "transfer_inventory_v2 helper");
 requireText("helper", 'receive_purchase_order_v2', "receive_purchase_order_v2 helper");
 requireText("helper", 'complete_production_order_v2', "complete_production_order_v2 helper");
+requireText("helper", 'reconcile_inventory_levels_v2', "reconcile_inventory_levels_v2 helper");
 forbidText("helper", '"apply_inventory_movement"', "direct low-level inventory RPC");
 
 requireText("inventory", "recordInventoryBatchV2", "v2 manual movement call");
@@ -48,7 +49,7 @@ forbidText("suppliers", 'rpc("apply_inventory_movement"', "client-side purchase 
 requireText("production", "completeProductionOrderV2", "v2 production completion call");
 forbidText("production", 'rpc("complete_production_order"', "legacy production RPC");
 
-requireText("dataManagement", "recordInventoryBatchV2", "atomic data-management inventory import");
+requireText("dataManagement", "reconcileInventoryLevelsV2", "server-authoritative data-management physical reconciliation");
 forbidText("dataManagement", "applyInventoryMovement", "legacy data-management movement helper");
 
 const allClientSource = Object.values(source).join("\n");
