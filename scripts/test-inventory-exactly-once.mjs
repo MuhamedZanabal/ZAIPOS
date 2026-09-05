@@ -169,7 +169,7 @@ try {
     DECLARE _signed numeric; _movement_id uuid; BEGIN
       IF COALESCE(_quantity, 0) <= 0 THEN RAISE EXCEPTION 'Invalid quantity'; END IF;
       _signed := CASE
-        WHEN _movement_type IN ('purchase','production','return') THEN _quantity
+        WHEN _movement_type IN ('purchase','production','return','adjustment') THEN _quantity
         ELSE -_quantity
       END;
       INSERT INTO public.inventory_stocks (tenant_id, branch_id, inventory_center_id, product_id, quantity)
