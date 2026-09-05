@@ -167,7 +167,7 @@ function verifyFinalShape(database) {
   const required = [
     "public.checkout_sale_v2(uuid,uuid,jsonb,jsonb,bigint,text,uuid,public.sales_channel,bigint,text,text,uuid)",
     "public.process_sale_return_v2(uuid,jsonb,text,text,uuid,text,text)",
-    "public.process_sale_void_v2(uuid,text,text,uuid,text)",
+    "public.process_sale_void_v2(uuid,text,uuid,text)",
     "public.record_inventory_batch_v2(uuid,uuid,uuid,jsonb,text,text)",
     "public.reconcile_inventory_levels_v2(uuid,uuid,uuid,jsonb,text,text)",
   ];
