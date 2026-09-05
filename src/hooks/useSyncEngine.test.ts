@@ -4,7 +4,6 @@ import { useSyncEngine } from "./useSyncEngine";
 import { db } from "@/lib/db";
 import { useNetworkStore } from "@/stores/network";
 
-// Mock supabase client
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: vi.fn().mockResolvedValue({ data: "sale-id", error: null }),
@@ -16,13 +15,12 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-// Mock Dexie DB
 let mockDbStore: any[] = [];
 vi.mock("@/lib/db", () => ({
   db: {
     sync_queue: {
       clear: vi.fn().mockImplementation(async () => { mockDbStore = []; }),
-      add: vi.fn().mockImplementation(async (item) => { 
+      add: vi.fn().mockImplementation(async (item) => {
         const id = Math.random();
         mockDbStore.push({ ...item, id });
         return id;
@@ -54,6 +52,8 @@ describe("useSyncEngine", () => {
   beforeEach(async () => {
     await db.sync_queue.clear();
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0 });
+    const { supabase } = await import("@/integrations/supabase/client");
+    (supabase.rpc as any).mockReset().mockResolvedValue({ data: "sale-id", error: null });
   });
 
   it("exposes processSyncQueue, getQueueItems and discardItem", () => {
@@ -99,38 +99,66 @@ describe("useSyncEngine", () => {
     expect(mockDbStore).toHaveLength(0);
   });
 
-  it("processSyncQueue procesa CHECKOUT_SALE y elimina item exitoso", async () => {
+  it("preserves legacy CHECKOUT_SALE replay routing", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
-    (supabase.rpc as any).mockResolvedValueOnce({ data: "new-sale-id", error: null });
+    const payload = {
+      _tenant_id: "t1",
+      _branch_id: "b1",
+      _items: [],
+      _payments: [],
+    };
 
     await db.sync_queue.add({
       type: "CHECKOUT_SALE",
-      payload: {
-        _tenant_id: "t1",
-        _branch_id: "b1",
-        _items: [],
-        _payments: [],
-      },
+      payload,
       status: "pending",
       createdAt: new Date().toISOString(),
       retryCount: 0,
-      clientMutationId: "test-mutation-1",
+      clientMutationId: "legacy-mutation-1",
     });
 
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await result.current.processSyncQueue();
 
-    await waitFor(() => {
-      expect(mockDbStore).toHaveLength(0);
-    });
+    expect(supabase.rpc).toHaveBeenCalledWith("checkout_sale", payload);
+    expect(mockDbStore).toHaveLength(0);
   });
 
-  it("incrementa retryCount y mantiene pending antes de alcanzar el máximo", async () => {
+  it("replays CHECKOUT_SALE_V2 through checkout_sale_v2 without rewriting its payload", async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const payload = {
+      _tenant_id: "t1",
+      _branch_id: "b1",
+      _items: [{ product_id: "p1", quantity: 1, discount_fils: 0, modifiers: [] }],
+      _payments: [{ method: "cash", amount_fils: 1128, reference: null }],
+      _discount_total_fils: 0,
+      _tip_amount_fils: 0,
+      _cash_session_id: "s1",
+      _client_mutation_id: "v2-mutation-1",
+    };
+
+    await db.sync_queue.add({
+      type: "CHECKOUT_SALE_V2",
+      payload,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      retryCount: 0,
+      clientMutationId: "v2-mutation-1",
+    });
+
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await result.current.processSyncQueue();
+
+    expect(supabase.rpc).toHaveBeenCalledWith("checkout_sale_v2", payload);
+    expect(mockDbStore).toHaveLength(0);
+  });
+
+  it("increments retryCount and keeps pending before reaching the maximum", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any).mockResolvedValueOnce({ data: null, error: { message: "RPC failed" } });
 
     const id = await db.sync_queue.add({
-      type: "CHECKOUT_SALE",
+      type: "CHECKOUT_SALE_V2",
       payload: { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] },
       status: "pending",
       createdAt: new Date().toISOString(),
@@ -147,12 +175,12 @@ describe("useSyncEngine", () => {
     });
   });
 
-  it("marca failed cuando alcanza el máximo de reintentos", async () => {
+  it("marks failed when it reaches the retry maximum", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any).mockResolvedValueOnce({ data: null, error: { message: "RPC failed" } });
 
     const id = await db.sync_queue.add({
-      type: "CHECKOUT_SALE",
+      type: "CHECKOUT_SALE_V2",
       payload: { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] },
       status: "failed",
       createdAt: new Date().toISOString(),
@@ -179,7 +207,6 @@ describe("useSyncEngine", () => {
     });
 
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-    // Should not throw
     await expect(result.current.processSyncQueue()).resolves.not.toThrow();
   });
 });

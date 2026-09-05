@@ -3,7 +3,6 @@ import { useNetworkStore } from '@/stores/network';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-// Asegúrate de importar tu customer de supabase real
 import { supabase } from '@/integrations/supabase/client';
 
 export function useSyncEngine() {
@@ -41,7 +40,12 @@ export function useSyncEngine() {
             await db.sync_queue.update(item.id, { status: 'pending', updatedAt: new Date().toISOString() });
           }
 
-          if (item.type === 'CHECKOUT_SALE') {
+          if (item.type === 'CHECKOUT_SALE_V2') {
+            const { error } = await supabase.rpc("checkout_sale_v2", item.payload as any);
+            if (error) throw error;
+          } else if (item.type === 'CHECKOUT_SALE') {
+            // Legacy queue compatibility. New POS transactions use CHECKOUT_SALE_V2,
+            // but already-persisted legacy payloads must keep their original RPC shape.
             const { error } = await supabase.rpc("checkout_sale", item.payload);
             if (error) throw error;
           } else if (item.type === 'CHECKOUT_TABLE_ORDER') {
@@ -80,11 +84,9 @@ export function useSyncEngine() {
             if (error) throw error;
             if (!orderId) throw new Error("Could not create or update the table order");
           } else {
-            // Tipo desconocido: descartamos para no bloquear la cola
             logger.warn("sync_queue_unknown_mutation_type", { type: item.type, itemId: item.id });
           }
 
-          // Si es exitoso, borramos de la cola
           if (item.id) {
             await db.sync_queue.delete(item.id);
           }
@@ -126,7 +128,6 @@ export function useSyncEngine() {
     }
   }, [isOnline, updatePendingCount]);
 
-  // Network Event Listeners
   useEffect(() => {
     const handleOnline = () => {
       setOnline(true);
@@ -142,7 +143,6 @@ export function useSyncEngine() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial check
     updatePendingCount();
 
     return () => {
@@ -176,4 +176,3 @@ export function useSyncEngine() {
 
   return { processSyncQueue, getQueueItems, discardItem };
 }
-
