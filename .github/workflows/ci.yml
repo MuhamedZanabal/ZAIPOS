@@ -54,6 +54,9 @@ jobs:
       - name: Test cash-session reconciliation
         run: node scripts/test-cash-session-reconciliation.mjs
 
+      - name: Test inventory exactly-once lifecycle
+        run: npm run test:migrations:inventory-idempotency
+
       - name: Lint
         run: npm run lint
 
