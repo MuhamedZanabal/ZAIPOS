@@ -5,9 +5,10 @@ const paths = [
   new URL("../supabase/migrations/20260904221500_exact_money_stage_a.sql", import.meta.url),
   new URL("../supabase/migrations/20260905024000_exact_money_stage_b_precision.sql", import.meta.url),
   new URL("../supabase/migrations/20260905032000_atomic_checkout_v2.sql", import.meta.url),
+  new URL("../supabase/migrations/20260905033000_checkout_sale_v2_compat.sql", import.meta.url),
 ];
 
-const [stageA, stageB, checkoutV2] = await Promise.all(paths.map((path) => readFile(path, "utf8")));
+const [stageA, stageB, checkoutV2, checkoutCompat] = await Promise.all(paths.map((path) => readFile(path, "utf8")));
 const db = new PGlite();
 
 const IDS = {
@@ -70,6 +71,33 @@ function checkoutSql({
     NULL,
     '${operationId}',
     ${sessionId ? `'${sessionId}'::uuid` : "NULL::uuid"}
+  ) AS sale_id`;
+}
+
+function legacyCheckoutSql({ operationId, paymentAmount = "1.128" } = {}) {
+  const items = [{
+    product_id: IDS.productA,
+    quantity: "1.000",
+    // Current clients still send these fields. The adapter must discard them.
+    unit_price: "999.999",
+    tax_rate: "0.00",
+    discount: "0.000",
+    modifiers: [],
+  }];
+  const payments = [{ method: "cash", amount: paymentAmount, reference: null }];
+
+  return `SELECT public.checkout_sale(
+    '${IDS.tenantA}'::uuid,
+    '${IDS.branchA}'::uuid,
+    '${JSON.stringify(items)}'::jsonb,
+    '${JSON.stringify(payments)}'::jsonb,
+    0.000::numeric,
+    NULL,
+    NULL::uuid,
+    'pos'::public.sales_channel,
+    0.000::numeric,
+    NULL,
+    '${operationId}'
   ) AS sale_id`;
 }
 
@@ -347,6 +375,7 @@ try {
   await db.exec(stageA);
   await db.exec(stageB);
   await db.exec(checkoutV2);
+  await db.exec(checkoutCompat);
 
   await db.exec(`
     INSERT INTO auth.users(id) VALUES ('${IDS.cashier}'), ('${IDS.outsider}');
@@ -474,7 +503,75 @@ try {
     throw new Error(`Checkout audit event missing or duplicated: ${JSON.stringify(audit.rows[0])}`);
   }
 
-  console.log("PASS: checkout v2 enforces exact fils, authoritative pricing, tenant/session scope, and exactly-once effects.");
+  // Installed clients still use the legacy decimal checkout_sale signature.
+  // Execute that exact path after the compatibility migration and prove it is
+  // only an adapter into the same authoritative v2 transaction core.
+  await db.exec(`SELECT set_config('request.jwt.claim.sub', '${IDS.cashier}', false);`);
+  const compatFirst = await db.query(legacyCheckoutSql({ operationId: "checkout-compat-0001" }));
+  const compatSaleId = compatFirst.rows[0].sale_id;
+  if (!compatSaleId) throw new Error("Compatibility checkout did not return a sale ID");
+
+  const compatSale = await db.query(`
+    SELECT subtotal, subtotal_fils, tax_total, tax_total_fils, total, total_fils, session_id
+    FROM public.sales WHERE id = '${compatSaleId}'
+  `);
+  const compatRow = compatSale.rows[0];
+  if (
+    compatRow.subtotal !== "1.025"
+    || compatRow.subtotal_fils !== 1_025
+    || compatRow.tax_total_fils !== 103
+    || compatRow.total !== "1.128"
+    || compatRow.total_fils !== 1_128
+    || compatRow.session_id !== IDS.sessionA
+  ) {
+    throw new Error(`Compatibility adapter changed authoritative totals: ${JSON.stringify(compatRow)}`);
+  }
+
+  const compatItem = await db.query(`
+    SELECT unit_price, unit_price_fils, tax_rate, line_total_fils
+    FROM public.sale_items WHERE sale_id = '${compatSaleId}'
+  `);
+  if (
+    compatItem.rows[0].unit_price !== "1.025"
+    || compatItem.rows[0].unit_price_fils !== 1_025
+    || Number(compatItem.rows[0].tax_rate) !== 10
+    || compatItem.rows[0].line_total_fils !== 1_128
+  ) {
+    throw new Error(`Compatibility adapter trusted legacy client price/tax: ${JSON.stringify(compatItem.rows[0])}`);
+  }
+
+  const compatReplay = await db.query(legacyCheckoutSql({ operationId: "checkout-compat-0001" }));
+  if (compatReplay.rows[0].sale_id !== compatSaleId) {
+    throw new Error(`Compatibility replay returned a different sale: ${JSON.stringify(compatReplay.rows[0])}`);
+  }
+
+  const compatCounts = await db.query(`
+    SELECT
+      (SELECT count(*)::int FROM public.sales WHERE client_mutation_id = 'checkout-compat-0001') AS sales,
+      (SELECT count(*)::int FROM public.payments WHERE sale_id = '${compatSaleId}') AS payments,
+      (SELECT count(*)::int FROM public.inventory_movements WHERE reference_id = '${compatSaleId}') AS movements
+  `);
+  if (compatCounts.rows[0].sales !== 1 || compatCounts.rows[0].payments !== 1 || compatCounts.rows[0].movements !== 1) {
+    throw new Error(`Compatibility replay duplicated effects: ${JSON.stringify(compatCounts.rows[0])}`);
+  }
+
+  await expectReject(
+    "compatibility one-fils payment mismatch",
+    legacyCheckoutSql({ operationId: "checkout-compat-0002", paymentAmount: "1.127" }),
+    "must exactly equal sale total",
+  );
+
+  await db.exec(`
+    INSERT INTO public.cash_sessions(id, tenant_id, branch_id, user_id, status)
+    VALUES (gen_random_uuid(), '${IDS.tenantA}', '${IDS.branchA}', '${IDS.cashier}', 'open');
+  `);
+  await expectReject(
+    "compatibility ambiguous cash session",
+    legacyCheckoutSql({ operationId: "checkout-compat-0003" }),
+    "Multiple open cash sessions exist for this branch",
+  );
+
+  console.log("PASS: checkout v2 and installed-client compatibility adapter enforce exact fils, authoritative pricing, tenant/session scope, and exactly-once effects.");
 } finally {
   await db.close();
 }
