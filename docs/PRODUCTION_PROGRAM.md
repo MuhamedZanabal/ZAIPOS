@@ -7,7 +7,7 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - [x] Transaction invariant helpers/tests foundation
 - [x] Exact BHD fils money Stage A sidecars/parity
 - [x] Exact BHD three-decimal compatibility precision Stage B
-- [ ] Atomic server-authoritative checkout v2 — PR #6 branch verification in progress
+- [x] Atomic server-authoritative checkout v2
 - [ ] Native split/mixed payments cashier UI
 - [ ] Checkout idempotency/offline replay full failure matrix
 - [ ] Concurrent checkout/stock-conflict tests
@@ -70,4 +70,11 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 
 ### Atomic checkout v2
 
-Branch evidence is tracked in PR #6 and must not be promoted to a completed checkbox until the PR is merged and the resulting `main` SHA passes post-merge CI.
+- PR: #6
+- Merge SHA: `b910502e1d625861cc8d4667148642c85a5a39e7`
+- Primary migration: `20260905032000_atomic_checkout_v2.sql`
+- Installed-client adapter: `20260905033000_checkout_sale_v2_compat.sql`
+- Branch-RLS hardening: `20260905034000_checkout_operations_branch_rls.sql`
+- Final branch CI: run 102
+- Post-merge `main` CI: run 103
+- Verified gates: localization, 48 migration validations, exact-money database contract, atomic checkout + installed-client adapter contract, branch-scoped checkout-operation RLS, lint, full Vitest suite, production build
