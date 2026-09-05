@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
 const migration = await readFile(
-  new URL("../supabase/migrations/20260905110000_inventory_exactly_once.sql", import.meta.url),
+  new URL("../supabase/migrations/20260905110500_inventory_reconciliation_v2.sql", import.meta.url),
   "utf8",
 );
 
