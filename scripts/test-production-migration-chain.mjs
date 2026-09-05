@@ -50,6 +50,7 @@ function recreateDatabase(name) {
   sql("postgres", `CREATE DATABASE ${name};`);
   sql(name, `
     CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE PUBLICATION supabase_realtime;
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE TABLE IF NOT EXISTS auth.users (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
