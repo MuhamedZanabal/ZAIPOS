@@ -4,8 +4,8 @@ This inventory is evidence-based. An unchecked item may have partial code but la
 
 ## Baseline controls
 
-- [x] Current implementation baseline verified from `main`: `be8148f5b7c1d89956459d86a744b788ef1311ee`
-- [x] Repository, 44 baseline migrations, CI, package configuration, checkout path, money kernel and existing automated tests inspected
+- [x] Current implementation baseline verified from `main`: `fe512eca9b3e62597761696fdbbbbb6777e35373`
+- [x] Repository, 48 migrations, CI, package configuration, checkout path, money kernel and existing automated tests inspected
 - [x] Scan-to-receipt and offline replay path mapped
 - [ ] Full database migration chain executed on clean and supported-upgrade production-shaped databases
 - [ ] Protected `main` with required checks
@@ -18,8 +18,8 @@ This inventory is evidence-based. An unchecked item may have partial code but la
 - [x] Exact-money Stage B: legacy monetary compatibility columns widened losslessly to three-decimal BHD precision, with parity diagnostics preserved
 - [ ] Remaining money-bearing ledger fields inventoried and given exact authoritative representations where required
 - [ ] Integer-fils authoritative application/server cutover
-- [ ] Server-authoritative prepare/validate/commit checkout
-- [ ] Split-payment UI and exact server persistence
+- [x] Server-authoritative atomic validate/commit checkout through `checkout_sale_v2`
+- [x] Split-payment UI and exact server persistence for Cash, Card, BenefitPay and Bank Transfer
 - [ ] Concurrent idempotent replay returning the original result
 - [ ] Explicit offline state/failure matrix
 - [ ] Exactly-once inventory operation constraint and integration tests

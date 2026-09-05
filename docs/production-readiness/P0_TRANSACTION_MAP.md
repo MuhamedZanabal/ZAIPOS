@@ -2,7 +2,7 @@
 
 Baseline inspected: `main` at `171d7d04a1627dead99c5d06a05f42dde69fb24a`.
 
-## Current end-to-end path
+## Baseline end-to-end path
 
 | Stage | Current implementation | Persisted effect | Confirmed gap |
 | --- | --- | --- | --- |
@@ -46,3 +46,15 @@ Baseline inspected: `main` at `171d7d04a1627dead99c5d06a05f42dde69fb24a`.
 2. Add Stage A `BIGINT` sidecars, deterministic backfill and legacy-write parity controls.
 3. Keep decimal fields authoritative until parity is measured in a real database.
 4. Next, introduce a new fils-native checkout command; do not silently change the existing RPC signature.
+
+## Production state after P0.4
+
+Verified on `main` at `fe512eca9b3e62597761696fdbbbbb6777e35373` with post-merge CI run 117.
+
+| Stage | Production path | Verified effect | Remaining P0 gap |
+| --- | --- | --- | --- |
+| Payment UI | `PaymentDialog.tsx` → `PaymentAllocation[]` | Cash, Card, BenefitPay and Bank Transfer can be combined with exact Allocated/Remaining fils; cash over-tender shows change. | Payment references are not yet captured by the cashier UI. |
+| Checkout client | `POS.tsx` → `buildPosCheckoutCommand` → `useOfflineMutation(CHECKOUT_SALE_V2)` | Sends product/quantity/modifier IDs, exact discount/tip/payment fils, cash-session ID and UUID operation ID; sends no unit price or tax authority. | Offline queue still lacks sending/committed/retrying/requires-review states and conflict classification. |
+| Checkout server | `checkout_sale_v2` | Server resolves product price and tax, validates tenant/branch/session/payment equality, and atomically persists sale, payments, stock, till totals, operation and audit. | Full concurrent multi-connection stock-conflict coverage remains open. |
+| Payment persistence | `payments` and `cash_sessions` | One row per allocation; only the matching cash/card/qr/transfer till bucket changes; replay does not duplicate rows or bucket totals. | Void/refund compensating allocation rules remain open. |
+| Receipt/hardware | committed sale lookup → `printTicket` / `openDrawer` | Receipt lists every allocation; any cash allocation requests the drawer; hardware runs after commit. | Historical reprint fidelity and reprint audit remain open. |
