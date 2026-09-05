@@ -42,6 +42,9 @@ jobs:
       - name: Test return/refund lifecycle
         run: npm run test:migrations:returns
 
+      - name: Test customer return loyalty guard
+        run: npm run test:migrations:return-loyalty
+
       - name: Test void sale lifecycle
         run: npm run test:migrations:void
 
