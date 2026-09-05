@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(new URL("./POS.tsx", import.meta.url), "utf8");
+const source = readFileSync(resolve(process.cwd(), "src/modules/pos/POS.tsx"), "utf8");
 
 describe("POS native split checkout wiring", () => {
   it("routes checkout through the v2 queue/RPC command boundary", () => {
