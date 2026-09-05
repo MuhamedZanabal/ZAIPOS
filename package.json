@@ -46,7 +46,7 @@
     "test:migrations:return-loyalty": "node scripts/test-return-loyalty-guard.mjs",
     "test:migrations:void": "node scripts/test-void-sale-v2.mjs",
     "test:migrations:return-void-access": "node scripts/test-return-void-access-rls.mjs",
-    "test:migrations:inventory-idempotency": "node scripts/test-inventory-exactly-once.mjs",
+    "test:migrations:inventory-idempotency": "node scripts/test-inventory-exactly-once.mjs && node scripts/test-inventory-reconciliation-v2.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir"
