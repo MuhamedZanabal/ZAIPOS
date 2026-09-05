@@ -195,11 +195,20 @@ function seedSupportedBaseline(database) {
       10.00, 2.50, 0, 0, 0, 'open'
     );
 
+    INSERT INTO public.inventory_centers(id, tenant_id, branch_id, name, type, status)
+    VALUES (
+      '45000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091',
+      '20000000-0000-0000-0000-000000000091', 'Upgrade Center', 'point_of_sale', 'active'
+    );
+
     INSERT INTO public.products(id, tenant_id, name, product_type, price, cost, tax_rate, status)
     VALUES ('50000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091', 'Upgrade Product', 'simple', 1.25, 0.75, 0, 'active');
 
-    INSERT INTO public.inventory_stocks(tenant_id, branch_id, product_id, quantity)
-    VALUES ('10000000-0000-0000-0000-000000000091', '20000000-0000-0000-0000-000000000091', '50000000-0000-0000-0000-000000000091', 7.500);
+    INSERT INTO public.inventory_stocks(tenant_id, branch_id, inventory_center_id, product_id, quantity)
+    VALUES (
+      '10000000-0000-0000-0000-000000000091', '20000000-0000-0000-0000-000000000091',
+      '45000000-0000-0000-0000-000000000091', '50000000-0000-0000-0000-000000000091', 7.500
+    );
 
     INSERT INTO public.sales(
       id, tenant_id, branch_id, session_id, user_id, subtotal, tax_total, discount_total, total, status, channel, client_mutation_id
@@ -268,6 +277,6 @@ assertEqual("upgrade sale item unit price fils", scalar("zaipos_upgrade", "SELEC
 assertEqual("upgrade payment amount fils", scalar("zaipos_upgrade", "SELECT amount_fils::text FROM public.payments WHERE id='80000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade opening cash fils", scalar("zaipos_upgrade", "SELECT opening_amount_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "10000");
 assertEqual("upgrade till cash fils", scalar("zaipos_upgrade", "SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "2500");
-assertEqual("upgrade stock quantity preserved", scalar("zaipos_upgrade", "SELECT quantity::text FROM public.inventory_stocks WHERE branch_id='20000000-0000-0000-0000-000000000091' AND product_id='50000000-0000-0000-0000-000000000091';"), "7.500");
+assertEqual("upgrade stock quantity preserved", scalar("zaipos_upgrade", "SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='45000000-0000-0000-0000-000000000091' AND product_id='50000000-0000-0000-0000-000000000091';"), "7.500");
 
 process.stdout.write(`Production PostgreSQL migration chain PASS: clean=${migrations.length} migrations; supported baseline=${baselineFile}\n`);
