@@ -6,6 +6,8 @@ import { ReturnDialog } from "./ReturnDialog";
 const state = vi.hoisted(() => ({
   rpc: vi.fn(),
   invalidateQueries: vi.fn(),
+  saleReturns: [] as Array<{ amount_fils: number }>,
+  returnItems: [] as Array<{ sale_item_id: string; quantity: number; amount_fils: number }>,
 }));
 
 vi.mock("@/hooks/useTenantContext", () => ({
@@ -24,6 +26,17 @@ vi.mock("@/hooks/useOpenSession", () => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: state.rpc,
+    from: vi.fn((table: string) => {
+      const builder: any = {
+        select: () => builder,
+        eq: () => builder,
+        then: (resolve: (value: unknown) => unknown) => resolve({
+          data: table === "sale_returns" ? state.saleReturns : state.returnItems,
+          error: null,
+        }),
+      };
+      return builder;
+    }),
     storage: {
       from: () => ({
         upload: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -36,6 +49,8 @@ const sale = {
   id: "60000000-0000-0000-0000-000000000001",
   ticket_number: 73,
   total: 10.25,
+  total_fils: 10250,
+  tip_amount_fils: 250,
   status: "completed",
   created_at: "2026-09-05T09:00:00Z",
   sale_items: [
@@ -50,14 +65,14 @@ const sale = {
   ],
 };
 
-function renderDialog() {
+function renderDialog(overrides: Partial<typeof sale> = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const invalidateSpy = vi.spyOn(client, "invalidateQueries").mockImplementation(state.invalidateQueries as any);
   render(
     <QueryClientProvider client={client}>
-      <ReturnDialog open onOpenChange={vi.fn()} sale={sale} />
+      <ReturnDialog open onOpenChange={vi.fn()} sale={{ ...sale, ...overrides }} />
     </QueryClientProvider>,
   );
   return invalidateSpy;
@@ -66,6 +81,8 @@ function renderDialog() {
 describe("ReturnDialog v2 lifecycle wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.saleReturns = [];
+    state.returnItems = [];
     state.rpc.mockResolvedValue({ data: "90000000-0000-0000-0000-000000000001", error: null });
   });
 
@@ -97,5 +114,29 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     expect(payload._client_mutation_id.length).toBeGreaterThanOrEqual(8);
     expect(payload).not.toHaveProperty("_supervisor_pin");
     expect(payload).not.toHaveProperty("_refund_method");
+  });
+
+  it("uses authoritative return ledgers to cap a subsequent partial return", async () => {
+    state.saleReturns = [{ amount_fils: 2728 }];
+    state.returnItems = [{
+      sale_item_id: sale.sale_items[0].id,
+      quantity: 1,
+      amount_fils: 2728,
+    }];
+
+    renderDialog({ status: "partially_refunded" });
+
+    expect(await screen.findByText("BHD 7.272 remaining refundable")).toBeInTheDocument();
+    expect(screen.getByText("1.000 remaining")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    const quantityInput = screen.getByLabelText("Return quantity for Bahrain Test Product");
+    expect(quantityInput).toHaveValue(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /Process return/i }));
+    await waitFor(() => expect(state.rpc).toHaveBeenCalledTimes(1));
+
+    const [, payload] = state.rpc.mock.calls[0];
+    expect(payload._items).toEqual([{ sale_item_id: sale.sale_items[0].id, quantity: 1 }]);
   });
 });
