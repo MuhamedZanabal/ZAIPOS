@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { applyInventoryMovement } from "@/lib/inventory";
+import { createInventoryMutationId, recordInventoryBatchV2 } from "@/lib/inventory";
 import {
   Plus, AlertTriangle, Search, Warehouse, FileText, History,
   Settings2, Barcode, TrendingUp, PackagePlus, Package,
@@ -683,7 +683,7 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
 }
 
 /* ── Movement dialog ── */
-function MovementDialog({ tenantId, branchId, userId, products, centers, defaultCenterId, onClose }: any) {
+function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId, onClose }: any) {
   const [productSearch, setProductSearch] = useState("");
   const [productId, setProductId] = useState<string>("");
   const [centerId, setCenterId] = useState<string>(defaultCenterId || "");
@@ -691,6 +691,7 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const [clientMutationId, setClientMutationId] = useState(() => createInventoryMutationId("manual-inventory"));
 
   if (!centerId && defaultCenterId) setCenterId(defaultCenterId);
 
@@ -709,13 +710,20 @@ function MovementDialog({ tenantId, branchId, userId, products, centers, default
     if (!qty || Number(qty) <= 0) return toast.error("Invalid quantity");
     setSaving(true);
     try {
-      await applyInventoryMovement({
-        tenantId, branchId, userId, productId,
+      await recordInventoryBatchV2({
+        tenantId,
+        branchId,
         inventoryCenterId: centerId,
-        type, quantity: Number(qty),
+        clientMutationId,
+        movements: [{
+          productId,
+          type,
+          quantity: Number(qty),
+          effectKey: "manual",
+        }],
         reason: reason.trim() || `Entrada manual — ${MOVE_TYPE_LABELS[type]}`,
-        referenceType: "manual",
       });
+      setClientMutationId(createInventoryMutationId("manual-inventory"));
       toast.success("Movement recorded successfully");
       onClose();
     } catch (err: any) { toast.error(err.message); }
