@@ -43,6 +43,7 @@
     "test:migrations:checkout": "node scripts/test-atomic-checkout-v2.mjs",
     "test:migrations:checkout-rls": "node scripts/test-checkout-operations-rls.mjs",
     "test:migrations:returns": "node scripts/test-return-refund-v2.mjs",
+    "test:migrations:void": "node scripts/test-void-sale-v2.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir"
