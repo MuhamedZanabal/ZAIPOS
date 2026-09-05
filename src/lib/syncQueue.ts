@@ -48,6 +48,37 @@ export class UnknownSyncOperationError extends Error {
   }
 }
 
+export class OfflineOperationConflictError extends Error {
+  constructor(operationId: string) {
+    super(`Offline operation ID "${operationId}" was reused with a different operation payload`);
+    this.name = "OfflineOperationConflictError";
+  }
+}
+
+export function syncQueuePayloadsEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (left === null || right === null) return false;
+  if (typeof left !== typeof right) return false;
+  if (typeof left !== "object" || typeof right !== "object") return false;
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((value, index) => syncQueuePayloadsEqual(value, right[index]));
+  }
+
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord).sort();
+  const rightKeys = Object.keys(rightRecord).sort();
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (let index = 0; index < leftKeys.length; index += 1) {
+    if (leftKeys[index] !== rightKeys[index]) return false;
+    const key = leftKeys[index];
+    if (!syncQueuePayloadsEqual(leftRecord[key], rightRecord[key])) return false;
+  }
+  return true;
+}
+
 export function isReplayableQueueStatus(status: string) {
   return REPLAYABLE_SYNC_QUEUE_STATUSES.has(status);
 }
@@ -108,6 +139,10 @@ export function classifySyncFailure(
 
   if (error instanceof UnknownSyncOperationError) {
     return { status: "requires_review", failureCode: "unknown_operation", retryCount, message };
+  }
+
+  if (error instanceof OfflineOperationConflictError) {
+    return { status: "requires_review", failureCode: "operation_conflict", retryCount, message };
   }
 
   const normalized = message.toLowerCase();
