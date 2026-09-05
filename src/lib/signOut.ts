@@ -6,12 +6,12 @@ import { clear as idbClear } from "idb-keyval";
 import { logger } from "@/lib/logger";
 
 /**
- * Cierra sesión y limpia todo el estado local del tenant anterior.
+ * Signs out and clears tenant-readable caches.
  *
- * Esto es importante en dispositivos compartidos (register del local): sin esta
- * limpieza, el siguiente user podría ver brevemente products, mesas y
- * mutaciones en la cola offline del tenant anterior antes de que las queries
- * refresquen.
+ * The tenant-scoped sync queue is intentionally retained. Removing it could
+ * discard a financially committed checkout whose response was lost. Queue
+ * readers and replay are tenant-filtered, so a later user cannot see or submit
+ * another tenant's retained operations.
  */
 export async function signOutFully() {
   try {
@@ -34,7 +34,6 @@ export async function signOutFully() {
 
   try {
     await Promise.all([
-      db.sync_queue.clear(),
       db.products.clear(),
       db.categories.clear(),
       db.branch_products.clear(),

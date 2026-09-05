@@ -4,13 +4,23 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Trash2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Send,
+  RotateCcw,
+} from "lucide-react";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
-import type { SyncQueueItem } from "@/lib/db";
+import type { SyncQueueItem, SyncQueueStatus } from "@/lib/db";
+import { isReplayableQueueStatus } from "@/lib/syncQueue";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 
 const TYPE_LABELS: Record<string, string> = {
+  CHECKOUT_SALE_V2: "POS Sale",
   CHECKOUT_SALE: "POS Sale",
   CHECKOUT_TABLE_ORDER: "Table checkout",
   SEND_TO_KITCHEN: "Send to kitchen",
@@ -21,16 +31,52 @@ const TYPE_LABELS: Record<string, string> = {
   UPSERT_TABLE_ORDER_ITEMS: "Table order",
 };
 
+const STATUS_LABELS: Record<SyncQueueStatus, string> = {
+  queued: "Queued",
+  sending: "Sending",
+  committed: "Committed",
+  retrying: "Retrying",
+  failed: "Failed",
+  requires_review: "Requires review",
+};
+
+const FAILURE_LABELS: Record<string, string> = {
+  network: "Network unavailable",
+  retry_exhausted: "Retry limit reached",
+  unknown_operation: "Unsupported queued operation",
+  operation_conflict: "Operation ID conflict",
+  branch_changed: "Branch changed",
+  cash_session_closed: "Cash session closed",
+  customer_changed: "Customer changed",
+  product_unavailable: "Product unavailable",
+  coupon_changed: "Coupon changed",
+  payment_mismatch: "Price or total changed",
+  stock_conflict: "Stock conflict",
+  authorization: "Authorization required",
+  validation: "Server validation failed",
+};
+
+function StatusIcon({ status }: { status: SyncQueueStatus }) {
+  if (status === "committed") return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+  if (status === "sending") return <Send className="h-4 w-4 text-blue-600" />;
+  if (status === "retrying") return <RefreshCw className="h-4 w-4 text-amber-500" />;
+  if (status === "failed" || status === "requires_review") {
+    return <AlertCircle className="h-4 w-4 text-destructive" />;
+  }
+  return <Clock className="h-4 w-4 text-amber-500" />;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }
 
 export function SyncQueuePanel({ open, onOpenChange }: Props) {
-  const { processSyncQueue, getQueueItems, discardItem } = useSyncEngine();
+  const { processSyncQueue, getQueueItems, discardItem, retryItem } = useSyncEngine();
   const [items, setItems] = useState<SyncQueueItem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [discarding, setDiscarding] = useState<number | null>(null);
+  const [retrying, setRetrying] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const rows = await getQueueItems();
@@ -49,14 +95,28 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
   };
 
   const handleDiscard = async (id: number) => {
+    const confirmed = window.confirm(
+      "Discard this local transaction record? This cannot be undone and may require manual reconciliation."
+    );
+    if (!confirmed) return;
     setDiscarding(id);
     await discardItem(id);
     await refresh();
     setDiscarding(null);
   };
 
-  const pending = items.filter(i => i.status === "pending").length;
-  const failed = items.filter(i => i.status === "failed").length;
+  const handleRetry = async (id: number) => {
+    setRetrying(id);
+    await retryItem(id);
+    await processSyncQueue();
+    await refresh();
+    setRetrying(null);
+  };
+
+  const pending = items.filter((item) => isReplayableQueueStatus(item.status)).length;
+  const attention = items.filter((item) =>
+    item.status === "failed" || item.status === "requires_review"
+  ).length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -67,12 +127,14 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
             {pending > 0 && (
               <Badge className="bg-amber-500 text-white">{pending} pending</Badge>
             )}
-            {failed > 0 && (
-              <Badge variant="destructive">{failed} fallido{failed !== 1 ? "s" : ""}</Badge>
+            {attention > 0 && (
+              <Badge variant="destructive">
+                {attention} need{attention === 1 ? "s" : ""} attention
+              </Badge>
             )}
           </SheetTitle>
           <SheetDescription>
-            Transactions saved locally while waiting for a connection.
+            Local transactions and their latest synchronization result.
           </SheetDescription>
         </SheetHeader>
 
@@ -81,13 +143,13 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
             size="sm"
             variant="outline"
             onClick={handleSync}
-            disabled={syncing || items.length === 0}
+            disabled={syncing || pending === 0}
             className="gap-1.5"
           >
             {syncing
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
               : <RefreshCw className="h-3.5 w-3.5" />}
-            Sincronizar ahora
+            Sync now
           </Button>
           <Button size="sm" variant="ghost" onClick={refresh} className="gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" />
@@ -111,11 +173,7 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
                 className="flex items-start gap-3 p-3 rounded-lg border bg-card"
               >
                 <div className="mt-0.5 shrink-0">
-                  {item.status === "failed" ? (
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-amber-500" />
-                  )}
+                  <StatusIcon status={item.status} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -123,34 +181,61 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
                       {TYPE_LABELS[item.type] ?? item.type}
                     </span>
                     <Badge
-                      variant={item.status === "failed" ? "destructive" : "secondary"}
+                      variant={item.status === "failed" || item.status === "requires_review"
+                        ? "destructive"
+                        : item.status === "committed"
+                          ? "outline"
+                          : "secondary"}
                       className="text-[10px] h-4"
                     >
-                      {item.status === "failed" ? `Failed · ${item.retryCount} attempts` : "Pending"}
+                      {STATUS_LABELS[item.status]}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: es })}
-                    {item.deviceId && ` · Dispositivo: ${item.deviceId.slice(0, 8)}…`}
+                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                    {item.deviceId && ` · Device: ${item.deviceId.slice(0, 8)}…`}
                   </p>
+                  {item.failureCode && (
+                    <p className="text-xs font-medium text-destructive mt-1">
+                      {FAILURE_LABELS[item.failureCode] ?? item.failureCode}
+                    </p>
+                  )}
                   {item.error && (
                     <p className="text-xs text-destructive mt-1 font-mono break-all">
                       {item.error}
                     </p>
                   )}
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                  title="Descartar"
-                  disabled={discarding === item.id}
-                  onClick={() => item.id !== undefined && handleDiscard(item.id)}
-                >
-                  {discarding === item.id
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Trash2 className="h-3.5 w-3.5" />}
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {(item.status === "failed" || item.status === "requires_review") && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      aria-label={`Retry ${TYPE_LABELS[item.type] ?? item.type}`}
+                      disabled={retrying === item.id}
+                      onClick={() => item.id !== undefined && handleRetry(item.id)}
+                    >
+                      {retrying === item.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RotateCcw className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
+                  {item.status !== "sending" && item.status !== "committed" && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      aria-label={`Discard ${TYPE_LABELS[item.type] ?? item.type}`}
+                      disabled={discarding === item.id}
+                      onClick={() => item.id !== undefined && handleDiscard(item.id)}
+                    >
+                      {discarding === item.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Trash2 className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
+                </div>
               </div>
             ))
           )}

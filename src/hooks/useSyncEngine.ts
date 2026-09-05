@@ -1,115 +1,185 @@
 import { useEffect, useCallback } from 'react';
 import { useNetworkStore } from '@/stores/network';
-import { db } from '@/lib/db';
+import { db, type SyncQueueItem } from '@/lib/db';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenantStore } from '@/stores/tenant';
+import {
+  classifySyncFailure,
+  isActiveQueueStatus,
+  isReplayableQueueStatus,
+  syncQueueItemBelongsToTenant,
+  UnknownSyncOperationError,
+} from '@/lib/syncQueue';
+
+async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
+  if (item.type === 'CHECKOUT_SALE_V2') {
+    const { data, error } = await supabase.rpc('checkout_sale_v2', item.payload as any);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'CHECKOUT_SALE') {
+    // Legacy queue compatibility. New POS transactions use CHECKOUT_SALE_V2,
+    // but already-persisted legacy payloads must keep their original RPC shape.
+    const { data, error } = await supabase.rpc('checkout_sale', item.payload);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'CHECKOUT_TABLE_ORDER') {
+    const { data, error } = await supabase.rpc('checkout_table_order', item.payload);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'SEND_TO_KITCHEN') {
+    const { data, error } = await supabase.rpc('send_table_order_to_kitchen', item.payload);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'MARK_ORDER_READY') {
+    const { data, error } = await supabase.rpc('mark_table_order_ready', item.payload);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'SEND_TO_CASHIER') {
+    const { data, error } = await supabase.rpc('send_table_order_to_cashier', item.payload);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'APPLY_INVENTORY_MOVEMENT') {
+    const { data, error } = await supabase.rpc('apply_inventory_movement', item.payload);
+    if (error) throw error;
+    return data;
+  }
+  if (item.type === 'ADD_TABLE_ORDER_ITEMS') {
+    const { items: orderItems, orderId, tenantId } = item.payload as any;
+    const { error } = await supabase.from('table_order_items').insert(
+      orderItems.map((orderItem: any) => ({ tenant_id: tenantId, order_id: orderId, ...orderItem }))
+    );
+    if (error) throw error;
+    const { data, error: recalcError } = await supabase.rpc('recalc_table_order', { _order_id: orderId });
+    if (recalcError) throw recalcError;
+    return data;
+  }
+  if (item.type === 'UPSERT_TABLE_ORDER_ITEMS') {
+    const payload = item.payload as any;
+    const { data: orderId, error } = await supabase.rpc('upsert_table_order_items', {
+      _tenant_id: payload.tenant_id,
+      _branch_id: payload.branch_id,
+      _table_id: payload.table_id,
+      _waiter_id: payload.waiter_id,
+      _items: payload.items,
+      _client_mutation_id: payload._client_mutation_id ?? null,
+    });
+    if (error) throw error;
+    if (!orderId) throw new Error('Could not create or update the table order');
+    return orderId;
+  }
+
+  throw new UnknownSyncOperationError(item.type);
+}
+
+let activeSyncRun: Promise<void> | null = null;
 
 export function useSyncEngine() {
-  const { isOnline, setOnline, setPendingSyncCount } = useNetworkStore();
+  const isOnline = useNetworkStore((state) => state.isOnline);
+  const setOnline = useNetworkStore((state) => state.setOnline);
+  const setPendingSyncCount = useNetworkStore((state) => state.setPendingSyncCount);
+  const setSyncAttentionCount = useNetworkStore((state) => state.setSyncAttentionCount);
+  const tenantId = useTenantStore((state) => state.tenantId);
 
   const updatePendingCount = useCallback(async () => {
     try {
-      const count = await db.sync_queue.where('status').anyOf('pending', 'failed').count();
+      if (!tenantId) {
+        setPendingSyncCount(0);
+        setSyncAttentionCount(0);
+        return;
+      }
+      const tenantItems = (await db.sync_queue.toArray())
+        .filter((item) => syncQueueItemBelongsToTenant(item, tenantId));
+      const count = tenantItems.filter((item) => isActiveQueueStatus(item.status)).length;
+      const attentionCount = tenantItems.filter((item) =>
+        item.status === 'failed' || item.status === 'requires_review'
+      ).length;
       setPendingSyncCount(count);
+      setSyncAttentionCount(attentionCount);
     } catch (error) {
       logger.error('sync_queue_count_failed', { error: String(error) });
     }
-  }, [setPendingSyncCount]);
+  }, [setPendingSyncCount, setSyncAttentionCount, tenantId]);
 
-  const processSyncQueue = useCallback(async () => {
+  const runSyncQueue = useCallback(async () => {
     const onlineNow = typeof navigator === 'undefined' ? isOnline : navigator.onLine;
-    if (!onlineNow) return;
+    if (!onlineNow || !tenantId) return;
 
     try {
       const pendingItems = (await db.sync_queue.toArray())
-        .filter((item) => item.status === 'pending' || (item.status === 'failed' && item.retryCount < 5))
+        .filter((item) =>
+          syncQueueItemBelongsToTenant(item, tenantId)
+          && isReplayableQueueStatus(item.status)
+        )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
-      if (pendingItems.length === 0) return;
+      if (pendingItems.length === 0) {
+        await updatePendingCount();
+        return;
+      }
 
       toast.info(`Syncing ${pendingItems.length} pending transactions...`);
 
       let synced = 0;
-      let failed = 0;
+      let unresolved = 0;
 
       for (const item of pendingItems) {
         const startedAt = Date.now();
         try {
-          if (item.id) {
-            await db.sync_queue.update(item.id, { status: 'pending', updatedAt: new Date().toISOString() });
-          }
-
-          if (item.type === 'CHECKOUT_SALE_V2') {
-            const { error } = await supabase.rpc("checkout_sale_v2", item.payload as any);
-            if (error) throw error;
-          } else if (item.type === 'CHECKOUT_SALE') {
-            // Legacy queue compatibility. New POS transactions use CHECKOUT_SALE_V2,
-            // but already-persisted legacy payloads must keep their original RPC shape.
-            const { error } = await supabase.rpc("checkout_sale", item.payload);
-            if (error) throw error;
-          } else if (item.type === 'CHECKOUT_TABLE_ORDER') {
-            const { error } = await supabase.rpc("checkout_table_order", item.payload);
-            if (error) throw error;
-          } else if (item.type === 'SEND_TO_KITCHEN') {
-            const { error } = await supabase.rpc("send_table_order_to_kitchen", item.payload);
-            if (error) throw error;
-          } else if (item.type === 'MARK_ORDER_READY') {
-            const { error } = await supabase.rpc("mark_table_order_ready", item.payload);
-            if (error) throw error;
-          } else if (item.type === 'SEND_TO_CASHIER') {
-            const { error } = await supabase.rpc("send_table_order_to_cashier", item.payload);
-            if (error) throw error;
-          } else if (item.type === 'APPLY_INVENTORY_MOVEMENT') {
-            const { error } = await supabase.rpc("apply_inventory_movement", item.payload);
-            if (error) throw error;
-          } else if (item.type === 'ADD_TABLE_ORDER_ITEMS') {
-            const { items: orderItems, orderId, tenantId } = item.payload as any;
-            const { error } = await supabase.from("table_order_items").insert(
-              orderItems.map((it: any) => ({ tenant_id: tenantId, order_id: orderId, ...it }))
-            );
-            if (error) throw error;
-            const { error: recalcErr } = await supabase.rpc("recalc_table_order", { _order_id: orderId });
-            if (recalcErr) throw recalcErr;
-          } else if (item.type === 'UPSERT_TABLE_ORDER_ITEMS') {
-            const p = item.payload as any;
-            const { data: orderId, error } = await supabase.rpc("upsert_table_order_items", {
-              _tenant_id: p.tenant_id,
-              _branch_id: p.branch_id,
-              _table_id: p.table_id,
-              _waiter_id: p.waiter_id,
-              _items: p.items,
-              _client_mutation_id: p._client_mutation_id ?? null,
+          const attemptAt = new Date().toISOString();
+          if (item.id !== undefined) {
+            await db.sync_queue.update(item.id, {
+              status: 'sending',
+              lastAttemptAt: attemptAt,
+              updatedAt: attemptAt,
             });
-            if (error) throw error;
-            if (!orderId) throw new Error("Could not create or update the table order");
-          } else {
-            logger.warn("sync_queue_unknown_mutation_type", { type: item.type, itemId: item.id });
           }
 
-          if (item.id) {
-            await db.sync_queue.delete(item.id);
+          const serverResult = await executeQueueItem(item);
+          const committedAt = new Date().toISOString();
+          if (item.id !== undefined) {
+            await db.sync_queue.update(item.id, {
+              status: 'committed',
+              committedAt,
+              updatedAt: committedAt,
+              serverResult: serverResult ?? null,
+              error: undefined,
+              failureCode: undefined,
+            });
           }
-          logger.info("sync_queue_item_synced", {
+          logger.info('sync_queue_item_committed', {
             itemId: item.id,
             type: item.type,
+            clientMutationId: item.clientMutationId,
             latency_ms: Date.now() - startedAt,
           });
           synced++;
-        } catch (error: any) {
-          failed++;
-          logger.error("sync_queue_item_sync_failed", {
+        } catch (error: unknown) {
+          unresolved++;
+          const classification = classifySyncFailure(error, item.retryCount);
+          logger.error('sync_queue_item_sync_failed', {
             itemId: item.id,
             type: item.type,
-            retryCount: item.retryCount,
+            clientMutationId: item.clientMutationId,
+            retryCount: classification.retryCount,
+            status: classification.status,
+            failureCode: classification.failureCode,
             latency_ms: Date.now() - startedAt,
-            error: error?.message ?? String(error),
+            error: classification.message,
           });
-          if (item.id) {
+          if (item.id !== undefined) {
             await db.sync_queue.update(item.id, {
-              status: item.retryCount + 1 >= 5 ? 'failed' : 'pending',
-              error: error.message,
-              retryCount: item.retryCount + 1,
+              status: classification.status,
+              error: classification.message,
+              failureCode: classification.failureCode,
+              retryCount: classification.retryCount,
               updatedAt: new Date().toISOString(),
             });
           }
@@ -117,16 +187,26 @@ export function useSyncEngine() {
       }
 
       await updatePendingCount();
-      logger.info("sync_queue_batch_processed", { total: pendingItems.length, synced, failed });
-      if (failed > 0) {
-        toast.warning(`${synced} synchronized, ${failed} pending with errors`);
+      logger.info('sync_queue_batch_processed', { total: pendingItems.length, synced, unresolved });
+      if (unresolved > 0) {
+        toast.warning(`${synced} synchronized, ${unresolved} awaiting retry or review`);
       } else {
         toast.success('Synchronization completed successfully');
       }
     } catch (error) {
       logger.error("sync_queue_process_failed", { error: String(error) });
     }
-  }, [isOnline, updatePendingCount]);
+  }, [isOnline, tenantId, updatePendingCount]);
+
+  const processSyncQueue = useCallback(() => {
+    if (activeSyncRun) return activeSyncRun;
+
+    const guardedRun = runSyncQueue().finally(() => {
+      if (activeSyncRun === guardedRun) activeSyncRun = null;
+    });
+    activeSyncRun = guardedRun;
+    return guardedRun;
+  }, [runSyncQueue]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -159,20 +239,46 @@ export function useSyncEngine() {
 
   const getQueueItems = useCallback(async () => {
     try {
-      return await db.sync_queue.toArray();
+      if (!tenantId) return [];
+      return (await db.sync_queue.toArray())
+        .filter((item) => syncQueueItemBelongsToTenant(item, tenantId));
     } catch {
       return [];
     }
-  }, []);
+  }, [tenantId]);
 
   const discardItem = useCallback(async (id: number) => {
     try {
+      const item = await db.sync_queue.get(id);
+      if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)) return;
       await db.sync_queue.delete(id);
       await updatePendingCount();
     } catch (error) {
       logger.error("sync_queue_discard_failed", { id, error: String(error) });
     }
-  }, [updatePendingCount]);
+  }, [tenantId, updatePendingCount]);
 
-  return { processSyncQueue, getQueueItems, discardItem };
+  const retryItem = useCallback(async (id: number) => {
+    try {
+      const item = await db.sync_queue.get(id);
+      if (
+        !item
+        || !tenantId
+        || !syncQueueItemBelongsToTenant(item, tenantId)
+        || (item.status !== 'failed' && item.status !== 'requires_review')
+      ) return;
+      await db.sync_queue.update(id, {
+        status: 'queued',
+        retryCount: 0,
+        error: undefined,
+        failureCode: undefined,
+        updatedAt: new Date().toISOString(),
+      });
+      await updatePendingCount();
+    } catch (error) {
+      logger.error('sync_queue_retry_failed', { id, error: String(error) });
+    }
+  }, [tenantId, updatePendingCount]);
+
+  return { processSyncQueue, getQueueItems, discardItem, retryItem };
 }

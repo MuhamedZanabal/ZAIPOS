@@ -39,6 +39,19 @@ async function expectReject(label, sql, expectedMessage) {
   if (!rejected) throw new Error(`${label}: expected checkout to be rejected`);
 }
 
+async function expectNoCheckoutEffects(operationId) {
+  const result = await db.query(`
+    SELECT
+      (SELECT count(*)::int FROM public.sales
+       WHERE client_mutation_id = '${operationId}') AS sales,
+      (SELECT count(*)::int FROM public.checkout_operations
+       WHERE client_mutation_id = '${operationId}') AS operations
+  `);
+  if (result.rows[0].sales !== 0 || result.rows[0].operations !== 0) {
+    throw new Error(`Rejected checkout ${operationId} left partial effects: ${JSON.stringify(result.rows[0])}`);
+  }
+}
+
 function checkoutSql({
   operationId,
   payments = [
@@ -53,6 +66,7 @@ function checkoutSql({
   itemExtra = {},
   discountFils = 0,
   tipFils = 0,
+  couponCode = null,
 } = {}) {
   const items = [{
     product_id: IDS.productA,
@@ -73,7 +87,7 @@ function checkoutSql({
     ${customerId ? `'${customerId}'::uuid` : "NULL::uuid"},
     'pos'::public.sales_channel,
     ${tipFils}::bigint,
-    NULL,
+    ${couponCode ? `'${couponCode.replaceAll("'", "''")}'::text` : "NULL::text"},
     '${operationId}',
     ${sessionId ? `'${sessionId}'::uuid` : "NULL::uuid"}
   ) AS sale_id`;
@@ -133,6 +147,7 @@ try {
     CREATE TABLE public.tenants (
       id uuid PRIMARY KEY,
       dev_mode boolean NOT NULL DEFAULT false,
+      allow_negative_stock boolean NOT NULL DEFAULT false,
       points_per_thousand integer NOT NULL DEFAULT 0
     );
     CREATE TABLE public.branches (
@@ -323,15 +338,31 @@ try {
       _movement_type public.movement_type, _quantity numeric, _reason text,
       _reference_type text, _reference_id uuid, _user_id uuid, _metadata jsonb DEFAULT NULL
     ) RETURNS uuid LANGUAGE plpgsql AS $$
-    DECLARE _signed numeric; _id uuid;
+    DECLARE
+      _signed numeric;
+      _id uuid;
+      _new_quantity numeric;
+      _allow_negative boolean;
+      _dev_mode boolean;
     BEGIN
       _signed := CASE WHEN _movement_type IN ('purchase','production','return') THEN _quantity
                       WHEN _movement_type = 'adjustment' THEN _quantity
                       ELSE -_quantity END;
+      SELECT allow_negative_stock, dev_mode
+      INTO _allow_negative, _dev_mode
+      FROM public.tenants
+      WHERE id = _tenant_id;
       INSERT INTO public.inventory_stocks (tenant_id, branch_id, product_id, quantity)
       VALUES (_tenant_id, _branch_id, _product_id, _signed)
       ON CONFLICT (branch_id, product_id) DO UPDATE
-        SET quantity = public.inventory_stocks.quantity + EXCLUDED.quantity;
+        SET quantity = public.inventory_stocks.quantity + EXCLUDED.quantity
+      RETURNING quantity INTO _new_quantity;
+      IF NOT COALESCE(_allow_negative, false)
+         AND NOT COALESCE(_dev_mode, false)
+         AND _new_quantity < 0
+      THEN
+        RAISE EXCEPTION 'Stock insuficiente para el producto %', _product_id;
+      END IF;
       INSERT INTO public.inventory_movements
         (tenant_id, branch_id, product_id, movement_type, quantity, reason, reference_type, reference_id, user_id)
       VALUES
@@ -518,6 +549,75 @@ try {
     throw new Error(`Idempotent replay duplicated till buckets: ${JSON.stringify(replayTillBuckets.rows[0])}`);
   }
 
+  // Model an offline sale whose last cached quantity is stale. The production
+  // inventory command rejects negative stock when the tenant has not opted in,
+  // and the entire checkout statement must roll back without financial effects.
+  await db.exec(`
+    UPDATE public.inventory_stocks
+    SET quantity = 0
+    WHERE branch_id = '${IDS.branchA}' AND product_id = '${IDS.productA}';
+  `);
+  await expectReject(
+    "stale offline stock",
+    checkoutSql({ operationId: "checkout-core-0006" }),
+    "Stock insuficiente",
+  );
+  const staleStockRollback = await db.query(`
+    SELECT
+      (SELECT quantity FROM public.inventory_stocks
+       WHERE branch_id = '${IDS.branchA}' AND product_id = '${IDS.productA}') AS quantity,
+      (SELECT count(*)::int FROM public.sales
+       WHERE client_mutation_id = 'checkout-core-0006') AS sales,
+      (SELECT count(*)::int FROM public.checkout_operations
+       WHERE client_mutation_id = 'checkout-core-0006') AS operations
+  `);
+  if (
+    staleStockRollback.rows[0].quantity !== "0.000"
+    || staleStockRollback.rows[0].sales !== 0
+    || staleStockRollback.rows[0].operations !== 0
+  ) {
+    throw new Error(`Stale-stock rejection left partial effects: ${JSON.stringify(staleStockRollback.rows[0])}`);
+  }
+  await db.exec(`
+    UPDATE public.inventory_stocks
+    SET quantity = 9.000
+    WHERE branch_id = '${IDS.branchA}' AND product_id = '${IDS.productA}';
+  `);
+
+  await expectReject(
+    "coupon changed while offline",
+    checkoutSql({ operationId: "checkout-core-0007", couponCode: "EXPIRED" }),
+    "Coupon is invalid, expired, or exhausted",
+  );
+  await expectNoCheckoutEffects("checkout-core-0007");
+
+  await db.exec(`UPDATE public.products SET status = 'inactive' WHERE id = '${IDS.productA}';`);
+  await expectReject(
+    "product became inactive while offline",
+    checkoutSql({ operationId: "checkout-core-0008" }),
+    "unavailable for this branch",
+  );
+  await expectNoCheckoutEffects("checkout-core-0008");
+  await db.exec(`UPDATE public.products SET status = 'active' WHERE id = '${IDS.productA}';`);
+
+  await db.exec(`UPDATE public.products SET price = 1.125 WHERE id = '${IDS.productA}';`);
+  await expectReject(
+    "price changed while offline",
+    checkoutSql({ operationId: "checkout-core-0009" }),
+    "must exactly equal sale total",
+  );
+  await expectNoCheckoutEffects("checkout-core-0009");
+  await db.exec(`UPDATE public.products SET price = 1.025 WHERE id = '${IDS.productA}';`);
+
+  await db.exec(`UPDATE public.branches SET status = 'inactive' WHERE id = '${IDS.branchA}';`);
+  await expectReject(
+    "branch changed while offline",
+    checkoutSql({ operationId: "checkout-core-0010" }),
+    "Branch is not active for this business",
+  );
+  await expectNoCheckoutEffects("checkout-core-0010");
+  await db.exec(`UPDATE public.branches SET status = 'active' WHERE id = '${IDS.branchA}';`);
+
   await expectReject(
     "operation ID payload mismatch",
     checkoutSql({ operationId: "checkout-core-0001", quantity: "2.000" }),
@@ -635,7 +735,7 @@ try {
     "Multiple open cash sessions exist for this branch",
   );
 
-  console.log("PASS: checkout v2 enforces exact mixed-payment persistence and till buckets, authoritative pricing, tenant/session scope, and exactly-once effects.");
+  console.log("PASS: checkout v2 enforces exact mixed-payment persistence and till buckets, authoritative pricing, stale-state rejection, tenant/session scope, and exactly-once effects.");
 } finally {
   await db.close();
 }
