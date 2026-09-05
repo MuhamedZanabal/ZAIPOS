@@ -57,6 +57,9 @@ jobs:
       - name: Test inventory exactly-once lifecycle
         run: npm run test:migrations:inventory-idempotency
 
+      - name: Test inventory client v2 cutover
+        run: node scripts/test-inventory-client-cutover.mjs
+
       - name: Lint
         run: npm run lint
 
