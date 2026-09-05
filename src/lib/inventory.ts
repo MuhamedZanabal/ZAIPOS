@@ -1,34 +1,92 @@
-// Helper único para mover insalerio.
-// Garantiza que TODO cambio de stock pase por apply_inventory_movement (RPC),
-// nunca por updates directos a inventory_stocks desde el customer.
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 
-type MovementType = Database["public"]["Enums"]["movement_type"];
+export type DirectInventoryMovementType = "purchase" | "adjustment" | "waste" | "return";
 
-export async function applyInventoryMovement(args: {
+export type InventoryBatchMovement = {
+  productId: string;
+  type: DirectInventoryMovementType;
+  quantity: number;
+  effectKey: string;
+};
+
+export function createInventoryMutationId(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
+export async function recordInventoryBatchV2(args: {
+  tenantId: string;
+  branchId: string;
+  inventoryCenterId: string;
+  movements: InventoryBatchMovement[];
+  clientMutationId: string;
+  reason?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("record_inventory_batch_v2" as any, {
+    _tenant_id: args.tenantId,
+    _branch_id: args.branchId,
+    _inventory_center_id: args.inventoryCenterId,
+    _movements: args.movements.map((movement) => ({
+      product_id: movement.productId,
+      movement_type: movement.type,
+      quantity: movement.quantity,
+      effect_key: movement.effectKey,
+    })),
+    _client_mutation_id: args.clientMutationId,
+    _reason: args.reason ?? null,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function transferInventoryV2(args: {
   tenantId: string;
   branchId: string;
   productId: string;
-  type: MovementType;
+  fromCenterId: string;
+  toCenterId: string;
   quantity: number;
   reason?: string | null;
-  referenceType?: string | null;
-  referenceId?: string | null;
-  userId: string;
-  inventoryCenterId?: string | null;
+  clientMutationId: string;
 }) {
-  const { error, data } = await supabase.rpc("apply_inventory_movement", {
+  const { data, error } = await supabase.rpc("transfer_inventory_v2" as any, {
     _tenant_id: args.tenantId,
     _branch_id: args.branchId,
     _product_id: args.productId,
-    _movement_type: args.type,
+    _from_center_id: args.fromCenterId,
+    _to_center_id: args.toCenterId,
     _quantity: args.quantity,
     _reason: args.reason ?? null,
-    _reference_type: args.referenceType ?? "manual",
-    _reference_id: args.referenceId ?? null,
-    _user_id: args.userId,
-    _inventory_center_id: args.inventoryCenterId ?? null,
+    _client_mutation_id: args.clientMutationId,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function receivePurchaseOrderV2(args: {
+  orderId: string;
+  inventoryCenterId: string;
+  clientMutationId: string;
+}) {
+  const { data, error } = await supabase.rpc("receive_purchase_order_v2" as any, {
+    _order_id: args.orderId,
+    _inventory_center_id: args.inventoryCenterId,
+    _client_mutation_id: args.clientMutationId,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function completeProductionOrderV2(args: {
+  orderId: string;
+  produced: number;
+  waste?: number;
+  clientMutationId: string;
+}) {
+  const { data, error } = await supabase.rpc("complete_production_order_v2" as any, {
+    _order_id: args.orderId,
+    _produced: args.produced,
+    _waste: args.waste ?? 0,
+    _client_mutation_id: args.clientMutationId,
   });
   if (error) throw error;
   return data as string;
