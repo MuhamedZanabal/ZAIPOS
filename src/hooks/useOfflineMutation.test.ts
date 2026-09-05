@@ -6,6 +6,7 @@ import { useNetworkStore } from "@/stores/network";
 
 const mocks = vi.hoisted(() => {
   const queueRows: any[] = [];
+  let transactionTail = Promise.resolve();
   const add = vi.fn(async (item: any) => {
     const id = queueRows.length + 1;
     queueRows.push({ ...item, id });
@@ -22,13 +23,22 @@ const mocks = vi.hoisted(() => {
   const where = vi.fn((field: string) => field === "clientMutationId"
     ? { equals }
     : { anyOf });
+  const transaction = vi.fn((_mode: string, _table: unknown, scope: () => Promise<unknown>) => {
+    const run = transactionTail.then(scope, scope);
+    transactionTail = run.then(() => undefined, () => undefined);
+    return run;
+  });
+  const resetTransaction = () => { transactionTail = Promise.resolve(); };
 
   return {
     queueRows,
     add,
     anyOf,
     where,
+    transaction,
+    resetTransaction,
     db: {
+      transaction,
       sync_queue: { add, where, toArray: vi.fn(async () => queueRows) },
     },
   };
@@ -52,6 +62,8 @@ describe("offline mutation helpers", () => {
     mocks.add.mockClear();
     mocks.anyOf.mockClear();
     mocks.where.mockClear();
+    mocks.transaction.mockClear();
+    mocks.resetTransaction();
     window.localStorage.clear();
     setNavigatorOnline(true);
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0, syncAttentionCount: 0 });
@@ -100,6 +112,44 @@ describe("offline mutation helpers", () => {
     expect(mocks.add).toHaveBeenCalledTimes(1);
     expect(mocks.queueRows).toHaveLength(1);
     expect(mocks.queueRows[0].clientMutationId).toBe(payload._client_mutation_id);
+  });
+
+  it("rejects reuse of an operation ID for a different checkout payload", async () => {
+    const setPendingSyncCount = vi.fn();
+    const operationId = "14226952-6024-4eaf-93cf-b1965fb1a189";
+
+    await queueOfflineMutation("CHECKOUT_SALE_V2", {
+      _client_mutation_id: operationId,
+      _tenant_id: "tenant-1",
+      _payments: [{ method: "cash", amount_fils: 1128 }],
+    }, setPendingSyncCount);
+
+    await expect(queueOfflineMutation("CHECKOUT_SALE_V2", {
+      _client_mutation_id: operationId,
+      _tenant_id: "tenant-1",
+      _payments: [{ method: "cash", amount_fils: 2128 }],
+    }, setPendingSyncCount)).rejects.toThrow(/operation id.*different.*payload/i);
+
+    expect(mocks.queueRows).toHaveLength(1);
+    expect(mocks.queueRows[0].payload._payments[0].amount_fils).toBe(1128);
+  });
+
+  it("serializes concurrent queue attempts so the same operation ID creates one row", async () => {
+    const setPendingSyncCount = vi.fn();
+    const payload = {
+      _client_mutation_id: "8eb06e14-cf32-4d41-a11a-c16ae8b32652",
+      _tenant_id: "tenant-1",
+      _branch_id: "branch-1",
+      _payments: [{ method: "benefitpay", amount_fils: 1128 }],
+    };
+
+    await Promise.all([
+      queueOfflineMutation("CHECKOUT_SALE_V2", payload, setPendingSyncCount),
+      queueOfflineMutation("CHECKOUT_SALE_V2", payload, setPendingSyncCount),
+    ]);
+
+    expect(mocks.queueRows).toHaveLength(1);
+    expect(mocks.add).toHaveBeenCalledTimes(1);
   });
 
   it.each([
