@@ -20,6 +20,8 @@ type Sale = {
   id: string;
   ticket_number: number;
   total: number;
+  total_fils: number;
+  tip_amount_fils: number;
   status: string;
   channel: string;
   created_at: string;
@@ -48,7 +50,7 @@ export default function Sales() {
       ((await supabase
         .from("sales")
         .select(
-          "id, ticket_number, total, status, channel, created_at, sale_items(id, product_id, product_name, quantity, unit_price, line_total), payments(method, amount)"
+          "id, ticket_number, total, total_fils, tip_amount_fils, status, channel, created_at, sale_items(id, product_id, product_name, quantity, unit_price, line_total), payments(method, amount)"
         )
         .eq("branch_id", branchId!)
         .order("created_at", { ascending: false })
