@@ -9,7 +9,21 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
 
     steps:
       - name: Checkout
@@ -23,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
 
       - name: Audit ZAIPOS Bahrain localization
         run: node scripts/audit-localization.mjs
@@ -59,6 +76,18 @@ jobs:
 
       - name: Test inventory client v2 cutover
         run: node scripts/test-inventory-client-cutover.mjs
+
+      - name: Test production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain.mjs
+
+      - name: Test real checkout concurrency
+        run: node scripts/test-checkout-concurrency.mjs
+
+      - name: Test transaction authorization and audit
+        run: node scripts/test-transaction-auth-audit.mjs
+
+      - name: Test POS transaction and hardware E2E
+        run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 
       - name: Lint
         run: npm run lint
