@@ -8,6 +8,7 @@ const files = {
   transfer: "src/modules/inventory/components/TransferDialog.tsx",
   suppliers: "src/modules/suppliers/Suppliers.tsx",
   production: "src/modules/production/Production.tsx",
+  dataManagement: "src/modules/settings/DataManagement.tsx",
 };
 
 const source = {};
@@ -46,6 +47,9 @@ forbidText("suppliers", 'rpc("apply_inventory_movement"', "client-side purchase 
 
 requireText("production", "completeProductionOrderV2", "v2 production completion call");
 forbidText("production", 'rpc("complete_production_order"', "legacy production RPC");
+
+requireText("dataManagement", "recordInventoryBatchV2", "atomic data-management inventory import");
+forbidText("dataManagement", "applyInventoryMovement", "legacy data-management movement helper");
 
 const allClientSource = Object.values(source).join("\n");
 if (allClientSource.includes('"apply_inventory_movement"')) {
