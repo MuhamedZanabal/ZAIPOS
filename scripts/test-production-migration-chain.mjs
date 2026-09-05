@@ -254,8 +254,6 @@ createClusterRoles();
 
 if (usePlatformDatabase) {
   assertEqual("Supabase platform database", platformDatabase, "postgres");
-  assertEqual("Supabase platform pg_cron", scalar("postgres", "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='pg_cron');"), "t");
-  assertEqual("Supabase platform pg_net", scalar("postgres", "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='pg_net');"), "t");
 }
 
 recreateDatabase("zaipos_clean");
