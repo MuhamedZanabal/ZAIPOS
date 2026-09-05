@@ -45,6 +45,7 @@
     "test:migrations:returns": "node scripts/test-return-refund-v2.mjs",
     "test:migrations:return-loyalty": "node scripts/test-return-loyalty-guard.mjs",
     "test:migrations:void": "node scripts/test-void-sale-v2.mjs",
+    "test:migrations:return-void-access": "node scripts/test-return-void-access-rls.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir"
@@ -93,7 +94,7 @@
     "electron-updater": "^6.8.3",
     "embla-carousel-react": "^8.6.0",
     "idb-keyval": "^6.2.2",
-    "input-otp": "^1.4.2",
+    "input-otp": "^6.2.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "node-thermal-printer": "^4.6.0",
