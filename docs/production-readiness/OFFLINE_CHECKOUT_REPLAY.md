@@ -31,7 +31,12 @@ same tenant to finish replay without exposing the record to another tenant.
 
 - One module-level single-flight guard serializes reconnect, timer and manual
   sync triggers within the app.
-- A checkout payload is queued once per stable client mutation ID.
+- Offline queue check-and-add runs inside one IndexedDB write transaction.
+  Concurrent enqueue attempts for the same stable operation ID therefore
+  resolve to one durable row.
+- Reusing an existing operation ID is accepted only when operation type and
+  payload are deeply equivalent. A different payload is rejected as an
+  operation conflict rather than silently deduplicated.
 - `sending` is deliberately replayable because the server response may have
   been lost after commit.
 - Replay passes the persisted `checkout_sale_v2` payload unchanged. The server
@@ -57,6 +62,8 @@ same tenant to finish replay without exposing the record to another tenant.
 | Browser crashes after request starts | A persisted `sending` row is replayed and moves to `committed` |
 | Electron/browser restarts with a pending row | Dexie v4 retains `queued`/`sending`; the replay contract consumes either state |
 | Same operation is replayed | PostgreSQL checkout contract returns one sale and proves one stock/payment/till effect |
+| Same operation reaches the local queue concurrently | IndexedDB transaction contract creates one row |
+| Same operation ID is reused for a different local payload | Queue contract rejects it as an operation conflict |
 | Same operation reaches the server from another terminal | Server identity is tenant + client mutation ID, independent of device; replay returns the original sale |
 | Stock changed while offline | PostgreSQL contract rejects insufficient stock and proves sale/operation rollback |
 | Coupon changed while offline | PostgreSQL contract rejects the coupon and proves no partial checkout effect |
@@ -75,7 +82,9 @@ concurrency gate. This document does not claim that later gate is complete.
 - `src/lib/syncQueue.test.ts`: status migration, active-state policy and
   deterministic failure classification.
 - `src/hooks/useOfflineMutation.test.ts`: offline-before-send,
-  transport-failure queueing, exact payload/ID retention and local deduplication.
+  transport-failure queueing, exact payload/ID retention, transactional local
+  deduplication, different-payload conflict rejection and concurrent enqueue
+  serialization.
 - `src/hooks/useSyncEngine.test.ts`: response-loss recovery, crash-state replay,
   committed evidence, tenant isolation, single-flight processing, review states,
   retry exhaustion and legacy routing.
@@ -86,5 +95,14 @@ concurrency gate. This document does not claim that later gate is complete.
 - `scripts/test-atomic-checkout-v2.mjs`: server idempotency, exact effects and
   stale stock/coupon/product/price/session/branch/customer rollback behavior.
 
-The production-program checkbox remains unchecked on a feature branch. It is
-updated only after merge to `main` and a green post-merge CI run.
+## Production evidence
+
+- Implementation PR: #10
+- Final reviewed head: `6dd95e537c0acfe2cec201970d8937621d8f3766`
+- RED CI 121: reproduced payload-conflict reuse and concurrent local enqueue races
+- Final branch CI 123: green with 16 test files / 99 tests plus the database and build gates
+- Squash merge to `main`: `98ba7a07495be218128b351879ea864002b26453`
+- Post-merge CI 124: green
+
+P0.5 is complete only for the replay/idempotency scope described above. The
+separate P0.7 multi-connection stock-concurrency gate remains open.
