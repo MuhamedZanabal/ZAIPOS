@@ -458,7 +458,7 @@ try {
   const finalState = await one(`
     SELECT
       (SELECT sum(amount_fils)::bigint FROM public.sale_returns WHERE original_sale_id = '${IDS.sale}' AND status = 'completed') AS returned_fils,
-      (SELECT sum(amount_fils)::bigint FROM public.payment_refunds pr JOIN public.sale_returns r ON r.id = pr.return_id WHERE r.original_sale_id = '${IDS.sale}') AS payment_refunded_fils,
+      (SELECT sum(pr.amount_fils)::bigint FROM public.payment_refunds pr JOIN public.sale_returns r ON r.id = pr.return_id WHERE r.original_sale_id = '${IDS.sale}') AS payment_refunded_fils,
       (SELECT total_fils FROM public.sales WHERE id = '${IDS.sale}') AS original_total_fils,
       (SELECT sum(amount_fils)::bigint FROM public.payments WHERE sale_id = '${IDS.sale}') AS original_payments_fils,
       (SELECT status::text FROM public.sales WHERE id = '${IDS.sale}') AS sale_status,
