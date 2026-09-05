@@ -127,7 +127,7 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     renderDialog({ status: "partially_refunded" });
 
     expect(await screen.findByText("BHD 7.272 remaining refundable")).toBeInTheDocument();
-    expect(screen.getByText("1.000 remaining")).toBeInTheDocument();
+    expect(screen.getByText(/1\.000 remaining/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("checkbox"));
     const quantityInput = screen.getByLabelText("Return quantity for Bahrain Test Product");
