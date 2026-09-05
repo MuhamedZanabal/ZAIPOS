@@ -1,14 +1,12 @@
 import { execFileSync } from "node:child_process";
 
-const adminUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
-const url = new URL(adminUrl);
-url.pathname = "/zaipos_clean";
-const dbUrl = url.toString();
+const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 
 const I = {
   tenantA: "10000000-0000-0000-0000-000000000088",
   tenantB: "10000000-0000-0000-0000-000000000087",
   branchA: "20000000-0000-0000-0000-000000000088",
+  branchAOther: "20000000-0000-0000-0000-000000000086",
   branchB: "20000000-0000-0000-0000-000000000087",
   managerA: "30000000-0000-0000-0000-000000000088",
   cashierA: "30000000-0000-0000-0000-000000000089",
@@ -63,6 +61,7 @@ sql(`
 
   INSERT INTO public.branches(id,tenant_id,name,status) VALUES
     ('${I.branchA}','${I.tenantA}','Authorization Branch A','active'),
+    ('${I.branchAOther}','${I.tenantA}','Authorization Branch A Other','active'),
     ('${I.branchB}','${I.tenantB}','Authorization Branch B','active')
   ON CONFLICT (id) DO NOTHING;
 
@@ -71,7 +70,7 @@ sql(`
     ('${I.cashierA}','${I.tenantA}','${I.branchA}','cashier'),
     ('${I.inventoryA}','${I.tenantA}','${I.branchA}','inventory'),
     ('${I.managerB}','${I.tenantB}','${I.branchB}','manager'),
-    ('${I.branchMismatchManager}','${I.tenantA}','${I.branchB}','manager')
+    ('${I.branchMismatchManager}','${I.tenantA}','${I.branchAOther}','manager')
   ON CONFLICT DO NOTHING;
 
   INSERT INTO public.inventory_centers(id,tenant_id,branch_id,name,type,status)
