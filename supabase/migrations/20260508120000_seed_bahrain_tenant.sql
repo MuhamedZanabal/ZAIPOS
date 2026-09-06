@@ -15,7 +15,7 @@ BEGIN
     name, slug, currency, tax_rate, primary_color, theme_kind
   )
   VALUES (
-    'ZAIPOS Bahrain Demo', 'bahrain-demo', 'BHD', 10, '#0F766E', 'default'
+    'ZAIPOS Bahrain Demo', 'bahrain-demo', 'BHD', 10, '#0F766E', 'bar'
   )
   ON CONFLICT (slug) DO UPDATE
     SET name = EXCLUDED.name,
