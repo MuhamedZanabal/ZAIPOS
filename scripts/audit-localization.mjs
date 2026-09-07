@@ -17,6 +17,8 @@ const compatibilityFiles = new Set([
   "src/lib/db.ts",
   "src/hooks/useProducts.ts",
   "src/hooks/useOfflineMutation.ts",
+  "src/lib/deviceIdentity.ts",
+  "src/lib/deviceIdentity.test.ts",
 ]);
 const compatibilityPrefixes = [
   "supabase/migrations/",
