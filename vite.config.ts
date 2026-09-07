@@ -17,7 +17,7 @@ export default defineConfig(async ({ mode }) => {
     !isElectronMode &&
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["favicon.ico", "robots.txt", "apple-touch-icon.png"],
+        includeAssets: ["robots.txt", "apple-touch-icon.png"],
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,

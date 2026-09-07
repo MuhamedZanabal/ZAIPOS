@@ -48,6 +48,68 @@ function privilegedSql(statement) {
   });
 }
 
+function ensureSupabaseStorageFixture(database) {
+  const statement = `
+    CREATE SCHEMA IF NOT EXISTS storage;
+
+    CREATE TABLE IF NOT EXISTS storage.buckets (
+      id text PRIMARY KEY,
+      name text NOT NULL UNIQUE,
+      public boolean NOT NULL DEFAULT false,
+      file_size_limit bigint,
+      allowed_mime_types text[]
+    );
+
+    CREATE TABLE IF NOT EXISTS storage.objects (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      bucket_id text REFERENCES storage.buckets(id),
+      name text NOT NULL,
+      owner uuid,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      metadata jsonb
+    );
+
+    ALTER TABLE storage.buckets OWNER TO postgres;
+    ALTER TABLE storage.objects OWNER TO postgres;
+    GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
+    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+    DROP POLICY IF EXISTS "return_evidence_tenant_select" ON storage.objects;
+    DROP POLICY IF EXISTS "return_evidence_tenant_insert" ON storage.objects;
+    DROP POLICY IF EXISTS "tenant members can upload product images" ON storage.objects;
+    DROP POLICY IF EXISTS "tenant members can update product images" ON storage.objects;
+    DROP POLICY IF EXISTS "tenant members can delete product images" ON storage.objects;
+    DROP POLICY IF EXISTS "product images are publicly readable" ON storage.objects;
+
+    DELETE FROM storage.objects
+    WHERE bucket_id IN ('return-evidence', 'product-images');
+    DELETE FROM storage.buckets
+    WHERE id IN ('return-evidence', 'product-images');
+
+    DO $fixture$
+    BEGIN
+      IF to_regprocedure('storage.foldername(text)') IS NULL THEN
+        EXECUTE $function$
+          CREATE FUNCTION storage.foldername(name text)
+          RETURNS text[]
+          LANGUAGE sql
+          IMMUTABLE
+          PARALLEL SAFE
+          AS 'SELECT (string_to_array(name, ''/''))[1:greatest(array_length(string_to_array(name, ''/''), 1) - 1, 0)]'
+        $function$;
+      END IF;
+    END
+    $fixture$;
+  `;
+
+  if (usePlatformDatabase) {
+    privilegedSql(statement);
+  } else {
+    sql(database, statement);
+  }
+}
+
 function sql(database, statement, { capture = false } = {}) {
   return psql(database, ["-c", statement], { capture });
 }
@@ -90,6 +152,7 @@ function resetPlatformDatabase(label) {
     GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
     DELETE FROM auth.users WHERE id = '30000000-0000-0000-0000-000000000091';
   `);
+  ensureSupabaseStorageFixture(label);
 }
 
 function recreateDatabase(name) {
@@ -150,6 +213,7 @@ function recreateDatabase(name) {
     $$;
     GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
   `);
+  ensureSupabaseStorageFixture(name);
 }
 
 function apply(database, filenames) {
@@ -241,11 +305,12 @@ function verifyFinalShape(database) {
     "public.process_sale_void_v2(uuid,text,uuid,text)",
     "public.record_inventory_batch_v2(uuid,uuid,uuid,jsonb,text,text)",
     "public.reconcile_inventory_levels_v2(uuid,uuid,uuid,jsonb,text,text)",
+    "public.register_device_heartbeat(uuid,uuid,text,text,text,text,text,jsonb)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }

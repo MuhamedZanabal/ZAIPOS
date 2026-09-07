@@ -69,6 +69,10 @@ const electronAPI = {
 
   // ── Auto-actualizaciones ───────────────────────────────────────────────
 
+  /** Downloads an available update after explicit operator approval. */
+  downloadUpdate: () =>
+    ipcRenderer.invoke(IPC_HANDLERS.DOWNLOAD_UPDATE),
+
   /** Instala la actualización descargada y reinicia la app. */
   installUpdate: () =>
     ipcRenderer.invoke(IPC_HANDLERS.INSTALL_UPDATE),

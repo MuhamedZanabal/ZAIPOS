@@ -80,14 +80,35 @@ jobs:
       - name: Test production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
 
+      - name: Test tenant-branch structural integrity
+        run: node scripts/test-tenant-branch-integrity.mjs
+
       - name: Test real checkout concurrency
         run: node scripts/test-checkout-concurrency.mjs
 
       - name: Test transaction authorization and audit
         run: node scripts/test-transaction-auth-audit.mjs
 
+      - name: Test device registry authorization
+        run: npm run test:migrations:devices
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
+
+      - name: Test production release contract
+        run: npm run test:release-contract
+
+      - name: Validate Windows icon resource
+        run: npm run test:windows-icon
+
+      - name: Test P0 AI safety
+        run: npm run test:ai-safety
+
+      - name: Test P0 AI RPC lockdown
+        run: npm run test:migrations:ai-lockdown
+
+      - name: Audit production dependencies
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Lint
         run: npm run lint
@@ -97,3 +118,35 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  windows-package:
+    name: windows-package
+    needs: quality
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Package unsigned Windows validation installer
+        run: npm run package:windows
+
+      - name: Preserve validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAIPOS-${{ github.sha }}-windows-validation
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/*.yml
+          if-no-files-found: error
+          retention-days: 14

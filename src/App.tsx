@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useAutoUpdater } from "@/hooks/useHardware";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { useDeviceHeartbeat } from "@/lib/deviceHeartbeat";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
 import Onboarding from "./pages/Onboarding";
@@ -58,6 +59,11 @@ const PageFallback = () => (
   </div>
 );
 
+const TerminalRuntime = () => {
+  useDeviceHeartbeat();
+  return null;
+};
+
 const App = () => {
   useSyncEngine();
   useAutoUpdater();
@@ -81,6 +87,7 @@ const App = () => {
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
       <TenantProvider>
+        <TerminalRuntime />
         <TooltipProvider>
           <ThemeApplier />
           <Toaster />

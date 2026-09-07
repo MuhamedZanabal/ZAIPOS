@@ -9,6 +9,15 @@
     "buildResources": "public"
   },
 
+  "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+  "generateUpdatesFilesForAllChannels": true,
+  "publish": {
+    "provider": "github",
+    "owner": "MuhamedZanabal",
+    "repo": "ZAIPOS",
+    "releaseType": "release"
+  },
+
   "files": [
     "dist/**/*",
     "dist-electron/**/*"
@@ -31,8 +40,7 @@
     "target": [
       { "target": "nsis", "arch": ["x64"] }
     ],
-    "icon": "public/icon-source.svg",
-    "signAndEditExecutable": false
+    "icon": "public/pwa-512x512.png"
   },
 
   "mac": {

@@ -10,6 +10,7 @@ import {
   syncQueuePayloadsEqual,
   syncQueueScopeFromPayload,
 } from '@/lib/syncQueue';
+import { getDeviceId } from '@/lib/deviceIdentity';
 
 interface OfflineMutationConfig<TData, TError, TVariables, TContext> 
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
@@ -106,15 +107,6 @@ export function isBrowserOffline() {
 
 export function isTransientNetworkError(error: unknown) {
   return isTransientNetworkFailure(error);
-}
-
-function getDeviceId() {
-  const key = 'poss360t_device_id';
-  const existing = window.localStorage.getItem(key);
-  if (existing) return existing;
-  const created = crypto.randomUUID();
-  window.localStorage.setItem(key, created);
-  return created;
 }
 
 function withClientMutationId<TVariables>(variables: TVariables, deviceId: string): TVariables {

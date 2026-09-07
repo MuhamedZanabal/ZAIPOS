@@ -75,12 +75,14 @@ export interface BarcodeConfig {
 
 export interface AppSettings {
   kiosk: boolean;
+  updateChannel: 'stable' | 'beta';
   printer: PrinterConfig;
   barcode: BarcodeConfig;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   kiosk: false,
+  updateChannel: 'stable',
   printer: {
     connectionType: 'usb',
     devicePath: process.platform === 'win32' ? '\\\\.\\COM1' : '/dev/usb/lp0',
@@ -110,6 +112,7 @@ export const IPC_HANDLERS = {
   GET_SETTINGS: 'get-settings',
   SAVE_SETTINGS: 'save-settings',
   SET_KIOSK: 'set-kiosk',
+  DOWNLOAD_UPDATE: 'download-update',
   INSTALL_UPDATE: 'install-update',
   OPEN_EXTERNAL: 'open-external',
   GET_APP_VERSION: 'get-app-version',

@@ -1,73 +1,69 @@
-/**
- * electron/services/updater.ts
- * Auto-actualizaciones usando electron-updater.
- * Descarga desde GitHub Releases (o cualquier supplier configurado en electron-builder).
- *
- * CONFIGURACIÓN:
- * Para habilitarlo, configura un supplier publish real en electron-builder
- * y lanza la app con POS_ENABLE_AUTO_UPDATE=true.
- *
- * Ejemplo:
- *   "publish": {
- *     "provider": "github",
- *     "owner": "tu-user",
- *     "repo": "zaipos-releases"
- *   }
- */
-
 import { ipcMain, BrowserWindow, dialog } from 'electron';
 import { IPC_EVENTS, IPC_HANDLERS } from '../types.js';
+import type { AppSettings } from '../types.js';
+
+type UpdateChannel = AppSettings['updateChannel'];
 
 let autoUpdater: any = null;
 
 async function loadUpdater() {
   if (!autoUpdater) {
     try {
-      const { autoUpdater: au } = await import('electron-updater');
-      autoUpdater = au;
-    } catch (err) {
-      console.warn('[Updater] electron-updater no disponible:', err);
+      const { autoUpdater: updater } = await import('electron-updater');
+      autoUpdater = updater;
+    } catch (error) {
+      console.warn('[Updater] electron-updater is unavailable:', error);
     }
   }
   return autoUpdater;
 }
 
-export async function setupUpdater(mainWindow: BrowserWindow): Promise<void> {
-  const au = await loadUpdater();
-  if (!au) return;
+function resolveUpdateChannel(configured: UpdateChannel): UpdateChannel {
+  const requested = process.env.POS_UPDATE_CHANNEL;
+  return requested === 'beta' || requested === 'stable' ? requested : configured;
+}
 
-  // Solo verificar en producción (no en dev)
+export async function setupUpdater(
+  mainWindow: BrowserWindow,
+  configuredChannel: UpdateChannel = 'stable',
+): Promise<void> {
+  const updater = await loadUpdater();
+  if (!updater) return;
+
   if (process.env.VITE_DEV_SERVER_URL) {
-    console.log('[Updater] Modo dev detectado. Auto-updater deshabilitado.');
+    console.info('[Updater] Development mode detected; release updates are disabled.');
     return;
   }
 
-  if (process.env.POS_ENABLE_AUTO_UPDATE !== 'true') {
-    console.log('[Updater] Auto-updater deshabilitado: falta POS_ENABLE_AUTO_UPDATE=true.');
+  if (process.env.POS_DISABLE_AUTO_UPDATE === 'true') {
+    console.info('[Updater] Update checks explicitly disabled for this terminal.');
     return;
   }
 
-  au.autoDownload = true;
-  au.autoInstallOnAppQuit = true;
+  const channel = resolveUpdateChannel(configuredChannel);
+  updater.channel = channel === 'beta' ? 'beta' : 'latest';
+  updater.allowPrerelease = channel === 'beta';
+  updater.allowDowngrade = false;
+  updater.autoDownload = false;
+  updater.autoInstallOnAppQuit = false;
 
-  // ── Eventos del updater → renderer ──────────────────────────────────────
-
-  au.on('update-available', (info: any) => {
-    console.log('[Updater] Actualización disponible:', info.version);
+  updater.on('update-available', (info: any) => {
+    console.info('[Updater] Update available', { version: info.version, channel });
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send(IPC_EVENTS.UPDATE_AVAILABLE, {
         version: info.version,
         releaseNotes: info.releaseNotes,
         releaseDate: info.releaseDate,
+        channel,
       });
     }
   });
 
-  au.on('update-not-available', () => {
-    console.log('[Updater] La app está actualizada.');
+  updater.on('update-not-available', (info: any) => {
+    console.info('[Updater] Terminal is current', { version: info?.version, channel });
   });
 
-  au.on('download-progress', (progress: any) => {
+  updater.on('download-progress', (progress: any) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send(IPC_EVENTS.DOWNLOAD_PROGRESS, {
         percent: Math.round(progress.percent),
@@ -78,8 +74,8 @@ export async function setupUpdater(mainWindow: BrowserWindow): Promise<void> {
     }
   });
 
-  au.on('update-downloaded', (info: any) => {
-    console.log('[Updater] Actualización descargada:', info.version);
+  updater.on('update-downloaded', (info: any) => {
+    console.info('[Updater] Update downloaded', { version: info.version, channel });
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send(IPC_EVENTS.UPDATE_DOWNLOADED, {
         version: info.version,
@@ -87,34 +83,40 @@ export async function setupUpdater(mainWindow: BrowserWindow): Promise<void> {
     }
   });
 
-  au.on('error', (err: Error) => {
-    console.error('[Updater] Error:', err.message);
+  updater.on('error', (error: Error) => {
+    console.error('[Updater] Update operation failed', { message: error.message, channel });
   });
 
-  // ── Handler: instalar ahora ──────────────────────────────────────────────
+  ipcMain.handle(IPC_HANDLERS.DOWNLOAD_UPDATE, async () => {
+    try {
+      await updater.downloadUpdate();
+      return { ok: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[Updater] Download failed', { message, channel });
+      return { ok: false, error: message };
+    }
+  });
 
   ipcMain.handle(IPC_HANDLERS.INSTALL_UPDATE, async () => {
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'question',
       buttons: ['Install and restart', 'Cancel'],
       defaultId: 0,
+      cancelId: 1,
       title: 'Update ready',
       message: 'The update is ready to install.',
-      detail: 'The application will restart to complete the installation.',
+      detail: 'ZAIPOS will restart to complete the installation.',
     });
 
-    if (result.response === 0) {
-      au.quitAndInstall(false, true);
-    }
+    if (result.response === 0) updater.quitAndInstall(false, true);
   });
 
-  // ── Verificar al iniciar (con delay para no bloquear el render) ──────────
-
   setTimeout(() => {
-    au.checkForUpdatesAndNotify().catch((err: Error) => {
-      console.warn('[Updater] checkForUpdates falló:', err.message);
+    updater.checkForUpdates().catch((error: Error) => {
+      console.warn('[Updater] Update check failed', { message: error.message, channel });
     });
   }, 5000);
 
-  console.log('[Updater] Auto-updater configurado ✓');
+  console.info('[Updater] Update service ready', { channel, autoDownload: false });
 }
