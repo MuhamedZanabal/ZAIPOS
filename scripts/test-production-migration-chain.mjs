@@ -48,6 +48,53 @@ function privilegedSql(statement) {
   });
 }
 
+function ensureSupabaseStorageFixture(database) {
+  const statement = `
+    CREATE SCHEMA IF NOT EXISTS storage;
+
+    CREATE TABLE IF NOT EXISTS storage.buckets (
+      id text PRIMARY KEY,
+      name text NOT NULL UNIQUE,
+      public boolean NOT NULL DEFAULT false,
+      file_size_limit bigint,
+      allowed_mime_types text[]
+    );
+
+    CREATE TABLE IF NOT EXISTS storage.objects (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      bucket_id text REFERENCES storage.buckets(id),
+      name text NOT NULL,
+      owner uuid,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      metadata jsonb
+    );
+
+    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+    DO $fixture$
+    BEGIN
+      IF to_regprocedure('storage.foldername(text)') IS NULL THEN
+        EXECUTE $function$
+          CREATE FUNCTION storage.foldername(name text)
+          RETURNS text[]
+          LANGUAGE sql
+          IMMUTABLE
+          PARALLEL SAFE
+          AS 'SELECT (string_to_array(name, ''/''))[1:greatest(array_length(string_to_array(name, ''/''), 1) - 1, 0)]'
+        $function$;
+      END IF;
+    END
+    $fixture$;
+  `;
+
+  if (usePlatformDatabase) {
+    privilegedSql(statement);
+  } else {
+    sql(database, statement);
+  }
+}
+
 function sql(database, statement, { capture = false } = {}) {
   return psql(database, ["-c", statement], { capture });
 }
@@ -90,6 +137,7 @@ function resetPlatformDatabase(label) {
     GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
     DELETE FROM auth.users WHERE id = '30000000-0000-0000-0000-000000000091';
   `);
+  ensureSupabaseStorageFixture(label);
 }
 
 function recreateDatabase(name) {
@@ -150,6 +198,7 @@ function recreateDatabase(name) {
     $$;
     GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
   `);
+  ensureSupabaseStorageFixture(name);
 }
 
 function apply(database, filenames) {

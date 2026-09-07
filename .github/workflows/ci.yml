@@ -77,25 +77,6 @@ jobs:
       - name: Test inventory client v2 cutover
         run: node scripts/test-inventory-client-cutover.mjs
 
-      - name: Diagnose production migration provenance
-        run: |
-          set -euxo pipefail
-          target="supabase/migrations/20260512120000_bhd_fils_money_migration.sql"
-          echo "HEAD=$(git rev-parse HEAD)"
-          echo "tracked migration count=$(git ls-files 'supabase/migrations/*.sql' | wc -l)"
-          git status --short
-          git ls-files 'supabase/migrations/*.sql' | tail -n 25
-          find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort | tail -n 25
-          if [ -f "$target" ]; then
-            echo "TARGET_PRESENT=yes"
-            git ls-files --error-unmatch "$target" >/dev/null 2>&1 && echo "TARGET_TRACKED=yes" || echo "TARGET_TRACKED=no"
-            sha256sum "$target"
-            sed -n '1,180p' "$target"
-          else
-            echo "TARGET_PRESENT=no"
-            exit 1
-          fi
-
       - name: Test production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
 
