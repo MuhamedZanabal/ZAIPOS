@@ -179,8 +179,8 @@ The production CI executes executable PostgreSQL-compatible PGlite contracts for
 
 P0.7 implementation PR #15 was reviewed at head `131f97db04085ed18c31b44e086927480edfb4da`, passed branch CI 190, merged as `cb938bde406ebc7c36f7cea936d517a3dabb3c07`, and passed post-merge `main` CI 191.
 
-## P0 complete-all candidate
+## P0 complete-all verification
 
-PR #17 adds production-PostgreSQL clean/upgrade migration verification, exact preservation fixtures, schema-wide tenant/branch constraints, true simultaneous checkout contention and same-operation replay, authorization/direct-mutation/audit matrices, and POS transaction/hardware-failure E2E coverage. The exact evidence and external boundaries are recorded in `docs/production-readiness/P0_COMPLETE_ALL_EVIDENCE.md`.
+PR #17 added production-PostgreSQL clean/upgrade migration verification, exact preservation fixtures, schema-wide tenant/branch constraints, true simultaneous checkout contention and same-operation replay, authorization/direct-mutation/audit matrices, and POS transaction/hardware-failure E2E coverage. It merged as `6ad10038f5f12471a0ca252c52df3b0dafc1c669` and passed post-merge `main` CI run #225 (`34164733691`). The exact evidence and external boundaries are recorded in `docs/production-readiness/P0_COMPLETE_ALL_EVIDENCE.md`.
 
 Historical receipt reprint fidelity is a separate P1 capability and is not claimed by the transaction-core verification.

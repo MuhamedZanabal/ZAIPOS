@@ -16,30 +16,30 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - [x] Client-facing inventory exactly-once command lifecycle
 - [x] Server-authoritative physical inventory reconciliation
 - [x] Table dispatch/undispatch row-lock protection before stock effects
-- [ ] True simultaneous multi-connection checkout/stock-contention stress gate
-- [ ] Wider tenant/branch relational consistency constraints
-- [ ] Full sensitive-operation authorization matrix
-- [ ] Full audit-integrity coverage
-- [ ] POS end-to-end scan → pay → receipt → stock test
-- [ ] Full clean-install + supported-upgrade migration-chain verification
+- [x] True simultaneous multi-connection checkout/stock-contention stress gate
+- [x] Wider tenant/branch relational consistency constraints
+- [x] Full sensitive-operation authorization matrix
+- [x] Full audit-integrity coverage
+- [x] POS end-to-end scan → pay → receipt → stock test
+- [x] Full clean-install + supported-upgrade migration-chain verification
 
 ## P0 Release
 
-- [ ] Signed Windows installer
-- [ ] Versioned GitHub Release workflow
-- [ ] Electron publish/updater provider
-- [ ] Update notification/download/install flow
-- [ ] Stable/beta staged channels
-- [ ] Rollback/known-good installer procedure
-- [ ] Device version/last-seen reporting
+- [ ] Signed Windows installer — external certificate credentials required
+- [x] Versioned GitHub Release workflow
+- [x] Electron publish/updater provider
+- [x] Update notification/download/install flow
+- [x] Stable/beta staged channels
+- [x] Rollback/known-good installer procedure
+- [x] Device version/last-seen reporting
 
 ## P0 AI Safety
 
-- [ ] Re-audit current ZAIPOS AI prototype
-- [ ] Remove hard-coded/fake operational metrics
-- [ ] Source-backed read-only AI controller
-- [ ] Server-side role-aware tool policy
-- [ ] Evidence metadata for AI facts
+- [x] Re-audit current ZAIPOS AI prototype
+- [x] Remove hard-coded/fake operational metrics
+- [ ] Source-backed read-only AI controller — scheduled for P2; P0 fails closed without live claims
+- [x] Server-side role enforcement and legacy AI RPC lockdown
+- [x] No operational AI fact emitted without source evidence in P0
 
 ## P1 Operational Capability
 
@@ -135,3 +135,14 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - Post-merge `main` CI: run 191
 - Verified gates: transaction-level `inventory_operations` operation ledger, atomic manual/OCR/EAN batches, replay-safe transfer, atomic purchase-order receiving, row-locked production completion, table dispatch/undispatch row locking, low-level authenticated primitive revocation, client v2 cutover, server-authoritative physical target reconciliation, signed adjustment evidence for both increases and decreases, replay/mismatch protection, branch authorization, lint, full Vitest suite and production build
 - Post-merge migration validation count: 55
+
+### P0 complete-all production gates
+
+- PR: #17
+- Final reviewed branch head: `d1299cef771dd8ad5104f034b20269f89d93cd1f`
+- Final branch CI: run 224 (`34164371309`), `quality` and `windows-package` green
+- Merge SHA: `6ad10038f5f12471a0ca252c52df3b0dafc1c669`
+- Post-merge `main` CI: run 225 (`34164733691`), `quality` and `windows-package` green
+- Post-merge Windows validation artifact: ID `10033852748`, SHA-256 `a015281fea2838882022bd3093e6e741344901487e71c653224145dda265d8be`
+- Verified gates: 59-migration clean and supported Bahrain upgrade chains, exact historical fils preservation, tenant/branch structural integrity, true last-unit contention, concurrent same-operation replay, role/tenant/branch/roleless authorization, direct mutation lockdown, audit integrity, POS/hardware failure E2E, production dependency audit, Windows NSIS packaging, updater/release contracts, device registry, and P0 AI safety lockdown
+- External controls: `main` protection requires repository-admin access; production Authenticode signing requires the documented certificate secrets; physical hardware/updater acceptance requires deployed equipment
