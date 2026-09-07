@@ -132,11 +132,11 @@ assertEqual("cash bucket after contention", scalar(`SELECT total_cash_fils::text
 sql(`
   UPDATE public.inventory_stocks SET quantity=1.000 WHERE inventory_center_id='${IDS.center}' AND product_id='${IDS.product}';
   UPDATE public.cash_sessions SET total_cash=0,total_cash_fils=0 WHERE id='${IDS.session}';
+  DELETE FROM public.checkout_operations WHERE tenant_id='${IDS.tenant}';
   DELETE FROM public.inventory_movements WHERE tenant_id='${IDS.tenant}';
   DELETE FROM public.payments WHERE sale_id IN (SELECT id FROM public.sales WHERE tenant_id='${IDS.tenant}');
   DELETE FROM public.sale_items WHERE sale_id IN (SELECT id FROM public.sales WHERE tenant_id='${IDS.tenant}');
   DELETE FROM public.sales WHERE tenant_id='${IDS.tenant}';
-  DELETE FROM public.checkout_operations WHERE tenant_id='${IDS.tenant}';
 `);
 
 const replayRace = await Promise.all([
