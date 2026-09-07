@@ -13,6 +13,8 @@ const I = {
   inventoryA: "30000000-0000-0000-0000-000000000086",
   managerB: "30000000-0000-0000-0000-000000000087",
   branchMismatchManager: "30000000-0000-0000-0000-000000000085",
+  registerA: "35000000-0000-0000-0000-000000000088",
+  closeRegister: "35000000-0000-0000-0000-000000000089",
   sessionA: "40000000-0000-0000-0000-000000000088",
   closeSession: "40000000-0000-0000-0000-000000000089",
   centerA: "45000000-0000-0000-0000-000000000088",
@@ -77,9 +79,14 @@ sql(`
   VALUES ('${I.centerA}','${I.tenantA}','${I.branchA}','Authorization Center','point_of_sale','active')
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id,status) VALUES
-    ('${I.sessionA}','${I.tenantA}','${I.branchA}','${I.cashierA}','open'),
-    ('${I.closeSession}','${I.tenantA}','${I.branchA}','${I.cashierA}','open')
+  INSERT INTO public.cash_registers(id,tenant_id,branch_id,name,status) VALUES
+    ('${I.registerA}','${I.tenantA}','${I.branchA}','Authorization Register','active'),
+    ('${I.closeRegister}','${I.tenantA}','${I.branchA}','Close Register','active')
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.cash_sessions(id,tenant_id,branch_id,register_id,user_id,status) VALUES
+    ('${I.sessionA}','${I.tenantA}','${I.branchA}','${I.registerA}','${I.cashierA}','open'),
+    ('${I.closeSession}','${I.tenantA}','${I.branchA}','${I.closeRegister}','${I.cashierA}','open')
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.products(id,tenant_id,name,product_type,price,cost,tax_rate,status)
