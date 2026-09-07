@@ -110,6 +110,9 @@ jobs:
       - name: Test P0 AI RPC lockdown
         run: npm run test:migrations:ai-lockdown
 
+      - name: Audit production dependencies
+        run: npm audit --audit-level=high --omit=dev
+
       - name: Lint
         run: npm run lint
 

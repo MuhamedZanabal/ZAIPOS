@@ -104,6 +104,9 @@ jobs:
       - name: Test P0 AI RPC lockdown
         run: npm run test:migrations:ai-lockdown
 
+      - name: Audit production dependencies
+        run: npm audit --audit-level=high --omit=dev
+
       - name: Lint
         run: npm run lint
 
@@ -112,3 +115,35 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  windows-package:
+    name: windows-package
+    needs: quality
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Package unsigned Windows validation installer
+        run: npm run package:windows
+
+      - name: Preserve validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAIPOS-${{ github.sha }}-windows-validation
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/*.yml
+          if-no-files-found: error
+          retention-days: 14

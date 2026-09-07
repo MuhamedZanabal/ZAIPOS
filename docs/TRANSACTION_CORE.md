@@ -4,7 +4,7 @@
 
 This document defines the currently verified P0 transaction contract for exact money, atomic checkout, split payments, offline replay, compensation transactions, cash-session close, and client-facing inventory mutation authority.
 
-It does **not** declare the complete application production-ready. True simultaneous multi-connection stock contention, full migration-chain upgrade testing, wider relational tenant/branch consistency, global mutation-audit coverage, POS end-to-end verification, release infrastructure, and AI safety remain independent gates.
+It does **not** by itself declare the complete application production-ready. Release signing, repository protection, physical hardware acceptance, and downstream P1/P2 capabilities remain independent gates.
 
 ## Money authority
 
@@ -179,14 +179,8 @@ The production CI executes executable PostgreSQL-compatible PGlite contracts for
 
 P0.7 implementation PR #15 was reviewed at head `131f97db04085ed18c31b44e086927480edfb4da`, passed branch CI 190, merged as `cb938bde406ebc7c36f7cea936d517a3dabb3c07`, and passed post-merge `main` CI 191.
 
-## Remaining P0 transaction work
+## P0 complete-all candidate
 
-The following are **not** declared complete by this document:
+PR #17 adds production-PostgreSQL clean/upgrade migration verification, exact preservation fixtures, schema-wide tenant/branch constraints, true simultaneous checkout contention and same-operation replay, authorization/direct-mutation/audit matrices, and POS transaction/hardware-failure E2E coverage. The exact evidence and external boundaries are recorded in `docs/production-readiness/P0_COMPLETE_ALL_EVIDENCE.md`.
 
-- true simultaneous multi-connection checkout/stock-contention stress testing;
-- full clean-install plus supported-upgrade migration-chain verification;
-- wider tenant/branch relational consistency constraints;
-- complete sensitive-operation authorization coverage across the full application;
-- complete mutation-audit coverage across the full application;
-- end-to-end scan → pay → receipt → stock verification across the production client;
-- historical receipt reprint fidelity where not independently verified.
+Historical receipt reprint fidelity is a separate P1 capability and is not claimed by the transaction-core verification.
