@@ -13,6 +13,7 @@ const I = {
   inventoryA: "30000000-0000-0000-0000-000000000086",
   managerB: "30000000-0000-0000-0000-000000000087",
   branchMismatchManager: "30000000-0000-0000-0000-000000000085",
+  unauthorized: "30000000-0000-0000-0000-000000000084",
   registerA: "35000000-0000-0000-0000-000000000088",
   closeRegister: "35000000-0000-0000-0000-000000000089",
   sessionA: "40000000-0000-0000-0000-000000000088",
@@ -53,7 +54,8 @@ sql(`
     ('${I.cashierA}','cashier-a@zaipos.test','{}'),
     ('${I.inventoryA}','inventory-a@zaipos.test','{}'),
     ('${I.managerB}','manager-b@zaipos.test','{}'),
-    ('${I.branchMismatchManager}','manager-other-branch@zaipos.test','{}')
+    ('${I.branchMismatchManager}','manager-other-branch@zaipos.test','{}'),
+    ('${I.unauthorized}','unauthorized@zaipos.test','{}')
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,allow_negative_stock) VALUES
@@ -108,6 +110,8 @@ function checkout(operationId) {
 const returnSaleId = asUser(I.cashierA, checkout("auth-matrix-return-sale"));
 if (!returnSaleId) throw new Error("cashier checkout did not return a sale ID");
 expectReject("cross-tenant checkout", I.managerB, checkout("auth-matrix-cross-tenant-checkout"));
+expectReject("wrong-branch checkout", I.branchMismatchManager, checkout("auth-matrix-wrong-branch-checkout"));
+expectReject("unauthorized checkout", I.unauthorized, checkout("auth-matrix-unauthorized-checkout"));
 
 const returnItemId = scalar(`SELECT id::text FROM public.sale_items WHERE sale_id='${returnSaleId}'::uuid LIMIT 1;`);
 const returnItems = JSON.stringify([{ sale_item_id: returnItemId, quantity: "1.000" }]);
@@ -116,6 +120,7 @@ const returnSql = (operationId) => `SELECT public.process_sale_return_v2('${retu
 expectReject("cashier return", I.cashierA, returnSql("auth-return-cashier-denied"));
 expectReject("cross-tenant return", I.managerB, returnSql("auth-return-cross-tenant"));
 expectReject("wrong-branch return", I.branchMismatchManager, returnSql("auth-return-wrong-branch"));
+expectReject("unauthorized return", I.unauthorized, returnSql("auth-return-unauthorized"));
 const returnId = asUser(I.managerA, returnSql("auth-return-manager-approved"));
 if (!returnId) throw new Error("manager return did not complete");
 
@@ -125,6 +130,7 @@ const voidSql = (operationId) => `SELECT public.process_sale_void_v2('${voidSale
 expectReject("cashier void", I.cashierA, voidSql("auth-void-cashier-denied"));
 expectReject("cross-tenant void", I.managerB, voidSql("auth-void-cross-tenant"));
 expectReject("wrong-branch void", I.branchMismatchManager, voidSql("auth-void-wrong-branch"));
+expectReject("unauthorized void", I.unauthorized, voidSql("auth-void-unauthorized"));
 const voidId = asUser(I.managerA, voidSql("auth-void-manager-approved"));
 if (!voidId) throw new Error("manager void did not complete");
 
@@ -133,12 +139,14 @@ const batch = JSON.stringify([{ effect_key: "auth-adjustment", product_id: I.pro
 const inventorySql = (operationId) => `SELECT public.record_inventory_batch_v2('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.centerA}'::uuid,'${batch}'::jsonb,'${operationId}','Authorization matrix');`;
 expectReject("cashier inventory mutation", I.cashierA, inventorySql("auth-inventory-cashier-denied"));
 expectReject("cross-tenant inventory mutation", I.managerB, inventorySql("auth-inventory-cross-tenant"));
+expectReject("unauthorized inventory mutation", I.unauthorized, inventorySql("auth-inventory-unauthorized"));
 const inventoryOperationId = asUser(I.inventoryA, inventorySql("auth-inventory-role-approved"));
 if (!inventoryOperationId) throw new Error("inventory role command did not complete");
 
 // Cash close: inventory role is denied; cashier responsible for the branch is allowed.
 const closeSql = `SELECT (public.close_cash_session('${I.closeSession}'::uuid,0.000,'Authorization matrix',0.000,0.000,0.000)).id;`;
 expectReject("inventory cash close", I.inventoryA, closeSql);
+expectReject("unauthorized cash close", I.unauthorized, closeSql);
 const closedId = asUser(I.cashierA, closeSql);
 assertEqual("cashier close session", closedId, I.closeSession);
 
