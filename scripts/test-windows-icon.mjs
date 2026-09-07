@@ -52,5 +52,6 @@ assert(
 );
 assert(!electronMain.includes('favicon.ico'), 'Electron runtime must not reference the malformed legacy ICO');
 assert(!viteConfig.includes('"favicon.ico"'), 'PWA precache must not retain the malformed legacy ICO');
+assert(!fs.existsSync('public/favicon.ico'), 'Malformed legacy ICO must not be copied into production output');
 
 console.log(`Windows icon contract PASS: ${iconPath}`);
