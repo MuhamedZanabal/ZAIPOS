@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const builder = JSON.parse(fs.readFileSync('electron-builder.config.json', 'utf8'));
+const electronMain = fs.readFileSync('electron/main.ts', 'utf8');
+const viteConfig = fs.readFileSync('vite.config.ts', 'utf8');
 const iconPath = builder.win?.icon;
 
 if (typeof iconPath !== 'string' || iconPath.length === 0) {
@@ -43,5 +45,12 @@ if (extension === '.png') {
 } else {
   throw new Error(`${iconPath}: Windows icon must be PNG or ICO`);
 }
+
+assert(
+  electronMain.includes("path.join(__dirname, '../dist/pwa-512x512.png')"),
+  'Electron BrowserWindow must use the packaged ZAIPOS PNG icon',
+);
+assert(!electronMain.includes('favicon.ico'), 'Electron runtime must not reference the malformed legacy ICO');
+assert(!viteConfig.includes('"favicon.ico"'), 'PWA precache must not retain the malformed legacy ICO');
 
 console.log(`Windows icon contract PASS: ${iconPath}`);
