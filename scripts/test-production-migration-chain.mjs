@@ -70,6 +70,9 @@ function ensureSupabaseStorageFixture(database) {
       metadata jsonb
     );
 
+    ALTER TABLE storage.buckets OWNER TO postgres;
+    ALTER TABLE storage.objects OWNER TO postgres;
+    GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
     ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
     DO $fixture$
