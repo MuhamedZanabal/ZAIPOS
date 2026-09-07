@@ -38,6 +38,7 @@
     "test:watch": "vitest",
     "audit:localization": "node scripts/audit-localization.mjs",
     "verify:release": "node scripts/verify-release.mjs",
+    "test:release-contract": "node scripts/test-release-contract.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "test:migrations:money": "node scripts/test-money-migration.mjs",
     "test:migrations:checkout": "node scripts/test-atomic-checkout-v2.mjs",
@@ -47,9 +48,12 @@
     "test:migrations:void": "node scripts/test-void-sale-v2.mjs",
     "test:migrations:return-void-access": "node scripts/test-return-void-access-rls.mjs",
     "test:migrations:inventory-idempotency": "node scripts/test-inventory-exactly-once.mjs && node scripts/test-inventory-reconciliation-v2.mjs",
+    "test:migrations:devices": "node scripts/test-device-registry.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
-    "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir"
+    "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir",
+    "package:windows": "vite build --mode electron && electron-builder --config electron-builder.config.json --win nsis --x64 --publish never",
+    "release:windows": "node scripts/require-windows-signing.mjs && vite build --mode electron && electron-builder --config electron-builder.config.json --win nsis --x64 --publish always"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -305,11 +305,12 @@ function verifyFinalShape(database) {
     "public.process_sale_void_v2(uuid,text,uuid,text)",
     "public.record_inventory_batch_v2(uuid,uuid,uuid,jsonb,text,text)",
     "public.reconcile_inventory_levels_v2(uuid,uuid,uuid,jsonb,text,text)",
+    "public.register_device_heartbeat(uuid,uuid,text,text,text,text,text,jsonb)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }

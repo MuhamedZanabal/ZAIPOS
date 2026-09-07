@@ -89,8 +89,14 @@ jobs:
       - name: Test transaction authorization and audit
         run: node scripts/test-transaction-auth-audit.mjs
 
+      - name: Test device registry authorization
+        run: npm run test:migrations:devices
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
+
+      - name: Test production release contract
+        run: npm run test:release-contract
 
       - name: Lint
         run: npm run lint

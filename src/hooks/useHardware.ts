@@ -269,8 +269,18 @@ export function useAutoUpdater(): void {
     if (!available || !hardware) return;
 
     const cleanupAvailable = hardware.onUpdateAvailable(({ version }) => {
-      toast.info(`New version available: v${version}. Downloading…`, {
-        duration: 5000,
+      toast.info(`New version available: v${version}`, {
+        description: 'The update will only download after you approve it.',
+        action: {
+          label: 'Download update',
+          onClick: async () => {
+            const result = await hardware?.downloadUpdate();
+            if (result && !result.ok) {
+              toast.error(`Update download failed: ${result.error ?? 'Unknown error'}`);
+            }
+          },
+        },
+        duration: Infinity,
       });
     });
 

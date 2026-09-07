@@ -10,6 +10,7 @@ import WhatsAppSettings from "./WhatsAppSettings";
 import AiAgentSettings from "./AiAgentSettings";
 import { DataManagement } from "./DataManagement";
 import { SystemMaintenance } from "./SystemMaintenance";
+import DevicesSettings from "./DevicesSettings";
 import { cn } from "@/lib/utils";
 import {
   Building2,
@@ -23,6 +24,7 @@ import {
   Palette,
   Database,
   Wrench,
+  MonitorCog,
   ChevronRight,
 } from "lucide-react";
 
@@ -38,6 +40,7 @@ const TABS = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "data", label: "Data", icon: Database },
   { id: "operations", label: "Operations", icon: Wrench },
+  { id: "devices", label: "Devices", icon: MonitorCog },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -82,6 +85,7 @@ export default function Settings() {
         {active === "appearance" && <AppearanceSettings />}
         {active === "data" && <DataManagement />}
         {active === "operations" && <SystemMaintenance />}
+        {active === "devices" && <DevicesSettings />}
       </div>
     </div>
   );

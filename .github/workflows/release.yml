@@ -1,0 +1,174 @@
+name: Release ZAIPOS Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-beta.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zaipos-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Production release quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+
+    steps:
+      - name: Checkout exact release ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      - name: Verify signed and versioned release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          test "$GITHUB_REF_NAME" = "v${package_version}" || {
+            echo "Release tag $GITHUB_REF_NAME does not match package version v${package_version}." >&2
+            exit 1
+          }
+          tag_payload="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}")"
+          tag_type="$(printf '%s' "$tag_payload" | jq -r '.object.type')"
+          tag_url="$(printf '%s' "$tag_payload" | jq -r '.object.url')"
+          test "$tag_type" = "tag" || {
+            echo "Release tags must be annotated and cryptographically signed." >&2
+            exit 1
+          }
+          gh api "$tag_url" --jq '.verification.verified' | grep -qx true || {
+            echo "Release tag signature is not verified by GitHub." >&2
+            exit 1
+          }
+
+      - name: Audit ZAIPOS Bahrain localization
+        run: npm run audit:localization
+
+      - name: Validate migrations
+        run: npm run validate:migrations
+
+      - name: Test production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+
+      - name: Test tenant and transaction invariants
+        run: |
+          npm run test:migrations:money
+          npm run test:migrations:checkout
+          npm run test:migrations:checkout-rls
+          npm run test:migrations:returns
+          npm run test:migrations:return-loyalty
+          npm run test:migrations:void
+          npm run test:migrations:return-void-access
+          npm run test:migrations:inventory-idempotency
+          node scripts/test-cash-session-reconciliation.mjs
+          node scripts/test-inventory-client-cutover.mjs
+          node scripts/test-tenant-branch-integrity.mjs
+          node scripts/test-checkout-concurrency.mjs
+          node scripts/test-transaction-auth-audit.mjs
+          npm run test:migrations:devices
+
+      - name: Test production release contract
+        run: npm run test:release-contract
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  windows:
+    name: Signed Windows installer
+    needs: quality
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout exact release ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Require Windows signing credentials
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CSC_LINK) -or [string]::IsNullOrWhiteSpace($env:CSC_KEY_PASSWORD)) {
+            Write-Error "Unsigned production releases are forbidden. Configure WINDOWS_CSC_LINK and WINDOWS_CSC_KEY_PASSWORD."
+          }
+
+      - name: Package signed installer without publishing
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run package:windows
+
+      - name: Publish signed stable release
+        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-beta.')
+        run: npm run release:windows
+
+      - name: Publish signed beta release
+        if: startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, '-beta.')
+        run: npm run release:windows -- --config.publish.releaseType=prerelease
+
+      - name: Generate release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: gh release edit $env:GITHUB_REF_NAME --generate-notes
+
+      - name: Preserve signed installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAIPOS-${{ github.ref_name }}-windows-x64
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/*.yml
+          if-no-files-found: error
+          retention-days: 90

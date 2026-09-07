@@ -32,6 +32,9 @@ export interface ElectronBridge {
    */
   setKiosk: (enabled: boolean) => Promise<void>;
 
+  /** Downloads an available update after explicit operator approval. */
+  downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
+
   /** Instala la actualización descargada y reinicia la app */
   installUpdate: () => Promise<void>;
 
