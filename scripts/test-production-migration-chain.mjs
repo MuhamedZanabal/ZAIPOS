@@ -75,6 +75,18 @@ function ensureSupabaseStorageFixture(database) {
     GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
     ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
+    DROP POLICY IF EXISTS "return_evidence_tenant_select" ON storage.objects;
+    DROP POLICY IF EXISTS "return_evidence_tenant_insert" ON storage.objects;
+    DROP POLICY IF EXISTS "tenant members can upload product images" ON storage.objects;
+    DROP POLICY IF EXISTS "tenant members can update product images" ON storage.objects;
+    DROP POLICY IF EXISTS "tenant members can delete product images" ON storage.objects;
+    DROP POLICY IF EXISTS "product images are publicly readable" ON storage.objects;
+
+    DELETE FROM storage.objects
+    WHERE bucket_id IN ('return-evidence', 'product-images');
+    DELETE FROM storage.buckets
+    WHERE id IN ('return-evidence', 'product-images');
+
     DO $fixture$
     BEGIN
       IF to_regprocedure('storage.foldername(text)') IS NULL THEN
