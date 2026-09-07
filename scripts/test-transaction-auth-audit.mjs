@@ -156,7 +156,7 @@ assertEqual(
 
 const auditExpectations = [
   ["sale.checkout_committed", returnSaleId],
-  ["sale.returned_v2", returnSaleId],
+  ["sale.returned_v2", returnId],
   ["sale.checkout_committed", voidSaleId],
   ["sale.voided_v2", voidSaleId],
   ["inventory.batch_v2", inventoryOperationId],
@@ -169,6 +169,12 @@ for (const [action, entityId] of auditExpectations) {
     "1",
   );
 }
+
+assertEqual(
+  "return audit original sale reference",
+  scalar(`SELECT count(*)::text FROM public.audit_logs WHERE tenant_id='${I.tenantA}'::uuid AND action='sale.returned_v2' AND entity_id='${returnId}'::uuid AND metadata->>'sale_id'='${returnSaleId}';`),
+  "1",
+);
 
 for (const action of ["sale.checkout_committed", "sale.returned_v2", "sale.voided_v2", "inventory.batch_v2", "cash_session.closed"]) {
   assertEqual(
