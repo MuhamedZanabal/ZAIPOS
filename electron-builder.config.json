@@ -40,7 +40,7 @@
     "target": [
       { "target": "nsis", "arch": ["x64"] }
     ],
-    "icon": "public/favicon.ico"
+    "icon": "public/pwa-512x512.png"
   },
 
   "mac": {

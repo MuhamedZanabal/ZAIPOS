@@ -98,6 +98,9 @@ jobs:
       - name: Test production release contract
         run: npm run test:release-contract
 
+      - name: Validate Windows icon resource
+        run: npm run test:windows-icon
+
       - name: Test P0 AI safety
         run: npm run test:ai-safety
 
