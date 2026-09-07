@@ -1,10 +1,10 @@
-# P0 complete-all candidate evidence
+# P0 complete-all production evidence
 
-This document records the verified PR candidate state. Repository-verifiable items become complete only after PR #17 is merged and the exact merge SHA passes `main` CI. External controls remain explicitly blocked until their evidence exists.
+PR #17 was merged and its exact merge SHA passed `main` CI. External controls remain explicitly blocked until their evidence exists.
 
 ## Transaction and migration gates
 
-CI run #219 (`34140201475`) passed on exact PR head `0c7263479621b443b93ebf78e65e4e45315b8d73` before this documentation update. The final documentation head must repeat all gates.
+Final PR head `d1299cef771dd8ad5104f034b20269f89d93cd1f` passed CI run #224 (`34164371309`). Squash merge `6ad10038f5f12471a0ca252c52df3b0dafc1c669` passed post-merge `main` CI run #225 (`34164733691`); both runs completed `quality` and `windows-package` successfully.
 
 The executable contract covers:
 
@@ -18,7 +18,7 @@ The executable contract covers:
 - scan → cart → `checkout_sale_v2` → receipt → printer/drawer → cart clear → stock refresh;
 - post-commit printer and drawer failure without checkout retry or financial duplication.
 
-## Release candidate gates
+## Release repository gates
 
 - `electron-builder.config.json` publishes versioned NSIS artifacts and updater metadata to `MuhamedZanabal/ZAIPOS`.
 - Stable and beta release tags must be version-matched, annotated, and GitHub signature-verified.
@@ -26,6 +26,8 @@ The executable contract covers:
 - Update download and installation each require explicit operator approval.
 - The device registry records tenant, branch, stable device ID, version, OS, channel, state, capabilities, and last seen through an authorized RPC; direct mutation is denied.
 - CI validates an unsigned Windows installer on `windows-latest`; only the protected release workflow may publish a signed production installer.
+
+Post-merge artifact ID `10033852748` is 112,608,151 bytes with SHA-256 `a015281fea2838882022bd3093e6e741344901487e71c653224145dda265d8be`. It is validation evidence only and is not represented as a signed production release.
 
 External signing evidence is still required for the first production artifact. Required secrets are documented in `RELEASE_OPERATIONS.md`.
 

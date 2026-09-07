@@ -4,11 +4,11 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 
 ## Baseline controls
 
-- [x] Current production implementation baseline after P0.6 verified from `main`: `76ce641a847afa8fb94bad54b050fdcbde1aa682`
+- [x] Current P0 complete-all implementation baseline verified from `main`: `6ad10038f5f12471a0ca252c52df3b0dafc1c669`
 - [x] Repository, migrations, CI, package configuration, checkout path, money kernel and automated transaction tests inspected
 - [x] Scan-to-receipt and offline replay path mapped
-- [ ] Full database migration chain executed on clean and supported-upgrade production-shaped databases
-- [ ] Protected `main` with required checks
+- [x] Full database migration chain executed on clean and supported-upgrade production-shaped databases
+- [ ] Protected `main` with required checks — external repository-admin permission required
 
 ## P0 transaction core
 
@@ -16,19 +16,19 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 - [x] Pure split-payment, till-cash and refund-ceiling invariant tests
 - [x] Exact-money Stage A: core BIGINT fils sidecars, backfill, synchronization, parity constraints and restricted diagnostics
 - [x] Exact-money Stage B: legacy monetary compatibility columns widened losslessly to three-decimal BHD precision, with parity diagnostics preserved
-- [ ] Remaining money-bearing ledger fields inventoried and given exact authoritative representations where required
-- [ ] Integer-fils authoritative application/server cutover for all remaining money surfaces
+- [x] Remaining P0 money-bearing transaction fields inventoried and given exact authoritative representations
+- [x] Integer-fils authoritative P0 application/server transaction cutover
 - [x] Server-authoritative atomic validate/commit checkout through `checkout_sale_v2`
 - [x] Split-payment UI and exact server persistence for Cash, Card, BenefitPay and Bank Transfer
 - [x] Concurrent/idempotent checkout replay returns the original result and rejects local operation-ID payload conflicts
 - [x] Explicit offline queue state/failure matrix with durable commit evidence, crash recovery, tenant isolation and operator review states
-- [ ] Exactly-once inventory operation constraint and integration tests across all inventory mutation classes
+- [x] Exactly-once inventory operation constraint and integration tests across P0 inventory mutation classes
 - [x] Void command with exact compensating payment, inventory, coupon and till effects
 - [x] Cumulative partial-refund ceiling with exact compensating payment records and immutable original history
 - [x] Cash/refund/void close-reconciliation invariants in the database
-- [ ] Tenant and branch relational consistency constraints/tests across the wider schema
-- [ ] Complete sensitive-mutation audit contract across all mutation families
-- [ ] POS transaction E2E and true simultaneous stock-concurrency tests
+- [x] Tenant and branch relational consistency constraints/tests across the wider schema
+- [x] Complete P0 sensitive-mutation audit contract across transaction mutation families
+- [x] POS transaction E2E and true simultaneous stock-concurrency tests
 
 ### P0.5 verification evidence
 
@@ -62,20 +62,32 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 
 ## P0 release
 
-- [ ] Signed Windows installer
-- [ ] Versioned GitHub Release workflow
-- [ ] Configured GitHub updater provider
-- [ ] User-approved update download/install flow
-- [ ] Stable/beta channels
-- [ ] Device version/health registry
-- [ ] Tested rollback procedure
+- [ ] Signed Windows installer — external certificate credentials required
+- [x] Versioned GitHub Release workflow
+- [x] Configured GitHub updater provider
+- [x] User-approved update download/install flow
+- [x] Stable/beta channels
+- [x] Device version/health registry
+- [x] Controlled rollback procedure and known-good release retention documented
 
 ## P0 AI safety
 
-- [ ] Remove hard-coded product margins and unsupported AI findings from `AIAgent.tsx`
-- [ ] Remove artificial retrieval behavior from the operational AI surface
-- [ ] Source-backed read-only controller and initial tool policy
-- [ ] Evidence metadata and server-side role enforcement
+- [x] Remove hard-coded product margins and unsupported AI findings from `AIAgent.tsx`
+- [x] Remove artificial retrieval behavior from the operational AI surface
+- [x] Fail closed when no source-backed read controller exists; no live claims in P0
+- [x] Revoke legacy write-capable AI RPCs and enforce server-side manager authorization
+
+### P0 complete-all production evidence
+
+- Implementation PR: #17 (`fix/p0-complete-all`)
+- Final reviewed head: `d1299cef771dd8ad5104f034b20269f89d93cd1f`
+- Exact-head CI 224 (`34164371309`): `quality` and `windows-package` green
+- Squash merge: `6ad10038f5f12471a0ca252c52df3b0dafc1c669`
+- Post-merge `main` CI 225 (`34164733691`): `quality` and `windows-package` green
+- Post-merge Windows validation artifact: ID `10033852748`, SHA-256 `a015281fea2838882022bd3093e6e741344901487e71c653224145dda265d8be`
+- External admin blocker: the connected GitHub App cannot configure the required `main` ruleset
+- External signing blocker: production release requires `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`
+- Physical acceptance boundary: printer, drawer, and installed updater behavior require deployed hardware; simulated transaction invariants are green
 
 ## P1/P2/P3
 
