@@ -32,6 +32,16 @@ Deno.serve(async (req) => {
     return json({ error: "doc_id, tenant_id and branch_id are required" }, 400);
   }
 
+  const { data: authorized, error: authorizationError } = await adminSupabase.rpc("has_branch_role", {
+    _user_id: user.id,
+    _tenant_id: tenant_id,
+    _branch_id: branch_id,
+    _roles: ["owner", "admin", "manager"],
+  });
+  if (authorizationError || !authorized) {
+    return json({ error: "Forbidden" }, 403);
+  }
+
   // Fetch doc content
   const { data: doc, error: docErr } = await adminSupabase
     .from("ai_knowledge_docs")

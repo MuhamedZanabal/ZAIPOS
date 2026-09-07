@@ -98,6 +98,12 @@ jobs:
       - name: Test production release contract
         run: npm run test:release-contract
 
+      - name: Test P0 AI safety
+        run: npm run test:ai-safety
+
+      - name: Test P0 AI RPC lockdown
+        run: npm run test:migrations:ai-lockdown
+
       - name: Lint
         run: npm run lint
 
