@@ -55,6 +55,9 @@ CREATE TABLE public.held_cart_items (
   CONSTRAINT held_cart_items_cart_fkey
     FOREIGN KEY (tenant_id, branch_id, held_cart_id)
     REFERENCES public.held_carts(tenant_id, branch_id, id) ON DELETE CASCADE,
+  CONSTRAINT held_cart_items_tenant_branch_fkey
+    FOREIGN KEY (tenant_id, branch_id)
+    REFERENCES public.branches(tenant_id, id) ON DELETE RESTRICT,
   UNIQUE (held_cart_id, line_id)
 );
 

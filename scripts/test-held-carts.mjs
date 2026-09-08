@@ -5,8 +5,10 @@ const I = {
   tenantA: "13000000-0000-0000-0000-000000000081",
   tenantB: "13000000-0000-0000-0000-000000000082",
   branchA: "23000000-0000-0000-0000-000000000081",
+  branchA2: "23000000-0000-0000-0000-000000000083",
   branchB: "23000000-0000-0000-0000-000000000082",
   cashierA: "33000000-0000-0000-0000-000000000081",
+  managerA2: "33000000-0000-0000-0000-000000000083",
   managerB: "33000000-0000-0000-0000-000000000082",
   centerA: "43000000-0000-0000-0000-000000000081",
   productA: "53000000-0000-0000-0000-000000000081",
@@ -39,6 +41,7 @@ function expectReject(label, userId, statement, pattern = /not authorized|forbid
 sql(`
   INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
     ('${I.cashierA}','held-cashier-a@zaipos.test','{"full_name":"Cashier A"}'),
+    ('${I.managerA2}','held-manager-a2@zaipos.test','{"full_name":"Manager A2"}'),
     ('${I.managerB}','held-manager-b@zaipos.test','{"full_name":"Manager B"}')
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode) VALUES
@@ -47,10 +50,12 @@ sql(`
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.branches(id,tenant_id,name,status) VALUES
     ('${I.branchA}','${I.tenantA}','Held Branch A','active'),
+    ('${I.branchA2}','${I.tenantA}','Held Branch A2','active'),
     ('${I.branchB}','${I.tenantB}','Held Branch B','active')
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
     ('${I.cashierA}','${I.tenantA}','${I.branchA}','cashier'),
+    ('${I.managerA2}','${I.tenantA}','${I.branchA2}','manager'),
     ('${I.managerB}','${I.tenantB}','${I.branchB}','manager')
   ON CONFLICT DO NOTHING;
   INSERT INTO public.inventory_centers(id,tenant_id,branch_id,name,type,status) VALUES
@@ -81,6 +86,10 @@ const listed = JSON.parse(asUser(I.cashierA, `SELECT public.list_held_carts_v1('
 assertEqual("branch list count", String(listed.length), "1");
 assertEqual("held item count", String(listed[0].item_count), "1");
 expectReject("cross-tenant preview", I.managerB, `SELECT public.preview_held_cart_resume_v1('${cartId}'::uuid);`);
+expectReject("wrong-branch preview", I.managerA2, `SELECT public.preview_held_cart_resume_v1('${cartId}'::uuid);`);
+expectReject("wrong-branch hold", I.cashierA, `SELECT public.hold_cart_v1('${I.branchA2}'::uuid,'Wrong branch','pos',NULL,NULL,'${items}'::jsonb,'hold-wrong-branch-81');`);
+assertEqual("cross-tenant RLS", asUser(I.managerB, `SELECT count(*)::text FROM public.held_carts WHERE id='${cartId}'::uuid;`), "0");
+assertEqual("wrong-branch RLS", asUser(I.managerA2, `SELECT count(*)::text FROM public.held_carts WHERE id='${cartId}'::uuid;`), "0");
 
 sql(`
   UPDATE public.products SET price=1.500 WHERE id='${I.productA}'::uuid;

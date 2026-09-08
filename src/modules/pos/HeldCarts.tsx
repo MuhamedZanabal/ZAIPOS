@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Archive, AlertTriangle, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +47,7 @@ export function HoldCartDialog({
   const queryClient = useQueryClient();
   const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
+  const operation = useRef<{ key: string; id: string } | null>(null);
 
   useEffect(() => { if (!open) setLabel(""); }, [open]);
 
@@ -54,18 +55,24 @@ export function HoldCartDialog({
     if (!branchId || lines.length === 0 || saving) return;
     setSaving(true);
     try {
+      const items = serializeHeldCartLines(lines);
+      const operationKey = JSON.stringify({ branchId, label: label.trim() || "Held cart", channel, customerId, tableId, items });
+      if (operation.current?.key !== operationKey) {
+        operation.current = { key: operationKey, id: crypto.randomUUID() };
+      }
       const { error } = await supabase.rpc("hold_cart_v1", {
         _branch_id: branchId,
         _label: label.trim() || "Held cart",
         _channel: channel,
         _customer_id: customerId,
         _table_id: tableId,
-        _items: serializeHeldCartLines(lines),
-        _client_operation_id: crypto.randomUUID(),
+        _items: items,
+        _client_operation_id: operation.current.id,
       });
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: [HELD_CART_QUERY_KEY, branchId] });
       onHeld();
+      operation.current = null;
       onOpenChange(false);
       toast.success("Cart held");
     } catch (error: any) {
@@ -121,6 +128,8 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
   const [preview, setPreview] = useState<HeldCartResumePreview | null>(null);
   const [resolutions, setResolutions] = useState<HeldCartResolutions>({});
   const [busy, setBusy] = useState(false);
+  const resumeOperation = useRef<{ key: string; id: string } | null>(null);
+  const discardOperations = useRef(new Map<string, string>());
 
   const { data: carts = [], isLoading } = useQuery<HeldCartSummary[]>({
     queryKey: [HELD_CART_QUERY_KEY, branchId],
@@ -136,6 +145,7 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
     if (!open) {
       setPreview(null);
       setResolutions({});
+      resumeOperation.current = null;
     }
   }, [open]);
 
@@ -153,6 +163,7 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
       if (error) throw error;
       setPreview(data as unknown as HeldCartResumePreview);
       setResolutions({});
+      resumeOperation.current = null;
     } catch (error: any) {
       toast.error("Held cart could not be reviewed", { description: error?.message });
     } finally {
@@ -164,10 +175,14 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
     if (!preview || !request?.ready || !hasRemainingItems || busy) return;
     setBusy(true);
     try {
+      const operationKey = JSON.stringify({ cartId: preview.cart.id, items: request.items });
+      if (resumeOperation.current?.key !== operationKey) {
+        resumeOperation.current = { key: operationKey, id: crypto.randomUUID() };
+      }
       const { data, error } = await supabase.rpc("resume_held_cart_v1", {
         _held_cart_id: preview.cart.id,
         _resolutions: request.items,
-        _client_operation_id: crypto.randomUUID(),
+        _client_operation_id: resumeOperation.current.id,
       });
       if (error) throw error;
       const result = data as unknown as HeldCartResumePreview;
@@ -178,18 +193,22 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
         tableId: result.cart.table_id,
       });
       await queryClient.invalidateQueries({ queryKey: [HELD_CART_QUERY_KEY, branchId] });
+      resumeOperation.current = null;
       onOpenChange(false);
       toast.success("Held cart resumed");
     } catch (error: any) {
       toast.error("Held cart changed again", {
         description: error?.message ?? "Review the latest product, price and stock state.",
       });
-      const { data: latest } = await supabase.rpc("preview_held_cart_resume_v1", {
-        _held_cart_id: preview.cart.id,
-      });
-      if (latest) {
-        setPreview(latest as unknown as HeldCartResumePreview);
-        setResolutions({});
+      if (!/fetch|network|timeout|connection/i.test(error?.message ?? "")) {
+        const { data: latest } = await supabase.rpc("preview_held_cart_resume_v1", {
+          _held_cart_id: preview.cart.id,
+        });
+        if (latest) {
+          setPreview(latest as unknown as HeldCartResumePreview);
+          setResolutions({});
+          resumeOperation.current = null;
+        }
       }
     } finally {
       setBusy(false);
@@ -200,13 +219,16 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
     if (busy || !window.confirm(`Discard held cart "${cart.label}"?`)) return;
     setBusy(true);
     try {
+      const operationId = discardOperations.current.get(cart.id) ?? crypto.randomUUID();
+      discardOperations.current.set(cart.id, operationId);
       const { error } = await supabase.rpc("discard_held_cart_v1", {
         _held_cart_id: cart.id,
         _reason: "Discarded by cashier from POS",
-        _client_operation_id: crypto.randomUUID(),
+        _client_operation_id: operationId,
       });
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: [HELD_CART_QUERY_KEY, branchId] });
+      discardOperations.current.delete(cart.id);
       toast.success("Held cart discarded");
     } catch (error: any) {
       toast.error("Held cart could not be discarded", { description: error?.message });
