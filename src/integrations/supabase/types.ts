@@ -1627,6 +1627,60 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_reprint_events: {
+        Row: {
+          branch_id: string
+          client_operation_id: string
+          completed_at: string | null
+          created_at: string
+          failure_code: string | null
+          id: string
+          requested_by: string
+          sale_id: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          branch_id: string
+          client_operation_id: string
+          completed_at?: string | null
+          created_at?: string
+          failure_code?: string | null
+          id?: string
+          requested_by: string
+          sale_id: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          branch_id?: string
+          client_operation_id?: string
+          completed_at?: string | null
+          created_at?: string
+          failure_code?: string | null
+          id?: string
+          requested_by?: string
+          sale_id?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_reprint_events_sale_fkey"
+            columns: ["tenant_id", "branch_id", "sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["tenant_id", "branch_id", "id"]
+          },
+          {
+            foreignKeyName: "receipt_reprint_events_tenant_branch_fkey"
+            columns: ["tenant_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       sale_items: {
         Row: {
           created_at: string
@@ -1718,6 +1772,7 @@ export type Database = {
           discount_total_fils: number
           id: string
           notes: string | null
+          receipt_snapshot: Json | null
           session_id: string | null
           status: Database["public"]["Enums"]["sale_status"]
           subtotal: number
@@ -1744,6 +1799,7 @@ export type Database = {
           discount_total_fils?: number
           id?: string
           notes?: string | null
+          receipt_snapshot?: Json | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal?: number
@@ -1770,6 +1826,7 @@ export type Database = {
           discount_total_fils?: number
           id?: string
           notes?: string | null
+          receipt_snapshot?: Json | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal?: number
@@ -2455,6 +2512,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_sale_receipt_reprint_v1: {
+        Args: {
+          _event_id: string
+          _failure_code?: string | null
+          _outcome: string
+        }
+        Returns: string
+      }
       dispatch_table_item: {
         Args: { _item_id: string }
         Returns: {
@@ -2507,6 +2572,10 @@ export type Database = {
           content: string
           similarity: number
         }[]
+      }
+      prepare_sale_receipt_reprint_v1: {
+        Args: { _client_operation_id: string; _sale_id: string }
+        Returns: Json
       }
       has_any_role: {
         Args: {

@@ -11,6 +11,7 @@ const I = {
   managerB: "32000000-0000-0000-0000-000000000074",
   productA: "52000000-0000-0000-0000-000000000073",
   saleA: "62000000-0000-0000-0000-000000000073",
+  saleA2: "62000000-0000-0000-0000-000000000075",
   itemA: "72000000-0000-0000-0000-000000000073",
   paymentA: "82000000-0000-0000-0000-000000000073",
 };
@@ -83,9 +84,15 @@ sql(`
   VALUES ('${I.paymentA}','${I.tenantA}','${I.saleA}','cash',2.500,NULL)
   ON CONFLICT (id) DO NOTHING;
   COMMIT;
+
+  INSERT INTO public.sales(
+    id,tenant_id,branch_id,user_id,ticket_number,subtotal,tax_total,discount_total,tip_amount,total,status,channel,client_mutation_id,created_at
+  ) VALUES (
+    '${I.saleA2}','${I.tenantA}','${I.branchA}','${I.cashierA}',74,0,0,0,0,0,'completed','pos','receipt-fixture-sale-2','2026-09-05T09:01:00Z'
+  ) ON CONFLICT (id) DO NOTHING;
 `);
 
-const prepare = (operationId) => `SELECT public.prepare_sale_receipt_reprint_v1('${I.saleA}'::uuid,'${operationId}')::text;`;
+const prepare = (operationId, saleId = I.saleA) => `SELECT public.prepare_sale_receipt_reprint_v1('${saleId}'::uuid,'${operationId}')::text;`;
 const first = JSON.parse(asAuthenticated(I.cashierA, prepare("receipt-reprint-operation-73")));
 
 assertEqual("historical business", first.snapshot.business.name, "Original Business");
@@ -111,7 +118,13 @@ assertEqual("immutable item", replay.snapshot.items[0].name, "Historical Product
 assertEqual("one requested audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='sale.receipt_reprint_requested' AND entity_id='${I.saleA}'::uuid;`), "1");
 
 expectReject("cross-tenant reprint", I.managerB, prepare("receipt-cross-tenant"));
-expectReject("operation payload conflict", I.cashierA, `SELECT public.prepare_sale_receipt_reprint_v1(gen_random_uuid(),'receipt-reprint-operation-73');`);
+expectReject("operation payload conflict", I.cashierA, prepare("receipt-reprint-operation-73", I.saleA2));
+expectReject(
+  "historical snapshot mutation",
+  I.cashierA,
+  `UPDATE public.sales SET receipt_snapshot='{}'::jsonb WHERE id='${I.saleA}'::uuid RETURNING id;`,
+  /immutable|permission denied/i,
+);
 
 const completed = asAuthenticated(I.cashierA, `SELECT public.complete_sale_receipt_reprint_v1('${first.event_id}'::uuid,'printed',NULL)::text;`);
 assertEqual("completed event", completed, first.event_id);

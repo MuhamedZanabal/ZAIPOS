@@ -21,6 +21,10 @@ Printed receipts use the ZAIPOS receipt model and shared Bahrain currency format
 
 Printer templates must use ZAIPOS identity and Bahrain money/tax terminology.
 
+Historical reprints are visibly marked and are built only from the immutable
+sale snapshot captured by PostgreSQL. Current product names, prices, branch
+details or receipt settings must never rewrite the historical document.
+
 ## Cash Drawer
 
 The drawer should open only for flows that require it, normally cash checkout. A hardware failure after a successfully committed sale must not cause the sale to be retried or charged twice.
