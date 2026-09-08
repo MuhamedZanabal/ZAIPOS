@@ -92,6 +92,9 @@ jobs:
       - name: Test device registry authorization
         run: npm run test:migrations:devices
 
+      - name: Test historical receipt reprint
+        run: npm run test:migrations:receipt-reprint
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 
