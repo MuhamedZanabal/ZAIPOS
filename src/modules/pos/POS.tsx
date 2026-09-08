@@ -13,6 +13,7 @@ import { CategoryBar } from "./CategoryBar";
 import { ProductGrid } from "./ProductGrid";
 import { TicketPanel } from "./TicketPanel";
 import { PaymentDialog } from "./PaymentDialog";
+import { HeldCartsDialog, HoldCartDialog } from "./HeldCarts";
 import type { PaymentAllocation } from "./paymentAllocations";
 import {
   POS_CHECKOUT_QUEUE_TYPE,
@@ -39,13 +40,15 @@ export default function POS() {
   const qc = useQueryClient();
   const { tenantId, branchId, branches, activeChannels } = useTenantContext();
   const { devMode } = useDevMode();
-  const { lines, total, clear, add } = useCart();
+  const { lines, total, clear, add, replace } = useCart();
   const { data: openSession } = useOpenSession(branchId);
   const { onBarcodeScanned, printTicket, openDrawer } = useHardware();
 
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [search, setSearch] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [holdCartOpen, setHoldCartOpen] = useState(false);
+  const [heldCartsOpen, setHeldCartsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [channel, setChannel] = useState<SalesChannel>("pos");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -746,8 +749,45 @@ export default function POS() {
           reasonDisabled={isPos && !openSession ? "Open register to charge" : undefined}
           onCharge={() => setPaymentOpen(true)}
           onSendToTable={channel === "tables" ? handleSendToTable : undefined}
+          onHold={() => setHoldCartOpen(true)}
+          onOpenHeldCarts={() => {
+            if (lines.length > 0) {
+              toast.error("Hold or clear the current ticket before resuming another cart");
+              return;
+            }
+            setHeldCartsOpen(true);
+          }}
         />
       </div>
+
+      <HoldCartDialog
+        open={holdCartOpen}
+        onOpenChange={setHoldCartOpen}
+        branchId={branchId}
+        channel={channel}
+        customerId={customerId}
+        tableId={selectedTableId}
+        lines={lines}
+        onHeld={() => {
+          clear();
+          setCustomerId(null);
+          setCustomerSearch("");
+          setSelectedTableId(null);
+        }}
+      />
+
+      <HeldCartsDialog
+        open={heldCartsOpen}
+        onOpenChange={setHeldCartsOpen}
+        branchId={branchId}
+        onResumed={(held) => {
+          replace(held.lines);
+          setChannel(held.channel);
+          setCustomerId(held.customerId);
+          setSelectedTableId(held.tableId);
+          setCustomerSearch("");
+        }}
+      />
 
       <PaymentDialog
         open={paymentOpen}

@@ -308,11 +308,16 @@ function verifyFinalShape(database) {
     "public.register_device_heartbeat(uuid,uuid,text,text,text,text,text,jsonb)",
     "public.prepare_sale_receipt_reprint_v1(uuid,text)",
     "public.complete_sale_receipt_reprint_v1(uuid,text,text)",
+    "public.hold_cart_v1(uuid,text,public.sales_channel,uuid,uuid,jsonb,text)",
+    "public.list_held_carts_v1(uuid)",
+    "public.preview_held_cart_resume_v1(uuid)",
+    "public.resume_held_cart_v1(uuid,jsonb,text)",
+    "public.discard_held_cart_v1(uuid,text,text)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }

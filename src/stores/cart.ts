@@ -27,6 +27,7 @@ interface CartState {
   remove: (id: string) => void;
   setQty: (id: string, q: number) => void;
   setDiscount: (id: string, d: number) => void;
+  replace: (lines: CartLine[]) => void;
   clear: () => void;
   subtotal: () => number;
   taxTotal: () => number;
@@ -49,6 +50,7 @@ export const useCart = create<CartState>((set, get) => ({
       lines: q <= 0 ? s.lines.filter((l) => l.id !== id) : s.lines.map((l) => (l.id === id ? { ...l, quantity: q } : l)),
     })),
   setDiscount: (id, d) => set((s) => ({ lines: s.lines.map((l) => (l.id === id ? { ...l, discount: d } : l)) })),
+  replace: (lines) => set({ lines }),
   clear: () => set({ lines: [] }),
   subtotal: () => get().lines.reduce((sum, l) => sum + l.product.price * l.quantity - l.discount, 0),
   taxTotal: () =>

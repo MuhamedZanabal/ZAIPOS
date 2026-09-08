@@ -103,7 +103,11 @@ const resolutions = JSON.stringify([{ line_id: "water", accept_current_price: tr
 const resumed = JSON.parse(asUser(I.cashierA, `SELECT public.resume_held_cart_v1('${cartId}'::uuid,'${resolutions}'::jsonb,'resume-cart-operation-81')::text;`));
 assertEqual("resumed quantity", String(resumed.items[0].quantity), "1");
 assertEqual("resumed current price", String(resumed.items[0].current_unit_price_fils), "1500");
-assertEqual("resume replay", asUser(I.cashierA, `SELECT public.resume_held_cart_v1('${cartId}'::uuid,'${resolutions}'::jsonb,'resume-cart-operation-81')::text;`), JSON.stringify(resumed));
+assertEqual(
+  "resume replay",
+  JSON.stringify(JSON.parse(asUser(I.cashierA, `SELECT public.resume_held_cart_v1('${cartId}'::uuid,'${resolutions}'::jsonb,'resume-cart-operation-81')::text;`))),
+  JSON.stringify(resumed),
+);
 assertEqual("one resume audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.cart_resumed' AND entity_id='${cartId}'::uuid;`), "1");
 
 const discardCartId = asUser(I.cashierA, hold("hold-cart-operation-82", "Discard me"));

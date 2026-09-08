@@ -53,4 +53,13 @@ describe("cart store", () => {
     expect(state.lines.find((line) => line.product._modifiers?.length)?.quantity).toBe(2);
     expect(state.total()).toBe(18000);
   });
+
+  it("replaces the current ticket atomically when a held cart is resumed", () => {
+    const resumed = [{ id: "resumed", product: product(), quantity: 2, discount: 0 }];
+    useCart.getState().add(product({ id: "current" }));
+
+    useCart.getState().replace(resumed);
+
+    expect(useCart.getState().lines).toEqual(resumed);
+  });
 });
