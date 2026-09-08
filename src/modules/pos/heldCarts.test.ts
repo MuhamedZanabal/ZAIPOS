@@ -26,14 +26,13 @@ function product(overrides: Partial<CartProduct> = {}): CartProduct {
     description: null,
     image_url: null,
     min_stock: null,
-    rappi_product_id: null,
     sku: null,
     sort_order: 0,
     station: null,
     unit_code: null,
     unit_id: null,
     ...overrides,
-  };
+  } as CartProduct;
 }
 
 describe("held cart exact snapshot and resume resolution", () => {
