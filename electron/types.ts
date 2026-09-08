@@ -10,12 +10,15 @@ export interface TicketItem {
   name: string;
   quantity: number;
   unitPrice: number;
+  discountAmount?: number;
+  taxRate?: number;
   total: number;
 }
 
 export interface TicketPayment {
   method: string;     // "Efectivo", "Tarjeta", "Transferencia", etc.
   amount: number;
+  reference?: string;
 }
 
 export interface TicketData {
@@ -32,10 +35,14 @@ export interface TicketData {
   total: number;
   payments: TicketPayment[];
   customerName?: string;
+  cashierName?: string;
   notes?: string;
   /** URL o texto plano para el QR al pie del ticket */
   qrData?: string;
   date?: string; // ISO string
+  isReprint?: boolean;
+  saleStatus?: string;
+  reprintEventId?: string;
 }
 
 export interface PrintResult {

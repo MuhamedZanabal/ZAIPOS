@@ -306,11 +306,18 @@ function verifyFinalShape(database) {
     "public.record_inventory_batch_v2(uuid,uuid,uuid,jsonb,text,text)",
     "public.reconcile_inventory_levels_v2(uuid,uuid,uuid,jsonb,text,text)",
     "public.register_device_heartbeat(uuid,uuid,text,text,text,text,text,jsonb)",
+    "public.prepare_sale_receipt_reprint_v1(uuid,text)",
+    "public.complete_sale_receipt_reprint_v1(uuid,text,text)",
+    "public.hold_cart_v1(uuid,text,public.sales_channel,uuid,uuid,jsonb,text)",
+    "public.list_held_carts_v1(uuid)",
+    "public.preview_held_cart_resume_v1(uuid)",
+    "public.resume_held_cart_v1(uuid,jsonb,text)",
+    "public.discard_held_cart_v1(uuid,text,text)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }
@@ -341,5 +348,9 @@ assertEqual("upgrade payment amount fils", scalar("zaipos_upgrade", "SELECT amou
 assertEqual("upgrade opening cash fils", scalar("zaipos_upgrade", "SELECT opening_amount_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "10000");
 assertEqual("upgrade till cash fils", scalar("zaipos_upgrade", "SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade stock quantity preserved", scalar("zaipos_upgrade", "SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='45000000-0000-0000-0000-000000000091' AND product_id='50000000-0000-0000-0000-000000000091';"), "7.500");
+assertEqual("upgrade historical receipt captured", scalar("zaipos_upgrade", "SELECT receipt_snapshot IS NOT NULL FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "t");
+assertEqual("upgrade receipt total fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{totals,total_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
+assertEqual("upgrade receipt item fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{items,0,unit_price_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "1250");
+assertEqual("upgrade receipt payment fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{payments,0,amount_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
 
 process.stdout.write(`Production PostgreSQL migration chain PASS: clean=${migrations.length} migrations; supported baseline=${baselineFile}\n`);

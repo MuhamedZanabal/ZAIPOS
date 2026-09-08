@@ -8,6 +8,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import type { TicketData, PrintResult, PrinterConfig } from '../types.js';
 import { IPC_HANDLERS, DEFAULT_SETTINGS } from '../types.js';
+import { buildReceiptTextLines } from './receipt-format.js';
 
 // Importamos de forma lazy para que el app arranque aunque la impresora no esté conectada
 let ThermalPrinter: any;
@@ -57,15 +58,6 @@ async function createPrinterInstance(config: PrinterConfig): Promise<any> {
   return printer;
 }
 
-function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
-}
-
-function padLine(left: string, right: string, width: number): string {
-  const spaces = width - left.length - right.length;
-  return left + ' '.repeat(Math.max(spaces, 1)) + right;
-}
-
 // ─── Impresión de Ticket ────────────────────────────────────────────────────
 
 export async function printTicket(
@@ -75,100 +67,8 @@ export async function printTicket(
   try {
     const printer = await createPrinterInstance(config);
     const width = config.width ?? 42;
-    const separator = '─'.repeat(width);
-    const date = data.date ? new Date(data.date) : new Date();
-    const dateStr = date.toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const timeStr = date.toLocaleTimeString('es-MX', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    // ── Encabezado ──────────────────────────────────────────────────────────
-    printer.alignCenter();
-    printer.bold(true);
-    printer.setTextSize(1, 1);
-    printer.println(data.businessName.toUpperCase());
-    printer.bold(false);
-    printer.setTextNormal();
-
-    if (data.branchName) printer.println(data.branchName);
-    if (data.address) printer.println(data.address);
-    if (data.phone) printer.println(`Tel: ${data.phone}`);
-
-    printer.drawLine();
     printer.alignLeft();
-    printer.println(
-      padLine(`Ticket #${data.ticketNumber}`, `${dateStr} ${timeStr}`, width)
-    );
-    if (data.customerName) printer.println(`Customer: ${data.customerName}`);
-    printer.drawLine();
-
-    // ── Items ────────────────────────────────────────────────────────────────
-    for (const item of data.items) {
-      const qtyName = `${item.quantity}x ${item.name}`;
-      const totalStr = formatCurrency(item.total);
-      // Nombre truncado si es muy largo
-      const maxNameLen = width - totalStr.length - 2;
-      const displayName = qtyName.length > maxNameLen
-        ? qtyName.substring(0, maxNameLen - 1) + '…'
-        : qtyName;
-      printer.println(padLine(displayName, totalStr, width));
-
-      // Price unitario si la quantity es > 1
-      if (item.quantity > 1) {
-        printer.println(`   @ ${formatCurrency(item.unitPrice)} c/u`);
-      }
-    }
-
-    printer.drawLine();
-
-    // ── Totales ──────────────────────────────────────────────────────────────
-    printer.println(padLine('Subtotal', formatCurrency(data.subtotal), width));
-
-    if (data.discountTotal > 0) {
-      printer.println(padLine('Discount', `-${formatCurrency(data.discountTotal)}`, width));
-    }
-    if (data.taxTotal > 0) {
-      printer.println(padLine('IVA', formatCurrency(data.taxTotal), width));
-    }
-    if (data.tipAmount > 0) {
-      printer.println(padLine('Tip', formatCurrency(data.tipAmount), width));
-    }
-
-    printer.bold(true);
-    printer.setTextSize(1, 1);
-    printer.println(padLine('TOTAL', formatCurrency(data.total), width));
-    printer.bold(false);
-    printer.setTextNormal();
-
-    // ── Payments ────────────────────────────────────────────────────────────────
-    if (data.payments.length > 0) {
-      printer.drawLine();
-      printer.println('Payment method:');
-      for (const pay of data.payments) {
-        printer.println(padLine(`  ${pay.method}`, formatCurrency(pay.amount), width));
-      }
-
-      // Calcular cambio
-      const totalPaid = data.payments.reduce((s, p) => s + p.amount, 0);
-      const change = totalPaid - data.total;
-      if (change > 0.005) {
-        printer.bold(true);
-        printer.println(padLine('Cambio', formatCurrency(change), width));
-        printer.bold(false);
-      }
-    }
-
-    // ── Notas ────────────────────────────────────────────────────────────────
-    if (data.notes) {
-      printer.drawLine();
-      printer.alignCenter();
-      printer.println(data.notes);
-    }
+    for (const line of buildReceiptTextLines(data, width)) printer.println(line);
 
     // ── QR Code ──────────────────────────────────────────────────────────────
     if (data.qrData) {
@@ -181,10 +81,6 @@ export async function printTicket(
       });
     }
 
-    // ── Pie ──────────────────────────────────────────────────────────────────
-    printer.newLine();
-    printer.alignCenter();
-    printer.println('Thank you for your business!');
     printer.newLine();
 
     // Feed y corte

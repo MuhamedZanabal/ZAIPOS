@@ -1024,6 +1024,123 @@ export type Database = {
           },
         ]
       }
+      held_cart_items: {
+        Row: {
+          branch_id: string
+          created_at: string
+          discount_fils: number
+          expected_unit_price_fils: number
+          held_cart_id: string
+          id: string
+          line_id: string
+          modifiers: Json
+          product_id: string
+          product_name_snapshot: string
+          product_type_snapshot: Database["public"]["Enums"]["product_type"]
+          quantity: number
+          tax_rate_snapshot: number
+          tenant_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          discount_fils?: number
+          expected_unit_price_fils: number
+          held_cart_id: string
+          id?: string
+          line_id: string
+          modifiers?: Json
+          product_id: string
+          product_name_snapshot: string
+          product_type_snapshot: Database["public"]["Enums"]["product_type"]
+          quantity: number
+          tax_rate_snapshot?: number
+          tenant_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          discount_fils?: number
+          expected_unit_price_fils?: number
+          held_cart_id?: string
+          id?: string
+          line_id?: string
+          modifiers?: Json
+          product_id?: string
+          product_name_snapshot?: string
+          product_type_snapshot?: Database["public"]["Enums"]["product_type"]
+          quantity?: number
+          tax_rate_snapshot?: number
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      held_carts: {
+        Row: {
+          branch_id: string
+          channel: Database["public"]["Enums"]["sales_channel"]
+          client_operation_id: string
+          created_at: string
+          created_by: string
+          customer_id: string | null
+          discard_reason: string | null
+          id: string
+          label: string
+          request_payload: Json
+          resolution_operation_id: string | null
+          resolution_payload: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_result: Json | null
+          status: string
+          table_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          channel: Database["public"]["Enums"]["sales_channel"]
+          client_operation_id: string
+          created_at?: string
+          created_by: string
+          customer_id?: string | null
+          discard_reason?: string | null
+          id?: string
+          label: string
+          request_payload: Json
+          resolution_operation_id?: string | null
+          resolution_payload?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_result?: Json | null
+          status?: string
+          table_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          channel?: Database["public"]["Enums"]["sales_channel"]
+          client_operation_id?: string
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          discard_reason?: string | null
+          id?: string
+          label?: string
+          request_payload?: Json
+          resolution_operation_id?: string | null
+          resolution_payload?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_result?: Json | null
+          status?: string
+          table_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           branch_id: string
@@ -1627,6 +1744,60 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_reprint_events: {
+        Row: {
+          branch_id: string
+          client_operation_id: string
+          completed_at: string | null
+          created_at: string
+          failure_code: string | null
+          id: string
+          requested_by: string
+          sale_id: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          branch_id: string
+          client_operation_id: string
+          completed_at?: string | null
+          created_at?: string
+          failure_code?: string | null
+          id?: string
+          requested_by: string
+          sale_id: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          branch_id?: string
+          client_operation_id?: string
+          completed_at?: string | null
+          created_at?: string
+          failure_code?: string | null
+          id?: string
+          requested_by?: string
+          sale_id?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_reprint_events_sale_fkey"
+            columns: ["tenant_id", "branch_id", "sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["tenant_id", "branch_id", "id"]
+          },
+          {
+            foreignKeyName: "receipt_reprint_events_tenant_branch_fkey"
+            columns: ["tenant_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       sale_items: {
         Row: {
           created_at: string
@@ -1718,6 +1889,7 @@ export type Database = {
           discount_total_fils: number
           id: string
           notes: string | null
+          receipt_snapshot: Json | null
           session_id: string | null
           status: Database["public"]["Enums"]["sale_status"]
           subtotal: number
@@ -1744,6 +1916,7 @@ export type Database = {
           discount_total_fils?: number
           id?: string
           notes?: string | null
+          receipt_snapshot?: Json | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal?: number
@@ -1770,6 +1943,7 @@ export type Database = {
           discount_total_fils?: number
           id?: string
           notes?: string | null
+          receipt_snapshot?: Json | null
           session_id?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal?: number
@@ -2455,6 +2629,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_sale_receipt_reprint_v1: {
+        Args: {
+          _event_id: string
+          _failure_code?: string | null
+          _outcome: string
+        }
+        Returns: string
+      }
+      discard_held_cart_v1: {
+        Args: { _client_operation_id: string; _held_cart_id: string; _reason: string }
+        Returns: string
+      }
       dispatch_table_item: {
         Args: { _item_id: string }
         Returns: {
@@ -2494,6 +2680,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      hold_cart_v1: {
+        Args: {
+          _branch_id: string
+          _channel: Database["public"]["Enums"]["sales_channel"]
+          _client_operation_id: string
+          _customer_id: string | null
+          _items: Json
+          _label: string
+          _table_id: string | null
+        }
+        Returns: string
+      }
+      list_held_carts_v1: { Args: { _branch_id: string }; Returns: Json }
       match_knowledge_docs: {
         Args: {
           _tenant_id: string
@@ -2508,6 +2707,11 @@ export type Database = {
           similarity: number
         }[]
       }
+      prepare_sale_receipt_reprint_v1: {
+        Args: { _client_operation_id: string; _sale_id: string }
+        Returns: Json
+      }
+      preview_held_cart_resume_v1: { Args: { _held_cart_id: string }; Returns: Json }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -2610,6 +2814,10 @@ export type Database = {
           _tenant_id: string
         }
         Returns: string
+      }
+      resume_held_cart_v1: {
+        Args: { _client_operation_id: string; _held_cart_id: string; _resolutions: Json }
+        Returns: Json
       }
       send_table_order_to_cashier: {
         Args: { _order_id: string }

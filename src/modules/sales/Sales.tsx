@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { useHardware } from "@/hooks/useHardware";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatCurrency } from "@/lib/format";
-import { Ban, Receipt, Undo2 } from "lucide-react";
+import { Ban, Printer, Receipt, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 import { ReturnDialog } from "./ReturnDialog";
 import { VoidSaleDialog } from "./VoidSaleDialog";
+import {
+  buildHistoricalReceiptTicket,
+  type PreparedReceiptReprint,
+} from "./receiptSnapshot";
 
 type SaleItem = {
   id: string;
@@ -44,8 +50,11 @@ function statusLabel(status: string): string {
 
 export default function Sales() {
   const { branchId } = useTenantContext();
+  const { printTicket } = useHardware();
   const [returnSale, setReturnSale] = useState<Sale | null>(null);
   const [voidSale, setVoidSale] = useState<Sale | null>(null);
+  const [reprintingSaleId, setReprintingSaleId] = useState<string | null>(null);
+  const activeReprints = useRef(new Set<string>());
 
   const { data: sales } = useQuery<Sale[]>({
     queryKey: ["sales", branchId],
@@ -60,6 +69,57 @@ export default function Sales() {
         .order("created_at", { ascending: false })
         .limit(100)).data ?? []) as Sale[],
   });
+
+  const reprintReceipt = async (sale: Sale) => {
+    if (activeReprints.current.has(sale.id)) return;
+    activeReprints.current.add(sale.id);
+    setReprintingSaleId(sale.id);
+
+    try {
+      const operationId = crypto.randomUUID();
+      const { data, error } = await supabase.rpc("prepare_sale_receipt_reprint_v1", {
+        _sale_id: sale.id,
+        _client_operation_id: operationId,
+      });
+      if (error) throw error;
+
+      const prepared = data as unknown as PreparedReceiptReprint;
+      const ticket = buildHistoricalReceiptTicket(prepared);
+      const printResult = await printTicket(ticket);
+      const outcome = printResult.ok ? "printed" : "failed";
+
+      const { error: completionError } = await supabase.rpc(
+        "complete_sale_receipt_reprint_v1",
+        {
+          _event_id: prepared.event_id,
+          _outcome: outcome,
+          _failure_code: printResult.ok ? null : "printer_failed",
+        },
+      );
+
+      if (completionError) {
+        toast.error("Receipt outcome could not be recorded", {
+          description: completionError.message,
+        });
+        return;
+      }
+
+      if (printResult.ok) {
+        toast.success(`Receipt #${sale.ticket_number} reprinted`);
+      } else {
+        toast.error("Receipt printing failed", {
+          description: printResult.error ?? "Check the terminal printer and retry.",
+        });
+      }
+    } catch (error: any) {
+      toast.error("Receipt could not be reprinted", {
+        description: error?.message ?? "The historical receipt is unavailable.",
+      });
+    } finally {
+      activeReprints.current.delete(sale.id);
+      setReprintingSaleId((current) => current === sale.id ? null : current);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -108,6 +168,16 @@ export default function Sales() {
                 </span>
               </span>
               <span className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  className="g-sales-return"
+                  aria-label={`Reprint receipt #${s.ticket_number}`}
+                  disabled={reprintingSaleId === s.id}
+                  onClick={() => void reprintReceipt(s)}
+                >
+                  <Printer size={13} />
+                  {reprintingSaleId === s.id ? "Printing…" : "Reprint"}
+                </button>
                 {RETURNABLE_STATUSES.has(s.status) && (
                   <button
                     type="button"

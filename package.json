@@ -52,6 +52,8 @@
     "test:migrations:return-void-access": "node scripts/test-return-void-access-rls.mjs",
     "test:migrations:inventory-idempotency": "node scripts/test-inventory-exactly-once.mjs && node scripts/test-inventory-reconciliation-v2.mjs",
     "test:migrations:devices": "node scripts/test-device-registry.mjs",
+    "test:migrations:receipt-reprint": "node scripts/test-receipt-reprint.mjs",
+    "test:migrations:held-carts": "node scripts/test-held-carts.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir",

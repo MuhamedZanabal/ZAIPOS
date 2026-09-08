@@ -2,16 +2,18 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCart } from "@/stores/cart";
 import { formatCurrency } from "@/lib/format";
-import { Minus, Plus, Trash2, ShoppingBag, X, Send } from "lucide-react";
+import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw } from "lucide-react";
 
 interface TicketPanelProps {
   canCharge: boolean;
   onCharge: () => void;
   onSendToTable?: () => void;
+  onHold?: () => void;
+  onOpenHeldCarts?: () => void;
   reasonDisabled?: string;
 }
 
-export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled }: TicketPanelProps) {
+export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpenHeldCarts, reasonDisabled }: TicketPanelProps) {
   const { lines, remove, setQty, clear, subtotal, taxTotal, total } = useCart();
   const subtotalNum = subtotal();
   const taxNum = taxTotal();
@@ -29,11 +31,23 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
             <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + l.quantity, 0)} items</span>
           )}
         </div>
-        {lines.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={clear} className="h-8">
-            <X className="h-4 w-4 mr-1" />Vaciar
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {onOpenHeldCarts && (
+            <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label="Open held carts">
+              <RotateCcw className="h-4 w-4 mr-1" /> Held
+            </Button>
+          )}
+          {lines.length > 0 && onHold && (
+            <Button variant="ghost" size="sm" onClick={onHold} className="h-8" aria-label="Hold current cart">
+              <Archive className="h-4 w-4 mr-1" /> Hold
+            </Button>
+          )}
+          {lines.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={clear} className="h-8">
+              <X className="h-4 w-4 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
       </header>
 
       <ScrollArea className="flex-1">
@@ -58,7 +72,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
                         ))}
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground tabular-nums mt-0.5">{formatCurrency(Number(l.product.price))} c/u</div>
+                    <div className="text-xs text-muted-foreground tabular-nums mt-0.5">{formatCurrency(Number(l.product.price))} each</div>
                   </div>
                   <button
                     onClick={() => remove(l.id)}
@@ -88,7 +102,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, reasonDisabled
 
       <footer className="border-t bg-muted/30 p-4 space-y-1.5">
         <Row label="Subtotal" value={formatCurrency(subtotalNum)} />
-        <Row label="Impuestos" value={formatCurrency(taxNum)} />
+        <Row label="VAT" value={formatCurrency(taxNum)} />
         <div className="flex items-baseline justify-between pt-2 border-t mt-2">
           <span className="font-semibold">Total</span>
           <span className="text-3xl font-bold text-primary tabular-nums">{formatCurrency(totalNum)}</span>

@@ -43,6 +43,7 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 
 ## P1 Operational Capability
 
+- [ ] Historical receipt reprint fidelity + audit
 - [ ] Held/suspended carts
 - [ ] Price override + manager approval
 - [ ] POS PIN authentication
