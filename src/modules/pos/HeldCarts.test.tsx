@@ -5,6 +5,8 @@ import { HoldCartDialog, HeldCartsDialog } from "./HeldCarts";
 const state = vi.hoisted(() => ({
   rpc: vi.fn(),
   invalidateQueries: vi.fn(),
+  queryError: null as Error | null,
+  refetch: vi.fn(),
 }));
 
 const line: any = {
@@ -59,8 +61,11 @@ const resumed = {
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({
-    data: [{ id: "held-1", label: "Lunch order", item_count: 1, total_fils: 2500, channel: "pos", created_at: "2026-09-08T12:00:00Z", created_by_name: "Zana" }],
+    data: state.queryError ? undefined : [{ id: "held-1", label: "Lunch order", item_count: 1, total_fils: 2500, channel: "pos", created_at: "2026-09-08T12:00:00Z", created_by_name: "Zana" }],
     isLoading: false,
+    isError: state.queryError !== null,
+    error: state.queryError,
+    refetch: state.refetch,
   }),
   useQueryClient: () => ({ invalidateQueries: state.invalidateQueries }),
 }));
@@ -70,6 +75,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: state.rpc } 
 describe("held cart POS controls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.queryError = null;
     state.rpc.mockImplementation(async (name: string) => {
       if (name === "hold_cart_v1") return { data: "held-1", error: null };
       if (name === "preview_held_cart_resume_v1") return { data: preview, error: null };
@@ -77,6 +83,23 @@ describe("held cart POS controls", () => {
       if (name === "discard_held_cart_v1") return { data: "held-1", error: null };
       throw new Error(`Unexpected RPC: ${name}`);
     });
+  });
+
+  it("shows a retryable error when the held-cart list cannot be loaded", () => {
+    state.queryError = new Error("connection unavailable");
+    render(
+      <HeldCartsDialog
+        open
+        onOpenChange={vi.fn()}
+        branchId="20000000-0000-0000-0000-000000000081"
+        onResumed={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Held carts could not be loaded")).toBeInTheDocument();
+    expect(screen.getByText("connection unavailable")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry held carts" }));
+    expect(state.refetch).toHaveBeenCalledTimes(1);
   });
 
   it("holds the current branch cart with exact snapshot context", async () => {

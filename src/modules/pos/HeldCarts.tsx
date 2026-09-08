@@ -131,7 +131,7 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
   const resumeOperation = useRef<{ key: string; id: string } | null>(null);
   const discardOperations = useRef(new Map<string, string>());
 
-  const { data: carts = [], isLoading } = useQuery<HeldCartSummary[]>({
+  const { data: carts = [], isLoading, isError, error, refetch } = useQuery<HeldCartSummary[]>({
     queryKey: [HELD_CART_QUERY_KEY, branchId],
     enabled: open && !!branchId,
     queryFn: async () => {
@@ -257,7 +257,18 @@ export function HeldCartsDialog({ open, onOpenChange, branchId, onResumed }: Hel
         {!preview ? (
           <div className="space-y-2">
             {isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Loading held carts…</p>}
-            {!isLoading && carts.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No held carts for this branch.</p>}
+            {isError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-center">
+                <p className="font-medium text-destructive">Held carts could not be loaded</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {error instanceof Error ? error.message : "Check the connection and try again."}
+                </p>
+                <Button className="mt-3" size="sm" variant="outline" aria-label="Retry held carts" onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              </div>
+            )}
+            {!isLoading && !isError && carts.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No held carts for this branch.</p>}
             {carts.map((cart) => (
               <div key={cart.id} className="flex items-center justify-between gap-3 rounded-xl border p-3">
                 <div className="min-w-0">
