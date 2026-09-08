@@ -4,7 +4,7 @@ import {
   buildHeldCartResumeRequest,
   serializeHeldCartLines,
   type HeldCartResumePreview,
-} from "./heldCarts";
+} from "./heldCartModel";
 
 function product(overrides: Partial<CartProduct> = {}): CartProduct {
   return {

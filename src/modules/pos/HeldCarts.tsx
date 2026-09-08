@@ -19,7 +19,7 @@ import {
   type HeldCartResolutions,
   type HeldCartResumePreview,
   type HeldCartSummary,
-} from "./heldCarts";
+} from "./heldCartModel";
 
 const HELD_CART_QUERY_KEY = "held-carts";
 
