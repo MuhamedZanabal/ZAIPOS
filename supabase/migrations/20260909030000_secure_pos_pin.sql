@@ -31,7 +31,8 @@ CREATE TABLE public.employee_pos_credentials (
   CONSTRAINT employee_pos_credentials_secret_check
     CHECK (pin_hash IS NOT NULL OR legacy_pin IS NOT NULL),
   CONSTRAINT employee_pos_credentials_argon2id_check
-    CHECK (pin_hash IS NULL OR pin_hash ~ '^[$]argon2id[$]v=19[$]m=19456,t=2,p=1[$][A-Za-z0-9+/]+[$][A-Za-z0-9+/]+$')
+    CHECK (pin_hash IS NULL OR pin_hash ~ '^[$]argon2id[$]v=19[$]m=19456,t=2,p=1[$][A-Za-z0-9+/]+[$][A-Za-z0-9+/]+$'),
+  CONSTRAINT employee_pos_credentials_scope_key UNIQUE (tenant_id, branch_id, id)
 );
 
 CREATE INDEX employee_pos_credentials_scope_idx
@@ -44,8 +45,8 @@ CREATE TABLE public.employee_pos_pin_attempts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
   branch_id uuid NOT NULL,
-  credential_id uuid NOT NULL REFERENCES public.employee_pos_credentials(id) ON DELETE CASCADE,
-  employee_id uuid NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+  credential_id uuid NOT NULL,
+  employee_id uuid NOT NULL,
   actor_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   device_id uuid NOT NULL REFERENCES public.devices(id) ON DELETE RESTRICT,
   cash_session_id uuid REFERENCES public.cash_sessions(id) ON DELETE RESTRICT,
@@ -56,7 +57,16 @@ CREATE TABLE public.employee_pos_pin_attempts (
   completed_at timestamptz,
   CONSTRAINT employee_pos_pin_attempts_operation_key UNIQUE (tenant_id, operation_id),
   CONSTRAINT employee_pos_pin_attempts_outcome_check
-    CHECK (outcome IN ('started', 'succeeded', 'failed', 'locked'))
+    CHECK (outcome IN ('started', 'succeeded', 'failed', 'locked')),
+  CONSTRAINT employee_pos_pin_attempts_tenant_branch_fkey
+    FOREIGN KEY (tenant_id, branch_id)
+    REFERENCES public.branches(tenant_id, id) ON DELETE CASCADE,
+  CONSTRAINT employee_pos_pin_attempts_credential_fkey
+    FOREIGN KEY (tenant_id, branch_id, credential_id)
+    REFERENCES public.employee_pos_credentials(tenant_id, branch_id, id) ON DELETE CASCADE,
+  CONSTRAINT employee_pos_pin_attempts_employee_fkey
+    FOREIGN KEY (tenant_id, branch_id, employee_id)
+    REFERENCES public.employees(tenant_id, branch_id, id) ON DELETE CASCADE
 );
 
 CREATE INDEX employee_pos_pin_attempts_employee_time_idx
