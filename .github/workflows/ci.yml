@@ -101,6 +101,9 @@ jobs:
       - name: Test price override and manager approval
         run: npm run test:migrations:price-override
 
+      - name: Test POS PIN security
+        run: npm run test:migrations:pos-pin
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 

@@ -45,7 +45,7 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 
 - [x] Historical receipt reprint fidelity + audit
 - [x] Held/suspended carts
-- [ ] Price override + manager approval
+- [x] Price override + manager approval
 - [ ] POS PIN authentication
 - [ ] Multiple barcodes + collision handling
 - [ ] Product price history
@@ -159,3 +159,14 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - Migrations: `20260908021500_historical_receipt_reprint.sql`, `20260908030000_held_carts.sql`
 - Verified gates: immutable historical sale/item/payment receipt snapshots, branch authorization, RLS, direct-write lockdown, idempotent reprint audit lifecycle, Bahrain BHD three-decimal Electron rendering, branch-scoped hold/list/resume/discard lifecycle, resume-time product/modifier/price/stock validation, explicit cashier conflict resolution, response-loss operation replay, loading/empty/error/retry UI states, 61-migration clean and supported Bahrain upgrade chains, 26 Vitest files / 125 tests, TypeScript, lint, production build and Windows packaging
 - Operational boundary: physical receipt output still requires acceptance testing on each deployed printer model
+
+### Price override and manager approval
+
+- PR: #21
+- Final reviewed branch head: `2f3fe7cbe9a95b5b0cb379b278812c7c782143ee`
+- Final branch CI: run 243 (`34299047877`), `quality` and `windows-package` green
+- Merge SHA: `6860918b2eb8ef9a8dafcc8141f1a5ad33578d10`
+- Post-merge `main` CI: run 244 (`34299418189`), `quality` and `windows-package` green
+- Post-merge Windows validation artifact: ID `10084459463`, SHA-256 `07addf252863984dfcbc01741940ecc586dbd104972156e9b08b6dd71d1d39b6`
+- Migration: `20260909010000_price_override_approval.sql`
+- Verified gates: explicit request/approve permissions, tenant/branch authorization, requester self-approval denial, exact-fils one-time checkout consumption, immutable sale-line approval history, exactly-once audit evidence, direct mutation and internal-permission-probe lockdown, cashier and manager UI, stale offline review routing, 62-migration chains, 27 Vitest files / 134 tests, TypeScript, lint, production build and Windows packaging

@@ -972,7 +972,6 @@ export type Database = {
           full_name: string
           id: string
           phone: string | null
-          pin: string | null
           role: Database["public"]["Enums"]["app_role"]
           status: Database["public"]["Enums"]["entity_status"]
           tenant_id: string
@@ -986,7 +985,6 @@ export type Database = {
           full_name: string
           id?: string
           phone?: string | null
-          pin?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           status?: Database["public"]["Enums"]["entity_status"]
           tenant_id: string
@@ -1000,7 +998,6 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string | null
-          pin?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           status?: Database["public"]["Enums"]["entity_status"]
           tenant_id?: string
@@ -1622,7 +1619,6 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
-          pin: string | null
           updated_at: string
         }
         Insert: {
@@ -1634,7 +1630,6 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
-          pin?: string | null
           updated_at?: string
         }
         Update: {
@@ -1646,7 +1641,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
-          pin?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -1,4 +1,7 @@
 {
+  "imports": {
+    "@noble/hashes/": "npm:@noble/hashes@1.8.0/"
+  },
   "compilerOptions": {
     "lib": ["deno.window"]
   }

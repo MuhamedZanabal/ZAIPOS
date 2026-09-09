@@ -55,6 +55,7 @@
     "test:migrations:receipt-reprint": "node scripts/test-receipt-reprint.mjs",
     "test:migrations:held-carts": "node scripts/test-held-carts.mjs",
     "test:migrations:price-override": "node scripts/test-price-override.mjs",
+    "test:migrations:pos-pin": "node scripts/test-pos-pin.mjs && node scripts/test-pos-pin-edge-contract.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir",
@@ -63,6 +64,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@noble/hashes": "^1.8.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
