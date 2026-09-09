@@ -251,6 +251,22 @@ function seedSupportedBaseline(database) {
     INSERT INTO public.user_roles(user_id, tenant_id, branch_id, role)
     VALUES ('30000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091', '20000000-0000-0000-0000-000000000091', 'owner');
 
+    UPDATE public.profiles
+    SET tenant_id = '10000000-0000-0000-0000-000000000091',
+        default_branch_id = '20000000-0000-0000-0000-000000000091',
+        pin = '2468'
+    WHERE id = '30000000-0000-0000-0000-000000000091';
+
+    INSERT INTO public.employees(
+      id, tenant_id, branch_id, user_id, full_name, pin, role, status
+    ) VALUES (
+      '35000000-0000-0000-0000-000000000091',
+      '10000000-0000-0000-0000-000000000091',
+      '20000000-0000-0000-0000-000000000091',
+      '30000000-0000-0000-0000-000000000091',
+      'Upgrade Cashier', '1357', 'cashier', 'active'
+    );
+
     INSERT INTO public.cash_sessions(
       id, tenant_id, branch_id, user_id, opening_amount, total_cash, total_card, total_transfer, total_qr, status
     ) VALUES (
@@ -313,11 +329,14 @@ function verifyFinalShape(database) {
     "public.preview_held_cart_resume_v1(uuid)",
     "public.resume_held_cart_v1(uuid,jsonb,text)",
     "public.discard_held_cart_v1(uuid,text,text)",
+    "public.set_employee_pos_pin_v1(uuid,uuid,uuid,uuid,text,text)",
+    "public.begin_employee_pos_pin_verification_v1(uuid,uuid,uuid,uuid,text,uuid,text)",
+    "public.complete_employee_pos_pin_verification_v1(uuid,uuid,boolean,text)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items", "employee_pos_credentials", "employee_pos_pin_attempts"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }
@@ -352,5 +371,9 @@ assertEqual("upgrade historical receipt captured", scalar("zaipos_upgrade", "SEL
 assertEqual("upgrade receipt total fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{totals,total_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade receipt item fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{items,0,unit_price_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "1250");
 assertEqual("upgrade receipt payment fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{payments,0,amount_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
+assertEqual("upgrade employee plaintext PIN column removed", scalar("zaipos_upgrade", "SELECT count(*)::text FROM information_schema.columns WHERE table_schema='public' AND table_name='employees' AND column_name='pin';"), "0");
+assertEqual("upgrade profile plaintext PIN column removed", scalar("zaipos_upgrade", "SELECT count(*)::text FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='pin';"), "0");
+assertEqual("upgrade legacy employee PIN preserved for one-time verification", scalar("zaipos_upgrade", "SELECT legacy_pin FROM public.employee_pos_credentials WHERE employee_id='35000000-0000-0000-0000-000000000091';"), "1357");
+assertEqual("upgrade credential awaits Argon2id conversion", scalar("zaipos_upgrade", "SELECT pin_hash IS NULL FROM public.employee_pos_credentials WHERE employee_id='35000000-0000-0000-0000-000000000091';"), "t");
 
 process.stdout.write(`Production PostgreSQL migration chain PASS: clean=${migrations.length} migrations; supported baseline=${baselineFile}\n`);
