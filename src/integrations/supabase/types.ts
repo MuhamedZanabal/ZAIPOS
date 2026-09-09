@@ -1299,6 +1299,144 @@ export type Database = {
           },
         ]
       }
+      product_barcode_conflicts: {
+        Row: {
+          barcode: string
+          candidate_product_id: string
+          conflicting_product_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          normalized_barcode: string
+          resolved_at: string | null
+          resolved_by: string | null
+          source: string
+          state: string
+          tenant_id: string
+        }
+        Insert: {
+          barcode: string
+          candidate_product_id: string
+          conflicting_product_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          normalized_barcode: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source: string
+          state?: string
+          tenant_id: string
+        }
+        Update: {
+          barcode?: string
+          candidate_product_id?: string
+          conflicting_product_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          normalized_barcode?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source?: string
+          state?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_barcode_conflicts_candidate_fkey"
+            columns: ["tenant_id", "candidate_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "product_barcode_conflicts_existing_fkey"
+            columns: ["tenant_id", "conflicting_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      product_barcode_operations: {
+        Row: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          operation_id: string
+          product_id: string
+          request_hash: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          operation_id: string
+          product_id: string
+          request_hash: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          operation_id?: string
+          product_id?: string
+          request_hash?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      product_barcodes: {
+        Row: {
+          barcode: string
+          barcode_type: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          normalized_barcode: string
+          product_id: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          barcode: string
+          barcode_type?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          product_id: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string
+          barcode_type?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          product_id?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_barcodes_tenant_product_fkey"
+            columns: ["tenant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       product_channel_prices: {
         Row: {
           branch_id: string | null
@@ -2631,6 +2769,10 @@ export type Database = {
         }
         Returns: string
       }
+      inspect_product_barcode_candidates_v1: {
+        Args: { _barcodes: Json; _product_id: string | null; _tenant_id: string }
+        Returns: Json
+      }
       discard_held_cart_v1: {
         Args: { _client_operation_id: string; _held_cart_id: string; _reason: string }
         Returns: string
@@ -2704,6 +2846,18 @@ export type Database = {
       prepare_sale_receipt_reprint_v1: {
         Args: { _client_operation_id: string; _sale_id: string }
         Returns: Json
+      }
+      replace_product_barcodes_v1: {
+        Args: { _barcodes: Json; _operation_id: string; _product_id: string; _tenant_id: string }
+        Returns: string
+      }
+      resolve_product_by_barcode_v1: {
+        Args: { _barcode: string; _tenant_id: string }
+        Returns: string | null
+      }
+      resolve_product_barcode_conflict_v1: {
+        Args: { _conflict_id: string; _operation_id: string; _resolution: string }
+        Returns: string
       }
       preview_held_cart_resume_v1: { Args: { _held_cart_id: string }; Returns: Json }
       has_any_role: {

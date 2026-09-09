@@ -38,6 +38,13 @@ export interface CachedProduct {
   image_url: string | null;
   sku: string | null;
   barcode: string | null;
+  barcodes: string[];
+  product_barcodes?: Array<{
+    barcode: string;
+    barcode_type: string;
+    is_primary: boolean;
+    sort_order?: number;
+  }>;
   status: string;
   product_type: string;
   station: string | null;
@@ -107,6 +114,17 @@ export class POSDatabase extends Dexie {
         Object.assign(item, migrateLegacySyncQueueItem(item));
       });
     });
+    this.version(5).stores({
+      sync_queue: '++id, type, status, createdAt, updatedAt, clientMutationId, deviceId, tenantId, branchId',
+      products: 'id, tenant_id, category_id, name, status, product_type, *barcodes',
+      categories: 'id, tenant_id, name, status',
+      branch_products: 'id, product_id, branch_id',
+    }).upgrade((transaction) => transaction.table('products').toCollection().modify((product) => {
+      product.barcodes = product.barcode ? [product.barcode] : [];
+      product.product_barcodes = product.barcode
+        ? [{ barcode: product.barcode, barcode_type: 'legacy', is_primary: true, sort_order: 0 }]
+        : [];
+    }));
   }
 }
 

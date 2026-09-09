@@ -56,6 +56,10 @@ vi.mock("@/hooks/useProducts", () => ({
       tenant_id: "10000000-0000-0000-0000-000000000077",
       name: "Scanned Water",
       barcode: "6290000000777",
+      product_barcodes: [
+        { barcode: "6290000000777", barcode_type: "ean_13", is_primary: true, sort_order: 0 },
+        { barcode: "CASE-24-A", barcode_type: "supplier", is_primary: false, sort_order: 1 },
+      ],
       sku: "WATER-077",
       price: 1,
       cost: 0.5,
@@ -162,7 +166,7 @@ async function scanAndPay() {
   render(<POS />);
   await waitFor(() => expect(state.barcodeHandler).toBeTypeOf("function"));
   await act(async () => {
-    state.barcodeHandler?.("6290000000777");
+    state.barcodeHandler?.("case-24-a");
   });
   await waitFor(() => expect(useCart.getState().lines).toHaveLength(1));
   expect(useCart.getState().lines[0].product.name).toBe("Scanned Water");

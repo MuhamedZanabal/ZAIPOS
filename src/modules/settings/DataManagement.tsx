@@ -11,6 +11,11 @@ import { createInventoryMutationId, reconcileInventoryLevelsV2 } from "@/lib/inv
 import { toast } from "sonner";
 import { useInventoryCenters } from "@/hooks/useInventoryCenters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { analyzeBarcodeCandidates, parseBarcodeCell, type ProductBarcode } from "@/lib/productBarcodes";
+import { inspectProductBarcodes, replaceProductBarcodes } from "@/lib/productBarcodeCommands";
+import type { Database } from "@/integrations/supabase/types";
+
+type DatabaseProductImport = Database["public"]["Tables"]["products"]["Insert"];
 
 export function DataManagement() {
   const { tenantId, branchId } = useTenantContext();
@@ -29,11 +34,17 @@ export function DataManagement() {
     try {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, sku, barcode, price, cost, tax_rate, min_stock, status, unit_code, product_type")
+        .select("id, name, sku, barcode, price, cost, tax_rate, min_stock, status, unit_code, product_type, product_barcodes(barcode, barcode_type, is_primary, sort_order)")
         .eq("tenant_id", tenantId!);
 
       if (error) throw error;
-      exportToCsv(`products_${new Date().toISOString().split('T')[0]}.csv`, data || []);
+      const exported = (data ?? []).map((product) => ({
+        ...product,
+        barcode: product.product_barcodes.find((entry) => entry.is_primary)?.barcode ?? "",
+        barcodes: product.product_barcodes.map((entry) => entry.barcode).join("|"),
+        product_barcodes: undefined,
+      }));
+      exportToCsv(`products_${new Date().toISOString().split('T')[0]}.csv`, exported);
       toast.success("Catalog exported");
     } catch (err: any) {
       toast.error("Export error: " + err.message);
@@ -73,62 +84,89 @@ export function DataManagement() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!tenantId) {
+      toast.error("Tenant context is required");
+      e.target.value = "";
+      return;
+    }
     setLoading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const content = event.target?.result as string;
-        const rows = parseCsv(content);
-        
-        if (rows.length === 0) {
-          toast.error("The file is empty or has an invalid format");
-          setLoading(false);
-          return;
+      const rows = parseCsv(await file.text());
+      if (rows.length === 0) throw new Error("The file is empty or has an invalid format");
+      setProgress({ total: rows.length, current: 0 });
+
+      const prepared = [] as Array<{
+        existingId: string | null;
+        productId: string;
+        productData: DatabaseProductImport;
+        barcodes: ProductBarcode[];
+      }>;
+      for (const row of rows) {
+        if (!(row.name || row.nombre)) throw new Error("Every product import row requires a name");
+        const barcodeValues = parseBarcodeCell(row.barcodes || row.barcode || row.codigo_barras);
+        const barcodes: ProductBarcode[] = barcodeValues.map((barcode, index) => ({
+          barcode,
+          barcode_type: index === 0 ? "legacy" : "supplier",
+          is_primary: index === 0,
+        }));
+        let existingId = row.id || null;
+        if (!existingId && row.sku) {
+          const { data: existing, error } = await supabase.from("products")
+            .select("id").eq("sku", row.sku).eq("tenant_id", tenantId).maybeSingle();
+          if (error) throw error;
+          existingId = existing?.id ?? null;
         }
-
-        setProgress({ total: rows.length, current: 0 });
-
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          const productData = {
-            tenant_id: tenantId!,
+        prepared.push({
+          existingId,
+          productId: existingId ?? crypto.randomUUID(),
+          productData: {
+            tenant_id: tenantId,
             name: row.name || row.nombre,
             sku: row.sku || null,
-            barcode: row.barcode || row.codigo_barras || null,
-            price: Number(row.price || row.price || 0),
+            price: Number(row.price || 0),
             cost: Number(row.cost || row.costo || 0),
-            tax_rate: Number(row.tax_rate || row.iva || 0),
+            tax_rate: Number(row.tax_rate || row.iva || 10),
             min_stock: Number(row.min_stock || row.stock_minimo || 0),
-            status: (row.status || "active") as any,
+            status: (row.status || "active") as DatabaseProductImport["status"],
             unit_code: row.unit_code || "unit",
-            product_type: (row.product_type || "simple") as any,
-          };
+            product_type: (row.product_type || "simple") as DatabaseProductImport["product_type"],
+          },
+          barcodes,
+        });
+      }
 
-          const id = row.id;
-          if (id) {
-            await supabase.from("products").update(productData).eq("id", id).eq("tenant_id", tenantId!);
-          } else if (productData.sku) {
-            const { data: existing } = await supabase.from("products").select("id").eq("sku", productData.sku).eq("tenant_id", tenantId!).maybeSingle();
-            if (existing) {
-              await supabase.from("products").update(productData).eq("id", existing.id);
-            } else {
-              await supabase.from("products").insert(productData);
-            }
-          } else {
-            await supabase.from("products").insert(productData);
-          }
+      const localInspection = analyzeBarcodeCandidates(prepared.flatMap((row) => row.barcodes));
+      const invalidLocal = localInspection.find((entry) => entry.state !== "valid");
+      if (invalidLocal) throw new Error(`Barcode ${invalidLocal.normalized_barcode || "(empty)"} is ${invalidLocal.state.replace("_", " ")} in the import file`);
 
-          setProgress(p => p ? { ...p, current: i + 1 } : null);
+      for (const row of prepared) {
+        const inspection = await inspectProductBarcodes(tenantId, row.existingId, row.barcodes);
+        const conflict = inspection.find((entry) => entry.state !== "valid");
+        if (conflict) {
+          throw new Error(`Barcode ${conflict.normalized_barcode} conflicts with ${conflict.conflicting_product_name ?? "another catalog product"}`);
         }
+      }
 
-        toast.success(`Import complete: ${rows.length} products processed`);
-        setProgress(null);
-      };
-      reader.readAsText(file);
+      for (let index = 0; index < prepared.length; index += 1) {
+        const row = prepared[index];
+        if (row.existingId) {
+          const { error } = await supabase.from("products").update(row.productData)
+            .eq("id", row.existingId).eq("tenant_id", tenantId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("products").insert({ id: row.productId, ...row.productData });
+          if (error) throw error;
+        }
+        await replaceProductBarcodes(tenantId, row.productId, row.barcodes, `data-import-${crypto.randomUUID()}`);
+        setProgress({ total: prepared.length, current: index + 1 });
+      }
+
+      toast.success(`Import complete: ${rows.length} products processed`);
     } catch (err: any) {
       toast.error("Import error: " + err.message);
     } finally {
       setLoading(false);
+      setProgress(null);
       e.target.value = "";
     }
   };

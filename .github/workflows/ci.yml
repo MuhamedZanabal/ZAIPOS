@@ -104,6 +104,9 @@ jobs:
       - name: Test POS PIN security
         run: npm run test:migrations:pos-pin
 
+      - name: Test product barcode ledger and collisions
+        run: npm run test:migrations:product-barcodes
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 
