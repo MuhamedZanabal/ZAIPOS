@@ -43,8 +43,8 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 
 ## P1 Operational Capability
 
-- [ ] Historical receipt reprint fidelity + audit
-- [ ] Held/suspended carts
+- [x] Historical receipt reprint fidelity + audit
+- [x] Held/suspended carts
 - [ ] Price override + manager approval
 - [ ] POS PIN authentication
 - [ ] Multiple barcodes + collision handling
@@ -147,3 +147,15 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - Post-merge Windows validation artifact: ID `10033852748`, SHA-256 `a015281fea2838882022bd3093e6e741344901487e71c653224145dda265d8be`
 - Verified gates: 59-migration clean and supported Bahrain upgrade chains, exact historical fils preservation, tenant/branch structural integrity, true last-unit contention, concurrent same-operation replay, role/tenant/branch/roleless authorization, direct mutation lockdown, audit integrity, POS/hardware failure E2E, production dependency audit, Windows NSIS packaging, updater/release contracts, device registry, and P0 AI safety lockdown
 - External controls: `main` protection requires repository-admin access; production Authenticode signing requires the documented certificate secrets; physical hardware/updater acceptance requires deployed equipment
+
+### Historical receipt reprint and held carts
+
+- PR: #19
+- Final reviewed branch head: `e833fc2bec2bf4a3eba35697d0797b780b59596e`
+- Final branch CI: run 235 (`34249166076`), `quality` and `windows-package` green
+- Merge SHA: `8ff440db83d5dffd9afe8957501e9d252eebfcbf`
+- Post-merge `main` CI: run 236 (`34249750458`), `quality` and `windows-package` green
+- Post-merge Windows validation artifact: ID `10065669698`, SHA-256 `f2fae2f5b6bd29b8476aafe8a749339532430ed19c72aaf7578747d3c239e6eb`
+- Migrations: `20260908021500_historical_receipt_reprint.sql`, `20260908030000_held_carts.sql`
+- Verified gates: immutable historical sale/item/payment receipt snapshots, branch authorization, RLS, direct-write lockdown, idempotent reprint audit lifecycle, Bahrain BHD three-decimal Electron rendering, branch-scoped hold/list/resume/discard lifecycle, resume-time product/modifier/price/stock validation, explicit cashier conflict resolution, response-loss operation replay, loading/empty/error/retry UI states, 61-migration clean and supported Bahrain upgrade chains, 26 Vitest files / 125 tests, TypeScript, lint, production build and Windows packaging
+- Operational boundary: physical receipt output still requires acceptance testing on each deployed printer model
