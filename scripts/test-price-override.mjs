@@ -82,17 +82,17 @@ sql(`
 
 assertEqual(
   "cashier request permission",
-  asUser(I.cashierA, `SELECT public.has_branch_permission(auth.uid(),'${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.request')::text;`),
+  asUser(I.cashierA, `SELECT public.current_user_has_branch_permission('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.request')::text;`),
   "true",
 );
 assertEqual(
   "cashier approval permission",
-  asUser(I.cashierA, `SELECT public.has_branch_permission(auth.uid(),'${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.approve')::text;`),
+  asUser(I.cashierA, `SELECT public.current_user_has_branch_permission('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.approve')::text;`),
   "false",
 );
 assertEqual(
   "manager approval permission",
-  asUser(I.managerA, `SELECT public.has_branch_permission(auth.uid(),'${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.approve')::text;`),
+  asUser(I.managerA, `SELECT public.current_user_has_branch_permission('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.approve')::text;`),
   "true",
 );
 
@@ -138,6 +138,7 @@ assertEqual("historical approval link", scalar(`SELECT price_override_request_id
 assertEqual("approval consumed", scalar(`SELECT status FROM public.price_override_requests WHERE id='${requestId}'::uuid;`), "consumed");
 assertEqual("approval consumed sale", scalar(`SELECT consumed_sale_id::text FROM public.price_override_requests WHERE id='${requestId}'::uuid;`), saleId);
 assertEqual("one consume audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.price_override_consumed' AND entity_id='${requestId}'::uuid;`), "1");
+assertEqual("approval decision replay after consumption", asUser(I.managerA, decideSql("override-manager-decision-91")), requestId);
 expectReject("approval cannot fund another sale", I.cashierA, checkout("override-checkout-operation-92"));
 
 const staleId = asUser(I.cashierA, requestSql("override-request-operation-92", 1100));
@@ -155,5 +156,6 @@ for (const table of ["price_override_requests", "role_permissions"]) {
     assertEqual(`${table} authenticated ${privilege}`, scalar(`SELECT has_table_privilege('authenticated','public.${table}','${privilege}');`), "f");
   }
 }
+assertEqual("arbitrary-user permission probe revoked", scalar("SELECT has_function_privilege('authenticated','public.has_branch_permission(uuid,uuid,uuid,text)','EXECUTE');"), "f");
 
 process.stdout.write("Price override PASS: explicit permissions, branch approval, exact fils, one-time checkout consumption, audit and mutation lockdown hold.\n");

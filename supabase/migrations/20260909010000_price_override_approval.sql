@@ -54,8 +54,24 @@ AS $$
     )
 $$;
 
-REVOKE ALL ON FUNCTION public.has_branch_permission(uuid, uuid, uuid, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.has_branch_permission(uuid, uuid, uuid, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.has_branch_permission(uuid, uuid, uuid, text) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.current_user_has_branch_permission(
+  _tenant_id uuid,
+  _branch_id uuid,
+  _permission text
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT public.has_branch_permission(auth.uid(), _tenant_id, _branch_id, _permission)
+$$;
+
+REVOKE ALL ON FUNCTION public.current_user_has_branch_permission(uuid, uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_branch_permission(uuid, uuid, text) TO authenticated;
 
 DO $migration$
 BEGIN
@@ -279,7 +295,9 @@ BEGIN
   IF _request.requested_by = _user_id THEN RAISE EXCEPTION 'A requester cannot approve their own price override'; END IF;
 
   IF _request.decision_client_mutation_id = _client_mutation_id THEN
-    IF _request.status <> _target_status OR _request.decision_reason IS DISTINCT FROM _reason OR _request.approved_by IS DISTINCT FROM _user_id THEN
+    IF (_approve AND _request.status NOT IN ('approved','consumed'))
+       OR (NOT _approve AND _request.status <> 'rejected')
+       OR _request.decision_reason IS DISTINCT FROM _reason OR _request.approved_by IS DISTINCT FROM _user_id THEN
       RAISE EXCEPTION 'Price override decision operation ID conflicts with another decision';
     END IF;
     RETURN _request.id;
@@ -325,7 +343,9 @@ BEGIN
      AND NOT public.has_branch_permission(auth.uid(),_request.tenant_id,_request.branch_id,'pos.price_override.approve') THEN
     RAISE EXCEPTION 'Price override request is forbidden';
   END IF;
-  RETURN to_jsonb(_request);
+  RETURN to_jsonb(_request) || jsonb_build_object(
+    'status', CASE WHEN _request.status='pending' AND _request.expires_at <= now() THEN 'expired' ELSE _request.status END
+  );
 END;
 $$;
 

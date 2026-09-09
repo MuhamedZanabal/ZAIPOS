@@ -139,10 +139,7 @@ export default function POS() {
     queryKey: ["pos-price-override-approval-permission", tenantId, branchId],
     enabled: !!tenantId && !!branchId,
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      const { data, error } = await (supabase.rpc as any)("has_branch_permission", {
-        _user_id: user.id,
+      const { data, error } = await (supabase.rpc as any)("current_user_has_branch_permission", {
         _tenant_id: tenantId,
         _branch_id: branchId,
         _permission: "pos.price_override.approve",

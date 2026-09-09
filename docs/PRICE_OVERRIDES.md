@@ -7,7 +7,7 @@ ZAIPOS treats a price override as a short-lived, branch-bound authorization reco
 - `pos.price_override.request`: owner, admin, manager, cashier and waiter
 - `pos.price_override.approve`: owner, admin, manager
 
-Permissions are resolved by `has_branch_permission` from the explicit `role_permissions` registry. The server enforces every request and decision; hiding a client control is not authorization. A requester cannot approve their own request.
+Permissions are resolved by the internal `has_branch_permission` function from the explicit `role_permissions` registry. Clients can inspect only their own result through `current_user_has_branch_permission`; arbitrary-user permission probing is revoked. The server enforces every request and decision, so hiding a client control is not authorization. A requester cannot approve their own request.
 
 ## Lifecycle
 
