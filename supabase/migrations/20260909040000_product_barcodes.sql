@@ -19,7 +19,12 @@ CREATE TABLE public.product_barcodes (
     FOREIGN KEY (tenant_id, product_id)
     REFERENCES public.products(tenant_id, id) ON DELETE CASCADE,
   CONSTRAINT product_barcodes_format_check
-    CHECK (barcode = upper(btrim(barcode)) AND barcode ~ '^[!-~]{1,128}$'),
+    CHECK (
+      barcode = upper(btrim(barcode)) AND barcode ~ '^[!-~]{1,128}$'
+      AND (barcode_type <> 'ean_8' OR barcode ~ '^[0-9]{8}$')
+      AND (barcode_type <> 'ean_13' OR barcode ~ '^[0-9]{13}$')
+      AND (barcode_type <> 'upc_a' OR barcode ~ '^[0-9]{12}$')
+    ),
   UNIQUE (tenant_id, normalized_barcode),
   UNIQUE (tenant_id, product_id, sort_order)
 );
@@ -292,6 +297,48 @@ CREATE TRIGGER product_barcodes_primary_mirror
 AFTER INSERT OR UPDATE OR DELETE ON public.product_barcodes
 FOR EACH ROW EXECUTE FUNCTION public.sync_product_barcode_primary_mirror();
 
+CREATE OR REPLACE FUNCTION public.enforce_product_barcode_primary()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  _tenant_id uuid := CASE WHEN TG_OP = 'DELETE' THEN OLD.tenant_id ELSE NEW.tenant_id END;
+  _product_id uuid := CASE WHEN TG_OP = 'DELETE' THEN OLD.product_id ELSE NEW.product_id END;
+  _barcode_count integer;
+  _primary_count integer;
+  _old_barcode_count integer;
+  _old_primary_count integer;
+BEGIN
+  SELECT count(*), count(*) FILTER (WHERE is_primary)
+  INTO _barcode_count, _primary_count
+  FROM public.product_barcodes
+  WHERE tenant_id = _tenant_id AND product_id = _product_id;
+  IF _barcode_count > 0 AND _primary_count <> 1 THEN
+    RAISE EXCEPTION 'A product barcode set must contain exactly one primary barcode';
+  END IF;
+  IF TG_OP = 'UPDATE'
+    AND (OLD.tenant_id, OLD.product_id) IS DISTINCT FROM (NEW.tenant_id, NEW.product_id)
+  THEN
+    SELECT count(*), count(*) FILTER (WHERE is_primary)
+    INTO _old_barcode_count, _old_primary_count
+    FROM public.product_barcodes
+    WHERE tenant_id = OLD.tenant_id AND product_id = OLD.product_id;
+    IF _old_barcode_count > 0 AND _old_primary_count <> 1 THEN
+      RAISE EXCEPTION 'A product barcode set must contain exactly one primary barcode';
+    END IF;
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+REVOKE ALL ON FUNCTION public.enforce_product_barcode_primary() FROM PUBLIC, anon, authenticated;
+
+CREATE CONSTRAINT TRIGGER product_barcodes_require_primary
+AFTER INSERT OR UPDATE OR DELETE ON public.product_barcodes
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION public.enforce_product_barcode_primary();
+
 CREATE OR REPLACE FUNCTION public.inspect_product_barcode_candidates_v1(
   _tenant_id uuid,
   _product_id uuid,
@@ -333,13 +380,13 @@ BEGIN
       product.name AS conflicting_product_name,
       product.status::text AS conflicting_product_status,
       CASE
-        WHEN normalized !~ '^[!-~]{1,128}$'
-          OR barcode_type NOT IN ('ean_8','ean_13','upc_a','code_128','qr','internal','supplier','legacy')
-          OR (barcode_type = 'ean_8' AND normalized !~ '^[0-9]{8}$')
-          OR (barcode_type = 'ean_13' AND normalized !~ '^[0-9]{13}$')
-          OR (barcode_type = 'upc_a' AND normalized !~ '^[0-9]{12}$')
+        WHEN numbered.normalized !~ '^[!-~]{1,128}$'
+          OR numbered.barcode_type NOT IN ('ean_8','ean_13','upc_a','code_128','qr','internal','supplier','legacy')
+          OR (numbered.barcode_type = 'ean_8' AND numbered.normalized !~ '^[0-9]{8}$')
+          OR (numbered.barcode_type = 'ean_13' AND numbered.normalized !~ '^[0-9]{13}$')
+          OR (numbered.barcode_type = 'upc_a' AND numbered.normalized !~ '^[0-9]{12}$')
           THEN 'malformed'
-        WHEN occurrence > 1 THEN 'duplicate_input'
+        WHEN numbered.occurrence > 1 THEN 'duplicate_input'
         WHEN existing.product_id IS NOT NULL AND product.status = 'inactive'::public.entity_status
           THEN 'retired_product_conflict'
         WHEN existing.product_id IS NOT NULL THEN 'database_conflict'

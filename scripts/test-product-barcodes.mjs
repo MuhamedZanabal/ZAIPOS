@@ -35,6 +35,15 @@ function expectReject(label, userId, statement, pattern = /forbidden|permission|
   }
   throw new Error(`${label}: expected rejection`);
 }
+function expectDatabaseReject(label, statement, pattern) {
+  try { scalar(statement); }
+  catch (error) {
+    const message = String(error?.stderr ?? error?.message ?? error);
+    if (!pattern.test(message)) throw new Error(`${label}: wrong rejection: ${message}`);
+    return;
+  }
+  throw new Error(`${label}: expected rejection`);
+}
 
 assertEqual("barcode ledger exists", scalar("SELECT to_regclass('public.product_barcodes') IS NOT NULL;"), "t");
 assertEqual("collision ledger exists", scalar("SELECT to_regclass('public.product_barcode_conflicts') IS NOT NULL;"), "t");
@@ -71,6 +80,11 @@ sql(`
 
 assertEqual("legacy primary mirrored", scalar(`SELECT barcode FROM public.product_barcodes WHERE product_id='${I.productA}'::uuid AND is_primary;`), "6290000000777");
 assertEqual("legacy field normalized", scalar(`SELECT barcode FROM public.products WHERE id='${I.productA}'::uuid;`), "6290000000777");
+expectDatabaseReject(
+  "database rejects malformed typed EAN",
+  `INSERT INTO public.product_barcodes(tenant_id,product_id,barcode,barcode_type,is_primary,sort_order) VALUES ('${I.tenantA}'::uuid,'${I.productA}'::uuid,'123','ean_8',false,9)`,
+  /product_barcodes_format_check/i,
+);
 
 const candidateJson = JSON.stringify([
   { barcode: "6290000000777", barcode_type: "ean_13", is_primary: true },
