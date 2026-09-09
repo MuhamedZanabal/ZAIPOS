@@ -11,7 +11,7 @@ Important entities include:
 - `tenants`
 - `branches`
 - `user_roles`
-- `products`, `categories`, `units`
+- `products`, `product_barcodes`, `categories`, `units`
 - `branch_products`, `product_channel_prices`
 - `inventory_stocks`, inventory movements and centres
 - `sales`, `sale_items`, `payments`
@@ -89,6 +89,10 @@ RLS policies and helper functions enforce tenant membership and branch permissio
 ## Checkout Integrity
 
 Checkout writes sales, items, payments, stock effects, cash-session totals, customer effects, and operation-log/idempotency records as one controlled business flow. Do not split checkout into unrelated client writes that can partially succeed.
+
+## Product barcode integrity
+
+`product_barcodes` is the authoritative tenant-scoped scan-identity ledger. `products.barcode` mirrors the primary row for compatibility. Barcode sets are inspected and replaced through controlled RPCs; direct authenticated ledger mutation is revoked. See `docs/PRODUCT_BARCODES.md` for collision and import behavior.
 
 ## Seed Data
 

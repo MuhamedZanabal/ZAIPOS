@@ -18,9 +18,10 @@ import {
 import { Truck, Plus, Pencil, Trash2, Search, ShoppingBag, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
+import { productMatchesCatalogueQuery, type ProductBarcode } from "@/lib/productBarcodes";
 
 type Supplier = { id: string; name: string; tax_id: string | null; contact_name: string | null; phone: string | null; email: string | null; payment_terms: string | null; notes: string | null; status: string };
-type Product = { id: string; name: string; sku: string | null; cost: number };
+type Product = { id: string; name: string; sku: string | null; barcode?: string | null; cost: number; product_barcodes: ProductBarcode[] };
 type PurchaseOrder = { id: string; supplier_id: string | null; status: string; total: number; notes: string | null; received_at: string | null; created_at: string; suppliers?: { name: string } | null };
 type OrderItem = { product_id: string; product_name: string; quantity: number; cost_price: number };
 
@@ -47,6 +48,7 @@ export default function Suppliers() {
   const [itemProductId, setItemProductId] = useState("");
   const [itemQty, setItemQty] = useState("");
   const [itemCost, setItemCost] = useState("");
+  const [itemProductSearch, setItemProductSearch] = useState("");
 
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["suppliers", tenantId],
@@ -74,8 +76,10 @@ export default function Suppliers() {
     queryKey: ["products-simple", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("id, name, sku, cost").eq("tenant_id", tenantId!).eq("status", "active").order("name");
-      return (data ?? []) as Product[];
+      const { data } = await supabase.from("products")
+        .select("id, name, sku, barcode, cost, product_barcodes(barcode, barcode_type, is_primary, sort_order)")
+        .eq("tenant_id", tenantId!).eq("status", "active").order("name");
+      return (data ?? []) as unknown as Product[];
     },
   });
 
@@ -166,6 +170,7 @@ export default function Suppliers() {
   );
 
   const orderTotal = orderItems.reduce((s, i) => s + i.quantity * i.cost_price, 0);
+  const matchingProducts = products.filter((product) => productMatchesCatalogueQuery(product, itemProductSearch)).slice(0, 50);
 
   return (
     <div className="flex flex-col gap-5">
@@ -417,9 +422,15 @@ export default function Suppliers() {
               <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                 <div className="space-y-1">
                   <Label className="text-xs">Product</Label>
+                  <Input
+                    value={itemProductSearch}
+                    onChange={(event) => setItemProductSearch(event.target.value)}
+                    placeholder="Search name, SKU, or supplier barcode"
+                    className="mb-2"
+                  />
                   <Select value={itemProductId} onValueChange={(v) => { setItemProductId(v); const p = products.find((x) => x.id === v); if (p) setItemCost(String(p.cost)); }}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{matchingProducts.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}{p.sku ? ` · ${p.sku}` : ""}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1 w-24">

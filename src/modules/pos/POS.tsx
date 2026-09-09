@@ -35,6 +35,7 @@ import { BrandBar } from "@/components/shared/BrandBar";
 import { TickRail } from "@/components/shared/TickRail";
 import { LiveDot } from "@/components/shared/LiveDot";
 import { useDevMode } from "@/hooks/useDevMode";
+import { productMatchesBarcode, productMatchesCatalogueQuery } from "@/lib/productBarcodes";
 
 export default function POS() {
   const navigate = useNavigate();
@@ -285,12 +286,7 @@ export default function POS() {
     let list = priced;
     if (activeCat !== "all") list = list.filter((p) => p.category_id === activeCat);
     if (search)
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          (p.sku ?? "").toLowerCase().includes(search.toLowerCase()) ||
-          (p.barcode ?? "").toLowerCase().includes(search.toLowerCase())
-      );
+      list = list.filter((p) => productMatchesCatalogueQuery(p, search));
     return list;
   }, [priced, activeCat, search]);
 
@@ -351,9 +347,7 @@ export default function POS() {
   // Escáner de código de barras → añade automáticamente al carrito
   useEffect(() => {
     return onBarcodeScanned((code) => {
-      const product = priced.find(
-        (p) => p.barcode === code || p.sku === code
-      );
+      const product = priced.find((p) => productMatchesBarcode(p, code));
       if (product) {
         handleAddProduct(product);
         toast.success(`${product.name} added`, { duration: 1500 });

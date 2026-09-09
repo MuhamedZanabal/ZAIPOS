@@ -281,8 +281,8 @@ function seedSupportedBaseline(database) {
       '20000000-0000-0000-0000-000000000091', 'Upgrade Center', 'point_of_sale', 'active'
     );
 
-    INSERT INTO public.products(id, tenant_id, name, product_type, price, cost, tax_rate, status)
-    VALUES ('50000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091', 'Upgrade Product', 'simple', 1.25, 0.75, 0, 'active');
+    INSERT INTO public.products(id, tenant_id, name, product_type, price, cost, tax_rate, status, barcode)
+    VALUES ('50000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091', 'Upgrade Product', 'simple', 1.25, 0.75, 0, 'active', ' 6290000000091 ');
 
     INSERT INTO public.inventory_stocks(tenant_id, branch_id, inventory_center_id, product_id, quantity)
     VALUES (
@@ -332,11 +332,15 @@ function verifyFinalShape(database) {
     "public.set_employee_pos_pin_v1(uuid,uuid,uuid,uuid,text,text)",
     "public.begin_employee_pos_pin_verification_v1(uuid,uuid,uuid,uuid,text,uuid,text)",
     "public.complete_employee_pos_pin_verification_v1(uuid,uuid,boolean,text)",
+    "public.inspect_product_barcode_candidates_v1(uuid,uuid,jsonb)",
+    "public.replace_product_barcodes_v1(uuid,uuid,jsonb,text)",
+    "public.resolve_product_by_barcode_v1(uuid,text)",
+    "public.resolve_product_barcode_conflict_v1(uuid,text,text)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items", "employee_pos_credentials", "employee_pos_pin_attempts"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items", "employee_pos_credentials", "employee_pos_pin_attempts", "product_barcodes", "product_barcode_conflicts", "product_barcode_operations"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }
@@ -367,6 +371,8 @@ assertEqual("upgrade payment amount fils", scalar("zaipos_upgrade", "SELECT amou
 assertEqual("upgrade opening cash fils", scalar("zaipos_upgrade", "SELECT opening_amount_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "10000");
 assertEqual("upgrade till cash fils", scalar("zaipos_upgrade", "SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade stock quantity preserved", scalar("zaipos_upgrade", "SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='45000000-0000-0000-0000-000000000091' AND product_id='50000000-0000-0000-0000-000000000091';"), "7.500");
+assertEqual("upgrade primary barcode normalized", scalar("zaipos_upgrade", "SELECT barcode FROM public.products WHERE id='50000000-0000-0000-0000-000000000091';"), "6290000000091");
+assertEqual("upgrade barcode ledger preserved", scalar("zaipos_upgrade", "SELECT barcode FROM public.product_barcodes WHERE product_id='50000000-0000-0000-0000-000000000091' AND is_primary;"), "6290000000091");
 assertEqual("upgrade historical receipt captured", scalar("zaipos_upgrade", "SELECT receipt_snapshot IS NOT NULL FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "t");
 assertEqual("upgrade receipt total fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{totals,total_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade receipt item fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{items,0,unit_price_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "1250");

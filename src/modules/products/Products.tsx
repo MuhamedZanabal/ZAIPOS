@@ -5,13 +5,15 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Search, Barcode, Trash2, Upload, FileDown, Download, HelpCircle } from "lucide-react";
+import { Plus, Pencil, Search, Barcode, Trash2, Upload, FileDown, Download, HelpCircle, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { exportToCsv, parseCsv } from "@/lib/csv";
 import { ProductForm } from "./ProductForm";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { analyzeBarcodeCandidates, parseBarcodeCell, productMatchesCatalogueQuery, type ProductBarcode } from "@/lib/productBarcodes";
+import { replaceProductBarcodes } from "@/lib/productBarcodeCommands";
 
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
@@ -40,7 +42,8 @@ export default function Products() {
     queryKey: ["products", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("*, categories(name)")
+      const { data, error } = await supabase.from("products")
+        .select("*, categories(name), product_barcodes(id, barcode, barcode_type, is_primary, sort_order)")
         .eq("tenant_id", tenantId!).order("name");
       if (error) throw error;
       return data;
@@ -53,10 +56,35 @@ export default function Products() {
     queryFn: async () => (await supabase.from("categories").select("id, name").eq("tenant_id", tenantId!).order("name")).data ?? [],
   });
 
+  const { data: barcodeConflicts = [] } = useQuery({
+    queryKey: ["product-barcode-conflicts", tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("product_barcode_conflicts")
+        .select("id, barcode, normalized_barcode, source, details, candidate_product_id, conflicting_product_id")
+        .eq("tenant_id", tenantId!).eq("state", "open").order("created_at");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const resolveBarcodeConflict = async (conflict: any) => {
+    const resolution = conflict.conflicting_product_id ? "keep_existing" : "dismiss";
+    const { error } = await supabase.rpc("resolve_product_barcode_conflict_v1", {
+      _conflict_id: conflict.id,
+      _resolution: resolution,
+      _operation_id: `barcode-review-${crypto.randomUUID()}`,
+    });
+    if (error) {
+      toast({ title: "Could not resolve barcode conflict", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Barcode conflict resolved", description: conflict.conflicting_product_id ? "The existing product keeps this barcode." : "The malformed legacy value was dismissed." });
+    qc.invalidateQueries({ queryKey: ["product-barcode-conflicts", tenantId] });
+  };
+
   const filtered = (products ?? []).filter((p: any) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.sku ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (p.barcode ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchSearch = productMatchesCatalogueQuery(p, search);
     const matchCategory = categoryId === "all" || p.category_id === categoryId;
     const matchType = productType === "all" || p.product_type === productType;
     return matchSearch && matchCategory && matchType;
@@ -78,7 +106,7 @@ export default function Products() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      { name: "Coca Cola 600ml", category_name: "Drinks", sku: "BEB-001", barcode: "123456789012", price: "2.50", cost: "1.00", product_type: "simple", status: "active" },
+      { name: "Coca Cola 600ml", category_name: "Drinks", sku: "BEB-001", barcode: "123456789012", barcodes: "123456789012|CASE-COKE-24", price: "2.500", cost: "1.000", product_type: "simple", status: "active" },
       { name: "Burger Meat (10kg Box)", category_name: "Supplies", sku: "INS-001", barcode: "", price: "0", cost: "50.00", product_type: "ingredient", status: "active" },
       { name: "Classic Burger", category_name: "Main Dishes", sku: "PLA-001", barcode: "", price: "8.50", cost: "3.20", product_type: "composite", status: "active" },
       { name: "Burger + Soda Combo", category_name: "Combos", sku: "CMB-001", barcode: "", price: "10.00", cost: "4.20", product_type: "combo", status: "active" }
@@ -134,24 +162,36 @@ export default function Products() {
               return "simple";
           }
         };
-        const dataToInsert = parsed.map(row => {
+        const prepared = parsed.map((row, rowIndex) => {
           let category_id = null;
           if (row.category_name && categories) {
             const matched = categories.find(c => c.name.toLowerCase() === row.category_name.trim().toLowerCase());
             if (matched) category_id = matched.id;
           }
-          return {
+          const values = parseBarcodeCell(row.barcodes || row.barcode);
+          const barcodes: ProductBarcode[] = values.map((barcode, index) => ({
+            barcode,
+            barcode_type: index === 0 ? "legacy" : "supplier",
+            is_primary: index === 0,
+          }));
+          return { rowIndex, barcodes, product: {
+            id: crypto.randomUUID(),
             tenant_id: tenantId,
             name: row.name,
             category_id,
             sku: row.sku || null,
-            barcode: row.barcode || null,
             price: parseFloat(row.price) || 0,
             cost: parseFloat(row.cost) || 0,
             product_type: mapProductType(row.product_type),
             status: row.status || "active",
-          };
+          } };
         });
+        const barcodeAnalysis = analyzeBarcodeCandidates(prepared.flatMap((row) => row.barcodes));
+        const invalidBarcode = barcodeAnalysis.find((candidate) => candidate.state !== "valid");
+        if (invalidBarcode) {
+          throw new Error(`Barcode ${invalidBarcode.normalized_barcode || "(empty)"} is ${invalidBarcode.state.replace("_", " ")} in the import file.`);
+        }
+        const dataToInsert = prepared.map((row) => row.product);
         const { error: deleteError } = await supabase.from("products").delete().eq("tenant_id", tenantId);
         if (deleteError) {
           console.error("Error al borrar products:", deleteError);
@@ -164,6 +204,14 @@ export default function Products() {
         if (insertError) {
           console.error("Error al insertar:", insertError);
           throw new Error("The database was cleaned, but an error occurred while inserting the new products. Verify the category and other fields.");
+        }
+        for (const row of prepared) {
+          await replaceProductBarcodes(
+            tenantId,
+            row.product.id,
+            row.barcodes,
+            `catalog-import-${crypto.randomUUID()}`,
+          );
         }
         toast({ title: "Synchronization successful", description: `Previous data was removed and ${dataToInsert.length} new products were imported.` });
         qc.invalidateQueries({ queryKey: ["products"] });
@@ -183,6 +231,41 @@ export default function Products() {
         <div className="h-display g-page-title">Products</div>
         <div className="h-meta g-page-subtitle">{products?.length ?? 0} products · CATALOG</div>
       </div>
+
+      {barcodeConflicts.length > 0 && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3" role="alert">
+          <div className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />Barcode collision review
+          </div>
+          <p className="text-sm text-muted-foreground">Legacy duplicate or malformed codes were preserved here and removed from POS scanning until a manager resolves them.</p>
+          <div className="space-y-2">
+            {barcodeConflicts.map((conflict: any) => {
+              const candidate = products?.find((product: any) => product.id === conflict.candidate_product_id);
+              const existing = products?.find((product: any) => product.id === conflict.conflicting_product_id);
+              return (
+                <div key={conflict.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-background/70 px-3 py-2 text-sm">
+                  <span>
+                    <span className="font-mono font-medium">{conflict.barcode}</span>{" · "}
+                    {conflict.conflicting_product_id
+                      ? `${candidate?.name ?? "Candidate product"} conflicts with ${existing?.name ?? "the existing product"}`
+                      : `${candidate?.name ?? "Product"} has a malformed legacy code`}
+                  </span>
+                  <div className="flex gap-2">
+                    {candidate && (
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setEditing(candidate); setOpen(true); }}>
+                        Edit candidate
+                      </Button>
+                    )}
+                    <Button type="button" size="sm" onClick={() => resolveBarcodeConflict(conflict)}>
+                      {conflict.conflicting_product_id ? "Keep existing assignment" : "Dismiss invalid value"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -260,7 +343,13 @@ export default function Products() {
         <button
           type="button"
           className="g-btn g-btn-ghost"
-          onClick={() => exportToCsv(`products_${tenantId}.csv`, filtered)}
+          onClick={() => exportToCsv(`products_${tenantId}.csv`, filtered.map((product: any) => ({
+            ...product,
+            categories: product.categories?.name ?? "",
+            barcode: product.product_barcodes?.find((entry: any) => entry.is_primary)?.barcode ?? "",
+            barcodes: (product.product_barcodes ?? []).map((entry: any) => entry.barcode).join("|"),
+            product_barcodes: undefined,
+          })))}
           title="Export filtered results to CSV"
         >
           <Download className="h-4 w-4" /> Export
@@ -311,12 +400,12 @@ export default function Products() {
                 <TableCell>
                   <div className="flex flex-col gap-0.5 text-xs tabular-nums text-ink-500">
                     {p.sku && <span>{p.sku}</span>}
-                    {p.barcode && (
-                      <span className="flex items-center gap-1">
-                        <Barcode className="h-3 w-3" />{p.barcode}
+                    {(p.product_barcodes ?? []).map((entry: any) => (
+                      <span key={entry.id} className="flex items-center gap-1">
+                        <Barcode className="h-3 w-3" />{entry.barcode}{entry.is_primary ? " · primary" : ""}
                       </span>
-                    )}
-                    {!p.sku && !p.barcode && <span>—</span>}
+                    ))}
+                    {!p.sku && (p.product_barcodes ?? []).length === 0 && <span>—</span>}
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">{formatCurrency(Number(p.price))}</TableCell>

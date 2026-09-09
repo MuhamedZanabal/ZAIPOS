@@ -13,7 +13,10 @@ import { RecipeEditor } from "./RecipeEditor";
 import { toast } from "sonner";
 import { useHardware } from "@/hooks/useHardware";
 import { useBarcodeLookup } from "@/hooks/useBarcodeLookup";
-import { ScanBarcode, Loader2, Globe, Plus, Trash2, GripVertical, ImagePlus, X } from "lucide-react";
+import { Loader2, Globe, Plus, Trash2, GripVertical, ImagePlus, X } from "lucide-react";
+import { ProductBarcodeFields } from "./ProductBarcodeFields";
+import { inspectProductBarcodes, replaceProductBarcodes, type ProductBarcodeInspection } from "@/lib/productBarcodeCommands";
+import { normalizeBarcode, type ProductBarcode, type ProductBarcodeType } from "@/lib/productBarcodes";
 
 
 const TYPES = ["simple", "composite", "production", "combo", "ingredient", "modifier"] as const;
@@ -35,6 +38,29 @@ const KDS_STATIONS = [
 ];
 
 interface Props { tenantId: string; categories: any[]; editing: any; onClose: () => void }
+
+function initialBarcodes(product: any): ProductBarcode[] {
+  if (Array.isArray(product?.product_barcodes) && product.product_barcodes.length > 0) {
+    return [...product.product_barcodes]
+      .sort((left, right) => Number(left.sort_order ?? 0) - Number(right.sort_order ?? 0))
+      .map((entry) => ({
+        id: entry.id,
+        barcode: entry.barcode,
+        barcode_type: entry.barcode_type,
+        is_primary: entry.is_primary,
+      }));
+  }
+  return product?.barcode
+    ? [{ barcode: product.barcode, barcode_type: "legacy", is_primary: true }]
+    : [];
+}
+
+function typeForScannedCode(code: string): ProductBarcodeType {
+  if (/^\d{13}$/.test(code)) return "ean_13";
+  if (/^\d{12}$/.test(code)) return "upc_a";
+  if (/^\d{8}$/.test(code)) return "ean_8";
+  return "code_128";
+}
 
 function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; productId: string }) {
   const qc = useQueryClient();
@@ -292,8 +318,12 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
 
 export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const [form, setForm] = useState<any>(
-    editing ?? { name: "", product_type: "simple", price: 0, cost: 0, tax_rate: 19, min_stock: 0, status: "active", category_id: null, sku: "", barcode: "", color: "#c2410c", station: null, description: "", sort_order: 0, image_url: null, requires_detail: false }
+    editing ?? { name: "", product_type: "simple", price: 0, cost: 0, tax_rate: 10, min_stock: 0, status: "active", category_id: null, sku: "", color: "#c2410c", station: null, description: "", sort_order: 0, image_url: null, requires_detail: false }
   );
+  const [barcodes, setBarcodes] = useState<ProductBarcode[]>(() => initialBarcodes(editing));
+  const [barcodeIssues, setBarcodeIssues] = useState<ProductBarcodeInspection[]>([]);
+  const [draftProductId, setDraftProductId] = useState<string | null>(null);
+  const barcodeOperationIdRef = useRef(`product-barcodes-${crypto.randomUUID()}`);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -331,23 +361,43 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   };
 
   useEffect(() => {
-    if (editing) setForm(editing);
+    if (editing) {
+      setForm(editing);
+      setBarcodes(initialBarcodes(editing));
+      setBarcodeIssues([]);
+      setDraftProductId(null);
+      barcodeOperationIdRef.current = `product-barcodes-${crypto.randomUUID()}`;
+    }
   }, [editing]);
 
   useEffect(() => () => { scanCleanupRef.current?.(); }, []);
 
   const fetchFromAPI = async () => {
-    if (!form.barcode?.trim()) return;
-    const product = await lookupBarcode(form.barcode);
+    const primary = barcodes.find((entry) => entry.is_primary)?.barcode;
+    if (!primary?.trim()) return;
+    const product = await lookupBarcode(primary);
     if (!product) return;
     setForm((f: any) => ({ ...f, name: f.name || product.title, sku: f.sku || product.brand || "" }));
-    toast.success(`Encontrado: ${product.title}`, { description: product.brand || product.category });
+    toast.success(`Found: ${product.title}`, { description: product.brand || product.category });
   };
 
   const startScan = () => {
     setScanning(true);
     scanCleanupRef.current = onBarcodeScanned((code) => {
-      setForm((f: any) => ({ ...f, barcode: code }));
+      const normalized = normalizeBarcode(code);
+      setBarcodes((current) => {
+        if (current.some((entry) => normalizeBarcode(entry.barcode) === normalized)) {
+          toast.error(`Barcode ${normalized} is already listed`);
+          return current;
+        }
+        return [...current, {
+          barcode: normalized,
+          barcode_type: typeForScannedCode(normalized),
+          is_primary: current.length === 0,
+        }];
+      });
+      setBarcodeIssues([]);
+      barcodeOperationIdRef.current = `product-barcodes-${crypto.randomUUID()}`;
       setScanning(false);
       scanCleanupRef.current?.();
       scanCleanupRef.current = null;
@@ -369,23 +419,41 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
     e.preventDefault();
     setSaving(true);
     try {
+      const inspection = await inspectProductBarcodes(tenantId, editing?.id ?? draftProductId, barcodes);
+      setBarcodeIssues(inspection);
+      if (inspection.some((entry) => entry.state !== "valid")) {
+        throw new Error("Resolve the highlighted barcode conflicts before saving");
+      }
       const payload = {
-        ...form, tenant_id: tenantId,
+        tenant_id: tenantId,
+        name: form.name,
+        product_type: form.product_type,
+        category_id: form.category_id || null,
+        sku: form.sku?.trim() || null,
         price: Number(form.price), cost: Number(form.cost),
         tax_rate: Number(form.tax_rate), min_stock: Number(form.min_stock),
+        unit_id: form.unit_id || null,
+        unit_code: form.unit_code || "unit",
+        image_url: form.image_url || null,
+        color: form.color || null,
+        status: form.status,
         station: form.station || null,
+        description: form.description?.trim() || null,
+        sort_order: Number(form.sort_order) || 0,
+        requires_detail: !!form.requires_detail,
       };
-      delete (payload as any).categories;
-      delete (payload as any).modifier_groups;
-      if (editing) {
-        const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
+      let savedProductId = (editing?.id ?? draftProductId) as string | undefined;
+      if (savedProductId) {
+        const { error } = await supabase.from("products").update(payload).eq("id", savedProductId).eq("tenant_id", tenantId);
         if (error) throw error;
-        toast.success("Product updated");
       } else {
-        const { error } = await supabase.from("products").insert(payload);
+        const { data, error } = await supabase.from("products").insert(payload).select("id").single();
         if (error) throw error;
-        toast.success("Product created. Edit it again to add a recipe and modifiers.");
+        savedProductId = data.id;
+        setDraftProductId(savedProductId);
       }
+      await replaceProductBarcodes(tenantId, savedProductId!, barcodes, barcodeOperationIdRef.current);
+      toast.success(editing ? "Product updated" : "Product created. Edit it again to add a recipe and modifiers.");
       onClose();
     } catch (err: any) { toast.error(err.message); } finally { setSaving(false); }
   };
@@ -482,12 +550,12 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5"><Label>Price</Label>
-                <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               </div>
               <div className="space-y-1.5"><Label>Cost</Label>
-                <Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
+                <Input type="number" step="0.001" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
               </div>
-              <div className="space-y-1.5"><Label>Imp. %</Label>
+              <div className="space-y-1.5"><Label>VAT %</Label>
                 <Input type="number" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
               </div>
             </div>
@@ -510,25 +578,22 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Barcode (EAN)</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type or scan the code..."
-                  value={form.barcode ?? ""}
-                  onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                  className="font-mono"
-                />
-                <Button type="button" variant="outline" size="icon"
-                  onClick={fetchFromAPI} disabled={lookingUp || !form.barcode?.trim()} title="Look up information by EAN">
-                  {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                </Button>
-                <Button type="button" variant={scanning ? "default" : "outline"} size="icon"
-                  onClick={startScan} disabled={scanning} title={scanning ? "Esperando…" : "Escanear"}>
-                  {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanBarcode className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
+            <ProductBarcodeFields
+              barcodes={barcodes}
+              issues={barcodeIssues}
+              scanning={scanning}
+              onChange={(next) => {
+                setBarcodes(next);
+                setBarcodeIssues([]);
+                barcodeOperationIdRef.current = `product-barcodes-${crypto.randomUUID()}`;
+              }}
+              onStartScan={startScan}
+            />
+            <Button type="button" variant="outline" className="w-full"
+              onClick={fetchFromAPI} disabled={lookingUp || !barcodes.some((entry) => entry.is_primary && entry.barcode.trim())}>
+              {lookingUp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Globe className="h-4 w-4 mr-2" />}
+              Look up primary retail barcode
+            </Button>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
                 <Label>Requires details</Label>

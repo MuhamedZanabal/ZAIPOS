@@ -46,7 +46,7 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - [x] Historical receipt reprint fidelity + audit
 - [x] Held/suspended carts
 - [x] Price override + manager approval
-- [ ] POS PIN authentication
+- [x] POS PIN authentication
 - [ ] Multiple barcodes + collision handling
 - [ ] Product price history
 - [ ] Cost history / historical COGS
@@ -170,3 +170,14 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - Post-merge Windows validation artifact: ID `10084459463`, SHA-256 `07addf252863984dfcbc01741940ecc586dbd104972156e9b08b6dd71d1d39b6`
 - Migration: `20260909010000_price_override_approval.sql`
 - Verified gates: explicit request/approve permissions, tenant/branch authorization, requester self-approval denial, exact-fils one-time checkout consumption, immutable sale-line approval history, exactly-once audit evidence, direct mutation and internal-permission-probe lockdown, cashier and manager UI, stale offline review routing, 62-migration chains, 27 Vitest files / 134 tests, TypeScript, lint, production build and Windows packaging
+
+### POS PIN authentication
+
+- PR: #22
+- Final reviewed branch head: `3ed299356dddb64063b8c4d688e2f983bc42d7e6`
+- Final branch CI: run 249 (`34348976347`), `quality` and `windows-package` green
+- Merge SHA: `5ba2d19b360df76adc260f0d429d47b652301d78`
+- Post-merge `main` CI: run 250 (`34349488299`), `quality` and `windows-package` green
+- Post-merge Windows validation artifact: ID `10103245878`, SHA-256 `bb151c5180ed1704faf1633c5b8f186e6df25daf6d0786a9254c506318504c21`
+- Migration: `20260909030000_secure_pos_pin.sql`
+- Verified gates: Argon2id server-side hashing, no plaintext application PIN columns, service-only credential commands, manager and tenant/branch authorization, registered-device and open-session context, five-attempt lockout, credential-version invalidation of in-flight attempts, successful legacy conversion, immutable attempt/audit evidence, direct credential mutation lockdown, Edge JWT validation, 63-migration clean and supported Bahrain upgrade chains, TypeScript, lint, full Vitest suite, production build and Windows packaging

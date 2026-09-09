@@ -10,7 +10,7 @@ export function useProducts(tenantId: string | undefined) {
       try {
         const { data, error } = await supabase
           .from("products")
-          .select("*")
+          .select("*, product_barcodes(barcode, barcode_type, is_primary, sort_order)")
           .eq("tenant_id", tenantId!)
           .eq("status", "active")
           .neq("product_type", "ingredient")
@@ -31,6 +31,8 @@ export function useProducts(tenantId: string | undefined) {
             image_url: p.image_url ?? null,
             sku: p.sku ?? null,
             barcode: p.barcode ?? null,
+            barcodes: (p.product_barcodes ?? []).map((entry) => entry.barcode),
+            product_barcodes: p.product_barcodes ?? [],
             status: p.status,
             product_type: p.product_type,
             station: p.station ?? null,
