@@ -282,7 +282,10 @@ function seedSupportedBaseline(database) {
     );
 
     INSERT INTO public.products(id, tenant_id, name, product_type, price, cost, tax_rate, status, barcode)
-    VALUES ('50000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091', 'Upgrade Product', 'simple', 1.25, 0.75, 0, 'active', ' 6290000000091 ');
+    VALUES
+      ('50000000-0000-0000-0000-000000000091', '10000000-0000-0000-0000-000000000091', 'Upgrade Product', 'simple', 1.25, 0.75, 0, 'active', ' 6290000000091 '),
+      ('50000000-0000-0000-0000-000000000092', '10000000-0000-0000-0000-000000000091', 'Upgrade Duplicate', 'simple', 1.00, 0.50, 0, 'active', '6290000000091'),
+      ('50000000-0000-0000-0000-000000000093', '10000000-0000-0000-0000-000000000091', 'Upgrade Malformed', 'simple', 1.00, 0.50, 0, 'active', 'BAD CODE');
 
     INSERT INTO public.inventory_stocks(tenant_id, branch_id, inventory_center_id, product_id, quantity)
     VALUES (
@@ -373,6 +376,10 @@ assertEqual("upgrade till cash fils", scalar("zaipos_upgrade", "SELECT total_cas
 assertEqual("upgrade stock quantity preserved", scalar("zaipos_upgrade", "SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='45000000-0000-0000-0000-000000000091' AND product_id='50000000-0000-0000-0000-000000000091';"), "7.500");
 assertEqual("upgrade primary barcode normalized", scalar("zaipos_upgrade", "SELECT barcode FROM public.products WHERE id='50000000-0000-0000-0000-000000000091';"), "6290000000091");
 assertEqual("upgrade barcode ledger preserved", scalar("zaipos_upgrade", "SELECT barcode FROM public.product_barcodes WHERE product_id='50000000-0000-0000-0000-000000000091' AND is_primary;"), "6290000000091");
+assertEqual("upgrade duplicate barcode excluded from scanning", scalar("zaipos_upgrade", "SELECT barcode IS NULL FROM public.products WHERE id='50000000-0000-0000-0000-000000000092';"), "t");
+assertEqual("upgrade duplicate barcode conflict preserved", scalar("zaipos_upgrade", "SELECT details->>'preserved_legacy_value' FROM public.product_barcode_conflicts WHERE candidate_product_id='50000000-0000-0000-0000-000000000092' AND conflicting_product_id='50000000-0000-0000-0000-000000000091';"), "6290000000091");
+assertEqual("upgrade malformed barcode excluded from scanning", scalar("zaipos_upgrade", "SELECT barcode IS NULL FROM public.products WHERE id='50000000-0000-0000-0000-000000000093';"), "t");
+assertEqual("upgrade malformed barcode evidence preserved", scalar("zaipos_upgrade", "SELECT details->>'preserved_legacy_value' FROM public.product_barcode_conflicts WHERE candidate_product_id='50000000-0000-0000-0000-000000000093';"), "BAD CODE");
 assertEqual("upgrade historical receipt captured", scalar("zaipos_upgrade", "SELECT receipt_snapshot IS NOT NULL FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "t");
 assertEqual("upgrade receipt total fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{totals,total_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade receipt item fils preserved", scalar("zaipos_upgrade", "SELECT receipt_snapshot #>> '{items,0,unit_price_fils}' FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "1250");

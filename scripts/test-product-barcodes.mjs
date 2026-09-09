@@ -10,6 +10,7 @@ const I = {
   productA: "56000000-0000-0000-0000-000000000111",
   productRetired: "56000000-0000-0000-0000-000000000112",
   productB: "56000000-0000-0000-0000-000000000113",
+  productNoBarcode: "56000000-0000-0000-0000-000000000114",
 };
 
 function psql(args, capture = true) {
@@ -74,7 +75,8 @@ sql(`
   INSERT INTO public.products(id,tenant_id,name,product_type,price,cost,tax_rate,status,barcode) VALUES
     ('${I.productA}','${I.tenantA}','Barcode Water','simple',1.250,0.750,10,'active',' 6290000000777 '),
     ('${I.productRetired}','${I.tenantA}','Retired Case','simple',1.000,0.500,10,'inactive','OLD-CASE-24'),
-    ('${I.productB}','${I.tenantB}','Other Tenant Water','simple',1.250,0.750,10,'active','TENANT-SHARED')
+    ('${I.productB}','${I.tenantB}','Other Tenant Water','simple',1.250,0.750,10,'active','TENANT-SHARED'),
+    ('${I.productNoBarcode}','${I.tenantA}','No Barcode Product','simple',1.000,0.500,10,'active',NULL)
   ON CONFLICT (id) DO NOTHING;
 `);
 
@@ -84,6 +86,16 @@ expectDatabaseReject(
   "database rejects malformed typed EAN",
   `INSERT INTO public.product_barcodes(tenant_id,product_id,barcode,barcode_type,is_primary,sort_order) VALUES ('${I.tenantA}'::uuid,'${I.productA}'::uuid,'123','ean_8',false,9)`,
   /product_barcodes_format_check/i,
+);
+expectDatabaseReject(
+  "database requires a primary when barcode rows exist",
+  `INSERT INTO public.product_barcodes(tenant_id,product_id,barcode,barcode_type,is_primary,sort_order) VALUES ('${I.tenantA}'::uuid,'${I.productNoBarcode}'::uuid,'NO-PRIMARY','internal',false,0)`,
+  /exactly one primary barcode/i,
+);
+expectDatabaseReject(
+  "database rejects cross-tenant product linkage",
+  `INSERT INTO public.product_barcodes(tenant_id,product_id,barcode,barcode_type,is_primary,sort_order) VALUES ('${I.tenantA}'::uuid,'${I.productB}'::uuid,'WRONG-TENANT','internal',true,0)`,
+  /product_barcodes_tenant_product_fkey/i,
 );
 
 const candidateJson = JSON.stringify([
@@ -99,7 +111,7 @@ assertEqual("two barcode rows", scalar(`SELECT count(*)::text FROM public.produc
 assertEqual("one primary", scalar(`SELECT count(*)::text FROM public.product_barcodes WHERE product_id='${I.productA}'::uuid AND is_primary;`), "1");
 assertEqual("legacy primary remains", scalar(`SELECT barcode FROM public.products WHERE id='${I.productA}'::uuid;`), "6290000000777");
 assertEqual("alternate resolves", asUser(I.cashierA, `SELECT public.resolve_product_by_barcode_v1('${I.tenantA}'::uuid,' case-24-a ')::text;`), I.productA);
-assertEqual("cross-tenant barcode hidden", asUser(I.managerB, `SELECT public.resolve_product_by_barcode_v1('${I.tenantB}'::uuid,'CASE-24-A') IS NULL;`), "true");
+assertEqual("cross-tenant barcode hidden", asUser(I.managerB, `SELECT public.resolve_product_by_barcode_v1('${I.tenantB}'::uuid,'CASE-24-A') IS NULL;`), "t");
 assertEqual("cross-tenant barcode rows hidden by RLS", asUser(I.managerB, `SELECT count(*)::text FROM public.product_barcodes WHERE product_id='${I.productA}'::uuid;`), "0");
 assertEqual("replace audit exactly once", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='catalogue.product_barcodes_replaced' AND entity_id='${I.productA}'::uuid;`), "1");
 expectReject(
