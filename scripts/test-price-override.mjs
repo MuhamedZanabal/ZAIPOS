@@ -119,7 +119,12 @@ assertEqual("approving manager", scalar(`SELECT approved_by::text FROM public.pr
 assertEqual("one approval audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.price_override_approved' AND entity_id='${requestId}'::uuid;`), "1");
 
 const selfRequestId = asUser(I.managerA, requestSql("override-manager-self-request-91", 1150));
-expectReject("manager cannot self approve", I.managerA, `SELECT public.decide_price_override_v1('${selfRequestId}'::uuid,true,'Self approval','override-manager-self-decision-91');`);
+expectReject(
+  "manager cannot self approve",
+  I.managerA,
+  `SELECT public.decide_price_override_v1('${selfRequestId}'::uuid,true,'Self approval','override-manager-self-decision-91');`,
+  /cannot approve their own/i,
+);
 const rejectedId = asUser(I.cashierA, requestSql("override-request-operation-93", 1050));
 assertEqual("manager rejection", asUser(I.managerA, `SELECT public.decide_price_override_v1('${rejectedId}'::uuid,false,'No matching policy','override-manager-decision-93')::text;`), rejectedId);
 assertEqual("manager rejection replay", asUser(I.managerA, `SELECT public.decide_price_override_v1('${rejectedId}'::uuid,false,'No matching policy','override-manager-decision-93')::text;`), rejectedId);
