@@ -98,6 +98,9 @@ jobs:
       - name: Test held cart lifecycle
         run: npm run test:migrations:held-carts
 
+      - name: Test price override and manager approval
+        run: npm run test:migrations:price-override
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 

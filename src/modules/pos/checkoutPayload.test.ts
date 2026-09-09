@@ -92,6 +92,45 @@ describe("checkout v2 payload", () => {
     expect(item).not.toHaveProperty("tax_rate");
   });
 
+  it("uses an approved exact-fils preview while sending only the approval identity", () => {
+    const lines = [{
+      id: product.id,
+      product,
+      quantity: 1,
+      discount: 0,
+      priceOverride: {
+        requestId: "90000000-0000-0000-0000-000000000001",
+        originalUnitPriceFils: 1025,
+        overrideUnitPriceFils: 900,
+        approvedQuantity: 1,
+        reason: "Customer price match",
+        approvedBy: "30000000-0000-0000-0000-000000000001",
+        approvedAt: "2026-09-09T00:00:00Z",
+      },
+    }] as any;
+
+    expect(calculateCartPayableFils(lines, 0, 0)).toBe(990);
+    const payload = buildCheckoutV2Payload({
+      tenantId: "tenant-a",
+      branchId: "branch-a",
+      cashSessionId: "session-a",
+      customerId: null,
+      channel: "pos",
+      lines,
+      payments: [{ method: "cash", amountFils: 990, reference: null }],
+      discountTotalFils: 0,
+      tipAmountFils: 0,
+      couponCode: null,
+      clientMutationId: "operation-override-0001",
+    });
+
+    expect(payload._items[0]).toEqual(expect.objectContaining({
+      price_override_request_id: "90000000-0000-0000-0000-000000000001",
+    }));
+    expect(payload._items[0]).not.toHaveProperty("override_unit_price_fils");
+    expect(payload._items[0]).not.toHaveProperty("original_unit_price_fils");
+  });
+
   it("rejects payment allocations that do not reconcile with the exact client preview", () => {
     const lines = [{ id: product.id, product, quantity: 1, discount: 0 }] as any;
 

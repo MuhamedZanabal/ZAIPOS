@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   openDrawer: vi.fn().mockResolvedValue({ ok: true }),
   printTicket: vi.fn().mockResolvedValue({ ok: true }),
   rpc: vi.fn(),
+  priceOverride: undefined as undefined | Record<string, unknown>,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -54,6 +55,7 @@ vi.mock("@/hooks/useDevMode", () => ({ useDevMode: () => ({ devMode: false }) })
 vi.mock("@/hooks/useProducts", () => ({ useProducts: () => ({ data: [] }) }));
 
 vi.mock("@/stores/cart", () => ({
+  effectiveCartUnitPrice: (line: any) => line.priceOverride ? line.priceOverride.overrideUnitPriceFils / 1000 : Number(line.product.price),
   useCart: () => ({
     lines: [{
       id: "50000000-0000-0000-0000-000000000001",
@@ -67,8 +69,9 @@ vi.mock("@/stores/cart", () => ({
       },
       quantity: 1,
       discount: 0,
+      priceOverride: state.priceOverride,
     }],
-    total: () => 8.5,
+    total: () => state.priceOverride ? Number(state.priceOverride.overrideUnitPriceFils) / 1000 : 8.5,
     clear: state.clear,
     add: vi.fn(),
   }),
@@ -146,6 +149,7 @@ import POS from "./POS";
 describe("POS native split checkout wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.priceOverride = undefined;
     state.rpc.mockImplementation(async (name: string) => {
       if (name !== "checkout_sale_v2") throw new Error(`Unexpected RPC: ${name}`);
       return { data: "60000000-0000-0000-0000-000000000001", error: null };
@@ -197,5 +201,30 @@ describe("POS native split checkout wiring", () => {
 
     await waitFor(() => expect(state.printTicket).toHaveBeenCalledTimes(1));
     expect(state.openDrawer).not.toHaveBeenCalled();
+  });
+
+  it("carries manager approval identity through checkout and prints the approved price", async () => {
+    state.priceOverride = {
+      requestId: "90000000-0000-0000-0000-000000000001",
+      originalUnitPriceFils: 8500,
+      overrideUnitPriceFils: 7500,
+      approvedQuantity: 1,
+      reason: "Customer price match",
+      approvedBy: "30000000-0000-0000-0000-000000000001",
+      approvedAt: "2026-09-09T00:00:00Z",
+    };
+    state.allocations = [{ method: "cash", amountFils: 7_500, tenderedFils: 7_500, changeFils: 0, reference: null }];
+
+    render(<POS />);
+    fireEvent.click(screen.getByRole("button", { name: "Complete mixed sale" }));
+
+    await waitFor(() => expect(state.printTicket).toHaveBeenCalledTimes(1));
+    const checkoutCall = state.rpc.mock.calls.find(([name]) => name === "checkout_sale_v2");
+    expect(checkoutCall?.[1]._items[0]).toEqual(expect.objectContaining({
+      price_override_request_id: "90000000-0000-0000-0000-000000000001",
+    }));
+    expect(state.printTicket).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ unitPrice: 7.5, total: 7.5 })],
+    }));
   });
 });

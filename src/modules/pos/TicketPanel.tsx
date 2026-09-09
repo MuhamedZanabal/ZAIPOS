@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useCart } from "@/stores/cart";
+import { effectiveCartUnitPrice, useCart, type CartLine } from "@/stores/cart";
 import { formatCurrency } from "@/lib/format";
-import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw } from "lucide-react";
+import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw, ShieldCheck } from "lucide-react";
 
 interface TicketPanelProps {
   canCharge: boolean;
@@ -10,10 +10,12 @@ interface TicketPanelProps {
   onSendToTable?: () => void;
   onHold?: () => void;
   onOpenHeldCarts?: () => void;
+  onRequestPriceOverride?: (line: CartLine) => void;
+  onOpenPriceApprovals?: () => void;
   reasonDisabled?: string;
 }
 
-export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpenHeldCarts, reasonDisabled }: TicketPanelProps) {
+export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpenHeldCarts, onRequestPriceOverride, onOpenPriceApprovals, reasonDisabled }: TicketPanelProps) {
   const { lines, remove, setQty, clear, subtotal, taxTotal, total } = useCart();
   const subtotalNum = subtotal();
   const taxNum = taxTotal();
@@ -32,6 +34,11 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
           )}
         </div>
         <div className="flex items-center gap-1">
+          {onOpenPriceApprovals && (
+            <Button variant="ghost" size="sm" onClick={onOpenPriceApprovals} className="h-8" aria-label="Open price override approvals">
+              <ShieldCheck className="h-4 w-4 mr-1" /> Approvals
+            </Button>
+          )}
           {onOpenHeldCarts && (
             <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label="Open held carts">
               <RotateCcw className="h-4 w-4 mr-1" /> Held
@@ -72,7 +79,16 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                         ))}
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground tabular-nums mt-0.5">{formatCurrency(Number(l.product.price))} each</div>
+                    <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                      {l.priceOverride && <span className="line-through mr-1">{formatCurrency(Number(l.product.price))}</span>}
+                      {formatCurrency(effectiveCartUnitPrice(l))} each
+                    </div>
+                    {l.priceOverride && <div className="text-[11px] text-emerald-600 font-medium mt-1">Manager-approved override</div>}
+                    {onRequestPriceOverride && !isTableOrder && (
+                      <button type="button" className="text-[11px] text-primary hover:underline mt-1" onClick={() => onRequestPriceOverride(l)}>
+                        {l.priceOverride ? "Replace price override" : "Request price override"}
+                      </button>
+                    )}
                   </div>
                   <button
                     onClick={() => remove(l.id)}
@@ -92,7 +108,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="font-bold tabular-nums">{formatCurrency(Number(l.product.price) * l.quantity)}</div>
+                  <div className="font-bold tabular-nums">{formatCurrency(effectiveCartUnitPrice(l) * l.quantity)}</div>
                 </div>
               </li>
             ))}
