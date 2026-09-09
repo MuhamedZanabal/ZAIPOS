@@ -17,6 +17,8 @@ import { Loader2, Globe, Plus, Trash2, GripVertical, ImagePlus, X } from "lucide
 import { ProductBarcodeFields } from "./ProductBarcodeFields";
 import { inspectProductBarcodes, replaceProductBarcodes, type ProductBarcodeInspection } from "@/lib/productBarcodeCommands";
 import { normalizeBarcode, type ProductBarcode, type ProductBarcodeType } from "@/lib/productBarcodes";
+import { bhdToFils, formatFils } from "@/lib/bahrain";
+import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
 
 
 const TYPES = ["simple", "composite", "production", "combo", "ingredient", "modifier"] as const;
@@ -317,6 +319,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
 }
 
 export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
+  const qc = useQueryClient();
   const [form, setForm] = useState<any>(
     editing ?? { name: "", product_type: "simple", price: 0, cost: 0, tax_rate: 10, min_stock: 0, status: "active", category_id: null, sku: "", color: "#c2410c", station: null, description: "", sort_order: 0, image_url: null, requires_detail: false }
   );
@@ -324,6 +327,8 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const [barcodeIssues, setBarcodeIssues] = useState<ProductBarcodeInspection[]>([]);
   const [draftProductId, setDraftProductId] = useState<string | null>(null);
   const barcodeOperationIdRef = useRef(`product-barcodes-${crypto.randomUUID()}`);
+  const financialOperationIdRef = useRef(createProductFinancialOperationId("product-base-financials"));
+  const [financialReason, setFinancialReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -367,6 +372,8 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       setBarcodeIssues([]);
       setDraftProductId(null);
       barcodeOperationIdRef.current = `product-barcodes-${crypto.randomUUID()}`;
+      financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
+      setFinancialReason("");
     }
   }, [editing]);
 
@@ -415,6 +422,22 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const showModifiers = ["simple", "composite", "production", "combo"].includes(form.product_type) && !!editing?.id;
   const showComplementaries = !!editing?.id;
 
+  const { data: financialHistory = [] } = useQuery({
+    queryKey: ["product-financial-history", tenantId, editing?.id],
+    enabled: !!editing?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_prices")
+        .select("id, price_type, amount_fils, branch_id, channel, source, reason, effective_from, effective_to")
+        .eq("tenant_id", tenantId)
+        .eq("product_id", editing.id)
+        .order("effective_from", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -424,13 +447,21 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       if (inspection.some((entry) => entry.state !== "valid")) {
         throw new Error("Resolve the highlighted barcode conflicts before saving");
       }
+      const sellingAmountFils = bhdToFils(form.price);
+      const costAmountFils = bhdToFils(form.cost);
+      const financialsChanged = !!editing?.id && (
+        sellingAmountFils !== Number(editing.price_fils)
+        || costAmountFils !== Number(editing.cost_fils)
+      );
+      if (financialsChanged && financialReason.trim().length < 3) {
+        throw new Error("Enter a reason for the selling-price or cost change");
+      }
       const payload = {
         tenant_id: tenantId,
         name: form.name,
         product_type: form.product_type,
         category_id: form.category_id || null,
         sku: form.sku?.trim() || null,
-        price: Number(form.price), cost: Number(form.cost),
         tax_rate: Number(form.tax_rate), min_stock: Number(form.min_stock),
         unit_id: form.unit_id || null,
         unit_code: form.unit_code || "unit",
@@ -446,13 +477,28 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       if (savedProductId) {
         const { error } = await supabase.from("products").update(payload).eq("id", savedProductId).eq("tenant_id", tenantId);
         if (error) throw error;
+        if (financialsChanged) {
+          await setProductBaseFinancials({
+            tenantId,
+            productId: savedProductId,
+            sellingPriceBhd: form.price,
+            costBhd: form.cost,
+            reason: financialReason.trim(),
+            operationId: financialOperationIdRef.current,
+          });
+        }
       } else {
-        const { data, error } = await supabase.from("products").insert(payload).select("id").single();
+        const { data, error } = await supabase.from("products").insert({
+          ...payload,
+          price: Number(form.price),
+          cost: Number(form.cost),
+        }).select("id").single();
         if (error) throw error;
         savedProductId = data.id;
         setDraftProductId(savedProductId);
       }
       await replaceProductBarcodes(tenantId, savedProductId!, barcodes, barcodeOperationIdRef.current);
+      qc.invalidateQueries({ queryKey: ["product-financial-history", tenantId, savedProductId] });
       toast.success(editing ? "Product updated" : "Product created. Edit it again to add a recipe and modifiers.");
       onClose();
     } catch (err: any) { toast.error(err.message); } finally { setSaving(false); }
@@ -468,6 +514,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
           {showRecipe && <TabsTrigger value="recipe">Recipe</TabsTrigger>}
           {showModifiers && <TabsTrigger value="modifiers">Modificadores</TabsTrigger>}
           {showComplementaries && <TabsTrigger value="complementaries">Upselling</TabsTrigger>}
+          {editing?.id && <TabsTrigger value="financial-history">Price history</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="basic" className="mt-4">
@@ -550,15 +597,36 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5"><Label>Price</Label>
-                <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => {
+                  setForm({ ...form, price: e.target.value });
+                  financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
+                }} />
               </div>
               <div className="space-y-1.5"><Label>Cost</Label>
-                <Input type="number" step="0.001" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
+                <Input type="number" step="0.001" min="0" value={form.cost} onChange={(e) => {
+                  setForm({ ...form, cost: e.target.value });
+                  financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
+                }} />
               </div>
               <div className="space-y-1.5"><Label>VAT %</Label>
                 <Input type="number" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
               </div>
             </div>
+            {editing?.id && (
+              <div className="space-y-1.5">
+                <Label>Financial change reason</Label>
+                <Textarea
+                  value={financialReason}
+                  onChange={(event) => {
+                    setFinancialReason(event.target.value);
+                    financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
+                  }}
+                  placeholder="Required when selling price or cost changes"
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground">Price and cost changes are retained in the exact-fils history ledger.</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>SKU</Label>
                 <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
@@ -629,6 +697,28 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         {showComplementaries && (
           <TabsContent value="complementaries" className="mt-4">
             <ComplementariesEditor tenantId={tenantId} productId={editing.id} />
+          </TabsContent>
+        )}
+
+        {editing?.id && (
+          <TabsContent value="financial-history" className="mt-4 space-y-2">
+            {financialHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No financial history is available.</p>
+            ) : financialHistory.map((entry) => (
+              <div key={entry.id} className="rounded-lg border p-3 text-sm flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium capitalize">{entry.price_type} · {formatFils(Number(entry.amount_fils))}</p>
+                  <p className="text-xs text-muted-foreground">{entry.reason}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {entry.branch_id ? "Branch" : "Tenant"}{entry.channel ? ` · ${entry.channel}` : " · Base"} · {entry.source}
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground text-right whitespace-nowrap">
+                  <div>{new Date(entry.effective_from).toLocaleString("en-BH")}</div>
+                  <div>{entry.effective_to ? "Superseded" : "Current"}</div>
+                </div>
+              </div>
+            ))}
           </TabsContent>
         )}
       </Tabs>

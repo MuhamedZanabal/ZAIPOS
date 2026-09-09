@@ -709,18 +709,16 @@ SET search_path = ''
 AS $$
 DECLARE
   _branch_id uuid;
-  _sale_time timestamptz;
   _price public.product_prices;
 BEGIN
-  SELECT branch_id,created_at INTO _branch_id,_sale_time
+  SELECT branch_id INTO _branch_id
   FROM public.sales WHERE tenant_id=NEW.tenant_id AND id=NEW.sale_id;
   IF _branch_id IS NULL THEN RAISE EXCEPTION 'Sale cost snapshot requires a tenant-scoped sale'; END IF;
 
   SELECT * INTO _price FROM public.product_prices
   WHERE tenant_id=NEW.tenant_id AND product_id=NEW.product_id AND price_type='cost'
     AND channel IS NULL
-    AND effective_from <= COALESCE(_sale_time,now())
-    AND (effective_to IS NULL OR effective_to > COALESCE(_sale_time,now()))
+    AND effective_to IS NULL
     AND (branch_id=_branch_id OR branch_id IS NULL)
   ORDER BY (branch_id=_branch_id) DESC, effective_from DESC, id DESC
   LIMIT 1;

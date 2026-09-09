@@ -5,8 +5,9 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency } from "@/lib/format";
+import { bhdToFils, filsToBhd, formatFils } from "@/lib/bahrain";
 import { CHANNELS, type SalesChannel } from "@/lib/channels";
+import { createProductFinancialOperationId, setProductSellingPrice } from "@/lib/productFinancialCommands";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Tags } from "lucide-react";
@@ -27,7 +28,7 @@ export default function ChannelPrices() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, price, sku, product_type")
+        .select("id, name, price_fils, sku, product_type")
         .eq("tenant_id", tenantId!)
         .eq("status", "active")
         .neq("product_type", "ingredient")
@@ -43,7 +44,7 @@ export default function ChannelPrices() {
     queryFn: async () => {
       let q = supabase
         .from("product_channel_prices")
-        .select("product_id, branch_id, channel, price")
+        .select("product_id, branch_id, channel, price_fils")
         .eq("tenant_id", tenantId!);
       if (branchScope === "__global__") q = q.is("branch_id", null);
       else q = q.eq("branch_id", branchScope);
@@ -57,58 +58,36 @@ export default function ChannelPrices() {
     const m: Record<string, Record<SalesChannel, number>> = {};
     (prices ?? []).forEach((p) => {
       if (!m[p.product_id]) m[p.product_id] = {} as any;
-      m[p.product_id][p.channel as SalesChannel] = Number(p.price);
+      m[p.product_id][p.channel as SalesChannel] = Number(p.price_fils);
     });
     return m;
   }, [prices]);
 
-  const upsert = async (productId: string, channel: SalesChannel, value: number | null) => {
+  const updatePrice = async (productId: string, channel: SalesChannel, value: string | null) => {
     if (!tenantId) return;
     try {
-      if (value === null || isNaN(value)) {
-        // delete row
-        let q = supabase
-          .from("product_channel_prices")
-          .delete()
-          .eq("tenant_id", tenantId)
-          .eq("product_id", productId)
-          .eq("channel", channel);
-        if (branchScope === "__global__") q = q.is("branch_id", null);
-        else q = q.eq("branch_id", branchScope);
-        const { error } = await q;
-        if (error) throw error;
-      } else {
-        const payload = {
-          tenant_id: tenantId,
-          product_id: productId,
-          channel,
-          price: value,
-          branch_id: branchScope === "__global__" ? null : branchScope,
-        };
-        // Look up existing
-        let q = supabase
-          .from("product_channel_prices")
-          .select("id")
-          .eq("tenant_id", tenantId)
-          .eq("product_id", productId)
-          .eq("channel", channel);
-        if (branchScope === "__global__") q = q.is("branch_id", null);
-        else q = q.eq("branch_id", branchScope);
-        const { data: existing } = await q.maybeSingle();
-        if (existing) {
-          const { error } = await supabase
-            .from("product_channel_prices")
-            .update({ price: value })
-            .eq("id", existing.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from("product_channel_prices").insert(payload);
-          if (error) throw error;
-        }
-      }
+      await setProductSellingPrice({
+        tenantId,
+        productId,
+        branchId: branchScope === "__global__" ? null : branchScope,
+        channel,
+        amountBhd: value,
+        reason: "Channel price management",
+        operationId: createProductFinancialOperationId("channel-price"),
+      });
       qc.invalidateQueries({ queryKey: ["chprice-rows"] });
     } catch (e: any) {
       toast.error(e.message);
+    }
+  };
+
+  const commitPriceInput = (productId: string, channel: SalesChannel, value: string, currentFils?: number) => {
+    try {
+      const nextValue = value.trim() === "" ? null : value.trim();
+      const changed = nextValue === null ? currentFils != null : bhdToFils(nextValue) !== currentFils;
+      if (changed) void updatePrice(productId, channel, nextValue);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Enter a valid BHD amount");
     }
   };
 
@@ -116,7 +95,7 @@ export default function ChannelPrices() {
     <div className="flex flex-col gap-5">
       <PageHeader
         eyebrow="CATALOG · PRICES"
-        title="Prices por canal"
+        title="Prices by channel"
         description="Set a different price for each sales channel. Leave blank to use the base price."
         actions={
           <Select value={branchScope} onValueChange={setBranchScope}>
@@ -124,7 +103,7 @@ export default function ChannelPrices() {
             <SelectContent>
               <SelectItem value="__global__">Global (all branches)</SelectItem>
               {branches.map((b) => (
-                <SelectItem key={b.id} value={b.id}>Solo: {b.name}</SelectItem>
+                <SelectItem key={b.id} value={b.id}>Only: {b.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -153,7 +132,7 @@ export default function ChannelPrices() {
                   </div>
                 </div>
                 <div className="text-right tabular-nums h-meta">
-                  {formatCurrency(Number(p.price))}
+                  {formatFils(Number(p.price_fils))}
                 </div>
                 {CHANNELS.map((c) => {
                   const v = priceMap[p.id]?.[c.id];
@@ -163,13 +142,10 @@ export default function ChannelPrices() {
                         key={`${p.id}-${c.id}-${branchScope}-${v ?? "empty"}`}
                         type="number"
                         min="0"
-                        step="100"
+                        step="0.001"
                         placeholder="—"
-                        defaultValue={v ?? ""}
-                        onBlur={(e) => {
-                          const newVal = e.target.value === "" ? null : Number(e.target.value);
-                          if (newVal !== (v ?? null)) upsert(p.id, c.id, newVal);
-                        }}
+                        defaultValue={v == null ? "" : filsToBhd(v)}
+                        onBlur={(event) => commitPriceInput(p.id, c.id, event.target.value, v)}
                         className="w-[130px] text-right tabular-nums h-9"
                       />
                     </div>
