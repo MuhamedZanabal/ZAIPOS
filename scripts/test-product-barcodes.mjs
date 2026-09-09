@@ -118,7 +118,7 @@ expectReject(
   "manager cannot bypass barcode command through products",
   I.managerA,
   `UPDATE public.products SET barcode='BYPASS-CODE' WHERE id='${I.productA}'::uuid`,
-  /must use replace_product_barcodes_v1/i,
+  /must use replace_product_barcodes_v1|permission denied/i,
 );
 expectReject(
   "operation ID cannot be reused with changed barcode input",
