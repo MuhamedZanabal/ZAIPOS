@@ -101,6 +101,11 @@ const requestId = asUser(I.cashierA, requestSql("override-request-operation-91")
 assertEqual("request replay", asUser(I.cashierA, requestSql("override-request-operation-91")), requestId);
 assertEqual("request pending", scalar(`SELECT status FROM public.price_override_requests WHERE id='${requestId}'::uuid;`), "pending");
 assertEqual("request original price", scalar(`SELECT original_unit_price_fils::text FROM public.price_override_requests WHERE id='${requestId}'::uuid;`), "1250");
+assertEqual("requester can fetch status", JSON.parse(asUser(I.cashierA, `SELECT public.get_price_override_request_v1('${requestId}'::uuid)::text;`)).status, "pending");
+expectReject("wrong branch cannot fetch request", I.managerA2, `SELECT public.get_price_override_request_v1('${requestId}'::uuid);`);
+assertEqual("manager branch pending list", String(JSON.parse(asUser(I.managerA, `SELECT public.list_pending_price_overrides_v1('${I.branchA}'::uuid)::text;`)).length), "1");
+expectReject("cashier cannot list branch approvals", I.cashierA, `SELECT public.list_pending_price_overrides_v1('${I.branchA}'::uuid);`);
+expectReject("cross tenant manager cannot list approvals", I.managerB, `SELECT public.list_pending_price_overrides_v1('${I.branchA}'::uuid);`);
 assertEqual("one request audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.price_override_requested' AND entity_id='${requestId}'::uuid;`), "1");
 
 const decideSql = (operationId, approve = true) => `SELECT public.decide_price_override_v1('${requestId}'::uuid,${approve},'Approved at till','${operationId}')::text;`;
@@ -112,6 +117,14 @@ assertEqual("manager approval replay", asUser(I.managerA, decideSql("override-ma
 assertEqual("request approved", scalar(`SELECT status FROM public.price_override_requests WHERE id='${requestId}'::uuid;`), "approved");
 assertEqual("approving manager", scalar(`SELECT approved_by::text FROM public.price_override_requests WHERE id='${requestId}'::uuid;`), I.managerA);
 assertEqual("one approval audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.price_override_approved' AND entity_id='${requestId}'::uuid;`), "1");
+
+const selfRequestId = asUser(I.managerA, requestSql("override-manager-self-request-91", 1150));
+expectReject("manager cannot self approve", I.managerA, `SELECT public.decide_price_override_v1('${selfRequestId}'::uuid,true,'Self approval','override-manager-self-decision-91');`);
+const rejectedId = asUser(I.cashierA, requestSql("override-request-operation-93", 1050));
+assertEqual("manager rejection", asUser(I.managerA, `SELECT public.decide_price_override_v1('${rejectedId}'::uuid,false,'No matching policy','override-manager-decision-93')::text;`), rejectedId);
+assertEqual("manager rejection replay", asUser(I.managerA, `SELECT public.decide_price_override_v1('${rejectedId}'::uuid,false,'No matching policy','override-manager-decision-93')::text;`), rejectedId);
+assertEqual("request rejected", scalar(`SELECT status FROM public.price_override_requests WHERE id='${rejectedId}'::uuid;`), "rejected");
+assertEqual("one rejection audit", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.price_override_rejected' AND entity_id='${rejectedId}'::uuid;`), "1");
 
 const items = JSON.stringify([{ product_id: I.productA, quantity: "1.000", discount_fils: 0, price_override_request_id: requestId }]).replaceAll("'", "''");
 const payments = JSON.stringify([{ method: "cash", amount_fils: 1000, reference: null }]).replaceAll("'", "''");

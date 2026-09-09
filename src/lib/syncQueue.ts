@@ -31,6 +31,7 @@ export type SyncFailureCode =
   | "coupon_changed"
   | "payment_mismatch"
   | "stock_conflict"
+  | "price_override_changed"
   | "authorization"
   | "validation";
 
@@ -156,6 +157,7 @@ export function classifySyncFailure(
   else if (/payments?.*must exactly equal sale total|payment mismatch/.test(normalized)) failureCode = "payment_mismatch";
   else if (/insufficient stock|stock insuficiente|stock conflict|negative stock/.test(normalized)) failureCode = "stock_conflict";
   else if (/client mutation id.*different checkout|operation.*already processing/.test(normalized)) failureCode = "operation_conflict";
+  else if (/price override.*(?:stale|expired|not approved|consumed|does not match)/.test(normalized)) failureCode = "price_override_changed";
   else if (/not authenticated|forbidden|permission|not authorized|authorization/.test(normalized)) failureCode = "authorization";
 
   return { status: "requires_review", failureCode, retryCount, message };

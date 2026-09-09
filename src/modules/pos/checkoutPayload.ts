@@ -1,4 +1,4 @@
-import type { CartLine } from "@/stores/cart";
+import { effectiveCartUnitPrice, type CartLine } from "@/stores/cart";
 import type { SalesChannel } from "@/lib/channels";
 import type { PayMethod } from "./paymentAllocations";
 import {
@@ -45,6 +45,7 @@ export interface CheckoutV2Payload {
       name: string;
       price_delta: number;
     }>;
+    price_override_request_id?: string;
   }>;
   _payments: Array<{
     method: PayMethod;
@@ -108,7 +109,7 @@ export function calculateCartPayableFils(
   tipBhd: number,
 ): Fils {
   const lineTotals = lines.map((line) => {
-    const unitPriceFils = uiBhdToFils(Number(line.product.price));
+    const unitPriceFils = uiBhdToFils(effectiveCartUnitPrice(line));
     const grossLineFils = multiplyFilsByQuantity(unitPriceFils, line.quantity);
     const lineDiscountFils = uiBhdToFils(Number(line.discount || 0));
     const netLineFils = subtractMoney(grossLineFils, lineDiscountFils);
@@ -161,6 +162,7 @@ export function buildCheckoutV2Payload(input: CheckoutV2BuildInput): CheckoutV2P
         name: modifier.name,
         price_delta: modifier.price_delta,
       })),
+      ...(line.priceOverride ? { price_override_request_id: line.priceOverride.requestId } : {}),
     })),
     _payments: input.payments.map((payment) => ({
       method: payment.method,

@@ -48,6 +48,8 @@ describe("sync queue state policy", () => {
     ["Insufficient stock for product 123", "stock_conflict"],
     ["Stock insuficiente para el producto 123", "stock_conflict"],
     ["Client mutation ID was already used for a different checkout request", "operation_conflict"],
+    ["Price override approval is stale or does not match this checkout line", "price_override_changed"],
+    ["Price override is not approved or was already consumed", "price_override_changed"],
     ["Forbidden", "authorization"],
   ])("sends deterministic checkout conflicts to review: %s", (message, failureCode) => {
     expect(classifySyncFailure({ message }, 0)).toMatchObject({

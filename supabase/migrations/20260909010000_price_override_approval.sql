@@ -309,6 +309,69 @@ $$;
 REVOKE ALL ON FUNCTION public.decide_price_override_v1(uuid,boolean,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.decide_price_override_v1(uuid,boolean,text,text) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.get_price_override_request_v1(_request_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  _request public.price_override_requests;
+BEGIN
+  SELECT * INTO _request FROM public.price_override_requests WHERE id=_request_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Price override request was not found'; END IF;
+  IF _request.requested_by <> auth.uid()
+     AND NOT public.has_branch_permission(auth.uid(),_request.tenant_id,_request.branch_id,'pos.price_override.approve') THEN
+    RAISE EXCEPTION 'Price override request is forbidden';
+  END IF;
+  RETURN to_jsonb(_request);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_price_override_request_v1(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_price_override_request_v1(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.list_pending_price_overrides_v1(_branch_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  _tenant_id uuid;
+  _result jsonb;
+BEGIN
+  SELECT tenant_id INTO _tenant_id FROM public.branches WHERE id=_branch_id AND status='active';
+  IF _tenant_id IS NULL
+     OR NOT public.has_branch_permission(auth.uid(),_tenant_id,_branch_id,'pos.price_override.approve') THEN
+    RAISE EXCEPTION 'Price override approval list is forbidden';
+  END IF;
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id', request.id,
+    'product_id', request.product_id,
+    'product_name', product.name,
+    'quantity', request.quantity,
+    'original_unit_price_fils', request.original_unit_price_fils,
+    'requested_unit_price_fils', request.requested_unit_price_fils,
+    'request_reason', request.request_reason,
+    'requested_by', request.requested_by,
+    'created_at', request.created_at,
+    'expires_at', request.expires_at
+  ) ORDER BY request.created_at), '[]'::jsonb)
+  INTO _result
+  FROM public.price_override_requests request
+  JOIN public.products product ON product.id=request.product_id AND product.tenant_id=request.tenant_id
+  WHERE request.tenant_id=_tenant_id AND request.branch_id=_branch_id
+    AND request.status='pending' AND request.expires_at > now();
+  RETURN _result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.list_pending_price_overrides_v1(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.list_pending_price_overrides_v1(uuid) TO authenticated;
+
 -- checkout_sale_v2 is replaced below so the same authoritative command atomically
 -- validates and consumes approved override evidence.
 CREATE OR REPLACE FUNCTION public.checkout_sale_v2(

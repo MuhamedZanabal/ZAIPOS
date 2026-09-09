@@ -62,4 +62,21 @@ describe("cart store", () => {
 
     expect(useCart.getState().lines).toEqual(resumed);
   });
+
+  it("uses approved fils and clears evidence when quantity exceeds approval", () => {
+    useCart.getState().add(product({ price: 1.25 }));
+    useCart.getState().setPriceOverride("product-1", {
+      requestId: "override-1",
+      originalUnitPriceFils: 1250,
+      overrideUnitPriceFils: 1000,
+      approvedQuantity: 1,
+      reason: "Customer price match",
+      approvedBy: "manager-1",
+      approvedAt: "2026-09-09T00:00:00Z",
+    });
+    expect(useCart.getState().total()).toBe(1);
+    useCart.getState().setQty("product-1", 2);
+    expect(useCart.getState().lines[0].priceOverride).toBeUndefined();
+    expect(useCart.getState().total()).toBe(2.5);
+  });
 });

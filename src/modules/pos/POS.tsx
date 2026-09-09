@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useOpenSession } from "@/hooks/useOpenSession";
-import { useCart } from "@/stores/cart";
+import { effectiveCartUnitPrice, useCart, type CartLine, type PriceOverrideEvidence } from "@/stores/cart";
 import { useHardware } from "@/hooks/useHardware";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import { ProductGrid } from "./ProductGrid";
 import { TicketPanel } from "./TicketPanel";
 import { PaymentDialog } from "./PaymentDialog";
 import { HeldCartsDialog, HoldCartDialog } from "./HeldCarts";
+import { PriceOverrideApprovalsDialog, PriceOverrideDialog } from "./PriceOverride";
 import type { PaymentAllocation } from "./paymentAllocations";
 import {
   POS_CHECKOUT_QUEUE_TYPE,
@@ -40,7 +41,7 @@ export default function POS() {
   const qc = useQueryClient();
   const { tenantId, branchId, branches, activeChannels } = useTenantContext();
   const { devMode } = useDevMode();
-  const { lines, total, clear, add, replace } = useCart();
+  const { lines, total, clear, add, replace, setPriceOverride, clearPriceOverrides } = useCart();
   const { data: openSession } = useOpenSession(branchId);
   const { onBarcodeScanned, printTicket, openDrawer } = useHardware();
 
@@ -49,6 +50,8 @@ export default function POS() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [holdCartOpen, setHoldCartOpen] = useState(false);
   const [heldCartsOpen, setHeldCartsOpen] = useState(false);
+  const [priceOverrideLine, setPriceOverrideLine] = useState<CartLine | null>(null);
+  const [priceApprovalsOpen, setPriceApprovalsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [channel, setChannel] = useState<SalesChannel>("pos");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -131,6 +134,23 @@ export default function POS() {
   });
 
   const { data: products } = useProducts(tenantId);
+
+  const { data: canApprovePriceOverrides = false } = useQuery({
+    queryKey: ["pos-price-override-approval-permission", tenantId, branchId],
+    enabled: !!tenantId && !!branchId,
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { data, error } = await (supabase.rpc as any)("has_branch_permission", {
+        _user_id: user.id,
+        _tenant_id: tenantId,
+        _branch_id: branchId,
+        _permission: "pos.price_override.approve",
+      });
+      if (error) return false;
+      return data === true;
+    },
+  });
 
   const { data: stocks } = useQuery({
     queryKey: ["pos-stocks", branchId],
@@ -406,8 +426,8 @@ export default function POS() {
             items: lines.map((line) => ({
               name: line.product.name,
               quantity: line.quantity,
-              unitPrice: Number(line.product.price),
-              total: Number(line.product.price) * line.quantity - (line.discount || 0),
+              unitPrice: effectiveCartUnitPrice(line),
+              total: effectiveCartUnitPrice(line) * line.quantity - (line.discount || 0),
             })),
             subtotal: Number(sale?.subtotal ?? totalNum),
             discountTotal: Number(sale?.discount_total ?? discountAmount),
@@ -544,7 +564,13 @@ export default function POS() {
           <button
             key={c.id}
             type="button"
-            onClick={() => setChannel(c.id)}
+            onClick={() => {
+              if (c.id !== channel && lines.some((line) => line.priceOverride)) {
+                clearPriceOverrides();
+                toast.info("Price overrides cleared because the sales channel changed");
+              }
+              setChannel(c.id);
+            }}
             className={cn("chan-chip", channel === c.id && "is-active")}
           >
             {c.label}
@@ -749,7 +775,15 @@ export default function POS() {
           reasonDisabled={isPos && !openSession ? "Open register to charge" : undefined}
           onCharge={() => setPaymentOpen(true)}
           onSendToTable={channel === "tables" ? handleSendToTable : undefined}
-          onHold={() => setHoldCartOpen(true)}
+          onHold={() => {
+            if (lines.some((line) => line.priceOverride)) {
+              toast.error("Complete or replace manager-approved prices before holding this cart");
+              return;
+            }
+            setHoldCartOpen(true);
+          }}
+          onRequestPriceOverride={setPriceOverrideLine}
+          onOpenPriceApprovals={canApprovePriceOverrides ? () => setPriceApprovalsOpen(true) : undefined}
           onOpenHeldCarts={() => {
             if (lines.length > 0) {
               toast.error("Hold or clear the current ticket before resuming another cart");
@@ -796,6 +830,31 @@ export default function POS() {
         tenantId={tenantId}
         submitting={submitting}
         onConfirm={finalize}
+      />
+
+      {priceOverrideLine && tenantId && branchId && (
+        <PriceOverrideDialog
+          open
+          onOpenChange={(open) => { if (!open) setPriceOverrideLine(null); }}
+          tenantId={tenantId}
+          branchId={branchId}
+          channel={channel}
+          line={priceOverrideLine}
+          onApproved={(evidence: PriceOverrideEvidence) => {
+            const currentLine = lines.find((line) => line.id === priceOverrideLine.id);
+            if (!currentLine || currentLine.quantity > evidence.approvedQuantity) {
+              toast.error("The cart quantity changed; request a new manager approval");
+              return;
+            }
+            setPriceOverride(priceOverrideLine.id, evidence);
+          }}
+        />
+      )}
+
+      <PriceOverrideApprovalsDialog
+        open={priceApprovalsOpen}
+        onOpenChange={setPriceApprovalsOpen}
+        branchId={branchId ?? ""}
       />
 
       {/* Upselling dialog */}
