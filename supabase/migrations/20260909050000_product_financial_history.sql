@@ -77,18 +77,18 @@ CREATE TABLE public.product_prices (
   operation_id text,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT product_prices_tenant_product_fkey
-    FOREIGN KEY (tenant_id, product_id) REFERENCES public.products(tenant_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (tenant_id, product_id) REFERENCES public.products(tenant_id, id) ON DELETE RESTRICT,
   CONSTRAINT product_prices_tenant_branch_fkey
     FOREIGN KEY (tenant_id, branch_id) REFERENCES public.branches(tenant_id, id),
   CONSTRAINT product_prices_tenant_purchase_item_fkey
     FOREIGN KEY (tenant_id, purchase_order_item_id)
-    REFERENCES public.purchase_order_items(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES public.purchase_order_items(tenant_id, id) ON DELETE RESTRICT,
   CONSTRAINT product_prices_tenant_supplier_fkey
     FOREIGN KEY (tenant_id, supplier_id)
-    REFERENCES public.suppliers(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES public.suppliers(tenant_id, id) ON DELETE RESTRICT,
   CONSTRAINT product_prices_tenant_purchase_order_fkey
     FOREIGN KEY (tenant_id, purchase_order_id)
-    REFERENCES public.purchase_orders(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES public.purchase_orders(tenant_id, id) ON DELETE RESTRICT,
   CONSTRAINT product_prices_interval_check
     CHECK (effective_to IS NULL OR effective_to >= effective_from),
   CONSTRAINT product_prices_scope_check CHECK (
@@ -100,7 +100,8 @@ CREATE TABLE public.product_prices (
     OR (price_type = 'cost' AND branch_id IS NOT NULL AND purchase_order_id IS NOT NULL AND purchase_order_item_id IS NOT NULL)
   ),
   CONSTRAINT product_prices_operation_id_check
-    CHECK (operation_id IS NULL OR length(btrim(operation_id)) >= 8)
+    CHECK (operation_id IS NULL OR length(btrim(operation_id)) >= 8),
+  CONSTRAINT product_prices_tenant_product_id_key UNIQUE (tenant_id, product_id, id)
 );
 
 CREATE UNIQUE INDEX product_prices_current_base_key
@@ -154,10 +155,22 @@ ALTER TABLE public.product_financial_operations ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY product_prices_catalogue_read ON public.product_prices
 FOR SELECT TO authenticated
-USING (public.has_any_role(
-  auth.uid(), tenant_id,
-  ARRAY['owner','admin','manager','inventory']::public.app_role[]
-));
+USING (
+  (
+    branch_id IS NULL
+    AND public.has_any_role(
+      auth.uid(), tenant_id,
+      ARRAY['owner','admin','manager','inventory']::public.app_role[]
+    )
+  )
+  OR (
+    branch_id IS NOT NULL
+    AND public.has_branch_role(
+      auth.uid(), tenant_id, branch_id,
+      ARRAY['owner','admin','manager','inventory']::public.app_role[]
+    )
+  )
+);
 
 REVOKE ALL ON public.product_prices FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.product_prices TO authenticated;
@@ -511,6 +524,10 @@ BEGIN
   IF _branch_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM public.branches WHERE tenant_id=_tenant_id AND id=_branch_id
   ) THEN RAISE EXCEPTION 'Branch does not belong to this tenant'; END IF;
+  IF _branch_id IS NOT NULL AND NOT public.has_branch_role(
+    _actor_id, _tenant_id, _branch_id,
+    ARRAY['owner','admin','manager']::public.app_role[]
+  ) THEN RAISE EXCEPTION 'Selling-price change is forbidden for this branch'; END IF;
   IF _amount_fils IS NULL AND _branch_id IS NULL AND _channel IS NULL THEN
     RAISE EXCEPTION 'The base selling price cannot be removed';
   END IF;
@@ -626,6 +643,75 @@ CREATE TRIGGER product_channel_prices_write_guard
 BEFORE INSERT OR UPDATE OR DELETE ON public.product_channel_prices
 FOR EACH ROW EXECUTE FUNCTION public.guard_context_price_direct_write_v1();
 
+CREATE OR REPLACE FUNCTION public.capture_context_price_compatibility_v1()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  _tenant_id uuid;
+  _product_id uuid;
+  _branch_id uuid;
+  _channel public.sales_channel;
+  _amount_fils bigint;
+BEGIN
+  IF COALESCE(current_setting('zaipos.product_financial_command', true), '') = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+
+  IF TG_TABLE_NAME = 'branch_products' THEN
+    _tenant_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.tenant_id ELSE NEW.tenant_id END;
+    _product_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.product_id ELSE NEW.product_id END;
+    _branch_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.branch_id ELSE NEW.branch_id END;
+    _channel := NULL;
+    IF TG_OP <> 'DELETE' THEN _amount_fils := NEW.local_price_fils; END IF;
+    IF TG_OP = 'UPDATE' AND NEW.local_price_fils IS NOT DISTINCT FROM OLD.local_price_fils THEN RETURN NEW; END IF;
+  ELSE
+    _tenant_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.tenant_id ELSE NEW.tenant_id END;
+    _product_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.product_id ELSE NEW.product_id END;
+    _branch_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.branch_id ELSE NEW.branch_id END;
+    _channel := CASE WHEN TG_OP = 'DELETE' THEN OLD.channel ELSE NEW.channel END;
+    IF TG_OP <> 'DELETE' THEN _amount_fils := NEW.price_fils; END IF;
+    IF TG_OP = 'UPDATE' AND NEW.price_fils IS NOT DISTINCT FROM OLD.price_fils THEN RETURN NEW; END IF;
+  END IF;
+
+  IF TG_OP = 'DELETE' OR _amount_fils IS NULL THEN
+    UPDATE public.product_prices
+    SET effective_to = GREATEST(now(), effective_from)
+    WHERE tenant_id = _tenant_id AND product_id = _product_id
+      AND price_type = 'selling'
+      AND branch_id IS NOT DISTINCT FROM _branch_id
+      AND channel IS NOT DISTINCT FROM _channel
+      AND effective_to IS NULL;
+  ELSE
+    PERFORM public.record_product_price_event_internal_v1(
+      _tenant_id,_product_id,'selling',_amount_fils,_branch_id,_channel,auth.uid(),
+      'Compatibility context-price write captured automatically','compatibility',NULL
+    );
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END
+$$;
+
+REVOKE ALL ON FUNCTION public.capture_context_price_compatibility_v1()
+FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER branch_products_price_insert_delete_capture
+AFTER INSERT OR DELETE ON public.branch_products
+FOR EACH ROW EXECUTE FUNCTION public.capture_context_price_compatibility_v1();
+
+CREATE TRIGGER branch_products_price_update_capture
+AFTER UPDATE OF local_price, local_price_fils ON public.branch_products
+FOR EACH ROW EXECUTE FUNCTION public.capture_context_price_compatibility_v1();
+
+CREATE TRIGGER product_channel_prices_history_capture
+AFTER INSERT OR UPDATE OR DELETE ON public.product_channel_prices
+FOR EACH ROW EXECUTE FUNCTION public.capture_context_price_compatibility_v1();
+
 CREATE OR REPLACE FUNCTION public.capture_purchase_received_costs_v1()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -680,7 +766,7 @@ FOR EACH ROW EXECUTE FUNCTION public.capture_purchase_received_costs_v1();
 ALTER TABLE public.sale_items
   ADD COLUMN unit_cost_fils bigint,
   ADD COLUMN line_cost_fils bigint,
-  ADD COLUMN cost_price_id uuid REFERENCES public.product_prices(id) ON DELETE SET NULL,
+  ADD COLUMN cost_price_id uuid,
   ADD COLUMN cost_basis text;
 
 UPDATE public.sale_items item
@@ -695,6 +781,12 @@ ALTER TABLE public.sale_items
   ALTER COLUMN line_cost_fils SET NOT NULL,
   ALTER COLUMN cost_basis SET NOT NULL,
   ADD CONSTRAINT sale_items_cost_fils_nonnegative CHECK (unit_cost_fils >= 0 AND line_cost_fils >= 0),
+  ADD CONSTRAINT sale_items_line_cost_exact CHECK (
+    line_cost_fils = round(unit_cost_fils::numeric * quantity)::bigint
+  ),
+  ADD CONSTRAINT sale_items_tenant_product_cost_price_fkey
+    FOREIGN KEY (tenant_id, product_id, cost_price_id)
+    REFERENCES public.product_prices(tenant_id, product_id, id) ON DELETE RESTRICT,
   ADD CONSTRAINT sale_items_cost_basis_check CHECK (
     cost_basis IN ('initial','manual','purchase_receipt','compatibility','legacy_backfill','legacy_current_cost_at_migration')
   );
@@ -720,7 +812,8 @@ BEGIN
     AND channel IS NULL
     AND effective_to IS NULL
     AND (branch_id=_branch_id OR branch_id IS NULL)
-  ORDER BY (branch_id=_branch_id) DESC, effective_from DESC, id DESC
+  ORDER BY CASE WHEN branch_id=_branch_id THEN 0 ELSE 1 END,
+    effective_from DESC, id DESC
   LIMIT 1;
 
   IF _price.id IS NULL THEN

@@ -93,12 +93,12 @@ export default function Products() {
   const handleDelete = async () => {
     if (!deletingId || !tenantId) return;
     try {
-      const { error } = await supabase.from("products").delete().eq("id", deletingId).eq("tenant_id", tenantId);
+      const { error } = await supabase.from("products").update({ status: "inactive" }).eq("id", deletingId).eq("tenant_id", tenantId);
       if (error) throw error;
-      toast({ title: "Product deleted", description: "The product was deleted successfully." });
+      toast({ title: "Product retired", description: "The product is inactive and its transaction and price history was preserved." });
       qc.invalidateQueries({ queryKey: ["products"] });
     } catch (err: any) {
-      toast({ title: "Error deleting", description: err.message, variant: "destructive" });
+      toast({ title: "Error retiring product", description: err.message, variant: "destructive" });
     } finally {
       setDeletingId(null);
     }
@@ -192,13 +192,10 @@ export default function Products() {
           throw new Error(`Barcode ${invalidBarcode.normalized_barcode || "(empty)"} is ${invalidBarcode.state.replace("_", " ")} in the import file.`);
         }
         const dataToInsert = prepared.map((row) => row.product);
-        const { error: deleteError } = await supabase.from("products").delete().eq("tenant_id", tenantId);
-        if (deleteError) {
-          console.error("Error al borrar products:", deleteError);
-          if (deleteError.code === "23503") {
-            throw new Error("Current products cannot be deleted because they are linked to existing orders, recipes, or inventory movements. Contact support for a deep cleanup.");
-          }
-          throw new Error("An error occurred while trying to clean the product database.");
+        const { error: retireError } = await supabase.from("products").update({ status: "inactive" }).eq("tenant_id", tenantId);
+        if (retireError) {
+          console.error("Error retiring products:", retireError);
+          throw new Error("The current catalogue could not be retired safely.");
         }
         const { error: insertError } = await supabase.from("products").insert(dataToInsert);
         if (insertError) {
@@ -213,7 +210,7 @@ export default function Products() {
             `catalog-import-${crypto.randomUUID()}`,
           );
         }
-        toast({ title: "Synchronization successful", description: `Previous data was removed and ${dataToInsert.length} new products were imported.` });
+        toast({ title: "Synchronization successful", description: `Previous products were retired with their history preserved, and ${dataToInsert.length} new products were imported.` });
         qc.invalidateQueries({ queryKey: ["products"] });
       } catch (err: any) {
         toast({ title: "Synchronization Error", description: err.message, variant: "destructive" });
@@ -429,8 +426,8 @@ export default function Products() {
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-icon g-btn-danger"
-                      title="Delete product"
-                      aria-label="Delete product"
+                      title="Retire product"
+                      aria-label="Retire product"
                       onClick={() => setDeletingId(p.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -450,20 +447,20 @@ export default function Products() {
         </Table>
       </div>
 
-      {/* Delete confirm dialog */}
+      {/* Retire confirm dialog */}
       <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete product?</AlertDialogTitle>
+            <AlertDialogTitle>Retire product?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The product will be permanently deleted from the database.
-              If it has associated sales history, deletion may not be possible.
+              The product will become inactive and disappear from active selling lists.
+              Its barcodes, financial history, and transaction references will be preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              Retire
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -478,14 +475,14 @@ export default function Products() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>You are about to import <strong>{importFile?.name}</strong>.</p>
-              <p>This action <strong>will delete ALL current products</strong> and replace them with the products in the file.</p>
-              <p className="font-semibold text-destructive">Are you completely sure you want to continue with the full deletion and synchronization?</p>
+              <p>This action <strong>will retire all current products</strong> and create the products in the file.</p>
+              <p className="font-semibold text-destructive">Existing product and financial history will remain immutable.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={executeImport} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Yes, Delete and Import
+              Yes, Retire and Import
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -6,6 +6,7 @@ const I = {
   tenantB: "17000000-0000-0000-0000-000000000122",
   branchA: "27000000-0000-0000-0000-000000000121",
   branchB: "27000000-0000-0000-0000-000000000122",
+  branchA2: "27000000-0000-0000-0000-000000000123",
   managerA: "37000000-0000-0000-0000-000000000121",
   cashierA: "37000000-0000-0000-0000-000000000122",
   inventoryA: "37000000-0000-0000-0000-000000000123",
@@ -42,6 +43,15 @@ function expectReject(label, userId, statement, pattern = /forbidden|permission|
   }
   throw new Error(`${label}: expected rejection`);
 }
+function expectAdminReject(label, statement, pattern) {
+  try { scalar(statement); }
+  catch (error) {
+    const message = String(error?.stderr ?? error?.message ?? error);
+    if (!pattern.test(message)) throw new Error(`${label}: wrong rejection: ${message}`);
+    return;
+  }
+  throw new Error(`${label}: expected rejection`);
+}
 
 assertEqual("financial history ledger exists", scalar("SELECT to_regclass('public.product_prices') IS NOT NULL;"), "t");
 assertEqual("financial operation ledger exists", scalar("SELECT to_regclass('public.product_financial_operations') IS NOT NULL;"), "t");
@@ -65,7 +75,8 @@ sql(`
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.branches(id,tenant_id,name,status) VALUES
     ('${I.branchA}','${I.tenantA}','Financial Branch A','active'),
-    ('${I.branchB}','${I.tenantB}','Financial Branch B','active')
+    ('${I.branchB}','${I.tenantB}','Financial Branch B','active'),
+    ('${I.branchA2}','${I.tenantA}','Financial Branch A2','active')
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
     ('${I.managerA}','${I.tenantA}','${I.branchA}','manager'),
@@ -112,6 +123,7 @@ assertEqual("channel compatibility mirror", scalar(`SELECT price_fils::text FROM
 assertEqual("manager changes branch channel price", asUser(I.managerA, channelUpdate("financial-channel-update-122", 1800)), I.productA);
 assertEqual("channel price history preserved", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND branch_id='${I.branchA}'::uuid AND channel='talabat';`), "2");
 expectReject("wrong-tenant branch is rejected", I.managerA, `SELECT public.set_product_selling_price_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchB}'::uuid,'talabat'::public.sales_channel,1900::bigint,'Invalid branch','financial-wrong-branch-121');`);
+expectReject("manager cannot change another assigned branch", I.managerA, `SELECT public.set_product_selling_price_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchA2}'::uuid,'talabat'::public.sales_channel,1900::bigint,'Invalid branch scope','financial-wrong-branch-122');`, /forbidden|branch/i);
 
 sql(`
   INSERT INTO public.purchase_orders(id,tenant_id,branch_id,supplier_id,status,total,notes) VALUES
@@ -144,6 +156,9 @@ assertEqual("historical sale cost remains immutable", scalar(`SELECT line_cost_f
 assertEqual("historical gross profit reproducible", scalar(`SELECT (line_total_fils-line_cost_fils)::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "850");
 
 expectReject("manager cannot bypass financial command", I.managerA, `UPDATE public.products SET price=9.999,cost=8.888 WHERE id='${I.productA}'::uuid`, /command|permission denied/i);
+expectReject("manager cannot bypass channel-price command", I.managerA, `UPDATE public.product_channel_prices SET price=9.999 WHERE tenant_id='${I.tenantA}'::uuid AND product_id='${I.productA}'::uuid`, /command|permission denied/i);
+expectAdminReject("historical COGS cannot be rewritten", `UPDATE public.sale_items SET unit_cost_fils=1 WHERE sale_id='${saleId}'::uuid`, /immutable|check constraint/i);
+expectAdminReject("product with financial history cannot be deleted", `DELETE FROM public.products WHERE id='${I.productA}'::uuid`, /foreign key|violates/i);
 assertEqual("cross-tenant history hidden", asUser(I.managerB, `SELECT count(*)::text FROM public.product_prices WHERE tenant_id='${I.tenantA}'::uuid;`), "0");
 for (const table of ["product_prices", "product_financial_operations"]) {
   for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
