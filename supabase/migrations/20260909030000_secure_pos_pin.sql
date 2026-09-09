@@ -14,6 +14,7 @@ CREATE TABLE public.employee_pos_credentials (
   employee_id uuid NOT NULL UNIQUE,
   pin_hash text,
   legacy_pin text,
+  credential_version bigint NOT NULL DEFAULT 1 CHECK (credential_version > 0),
   failed_attempts smallint NOT NULL DEFAULT 0 CHECK (failed_attempts BETWEEN 0 AND 5),
   locked_until timestamptz,
   last_failed_at timestamptz,
@@ -51,6 +52,7 @@ CREATE TABLE public.employee_pos_pin_attempts (
   device_id uuid NOT NULL REFERENCES public.devices(id) ON DELETE RESTRICT,
   cash_session_id uuid REFERENCES public.cash_sessions(id) ON DELETE RESTRICT,
   operation_id text NOT NULL,
+  credential_version bigint NOT NULL CHECK (credential_version > 0),
   outcome text NOT NULL DEFAULT 'started',
   used_legacy boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -159,6 +161,7 @@ BEGIN
     failed_attempts = 0,
     locked_until = NULL,
     last_failed_at = NULL,
+    credential_version = employee_pos_credentials.credential_version + 1,
     pin_changed_at = now(),
     last_set_operation_id = EXCLUDED.last_set_operation_id,
     updated_at = now()
@@ -240,10 +243,10 @@ BEGIN
   ELSE
     INSERT INTO public.employee_pos_pin_attempts (
       tenant_id, branch_id, credential_id, employee_id, actor_user_id,
-      device_id, cash_session_id, operation_id, outcome
+      device_id, cash_session_id, operation_id, credential_version, outcome
     ) VALUES (
       _tenant_id, _branch_id, _credential.id, _employee_id, _actor_user_id,
-      _device.id, _cash_session_id, _operation_id,
+      _device.id, _cash_session_id, _operation_id, _credential.credential_version,
       CASE WHEN _credential.locked_until > now() THEN 'locked' ELSE 'started' END
     ) RETURNING * INTO _attempt;
   END IF;
@@ -292,6 +295,9 @@ BEGIN
 
   SELECT * INTO _credential FROM public.employee_pos_credentials
   WHERE id = _attempt.credential_id FOR UPDATE;
+  IF _credential.credential_version IS DISTINCT FROM _attempt.credential_version THEN
+    RAISE EXCEPTION 'POS PIN attempt is stale after a credential change';
+  END IF;
   SELECT * INTO _employee FROM public.employees WHERE id = _attempt.employee_id;
 
   IF _verified THEN

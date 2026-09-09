@@ -153,6 +153,15 @@ assertEqual("successful role resolution", success.role, "cashier");
 assertEqual("successful employee resolution", success.employee_id, I.employeeA);
 assertEqual("verification audit exactly once", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='pos.pin_verified' AND metadata->>'attempt_id'='${preparedSuccess.attempt_id}';`), "1");
 
+const preparedBeforeReset = JSON.parse(asRole("service_role", beginSql("pin-stale-attempt-101")));
+asRole("service_role", setSql(I.managerA, I.employeeA, hashB, "pin-version-change-101"));
+expectReject(
+  "PIN reset invalidates an in-flight verification",
+  "service_role",
+  `SELECT public.complete_employee_pos_pin_verification_v1('${I.cashierA}'::uuid,'${preparedBeforeReset.attempt_id}'::uuid,true,NULL);`,
+  /stale|credential change/i,
+);
+
 sql(`INSERT INTO public.employee_pos_credentials(tenant_id,branch_id,employee_id,legacy_pin)
   VALUES ('${I.tenantA}','${I.branchA}','${I.legacyEmployee}','7319');`);
 const legacyPrepared = JSON.parse(asRole(
