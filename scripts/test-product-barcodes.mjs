@@ -130,10 +130,11 @@ expectReject(
 const retiredConflict = JSON.parse(asUser(I.managerA, `SELECT public.inspect_product_barcode_candidates_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'[{"barcode":"OLD-CASE-24","barcode_type":"supplier","is_primary":true}]'::jsonb)::text;`));
 assertEqual("retired collision classified", retiredConflict[0].state, "retired_product_conflict");
 assertEqual("retired collision identifies owner", retiredConflict[0].conflicting_product_id, I.productRetired);
-const malformed = JSON.parse(asUser(I.managerA, `SELECT public.inspect_product_barcode_candidates_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'[{"barcode":"BAD CODE","barcode_type":"code_128","is_primary":true},{"barcode":"123","barcode_type":"ean_8","is_primary":false},{"barcode":"123","barcode_type":"ean_8","is_primary":false}]'::jsonb)::text;`));
+const malformed = JSON.parse(asUser(I.managerA, `SELECT public.inspect_product_barcode_candidates_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'[{"barcode":"BAD CODE","barcode_type":"code_128","is_primary":true},{"barcode":"123","barcode_type":"ean_8","is_primary":false},{"barcode":"12345678","barcode_type":"ean_8","is_primary":false},{"barcode":"12345678","barcode_type":"ean_8","is_primary":false}]'::jsonb)::text;`));
 assertEqual("malformed classified", malformed[0].state, "malformed");
 assertEqual("invalid EAN classified", malformed[1].state, "malformed");
-assertEqual("duplicate input classified", malformed[2].state, "duplicate_input");
+assertEqual("first valid EAN classified", malformed[2].state, "valid");
+assertEqual("duplicate input classified", malformed[3].state, "duplicate_input");
 expectReject("collision cannot be committed", I.managerA, replace("barcode-replace-collision-111", `[{"barcode":"OLD-CASE-24","barcode_type":"supplier","is_primary":true}]`));
 
 const reviewConflictId = scalar(`INSERT INTO public.product_barcode_conflicts(
