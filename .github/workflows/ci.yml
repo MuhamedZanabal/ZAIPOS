@@ -110,6 +110,9 @@ jobs:
       - name: Test product price, cost, and historical COGS
         run: npm run test:migrations:product-financial-history
 
+      - name: Test Bahrain pricing policy
+        run: npm run test:migrations:bahrain-pricing-policy
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 

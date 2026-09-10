@@ -34,6 +34,7 @@ export const ROUTE_ROLES: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/waiter",        roles: ["owner", "admin", "manager", "waiter"] },
   { prefix: "/courier",       roles: ["owner", "admin", "manager", "courier", "staff"] },
   { prefix: "/products",      roles: ["owner", "admin", "manager"] },
+  { prefix: "/pricing-policy",roles: ["owner", "admin", "manager"] },
   { prefix: "/categories",    roles: ["owner", "admin", "manager"] },
   { prefix: "/recipes",       roles: ["owner", "admin", "manager", "kitchen"] },
   { prefix: "/catalog",       roles: ["owner", "admin", "manager"] },

@@ -1473,6 +1473,27 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_policy_rules: {
+        Row: {
+          id: string
+          tenant_id: string
+          branch_id: string | null
+          category_id: string | null
+          product_id: string | null
+          markup_basis_points: number
+          rounding_increment_fils: number
+          rounding_mode: string
+          effective_from: string
+          effective_to: string | null
+          changed_by: string
+          reason: string
+          operation_id: string
+          created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       product_prices: {
         Row: {
           amount_fils: number
@@ -2743,6 +2764,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      preview_pricing_batch_v1: {
+        Args: { _tenant_id: string; _branch_id: string | null; _channel: Database['public']['Enums']['sales_channel'] | null; _product_ids: string[] }
+        Returns: Json
+      }
+      apply_pricing_batch_v1: {
+        Args: { _tenant_id: string; _branch_id: string | null; _channel: Database['public']['Enums']['sales_channel'] | null; _previews: Json; _reason: string; _operation_id: string }
+        Returns: Json
+      }
       [key: string]: {
         Args: Record<string, unknown>
         Returns: unknown

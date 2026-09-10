@@ -92,3 +92,17 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 ## P1/P2/P3
 
 All downstream catalogue, inventory lot, stocktake, supplier/customer ledger, reporting, AI action, alert, price-intelligence, OCR, WhatsApp and optional LAN-resilience capabilities remain unchecked until their complete definition-of-done evidence exists.
+
+## P1 catalogue
+
+- [x] Multiple barcodes + collision handling
+- [x] Product price history
+- [x] Cost history / historical COGS
+
+## Catalogue production evidence reconciled 2026-09-10
+
+- Multiple barcodes and collisions: PR #23, merge `09acaf9e061d11fde681e2077b89d2443f776358`; final head `384f4d7da903ca9849289b9ab0abb4a3bf558e05`; PR CI 255 (`34384916594`), post-merge main CI 256 (`34385521325`), successful quality and Windows packaging.
+- Product financial history: PR #24, reviewed head `614df4f9739a478b0e6312e6cad2b372541c3402`; merge `ffe82e2df0d0d71818f562c6e74d708aa50872e8`; PR CI 262 and post-merge main CI 263 (`34433517501`), successful quality and Windows packaging.
+- Verified PR #24 scope: exact selling-price/cost ledgers, immutable post-migration sale COGS, supplier receipt provenance, effective intervals, authorized/idempotent RPCs, tenant/branch RLS, mutation lockdown, audit, clean and Bahrain upgrade preservation. Tenant-global financial mutations require a tenant-wide authorized role.
+- Historical pre-migration COGS remains explicitly labelled as reconstructed from cost at migration; this is not original-sale cost provenance.
+- Bahrain pricing policy remains OPEN in PR #25 until merge and post-merge verification.

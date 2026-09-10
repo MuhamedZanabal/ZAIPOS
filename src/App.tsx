@@ -26,6 +26,7 @@ import Forbidden from "./pages/Forbidden";
 const Dashboard = lazy(() => import("./modules/dashboard/Dashboard"));
 const POS = lazy(() => import("./modules/pos/POS"));
 const Products = lazy(() => import("./modules/products/Products"));
+const PricingPolicy = lazy(() => import("./modules/pricing-policy/PricingPolicy"));
 const Categories = lazy(() => import("./modules/products/Categories"));
 const Recipes = lazy(() => import("./modules/products/Recipes"));
 const Inventory = lazy(() => import("./modules/inventory/Inventory"));
@@ -114,6 +115,7 @@ const App = () => {
                     <Route path="/courier" element={<CourierDashboard />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/products" element={<Products />} />
+                    <Route path="/pricing-policy" element={<PricingPolicy />} />
                     <Route path="/categories" element={<Categories />} />
                     <Route path="/recipes" element={<Recipes />} />
                     <Route path="/catalog" element={<Catalog />} />

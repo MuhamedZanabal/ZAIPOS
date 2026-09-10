@@ -58,6 +58,7 @@
     "test:migrations:pos-pin": "node scripts/test-pos-pin.mjs && node scripts/test-pos-pin-edge-contract.mjs",
     "test:migrations:product-barcodes": "node scripts/test-product-barcodes.mjs",
     "test:migrations:product-financial-history": "node scripts/test-product-financial-history.mjs",
+    "test:migrations:bahrain-pricing-policy": "node scripts/test-bahrain-pricing-policy.mjs && node scripts/test-pricing-approval-boundary.mjs",
     "dev:electron": "vite --mode electron",
     "build:electron": "vite build --mode electron && electron-builder --config electron-builder.config.json",
     "build:electron:dir": "vite build --mode electron && electron-builder --config electron-builder.config.json --dir",

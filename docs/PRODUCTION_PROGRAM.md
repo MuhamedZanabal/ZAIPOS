@@ -47,9 +47,9 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - [x] Held/suspended carts
 - [x] Price override + manager approval
 - [x] POS PIN authentication
-- [ ] Multiple barcodes + collision handling
-- [ ] Product price history
-- [ ] Cost history / historical COGS
+- [x] Multiple barcodes + collision handling
+- [x] Product price history
+- [x] Cost history / historical COGS
 - [ ] Bahrain pricing policy engine
 - [ ] Duplicate product review/merge
 - [ ] Inventory lots/batches/expiry
@@ -181,3 +181,11 @@ This file is an evidence-based burn-down. An item is checked only when the corre
 - Post-merge Windows validation artifact: ID `10103245878`, SHA-256 `bb151c5180ed1704faf1633c5b8f186e6df25daf6d0786a9254c506318504c21`
 - Migration: `20260909030000_secure_pos_pin.sql`
 - Verified gates: Argon2id server-side hashing, no plaintext application PIN columns, service-only credential commands, manager and tenant/branch authorization, registered-device and open-session context, five-attempt lockout, credential-version invalidation of in-flight attempts, successful legacy conversion, immutable attempt/audit evidence, direct credential mutation lockdown, Edge JWT validation, 63-migration clean and supported Bahrain upgrade chains, TypeScript, lint, full Vitest suite, production build and Windows packaging
+
+## Catalogue production evidence reconciled 2026-09-10
+
+- Multiple barcodes and collisions: PR #23, merge `09acaf9e061d11fde681e2077b89d2443f776358`; final head `384f4d7da903ca9849289b9ab0abb4a3bf558e05`; PR CI 255 (`34384916594`), post-merge main CI 256 (`34385521325`), successful quality and Windows packaging.
+- Product financial history: PR #24, reviewed head `614df4f9739a478b0e6312e6cad2b372541c3402`; merge `ffe82e2df0d0d71818f562c6e74d708aa50872e8`; PR CI 262 and post-merge main CI 263 (`34433517501`), successful quality and Windows packaging.
+- Verified PR #24 scope: exact selling-price/cost ledgers, immutable post-migration sale COGS, supplier receipt provenance, effective intervals, authorized/idempotent RPCs, tenant/branch RLS, mutation lockdown, audit, clean and Bahrain upgrade preservation. Tenant-global financial mutations require a tenant-wide authorized role.
+- Historical pre-migration COGS remains explicitly labelled as reconstructed from cost at migration; this is not original-sale cost provenance.
+- Bahrain pricing policy remains OPEN in PR #25 until merge and post-merge verification.
