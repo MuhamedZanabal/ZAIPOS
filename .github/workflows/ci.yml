@@ -131,6 +131,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 2
 
+      - name: Audit duplicate merge product references
+        run: node scripts/test-product-merge-reference-safety.mjs
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 
