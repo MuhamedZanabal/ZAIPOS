@@ -183,7 +183,7 @@ BEGIN
   IF _rounding_increment_fils IS NULL OR _rounding_increment_fils <> 25 THEN
     RAISE EXCEPTION 'Bahrain retail rounding increment must be 25 fils';
   END IF;
-  IF _rounding_mode NOT IN ('nearest_half_up','ceil') THEN
+  IF _rounding_mode IS NULL OR _rounding_mode NOT IN ('nearest_half_up','ceil') THEN
     RAISE EXCEPTION 'Unsupported Bahrain retail rounding mode';
   END IF;
 
@@ -567,9 +567,10 @@ BEGIN
     WHERE r.tenant_id = _tenant_id
       AND r.effective_to IS NULL
       AND r.branch_id IS NULL
-      AND r.category_id IS NULL
+      AND (r.category_id IS NULL OR r.category_id = _product.category_id)
       AND (r.product_id = _product_id OR r.product_id IS NULL)
-    ORDER BY CASE WHEN r.product_id = _product_id THEN 1 ELSE 2 END, r.effective_from DESC
+    ORDER BY CASE WHEN r.product_id = _product_id THEN 1
+      WHEN r.category_id = _product.category_id THEN 2 ELSE 3 END, r.effective_from DESC
     LIMIT 1;
   ELSE
     SELECT r.* INTO _rule
