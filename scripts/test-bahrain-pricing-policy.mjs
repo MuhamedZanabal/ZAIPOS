@@ -150,6 +150,11 @@ const categoryRuleId = setRule(I.tenantManagerA, null, I.categoryA, null, 2500, 
 const productRuleId = setRule(I.branchManagerA, I.branchA, null, I.productA, 5000, "nearest_half_up", "pricing-product-branch-rule-131");
 assert(tenantRuleId && branchRuleId && categoryRuleId && productRuleId, "all expected pricing scopes must activate");
 
+const categoryPreview = jsonAsUser(I.tenantManagerA,
+  `SELECT public.preview_product_pricing_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,NULL::uuid,NULL::public.sales_channel)`);
+assertEqual("category rule governs base repricing", categoryPreview.rule_scope, "category");
+assertEqual("base repricing uses category markup", String(categoryPreview.rounded_price_fils), "1250");
+
 const branchPreview = jsonAsUser(
   I.branchManagerA,
   `SELECT public.preview_product_pricing_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchA}'::uuid,NULL::public.sales_channel)`
@@ -171,9 +176,9 @@ const applyBase = (expectedCost, operationId) => `SELECT public.apply_product_pr
 )`;
 expectReject("stale cost blocks apply", I.tenantManagerA, applyBase(999, "pricing-stale-apply-131"), /stale|cost/i);
 const applied = jsonAsUser(I.tenantManagerA, applyBase(1000, "pricing-base-apply-131"));
-assertEqual("explicit apply uses tenant rule", applied.rule_scope, "tenant");
-assertEqual("explicit apply price", String(applied.applied_price_fils), "1325");
-assertEqual("base price changed only after apply", scalar(`SELECT price_fils::text FROM public.products WHERE id='${I.productA}'::uuid;`), "1325");
+assertEqual("explicit apply uses category rule", applied.rule_scope, "category");
+assertEqual("explicit apply price", String(applied.applied_price_fils), "1250");
+assertEqual("base price changed only after apply", scalar(`SELECT price_fils::text FROM public.products WHERE id='${I.productA}'::uuid;`), "1250");
 const replay = jsonAsUser(I.tenantManagerA, applyBase(1000, "pricing-base-apply-131"));
 assertEqual("apply replay is stable", JSON.stringify(replay), JSON.stringify(applied));
 assertEqual("price history records explicit policy apply exactly once", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND operation_id LIKE 'pricing-policy:%pricing-base-apply-131';`), "1");
