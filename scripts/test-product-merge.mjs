@@ -158,7 +158,7 @@ sql(`
   INSERT INTO public.held_carts(
     id,tenant_id,branch_id,created_by,label,channel,status,client_operation_id,request_payload
   ) VALUES (
-    '${I.heldCart}','${I.tenantA}','${I.branchA}','${I.cashierA}','Duplicate merge blocker','physical_pos','held',
+    '${I.heldCart}','${I.tenantA}','${I.branchA}','${I.cashierA}','Duplicate merge blocker','pos','held',
     'duplicate-held-cart-111','{}'::jsonb
   );
   INSERT INTO public.held_cart_items(
@@ -197,7 +197,7 @@ sql(`
     original_unit_price_fils,requested_unit_price_fils,request_reason,status,
     request_client_mutation_id,expires_at
   ) VALUES (
-    '${I.override}','${I.tenantA}','${I.branchA}','${I.source}','${I.cashierA}','physical_pos',1.000,
+    '${I.override}','${I.tenantA}','${I.branchA}','${I.source}','${I.cashierA}','pos',1.000,
     1000,900,'duplicate merge blocker','pending','duplicate-price-override-111',now()+interval '15 minutes'
   );
 `);
