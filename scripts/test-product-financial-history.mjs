@@ -11,6 +11,7 @@ const I = {
   cashierA: "37000000-0000-0000-0000-000000000122",
   inventoryA: "37000000-0000-0000-0000-000000000123",
   managerB: "37000000-0000-0000-0000-000000000124",
+  tenantManagerA: "37000000-0000-0000-0000-000000000125",
   productA: "57000000-0000-0000-0000-000000000121",
   supplierA: "67000000-0000-0000-0000-000000000121",
   orderA: "77000000-0000-0000-0000-000000000121",
@@ -67,7 +68,8 @@ sql(`
     ('${I.managerA}','financial-manager-a@zaipos.test','{}'),
     ('${I.cashierA}','financial-cashier-a@zaipos.test','{}'),
     ('${I.inventoryA}','financial-inventory-a@zaipos.test','{}'),
-    ('${I.managerB}','financial-manager-b@zaipos.test','{}')
+    ('${I.managerB}','financial-manager-b@zaipos.test','{}'),
+    ('${I.tenantManagerA}','financial-tenant-manager-a@zaipos.test','{}')
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode) VALUES
     ('${I.tenantA}','Financial Tenant A','financial-tenant-a','BHD',10,false),
@@ -82,7 +84,8 @@ sql(`
     ('${I.managerA}','${I.tenantA}','${I.branchA}','manager'),
     ('${I.cashierA}','${I.tenantA}','${I.branchA}','cashier'),
     ('${I.inventoryA}','${I.tenantA}','${I.branchA}','inventory'),
-    ('${I.managerB}','${I.tenantB}','${I.branchB}','manager')
+    ('${I.managerB}','${I.tenantB}','${I.branchB}','manager'),
+    ('${I.tenantManagerA}','${I.tenantA}',NULL,'manager')
   ON CONFLICT DO NOTHING;
   INSERT INTO public.cash_registers(id,tenant_id,branch_id,name,status) VALUES
     ('${I.registerA}','${I.tenantA}','${I.branchA}','Financial Register','active')
@@ -107,15 +110,20 @@ assertEqual("initial product cost captured", scalar(`SELECT amount_fils::text FR
 const baseUpdate = (operationId, price = 1500, cost = 800) => `SELECT public.set_product_base_financials_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,${price}::bigint,${cost}::bigint,'Quarterly catalogue review','${operationId}')::text;`;
 expectReject("cashier cannot change financials", I.cashierA, baseUpdate("financial-cashier-denied-121"));
 expectReject("cross-tenant manager cannot change financials", I.managerB, baseUpdate("financial-cross-tenant-denied-121"));
-assertEqual("manager updates base financials", asUser(I.managerA, baseUpdate("financial-base-update-121")), I.productA);
-assertEqual("base financial replay", asUser(I.managerA, baseUpdate("financial-base-update-121")), I.productA);
-expectReject("operation cannot be reused with changed amounts", I.managerA, baseUpdate("financial-base-update-121", 1600, 800));
+expectReject("branch-scoped manager cannot change tenant-wide base financials", I.managerA, baseUpdate("financial-branch-manager-denied-121"), /forbidden|scope/i);
+assertEqual("tenant-wide manager updates base financials", asUser(I.tenantManagerA, baseUpdate("financial-base-update-121")), I.productA);
+assertEqual("base financial replay", asUser(I.tenantManagerA, baseUpdate("financial-base-update-121")), I.productA);
+expectReject("operation cannot be reused with changed amounts", I.tenantManagerA, baseUpdate("financial-base-update-121", 1600, 800));
 assertEqual("product selling mirror", scalar(`SELECT price_fils::text FROM public.products WHERE id='${I.productA}'::uuid;`), "1500");
 assertEqual("product cost mirror", scalar(`SELECT cost_fils::text FROM public.products WHERE id='${I.productA}'::uuid;`), "800");
 assertEqual("selling history preserved", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND branch_id IS NULL AND channel IS NULL;`), "2");
 assertEqual("cost history preserved", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='cost' AND branch_id IS NULL AND channel IS NULL;`), "2");
 assertEqual("previous selling row closed", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND branch_id IS NULL AND channel IS NULL AND amount_fils=1250 AND effective_to IS NOT NULL;`), "1");
 assertEqual("base update audit exactly once", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='catalogue.product_financials_changed' AND entity_id='${I.productA}'::uuid;`), "1");
+
+const globalChannelUpdate = (operationId, amount) => `SELECT public.set_product_selling_price_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,NULL::uuid,'talabat'::public.sales_channel,${amount}::bigint,'Global Talabat review','${operationId}')::text;`;
+expectReject("branch-scoped manager cannot change tenant-wide channel price", I.managerA, globalChannelUpdate("financial-global-channel-denied-121", 1700), /forbidden|scope/i);
+assertEqual("tenant-wide manager sets tenant-wide channel price", asUser(I.tenantManagerA, globalChannelUpdate("financial-global-channel-update-121", 1700)), I.productA);
 
 const channelUpdate = (operationId, amount) => `SELECT public.set_product_selling_price_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchA}'::uuid,'talabat'::public.sales_channel,${amount}::bigint,'Talabat fee review','${operationId}')::text;`;
 assertEqual("manager sets branch channel price", asUser(I.managerA, channelUpdate("financial-channel-update-121", 1750)), I.productA);
@@ -151,7 +159,7 @@ assertEqual("sale snapshots historical COGS", scalar(`SELECT line_cost_fils::tex
 assertEqual("sale links cost evidence", scalar(`SELECT cost_price_id IS NOT NULL FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "t");
 assertEqual("sale identifies cost basis", scalar(`SELECT cost_basis FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "purchase_receipt");
 
-assertEqual("manager changes later financials", asUser(I.managerA, baseUpdate("financial-base-update-122", 1600, 900)), I.productA);
+assertEqual("tenant-wide manager changes later financials", asUser(I.tenantManagerA, baseUpdate("financial-base-update-122", 1600, 900)), I.productA);
 assertEqual("historical sale cost remains immutable", scalar(`SELECT line_cost_fils::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "650");
 assertEqual("historical gross profit reproducible", scalar(`SELECT (line_total_fils-line_cost_fils)::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "850");
 
