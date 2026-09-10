@@ -275,7 +275,7 @@ expectReject('unbounded selection rejected', I.tenantManagerA, batch(Array(101).
 function concurrent(statement) {
   return new Promise((resolve, reject) => {
     const child = spawn('psql', [dbUrl, '-X', '-Atq', '-v', 'ON_ERROR_STOP=1', '-c',
-      `BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${I.tenantManagerA}'; ${statement}; COMMIT;`]);
+      `BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${I.tenantManagerA}'; SELECT pg_advisory_xact_lock_shared(7313131); ${statement}; COMMIT;`]);
     let out = '', err = '';
     child.stdout.on('data', s => { out += s; });
     child.stderr.on('data', s => { err += s; });
@@ -283,17 +283,39 @@ function concurrent(statement) {
     child.on('close', code => code === 0 ? resolve(out.trim()) : reject(new Error(err)));
   });
 }
-const same = await Promise.all([
-  concurrent(batch([validA, validB], 'pricing-concurrent-same-131')),
-  concurrent(batch([validA, validB], 'pricing-concurrent-same-131')),
+async function overlap(statements) {
+  const gate = spawn('psql', [dbUrl, '-X', '-Atq', '-v', 'ON_ERROR_STOP=1'], {stdio:['pipe','pipe','pipe']});
+  const closed = new Promise(resolve => gate.on('close', resolve));
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Concurrency gate did not open')), 10000);
+      gate.on('error', error => {clearTimeout(timer); reject(error);});
+      gate.stdout.on('data', data => { if (String(data).includes('gate-ready')) {clearTimeout(timer); resolve();} });
+      gate.stdin.write("BEGIN; SELECT pg_advisory_xact_lock(7313131); SELECT 'gate-ready';\n");
+    });
+    const results = Promise.allSettled(statements.map(concurrent));
+    const deadline = Date.now() + 10000;
+    while (Number(scalar("SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND objid=7313131 AND mode='ShareLock' AND NOT granted;")) < statements.length) {
+      if (Date.now() >= deadline) throw new Error('Both PostgreSQL sessions must overlap at the concurrency barrier');
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    gate.stdin.end('COMMIT;\n\\q\n');
+    await closed;
+    return await results;
+  } finally { if (gate.exitCode === null) gate.kill(); }
+}
+const same = await overlap([
+  batch([validA, validB], 'pricing-concurrent-same-131'),
+  batch([validA, validB], 'pricing-concurrent-same-131'),
 ]);
-assertEqual('same operation converges', same[0], same[1]);
+assert(same.every(r => r.status === 'fulfilled'), `Both same-operation calls must commit: ${JSON.stringify(same)}`);
+assertEqual('same operation converges', same[0].value, same[1].value);
 assertEqual('same operation has one batch audit', scalar(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenantA}' AND action='catalogue.pricing_batch_applied' AND metadata->>'operation_id'='pricing-concurrent-same-131'`), '1');
 asUser(I.tenantManagerA, `SELECT public.set_product_selling_price_v1('${I.tenantA}','${I.productA}',NULL,NULL,1900,'Manual price before contention','pricing-before-race-131')`);
 const racePreview = preview();
-const race = await Promise.allSettled([
-  concurrent(batch([racePreview], 'pricing-concurrent-distinct-a-131')),
-  concurrent(batch([racePreview], 'pricing-concurrent-distinct-b-131')),
+const race = await overlap([
+  batch([racePreview], 'pricing-concurrent-distinct-a-131'),
+  batch([racePreview], 'pricing-concurrent-distinct-b-131'),
 ]);
 assertEqual('distinct operations have one winner', race.filter(r => r.status === 'fulfilled').length, 1);
 const failed = race.find(r => r.status === 'rejected');
