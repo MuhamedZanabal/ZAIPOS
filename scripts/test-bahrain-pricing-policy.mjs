@@ -146,6 +146,8 @@ const tenantRuleId = setRule(I.tenantManagerA, null, null, null, 3300, "nearest_
 assertEqual("tenant policy replay returns same rule", setRule(I.tenantManagerA, null, null, null, 3300, "nearest_half_up", "pricing-tenant-rule-131"), tenantRuleId);
 expectReject("policy operation ID cannot change payload", I.tenantManagerA,
   `SELECT public.set_pricing_policy_rule_v1('${I.tenantA}'::uuid,NULL,NULL,NULL,3400,25,'nearest_half_up','Pricing policy activation','pricing-tenant-rule-131')`);
+expectReject("unbounded operation ID rejected", I.tenantManagerA,
+  `SELECT public.set_pricing_policy_rule_v1('${I.tenantA}'::uuid,NULL,NULL,NULL,3300,25,'nearest_half_up','Invalid oversized operation','${'x'.repeat(201)}')`, /operation/i);
 
 const branchRuleId = setRule(I.branchManagerA, I.branchA, null, null, 4000, "ceil", "pricing-branch-rule-131");
 const categoryRuleId = setRule(I.tenantManagerA, null, I.categoryA, null, 2500, "nearest_half_up", "pricing-category-rule-131");
@@ -229,6 +231,7 @@ assertEqual("deactivation restores category precedence", inheritedPreview.rule_s
 assertEqual("category override inherited", String(inheritedPreview.markup_basis_points), "2500");
 assertEqual("rule history preserved", scalar(`SELECT count(*)::text FROM public.pricing_policy_rules WHERE tenant_id='${I.tenantA}'::uuid AND product_id='${I.productA}'::uuid AND branch_id='${I.branchA}'::uuid;`), "1");
 assertEqual("deactivated rule is historical", scalar(`SELECT effective_to IS NOT NULL FROM public.pricing_policy_rules WHERE id='${productRuleId}'::uuid;`), "t");
+assertEqual('deactivation audit captures resulting state', scalar(`SELECT (metadata->>'resulting_effective_to' IS NOT NULL)::text FROM public.audit_logs WHERE action='catalogue.pricing_policy_rule_deactivated' AND entity_id='${productRuleId}'`), 'true');
 
 // Exhaustive small-price boundaries and values beyond JavaScript's exact range.
 for (const mode of ['nearest_half_up', 'ceil']) {
@@ -249,6 +252,7 @@ for (const args of ["NULL,3300,25,'ceil'", "-1,3300,25,'ceil'", "1,NULL,25,'ceil
 
 const beforePolicyChange = preview();
 setRule(I.tenantManagerA, null, I.categoryA, null, 3300, 'nearest_half_up', 'pricing-category-change-131');
+assertEqual('rule replacement audit captures before state', scalar(`SELECT (metadata->'previous_rule'->>'id' IS NOT NULL)::text FROM public.audit_logs WHERE action='catalogue.pricing_policy_rule_set' AND metadata->>'operation_id'='pricing-category-change-131'`), 'true');
 expectReject('policy changed after approval', I.tenantManagerA,
   batch([beforePolicyChange], 'pricing-stale-policy-131'), /stale/i);
 const beforeManualChange = preview();

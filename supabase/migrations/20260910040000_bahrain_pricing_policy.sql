@@ -29,7 +29,7 @@ CREATE TABLE public.pricing_policy_rules (
   effective_to timestamptz,
   changed_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   reason text NOT NULL CHECK (length(btrim(reason)) BETWEEN 3 AND 500),
-  operation_id text NOT NULL CHECK (length(btrim(operation_id)) >= 8),
+  operation_id text NOT NULL CHECK (length(btrim(operation_id)) BETWEEN 8 AND 200),
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT pricing_policy_rules_scope_check CHECK (
     NOT (category_id IS NOT NULL AND product_id IS NOT NULL)
@@ -77,7 +77,7 @@ WHERE effective_to IS NULL;
 CREATE TABLE public.pricing_policy_operations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  operation_id text NOT NULL CHECK (length(btrim(operation_id)) >= 8),
+  operation_id text NOT NULL CHECK (length(btrim(operation_id)) BETWEEN 8 AND 200),
   operation_kind text NOT NULL CHECK (operation_kind IN ('set_rule','deactivate_rule','apply','apply_batch')),
   request_hash text NOT NULL,
   actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
@@ -323,13 +323,14 @@ DECLARE
   _replay jsonb;
   _rule_id uuid;
   _now timestamptz := now();
+  _previous_rule jsonb;
 BEGIN
   _reason := btrim(COALESCE(_reason, ''));
   _operation_id := btrim(COALESCE(_operation_id, ''));
   IF length(_reason) < 3 OR length(_reason) > 500 THEN
     RAISE EXCEPTION 'A pricing policy reason is required';
   END IF;
-  IF length(_operation_id) < 8 THEN
+  IF length(_operation_id) NOT BETWEEN 8 AND 200 THEN
     RAISE EXCEPTION 'A stable pricing policy operation ID is required';
   END IF;
   IF _category_id IS NOT NULL AND _product_id IS NOT NULL THEN
@@ -382,6 +383,14 @@ BEGIN
   -- Avoid upgrading the tenant foreign-key lock held by operation insertion.
   _now := clock_timestamp();
 
+  SELECT to_jsonb(r) INTO _previous_rule
+  FROM public.pricing_policy_rules r
+  WHERE tenant_id = _tenant_id
+    AND branch_id IS NOT DISTINCT FROM _branch_id
+    AND category_id IS NOT DISTINCT FROM _category_id
+    AND product_id IS NOT DISTINCT FROM _product_id
+    AND effective_to IS NULL;
+
   UPDATE public.pricing_policy_rules
   SET effective_to = GREATEST(_now, effective_from)
   WHERE tenant_id = _tenant_id
@@ -417,6 +426,8 @@ BEGIN
       'markup_basis_points', _markup_basis_points,
       'rounding_increment_fils', _rounding_increment_fils,
       'rounding_mode', _rounding_mode,
+      'previous_rule', _previous_rule,
+      'resulting_effective_from', _now,
       'reason', _reason
     )
   );
@@ -446,13 +457,14 @@ DECLARE
   _rule public.pricing_policy_rules;
   _request_hash text;
   _replay jsonb;
+  _deactivated_at timestamptz;
 BEGIN
   _reason := btrim(COALESCE(_reason, ''));
   _operation_id := btrim(COALESCE(_operation_id, ''));
   IF length(_reason) < 3 OR length(_reason) > 500 THEN
     RAISE EXCEPTION 'A pricing policy deactivation reason is required';
   END IF;
-  IF length(_operation_id) < 8 THEN
+  IF length(_operation_id) NOT BETWEEN 8 AND 200 THEN
     RAISE EXCEPTION 'A stable pricing policy operation ID is required';
   END IF;
 
@@ -484,8 +496,9 @@ BEGIN
     RAISE EXCEPTION 'Pricing policy rule is already inactive';
   END IF;
 
+  _deactivated_at := GREATEST(clock_timestamp(), _rule.effective_from);
   UPDATE public.pricing_policy_rules
-  SET effective_to = GREATEST(clock_timestamp(), effective_from)
+  SET effective_to = _deactivated_at
   WHERE tenant_id = _tenant_id AND id = _rule_id;
 
   PERFORM public.complete_pricing_policy_operation_internal_v1(
@@ -497,7 +510,10 @@ BEGIN
   VALUES (
     _tenant_id, _actor_id, 'catalogue.pricing_policy_rule_deactivated',
     'pricing_policy_rule', _rule_id,
-    jsonb_build_object('operation_id', _operation_id, 'reason', _reason)
+    jsonb_build_object('operation_id', _operation_id, 'reason', _reason,
+      'branch_id', _rule.branch_id, 'category_id', _rule.category_id,
+      'product_id', _rule.product_id, 'previous_effective_to', _rule.effective_to,
+      'resulting_effective_to', _deactivated_at)
   );
 
   RETURN _rule_id;
@@ -705,7 +721,7 @@ BEGIN
   IF length(_reason) < 3 OR length(_reason) > 500 THEN
     RAISE EXCEPTION 'A pricing application reason is required';
   END IF;
-  IF length(_operation_id) < 8 THEN
+  IF length(_operation_id) NOT BETWEEN 8 AND 200 THEN
     RAISE EXCEPTION 'A stable pricing application operation ID is required';
   END IF;
   IF _expected_cost_fils IS NULL OR _expected_cost_fils < 0 THEN
