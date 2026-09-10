@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { analyzeBarcodeCandidates, parseBarcodeCell, type ProductBarcode } from "@/lib/productBarcodes";
 import { inspectProductBarcodes, replaceProductBarcodes } from "@/lib/productBarcodeCommands";
 import type { Database } from "@/integrations/supabase/types";
+import { bhdToFils } from "@/lib/bahrain";
+import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
 
 type DatabaseProductImport = Database["public"]["Tables"]["products"]["Insert"];
 
@@ -100,6 +102,8 @@ export function DataManagement() {
         productId: string;
         productData: DatabaseProductImport;
         barcodes: ProductBarcode[];
+        currentPriceFils: number | null;
+        currentCostFils: number | null;
       }>;
       for (const row of rows) {
         if (!(row.name || row.nombre)) throw new Error("Every product import row requires a name");
@@ -112,9 +116,21 @@ export function DataManagement() {
         let existingId = row.id || null;
         if (!existingId && row.sku) {
           const { data: existing, error } = await supabase.from("products")
-            .select("id").eq("sku", row.sku).eq("tenant_id", tenantId).maybeSingle();
+            .select("id, price_fils, cost_fils").eq("sku", row.sku).eq("tenant_id", tenantId).maybeSingle();
           if (error) throw error;
           existingId = existing?.id ?? null;
+        }
+        let currentPriceFils: number | null = null;
+        let currentCostFils: number | null = null;
+        if (existingId) {
+          const { data: existing, error } = await supabase.from("products")
+            .select("price_fils, cost_fils")
+            .eq("id", existingId)
+            .eq("tenant_id", tenantId)
+            .single();
+          if (error) throw error;
+          currentPriceFils = Number(existing.price_fils);
+          currentCostFils = Number(existing.cost_fils);
         }
         prepared.push({
           existingId,
@@ -132,6 +148,8 @@ export function DataManagement() {
             product_type: (row.product_type || "simple") as DatabaseProductImport["product_type"],
           },
           barcodes,
+          currentPriceFils,
+          currentCostFils,
         });
       }
 
@@ -150,7 +168,20 @@ export function DataManagement() {
       for (let index = 0; index < prepared.length; index += 1) {
         const row = prepared[index];
         if (row.existingId) {
-          const { error } = await supabase.from("products").update(row.productData)
+          const { price, cost, price_fils: _priceFils, cost_fils: _costFils, ...nonFinancialData } = row.productData;
+          const nextPriceFils = bhdToFils(price ?? 0);
+          const nextCostFils = bhdToFils(cost ?? 0);
+          if (nextPriceFils !== row.currentPriceFils || nextCostFils !== row.currentCostFils) {
+            await setProductBaseFinancials({
+              tenantId,
+              productId: row.productId,
+              sellingPriceBhd: price ?? 0,
+              costBhd: cost ?? 0,
+              reason: "Catalogue CSV import",
+              operationId: createProductFinancialOperationId("catalogue-import-financials"),
+            });
+          }
+          const { error } = await supabase.from("products").update(nonFinancialData)
             .eq("id", row.existingId).eq("tenant_id", tenantId);
           if (error) throw error;
         } else {

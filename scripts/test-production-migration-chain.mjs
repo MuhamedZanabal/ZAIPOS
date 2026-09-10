@@ -339,11 +339,13 @@ function verifyFinalShape(database) {
     "public.replace_product_barcodes_v1(uuid,uuid,jsonb,text)",
     "public.resolve_product_by_barcode_v1(uuid,text)",
     "public.resolve_product_barcode_conflict_v1(uuid,text,text)",
+    "public.set_product_base_financials_v1(uuid,uuid,bigint,bigint,text,text)",
+    "public.set_product_selling_price_v1(uuid,uuid,uuid,public.sales_channel,bigint,text,text)",
   ];
   for (const signature of required) {
     assertEqual(`required function ${signature}`, scalar(database, `SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
   }
-  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items", "employee_pos_credentials", "employee_pos_pin_attempts", "product_barcodes", "product_barcode_conflicts", "product_barcode_operations"]) {
+  for (const table of ["checkout_operations", "sale_return_items", "payment_refunds", "sale_voids", "payment_voids", "inventory_operations", "devices", "receipt_reprint_events", "held_carts", "held_cart_items", "employee_pos_credentials", "employee_pos_pin_attempts", "product_barcodes", "product_barcode_conflicts", "product_barcode_operations", "product_prices", "product_financial_operations"]) {
     assertEqual(`required table ${table}`, scalar(database, `SELECT to_regclass('public.${table}') IS NOT NULL;`), "t");
   }
 }
@@ -371,6 +373,11 @@ assertEqual("upgrade product cost fils", scalar("zaipos_upgrade", "SELECT cost_f
 assertEqual("upgrade sale total fils", scalar("zaipos_upgrade", "SELECT total_fils::text FROM public.sales WHERE id='60000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade sale item unit price fils", scalar("zaipos_upgrade", "SELECT unit_price_fils::text FROM public.sale_items WHERE id='70000000-0000-0000-0000-000000000091';"), "1250");
 assertEqual("upgrade payment amount fils", scalar("zaipos_upgrade", "SELECT amount_fils::text FROM public.payments WHERE id='80000000-0000-0000-0000-000000000091';"), "2500");
+assertEqual("upgrade selling-price ledger", scalar("zaipos_upgrade", "SELECT amount_fils::text FROM public.product_prices WHERE product_id='50000000-0000-0000-0000-000000000091' AND price_type='selling' AND branch_id IS NULL AND channel IS NULL AND effective_to IS NULL;"), "1250");
+assertEqual("upgrade product-cost ledger", scalar("zaipos_upgrade", "SELECT amount_fils::text FROM public.product_prices WHERE product_id='50000000-0000-0000-0000-000000000091' AND price_type='cost' AND branch_id IS NULL AND channel IS NULL AND effective_to IS NULL;"), "750");
+assertEqual("upgrade historical unit cost snapshot", scalar("zaipos_upgrade", "SELECT unit_cost_fils::text FROM public.sale_items WHERE id='70000000-0000-0000-0000-000000000091';"), "750");
+assertEqual("upgrade historical line COGS snapshot", scalar("zaipos_upgrade", "SELECT line_cost_fils::text FROM public.sale_items WHERE id='70000000-0000-0000-0000-000000000091';"), "1500");
+assertEqual("upgrade historical cost basis", scalar("zaipos_upgrade", "SELECT cost_basis FROM public.sale_items WHERE id='70000000-0000-0000-0000-000000000091';"), "legacy_current_cost_at_migration");
 assertEqual("upgrade opening cash fils", scalar("zaipos_upgrade", "SELECT opening_amount_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "10000");
 assertEqual("upgrade till cash fils", scalar("zaipos_upgrade", "SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='40000000-0000-0000-0000-000000000091';"), "2500");
 assertEqual("upgrade stock quantity preserved", scalar("zaipos_upgrade", "SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='45000000-0000-0000-0000-000000000091' AND product_id='50000000-0000-0000-0000-000000000091';"), "7.500");

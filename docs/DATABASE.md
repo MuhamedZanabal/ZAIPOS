@@ -33,7 +33,7 @@ Product-level tax rates remain configurable for valid zero-rated or exempt treat
 
 ## Money
 
-Database monetary columns use numeric values. Application display uses BHD with three decimal places. Do not introduce code that rounds Bahrain values to whole units or assumes two-decimal USD-style behavior.
+Authoritative transactional money uses exact integer fils. Compatibility numeric columns remain for staged upgrades and legacy consumers, with parity constraints and synchronization triggers. Application display uses BHD with three decimal places. Do not introduce code that rounds Bahrain values to whole units, assumes two-decimal USD-style behavior, or uses binary floating point for authoritative decisions.
 
 ## Sales Channels
 
@@ -93,6 +93,10 @@ Checkout writes sales, items, payments, stock effects, cash-session totals, cust
 ## Product barcode integrity
 
 `product_barcodes` is the authoritative tenant-scoped scan-identity ledger. `products.barcode` mirrors the primary row for compatibility. Barcode sets are inspected and replaced through controlled RPCs; direct authenticated ledger mutation is revoked. See `docs/PRODUCT_BARCODES.md` for collision and import behavior.
+
+## Product financial history
+
+`product_prices` is the canonical exact-fils selling-price and received-cost history. `products.price_fils`, `products.cost_fils`, branch prices, and channel prices are current compatibility mirrors. Manager commands close prior effective rows, retain reason/actor/operation evidence, and reject direct authenticated bypass. Purchase receipt costs are linked to supplier/order/item evidence, and checkout snapshots immutable cost evidence on each sale line. See `docs/PRODUCT_FINANCIAL_HISTORY.md`.
 
 ## Seed Data
 

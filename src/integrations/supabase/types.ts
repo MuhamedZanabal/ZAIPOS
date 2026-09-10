@@ -1437,6 +1437,102 @@ export type Database = {
           },
         ]
       }
+      product_financial_operations: {
+        Row: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          operation_id: string
+          operation_kind: string
+          product_id: string
+          request_hash: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          operation_id: string
+          operation_kind: string
+          product_id: string
+          request_hash: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          operation_id?: string
+          operation_kind?: string
+          product_id?: string
+          request_hash?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      product_prices: {
+        Row: {
+          amount_fils: number
+          branch_id: string | null
+          changed_by: string | null
+          channel: Database["public"]["Enums"]["sales_channel"] | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          operation_id: string | null
+          price_type: string
+          product_id: string
+          purchase_order_id: string | null
+          purchase_order_item_id: string | null
+          reason: string
+          source: string
+          supplier_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount_fils: number
+          branch_id?: string | null
+          changed_by?: string | null
+          channel?: Database["public"]["Enums"]["sales_channel"] | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          operation_id?: string | null
+          price_type: string
+          product_id: string
+          purchase_order_id?: string | null
+          purchase_order_item_id?: string | null
+          reason: string
+          source: string
+          supplier_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount_fils?: number
+          branch_id?: string | null
+          changed_by?: string | null
+          channel?: Database["public"]["Enums"]["sales_channel"] | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          operation_id?: string | null
+          price_type?: string
+          product_id?: string
+          purchase_order_id?: string | null
+          purchase_order_item_id?: string | null
+          reason?: string
+          source?: string
+          supplier_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       product_channel_prices: {
         Row: {
           branch_id: string | null
@@ -1932,12 +2028,15 @@ export type Database = {
       }
       sale_items: {
         Row: {
+          cost_basis: string
+          cost_price_id: string | null
           created_at: string
           discount: number
           discount_fils: number
           id: string
           line_total: number
           line_total_fils: number
+          line_cost_fils: number
           modifiers: Json
           product_id: string
           product_name: string
@@ -1948,14 +2047,18 @@ export type Database = {
           tenant_id: string
           unit_price: number
           unit_price_fils: number
+          unit_cost_fils: number
         }
         Insert: {
+          cost_basis?: string
+          cost_price_id?: string | null
           created_at?: string
           discount?: number
           discount_fils?: number
           id?: string
           line_total: number
           line_total_fils?: number
+          line_cost_fils?: number
           modifiers?: Json
           product_id: string
           product_name: string
@@ -1966,14 +2069,18 @@ export type Database = {
           tenant_id: string
           unit_price: number
           unit_price_fils?: number
+          unit_cost_fils?: number
         }
         Update: {
+          cost_basis?: string
+          cost_price_id?: string | null
           created_at?: string
           discount?: number
           discount_fils?: number
           id?: string
           line_total?: number
           line_total_fils?: number
+          line_cost_fils?: number
           modifiers?: Json
           product_id?: string
           product_name?: string
@@ -1984,6 +2091,7 @@ export type Database = {
           tenant_id?: string
           unit_price?: number
           unit_price_fils?: number
+          unit_cost_fils?: number
         }
         Relationships: [
           {
@@ -2849,6 +2957,29 @@ export type Database = {
       }
       replace_product_barcodes_v1: {
         Args: { _barcodes: Json; _operation_id: string; _product_id: string; _tenant_id: string }
+        Returns: string
+      }
+      set_product_base_financials_v1: {
+        Args: {
+          _cost_amount_fils: number
+          _operation_id: string
+          _product_id: string
+          _reason: string
+          _selling_amount_fils: number
+          _tenant_id: string
+        }
+        Returns: string
+      }
+      set_product_selling_price_v1: {
+        Args: {
+          _amount_fils: number | null
+          _branch_id: string | null
+          _channel: Database["public"]["Enums"]["sales_channel"] | null
+          _operation_id: string
+          _product_id: string
+          _reason: string
+          _tenant_id: string
+        }
         Returns: string
       }
       resolve_product_by_barcode_v1: {
