@@ -69,7 +69,7 @@ BEGIN
   LOOP
     _product_id := (_approved->>'product_id')::uuid;
     _fresh := public.preview_product_pricing_v1(_tenant_id, _product_id, _branch_id, _channel);
-    IF _approved IS DISTINCT FROM _fresh THEN
+    IF (_approved - 'generated_at') IS DISTINCT FROM (_fresh - 'generated_at') THEN
       RAISE EXCEPTION 'Stale pricing preview for product %: cost, price, scope, or policy changed; review again', _product_id;
     END IF;
   END LOOP;

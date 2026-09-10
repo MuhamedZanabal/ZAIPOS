@@ -166,6 +166,8 @@ assertEqual("product override markup", String(branchPreview.markup_basis_points)
 assertEqual("product override rounded price", String(branchPreview.rounded_price_fils), "1500");
 assertEqual("preview explains cost", String(branchPreview.cost_fils), "1000");
 assertEqual("preview identifies selected rule", branchPreview.rule_id, productRuleId);
+assertEqual("preview records responsible actor", branchPreview.previewed_by, I.branchManagerA);
+assert(!Number.isNaN(Date.parse(branchPreview.generated_at)), "preview must carry authoritative generation time");
 
 expectReject("branch manager cannot preview another branch", I.branchManagerA,
   `SELECT public.preview_product_pricing_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchA2}'::uuid,NULL::public.sales_channel)`);

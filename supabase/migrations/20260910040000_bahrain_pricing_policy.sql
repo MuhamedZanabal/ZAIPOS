@@ -661,6 +661,8 @@ BEGIN
     'cost_event_id', _cost_event_id,
     'selling_price_event_id', _price_event_id,
     'category_id', _product.category_id,
+    'previewed_by', _actor_id,
+    'generated_at', transaction_timestamp(),
     'current_selling_price_fils', _current_price_fils::text
   );
 END

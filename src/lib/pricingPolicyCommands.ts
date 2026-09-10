@@ -14,6 +14,7 @@ const previewSchema = z.object({
   rounding_increment_fils: z.literal(25), rounding_mode: z.enum(['nearest_half_up', 'ceil']),
   rule_id: z.string().nullable(), rule_scope: z.string(), cost_source: z.string(),
   cost_event_id: z.string().nullable(), selling_price_event_id: z.string().nullable(),
+  previewed_by: z.string(), generated_at: z.string(),
 });
 export type PricingPreview = z.infer<typeof previewSchema>;
 
