@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
-import { formatPricingFils, formatRawPrice, markupBasisPoints, previewPricing, applyPricing } from './pricingPolicyCommands';
+import { formatPricingFils, formatRawPrice, markupBasisPoints, pricingDifference, previewPricing, applyPricing } from './pricingPolicyCommands';
 
 describe('pricing approval client', () => {
   beforeEach(() => rpc.mockReset());
@@ -9,6 +9,7 @@ describe('pricing approval client', () => {
     expect(formatPricingFils('25')).toBe('BHD 0.025');
     expect(formatPricingFils('9007199254740993')).toBe('BHD 9007199254740.993');
     expect(formatRawPrice('16625000')).toBe('BHD 1.6625000');
+    expect(formatPricingFils(pricingDifference('1500', '1325'))).toBe('BHD -0.175');
   });
   it('parses markup without floating point', () => {
     expect(markupBasisPoints('33')).toBe(3300);

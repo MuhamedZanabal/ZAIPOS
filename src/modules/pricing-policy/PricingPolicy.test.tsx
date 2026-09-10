@@ -15,7 +15,7 @@ vi.mock('@/lib/pricingPolicyCommands', async (original) => ({
 import PricingPolicy from './PricingPolicy';
 const preview = {product_id:'product', cost_fils:'1000', current_selling_price_fils:'1500', rounded_price_fils:'1325',
   raw_price_numerator:'13300000', rounding_adjustment_numerator:'-50000', markup_basis_points:3300,
-  rule_scope:'system_default', cost_source:'product_base_cost', rounding_mode:'nearest_half_up'};
+  rule_scope:'system_default', cost_source:'product_base_cost', rounding_mode:'nearest_half_up', generated_at:'2026-09-10T00:00:00Z'};
 afterEach(cleanup);
 beforeEach(() => { vi.clearAllMocks(); api.preview.mockResolvedValue([preview]); api.apply.mockResolvedValue([]); });
 

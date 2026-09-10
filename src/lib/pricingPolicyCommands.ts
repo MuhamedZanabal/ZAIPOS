@@ -25,6 +25,8 @@ function decimal(value: string, places: number) {
   return `${amount < 0n ? '-' : ''}${digits.slice(0, -places)}.${digits.slice(-places)}`;
 }
 export const formatPricingFils = (fils: string) => `BHD ${decimal(fils, 3)}`;
+export const pricingDifference = (current: string, proposed: string) =>
+  (BigInt(proposed) - BigInt(current)).toString();
 // cost_fils * basis-points factor / 10000 / 1000 = BHD with 7 places.
 export const formatRawPrice = (numerator: string) => `BHD ${decimal(numerator, 7)}`;
 export const formatMarkup = (basisPoints: number) => `${decimal(String(basisPoints), 2)}%`;

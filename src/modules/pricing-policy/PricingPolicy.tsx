@@ -4,7 +4,7 @@ import { useTenantContext } from '@/hooks/useTenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { applyPricing, deactivatePricingRule, formatMarkup, formatPricingFils, formatRawPrice,
-  previewPricing, setPricingRule, type PricingChannel, type PricingPreview } from '@/lib/pricingPolicyCommands';
+  previewPricing, pricingDifference, setPricingRule, type PricingChannel, type PricingPreview } from '@/lib/pricingPolicyCommands';
 
 const managerRoles = ['owner', 'admin', 'manager'];
 const inputClass = 'rounded-md border bg-background px-3 py-2 w-full';
@@ -145,15 +145,17 @@ function PricingWorkspace({ context, tenant }: { context: ReturnType<typeof useT
         setPreviews(result); setPreviewedAt(new Date().toLocaleString('en-BH'));
       })}>Preview selected prices</Button>
       {previews.length > 0 && <>
-        <p className="text-sm">Preview received {previewedAt}. Manual selling prices below will be replaced only when you apply.</p>
+        <p className="text-sm">Server preview {new Date(previews[0].generated_at).toLocaleString('en-BH')} (displayed {previewedAt}). Manual selling prices below will be replaced only when you apply.</p>
         <div className="overflow-x-auto"><table className="w-full text-sm text-left">
-          <thead><tr>{['Product','Source cost','Current price','Markup','Raw target','Rounding adjustment','Proposed price','Rule'].map(label => <th key={label} className="p-2">{label}</th>)}</tr></thead>
+          <thead><tr>{['Product','Source cost','Current price','Markup','Raw target','Rounding adjustment','Proposed price','Difference','Rule'].map(label => <th key={label} className="p-2">{label}</th>)}</tr></thead>
           <tbody>{previews.map(p => <tr key={p.product_id} className="border-t">
             <td className="p-2">{products.find(product => product.id === p.product_id)?.name ?? p.product_id}</td>
             <td className="p-2">{formatPricingFils(p.cost_fils)}<small className="block">{p.cost_source.replaceAll('_', ' ')}</small></td>
             <td className="p-2">{formatPricingFils(p.current_selling_price_fils)}</td><td className="p-2">{formatMarkup(p.markup_basis_points)}</td>
             <td className="p-2">{formatRawPrice(p.raw_price_numerator)}</td><td className="p-2">{formatRawPrice(p.rounding_adjustment_numerator)}</td>
-            <td className="p-2 font-semibold">{formatPricingFils(p.rounded_price_fils)}</td><td className="p-2">{p.rule_scope.replaceAll('_',' ')}</td>
+            <td className="p-2 font-semibold">{formatPricingFils(p.rounded_price_fils)}</td>
+            <td className="p-2">{formatPricingFils(pricingDifference(p.current_selling_price_fils, p.rounded_price_fils))}</td>
+            <td className="p-2">{p.rule_scope.replaceAll('_',' ')}</td>
           </tr>)}</tbody></table></div>
         <label className="block">Repricing reason<input aria-label="Repricing reason" disabled={busy} className={inputClass} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
         <Button disabled={busy || !allowed || reason.trim().length < 3} onClick={() => void run(
