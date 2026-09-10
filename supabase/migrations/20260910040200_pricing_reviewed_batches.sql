@@ -98,4 +98,33 @@ FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.apply_pricing_batch_v1(uuid,uuid,public.sales_channel,jsonb,text,text)
 TO authenticated;
 
+CREATE FUNCTION public.preview_pricing_batch_v1(
+  _tenant_id uuid, _branch_id uuid, _channel public.sales_channel, _product_ids uuid[]
+)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+  _product uuid;
+  _result jsonb := '[]'::jsonb;
+BEGIN
+  IF NOT public.can_manage_pricing_scope_internal_v1(auth.uid(), _tenant_id, _branch_id) THEN
+    RAISE EXCEPTION 'Pricing preview is forbidden for this tenant or branch';
+  END IF;
+  IF _product_ids IS NULL OR cardinality(_product_ids) NOT BETWEEN 1 AND 100
+    OR array_position(_product_ids, NULL) IS NOT NULL
+    OR (SELECT count(DISTINCT id) FROM unnest(_product_ids) id) <> cardinality(_product_ids)
+  THEN RAISE EXCEPTION 'Select between 1 and 100 distinct products'; END IF;
+  FOREACH _product IN ARRAY _product_ids LOOP
+    _result := _result || jsonb_build_array(public.preview_product_pricing_v1(
+      _tenant_id, _product, _branch_id, _channel));
+  END LOOP;
+  RETURN _result;
+END
+$$;
+REVOKE ALL ON FUNCTION public.preview_pricing_batch_v1(uuid,uuid,public.sales_channel,uuid[])
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.preview_pricing_batch_v1(uuid,uuid,public.sales_channel,uuid[])
+TO authenticated;
+
 COMMIT;

@@ -282,6 +282,7 @@ const same = await Promise.all([
 ]);
 assertEqual('same operation converges', same[0], same[1]);
 assertEqual('same operation has one batch audit', scalar(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenantA}' AND action='catalogue.pricing_batch_applied' AND metadata->>'operation_id'='pricing-concurrent-same-131'`), '1');
+asUser(I.tenantManagerA, `SELECT public.set_product_selling_price_v1('${I.tenantA}','${I.productA}',NULL,NULL,1900,'Manual price before contention','pricing-before-race-131')`);
 const racePreview = preview();
 const race = await Promise.allSettled([
   concurrent(batch([racePreview], 'pricing-concurrent-distinct-a-131')),
