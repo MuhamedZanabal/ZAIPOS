@@ -562,12 +562,7 @@ BEGIN
   _cost_fils := COALESCE(_cost_fils, _product.cost_fils);
 
   IF _branch_id IS NULL THEN
-    SELECT r.*,
-      CASE
-        WHEN r.product_id = _product_id THEN 'product'
-        ELSE 'tenant'
-      END
-    INTO _rule, _rule_scope
+    SELECT r.* INTO _rule
     FROM public.pricing_policy_rules r
     WHERE r.tenant_id = _tenant_id
       AND r.effective_to IS NULL
@@ -577,16 +572,7 @@ BEGIN
     ORDER BY CASE WHEN r.product_id = _product_id THEN 1 ELSE 2 END, r.effective_from DESC
     LIMIT 1;
   ELSE
-    SELECT r.*,
-      CASE
-        WHEN r.product_id = _product_id AND r.branch_id = _branch_id THEN 'product_branch'
-        WHEN r.product_id = _product_id AND r.branch_id IS NULL THEN 'product'
-        WHEN r.category_id = _product.category_id AND r.branch_id = _branch_id THEN 'category_branch'
-        WHEN r.category_id = _product.category_id AND r.branch_id IS NULL THEN 'category'
-        WHEN r.branch_id = _branch_id AND r.category_id IS NULL AND r.product_id IS NULL THEN 'branch'
-        ELSE 'tenant'
-      END
-    INTO _rule, _rule_scope
+    SELECT r.* INTO _rule
     FROM public.pricing_policy_rules r
     WHERE r.tenant_id = _tenant_id
       AND r.effective_to IS NULL
@@ -606,6 +592,15 @@ BEGIN
     END, r.effective_from DESC
     LIMIT 1;
   END IF;
+
+  _rule_scope := CASE
+    WHEN _rule.product_id IS NOT NULL AND _rule.branch_id IS NOT NULL THEN 'product_branch'
+    WHEN _rule.product_id IS NOT NULL THEN 'product'
+    WHEN _rule.category_id IS NOT NULL AND _rule.branch_id IS NOT NULL THEN 'category_branch'
+    WHEN _rule.category_id IS NOT NULL THEN 'category'
+    WHEN _rule.branch_id IS NOT NULL THEN 'branch'
+    ELSE 'tenant'
+  END;
 
   IF _rule.id IS NULL THEN
     _rule_scope := 'system_default';
