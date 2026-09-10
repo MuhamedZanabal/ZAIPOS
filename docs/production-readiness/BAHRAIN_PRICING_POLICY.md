@@ -46,7 +46,8 @@ Every result is a multiple of 25 fils. For each 100-fils block the endings are
 raw target 1330 fils becomes 1325 fils (nearest) or 1350 fils (ceil).
 At cost 1250 fils, raw 1662.5 fils becomes 1675 fils in both modes.
 
-Zero cost is valid and recommends zero; it still requires explicit approval.
+The pure calculation helper defines zero cost as zero, but product preview/apply
+rejects nonpositive cost because a supermarket zero normally means missing cost.
 Negative/null costs, invalid markup/mode/increment, and BIGINT overflow fail.
 Markup accepts 0–10000%, with at most two decimal places in the UI. PostgreSQL
 uses exact numeric intermediates and checks the final BIGINT range. API money

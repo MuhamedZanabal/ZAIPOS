@@ -322,6 +322,9 @@ const race = await overlap([
 assertEqual('distinct operations have one winner', race.filter(r => r.status === 'fulfilled').length, 1);
 const failed = race.find(r => r.status === 'rejected');
 assert(failed && /stale/i.test(failed.reason.message), 'second pricing writer must reject stale approval');
+sql(`UPDATE public.products SET cost=0,cost_fils=0 WHERE id='${I.productB}';`);
+expectReject('zero product cost cannot produce a selling-price recommendation', I.tenantManagerA,
+  `SELECT public.preview_product_pricing_v1('${I.tenantA}','${I.productB}',NULL,NULL)`, /positive.*cost/i);
 assertEqual('completed sales unchanged', scalar("SELECT md5(coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text,'')) FROM public.sales s;"), historicalSales);
 assertEqual('historical selling price, VAT and COGS unchanged', scalar("SELECT md5(coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text,'')) FROM public.sale_items s;"), historicalLines);
 

@@ -568,6 +568,9 @@ BEGIN
     END IF;
   END IF;
   _cost_fils := COALESCE(_cost_fils, _product.cost_fils);
+  IF _cost_fils IS NULL OR _cost_fils <= 0 THEN
+    RAISE EXCEPTION 'Product needs a positive exact-fils cost before repricing';
+  END IF;
   IF _cost_event_id IS NULL THEN
     SELECT id INTO _cost_event_id FROM public.product_prices
     WHERE tenant_id = _tenant_id AND product_id = _product_id
