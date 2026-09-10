@@ -50,6 +50,8 @@ function expectReject(label, userId, statement, pattern = /forbidden|permission|
 }
 
 assertEqual("pricing rule ledger exists", scalar("SELECT to_regclass('public.pricing_policy_rules') IS NOT NULL;"), "t");
+const historicalSales = scalar("SELECT md5(coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text,'')) FROM public.sales s;");
+const historicalLines = scalar("SELECT md5(coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text,'')) FROM public.sale_items s;");
 assertEqual("pricing operation ledger exists", scalar("SELECT to_regclass('public.pricing_policy_operations') IS NOT NULL;"), "t");
 for (const signature of [
   "public.set_pricing_policy_rule_v1(uuid,uuid,uuid,uuid,integer,bigint,text,text,text)",
@@ -251,6 +253,11 @@ const beforeManualChange = preview();
 asUser(I.tenantManagerA, `SELECT public.set_product_selling_price_v1('${I.tenantA}','${I.productA}',NULL,NULL,1700,'New manual price','pricing-manual-again-131')`);
 expectReject('manual price changed after approval', I.tenantManagerA,
   batch([beforeManualChange], 'pricing-stale-manual-131'), /stale/i);
+const beforeCostChange = preview(I.productB);
+sql(`UPDATE public.products SET cost=1.500,cost_fils=1500 WHERE id='${I.productB}';`);
+expectReject('cost history changed after approval', I.tenantManagerA,
+  batch([beforeCostChange], 'pricing-stale-cost-history-131'), /stale/i);
+assertEqual('cost change alone preserves selling price', scalar(`SELECT price_fils FROM public.products WHERE id='${I.productB}'`), '2000');
 const validA = preview();
 const validB = preview(I.productB);
 expectReject('one stale line rolls back entire batch', I.tenantManagerA,
@@ -291,5 +298,7 @@ const race = await Promise.allSettled([
 assertEqual('distinct operations have one winner', race.filter(r => r.status === 'fulfilled').length, 1);
 const failed = race.find(r => r.status === 'rejected');
 assert(failed && /stale/i.test(failed.reason.message), 'second pricing writer must reject stale approval');
+assertEqual('completed sales unchanged', scalar("SELECT md5(coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text,'')) FROM public.sales s;"), historicalSales);
+assertEqual('historical selling price, VAT and COGS unchanged', scalar("SELECT md5(coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text,'')) FROM public.sale_items s;"), historicalLines);
 
 process.stdout.write('Bahrain pricing policy PASS: exact boundaries, scoped rules, approval snapshots, atomic batches, real concurrent replay/contention, authorization, RLS, audit and canonical history.\n');

@@ -50,6 +50,7 @@ const sections: Section[] = [
     label: "Catalog",
     items: [
       { title: "Products",   url: "/products",   icon: Package,   roles: ["owner","admin","manager"] },
+      { title: "Pricing policies", url: "/pricing-policy", icon: BarChart3, roles: ["owner","admin","manager"] },
       { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
     ],
   },
