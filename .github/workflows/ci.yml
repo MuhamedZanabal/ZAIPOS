@@ -113,6 +113,9 @@ jobs:
       - name: Test Bahrain pricing policy
         run: npm run test:migrations:bahrain-pricing-policy
 
+      - name: Test duplicate product merge
+        run: npm run test:migrations:product-merge
+
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
 
