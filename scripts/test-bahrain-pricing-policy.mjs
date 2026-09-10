@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 const I = {
@@ -174,24 +174,32 @@ const applyBase = (expectedCost, operationId) => `SELECT public.apply_product_pr
   '${I.tenantA}'::uuid,'${I.productA}'::uuid,NULL::uuid,NULL::public.sales_channel,
   ${expectedCost}::bigint,'Explicit manager repricing','${operationId}'
 )`;
-expectReject("stale cost blocks apply", I.tenantManagerA, applyBase(999, "pricing-stale-apply-131"), /stale|cost/i);
-const applied = jsonAsUser(I.tenantManagerA, applyBase(1000, "pricing-base-apply-131"));
+expectReject("cost-only apply cannot bypass preview approval", I.tenantManagerA, applyBase(1000, "pricing-unsafe-apply-131"), /permission/i);
+const quote = (value) => `'${JSON.stringify(value).replaceAll("'", "''")}'::jsonb`;
+const preview = (product = I.productA, branch = null) => jsonAsUser(I.tenantManagerA,
+  `SELECT public.preview_product_pricing_v1('${I.tenantA}','${product}',${branch ? `'${branch}'` : 'NULL'},NULL)`);
+const batch = (previews, operationId, branch = null) => `SELECT public.apply_pricing_batch_v1(
+  '${I.tenantA}',${branch ? `'${branch}'` : 'NULL'},NULL,${quote(previews)},'Explicit manager repricing','${operationId}')`;
+const basePreview = preview();
+expectReject("stale cost blocks apply", I.tenantManagerA,
+  batch([{...basePreview, cost_fils: '999'}], "pricing-stale-apply-131"), /stale/i);
+const applied = jsonAsUser(I.tenantManagerA, batch([basePreview], "pricing-base-apply-131"))[0];
 assertEqual("explicit apply uses category rule", applied.rule_scope, "category");
 assertEqual("explicit apply price", String(applied.applied_price_fils), "1250");
 assertEqual("base price changed only after apply", scalar(`SELECT price_fils::text FROM public.products WHERE id='${I.productA}'::uuid;`), "1250");
-const replay = jsonAsUser(I.tenantManagerA, applyBase(1000, "pricing-base-apply-131"));
+const replay = jsonAsUser(I.tenantManagerA, batch([basePreview], "pricing-base-apply-131"))[0];
 assertEqual("apply replay is stable", JSON.stringify(replay), JSON.stringify(applied));
-assertEqual("price history records explicit policy apply exactly once", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND operation_id LIKE 'pricing-policy:%pricing-base-apply-131';`), "1");
+assertEqual("price history records explicit policy apply exactly once", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND operation_id='${applied.financial_operation_id}';`), "1");
 assertEqual("policy apply audit exactly once", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='catalogue.pricing_policy_applied' AND entity_id='${I.productA}'::uuid;`), "1");
 
 const branchApply = jsonAsUser(
   I.branchManagerA,
-  `SELECT public.apply_product_pricing_policy_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchA}'::uuid,NULL::public.sales_channel,1000::bigint,'Branch policy repricing','pricing-branch-apply-131')`
+  batch([preview(I.productA, I.branchA)], 'pricing-branch-apply-131', I.branchA)
 );
-assertEqual("branch apply uses product+branch override", branchApply.rule_scope, "product_branch");
+assertEqual("branch apply uses product+branch override", branchApply[0].rule_scope, "product_branch");
 assertEqual("branch policy writes local price", scalar(`SELECT local_price_fils::text FROM public.branch_products WHERE tenant_id='${I.tenantA}'::uuid AND branch_id='${I.branchA}'::uuid AND product_id='${I.productA}'::uuid;`), "1500");
 expectReject("branch manager cannot apply another branch", I.branchManagerA,
-  `SELECT public.apply_product_pricing_policy_v1('${I.tenantA}'::uuid,'${I.productA}'::uuid,'${I.branchA2}'::uuid,NULL::public.sales_channel,1000,'Wrong branch','pricing-wrong-branch-apply-131')`);
+  batch([preview(I.productA, I.branchA2)], 'pricing-wrong-branch-apply-131', I.branchA2));
 
 assertEqual("direct pricing rule insert denied", asUser(I.tenantManagerA,
   `SELECT has_table_privilege('authenticated','public.pricing_policy_rules','INSERT')::text`), "false");
@@ -218,4 +226,69 @@ assertEqual("category override inherited", String(inheritedPreview.markup_basis_
 assertEqual("rule history preserved", scalar(`SELECT count(*)::text FROM public.pricing_policy_rules WHERE tenant_id='${I.tenantA}'::uuid AND product_id='${I.productA}'::uuid AND branch_id='${I.branchA}'::uuid;`), "1");
 assertEqual("deactivated rule is historical", scalar(`SELECT effective_to IS NOT NULL FROM public.pricing_policy_rules WHERE id='${productRuleId}'::uuid;`), "t");
 
-process.stdout.write("Bahrain pricing policy PASS: exact 33% arithmetic, approved 25-fils rounding, scoped policy precedence, explicit manager activation/apply, stale-cost protection, idempotency, RLS, audit, price-history integration and manual overrides hold.\n");
+// Exhaustive small-price boundaries and values beyond JavaScript's exact range.
+for (const mode of ['nearest_half_up', 'ceil']) {
+  const costs = [...Array(1001).keys()].map(BigInt).concat([9007199254740993n, 1000000000000000000n]);
+  const values = costs.map(cost => {
+    const numerator = cost * 13300n;
+    const expected = ((numerator + (mode === 'ceil' ? 249999n : 125000n)) / 250000n) * 25n;
+    return `(${cost},'${expected}')`;
+  }).join(',');
+  assertEqual(`exact ${mode} boundaries`, scalar(`SELECT count(*) FROM (VALUES ${values}) v(cost,expected)
+    WHERE public.calculate_bahrain_retail_price_v1(cost::bigint,3300,25,'${mode}')->>'rounded_price_fils' <> expected;`), '0');
+}
+for (const args of ["NULL,3300,25,'ceil'", "-1,3300,25,'ceil'", "1,NULL,25,'ceil'",
+  "1,3300,NULL,'ceil'", "1,3300,25,NULL", "1,3300,25,'invalid'", "9223372036854775807,3300,25,'ceil'"]) {
+  expectReject(`invalid calculation ${args}`, I.tenantManagerA,
+    `SELECT public.calculate_bahrain_retail_price_v1(${args})`, /nonnegative|invalid|increment|rounding|range/i);
+}
+
+const beforePolicyChange = preview();
+setRule(I.tenantManagerA, null, I.categoryA, null, 3300, 'nearest_half_up', 'pricing-category-change-131');
+expectReject('policy changed after approval', I.tenantManagerA,
+  batch([beforePolicyChange], 'pricing-stale-policy-131'), /stale/i);
+const beforeManualChange = preview();
+asUser(I.tenantManagerA, `SELECT public.set_product_selling_price_v1('${I.tenantA}','${I.productA}',NULL,NULL,1700,'New manual price','pricing-manual-again-131')`);
+expectReject('manual price changed after approval', I.tenantManagerA,
+  batch([beforeManualChange], 'pricing-stale-manual-131'), /stale/i);
+const validA = preview();
+const validB = preview(I.productB);
+expectReject('one stale line rolls back entire batch', I.tenantManagerA,
+  batch([validA, {...validB, cost_fils: '999'}], 'pricing-atomic-reject-131'), /stale/i);
+assertEqual('failed batch preserves first price', scalar(`SELECT price_fils FROM public.products WHERE id='${I.productA}'`), '1700');
+assertEqual('failed batch leaves no operation', scalar(`SELECT count(*) FROM public.pricing_policy_operations WHERE tenant_id='${I.tenantA}' AND operation_id='pricing-atomic-reject-131'`), '0');
+for (const actor of [I.cashierA, I.managerB, I.branchManagerA]) {
+  expectReject('batch enforces tenant-global authorization', actor, batch([validA], 'pricing-batch-denied-131'));
+}
+expectReject('duplicate selection rejected', I.tenantManagerA, batch([validA, validA], 'pricing-duplicate-131'), /exactly once/i);
+expectReject('empty selection rejected', I.tenantManagerA, batch([], 'pricing-empty-131'), /between 1 and 100/i);
+expectReject('unbounded selection rejected', I.tenantManagerA, batch(Array(101).fill(validA), 'pricing-too-large-131'), /between 1 and 100/i);
+
+// Separate PostgreSQL sessions race; both must use the exact same reviewed state.
+function concurrent(statement) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('psql', [dbUrl, '-X', '-Atq', '-v', 'ON_ERROR_STOP=1', '-c',
+      `BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${I.tenantManagerA}'; ${statement}; COMMIT;`]);
+    let out = '', err = '';
+    child.stdout.on('data', s => { out += s; });
+    child.stderr.on('data', s => { err += s; });
+    child.on('error', reject);
+    child.on('close', code => code === 0 ? resolve(out.trim()) : reject(new Error(err)));
+  });
+}
+const same = await Promise.all([
+  concurrent(batch([validA, validB], 'pricing-concurrent-same-131')),
+  concurrent(batch([validA, validB], 'pricing-concurrent-same-131')),
+]);
+assertEqual('same operation converges', same[0], same[1]);
+assertEqual('same operation has one batch audit', scalar(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenantA}' AND action='catalogue.pricing_batch_applied' AND metadata->>'operation_id'='pricing-concurrent-same-131'`), '1');
+const racePreview = preview();
+const race = await Promise.allSettled([
+  concurrent(batch([racePreview], 'pricing-concurrent-distinct-a-131')),
+  concurrent(batch([racePreview], 'pricing-concurrent-distinct-b-131')),
+]);
+assertEqual('distinct operations have one winner', race.filter(r => r.status === 'fulfilled').length, 1);
+const failed = race.find(r => r.status === 'rejected');
+assert(failed && /stale/i.test(failed.reason.message), 'second pricing writer must reject stale approval');
+
+process.stdout.write('Bahrain pricing policy PASS: exact boundaries, scoped rules, approval snapshots, atomic batches, real concurrent replay/contention, authorization, RLS, audit and canonical history.\n');

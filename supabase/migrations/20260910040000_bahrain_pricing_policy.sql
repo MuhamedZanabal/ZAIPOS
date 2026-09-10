@@ -78,7 +78,7 @@ CREATE TABLE public.pricing_policy_operations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   operation_id text NOT NULL CHECK (length(btrim(operation_id)) >= 8),
-  operation_kind text NOT NULL CHECK (operation_kind IN ('set_rule','deactivate_rule','apply')),
+  operation_kind text NOT NULL CHECK (operation_kind IN ('set_rule','deactivate_rule','apply','apply_batch')),
   request_hash text NOT NULL,
   actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   rule_id uuid,
@@ -202,13 +202,14 @@ BEGIN
   END IF;
 
   RETURN jsonb_build_object(
-    'cost_fils', _cost_fils,
+    'cost_fils', _cost_fils::text,
     'markup_basis_points', _markup_basis_points,
-    'raw_price_numerator', _raw_numerator,
-    'raw_price_denominator', _raw_denominator,
+    'raw_price_numerator', _raw_numerator::text,
+    'raw_price_denominator', _raw_denominator::text,
+    'rounding_adjustment_numerator', (_rounded_fils * _raw_denominator - _raw_numerator)::text,
     'rounding_increment_fils', _rounding_increment_fils,
     'rounding_mode', _rounding_mode,
-    'rounded_price_fils', _rounded_fils::bigint
+    'rounded_price_fils', _rounded_fils::bigint::text
   );
 END
 $$;
@@ -354,6 +355,7 @@ BEGIN
   END IF;
 
   -- Validate exact calculation parameters before writing policy state.
+  PERFORM pg_advisory_xact_lock(hashtextextended('pricing-policy:' || _tenant_id::text, 0));
   PERFORM public.calculate_bahrain_retail_price_v1(
     0, _markup_basis_points, _rounding_increment_fils, _rounding_mode
   );
@@ -376,9 +378,9 @@ BEGIN
     RETURN (_replay->>'rule_id')::uuid;
   END IF;
 
-  -- Serialize policy changes for the same scope by locking the tenant row.
-  PERFORM 1 FROM public.tenants WHERE id = _tenant_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Tenant does not exist'; END IF;
+  -- All policy mutations and applications share the advisory lock above.
+  -- Avoid upgrading the tenant foreign-key lock held by operation insertion.
+  _now := clock_timestamp();
 
   UPDATE public.pricing_policy_rules
   SET effective_to = GREATEST(_now, effective_from)
@@ -454,6 +456,7 @@ BEGIN
     RAISE EXCEPTION 'A stable pricing policy operation ID is required';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtextextended('pricing-policy:' || _tenant_id::text, 0));
   SELECT * INTO _rule
   FROM public.pricing_policy_rules
   WHERE tenant_id = _tenant_id AND id = _rule_id
@@ -482,7 +485,7 @@ BEGIN
   END IF;
 
   UPDATE public.pricing_policy_rules
-  SET effective_to = GREATEST(now(), effective_from)
+  SET effective_to = GREATEST(clock_timestamp(), effective_from)
   WHERE tenant_id = _tenant_id AND id = _rule_id;
 
   PERFORM public.complete_pricing_policy_operation_internal_v1(
@@ -525,6 +528,8 @@ DECLARE
   _rule_scope text;
   _cost_fils bigint;
   _cost_source text := 'product_base_cost';
+  _cost_event_id uuid;
+  _price_event_id uuid;
   _current_price_fils bigint;
   _calculation jsonb;
 BEGIN
@@ -543,9 +548,12 @@ BEGIN
   IF _product.id IS NULL THEN
     RAISE EXCEPTION 'Product does not belong to this tenant';
   END IF;
+  IF _product.status <> 'active' THEN
+    RAISE EXCEPTION 'Inactive product cannot be repriced';
+  END IF;
 
   IF _branch_id IS NOT NULL THEN
-    SELECT amount_fils INTO _cost_fils
+    SELECT amount_fils, id INTO _cost_fils, _cost_event_id
     FROM public.product_prices
     WHERE tenant_id = _tenant_id
       AND product_id = _product_id
@@ -560,6 +568,12 @@ BEGIN
     END IF;
   END IF;
   _cost_fils := COALESCE(_cost_fils, _product.cost_fils);
+  IF _cost_event_id IS NULL THEN
+    SELECT id INTO _cost_event_id FROM public.product_prices
+    WHERE tenant_id = _tenant_id AND product_id = _product_id
+      AND price_type = 'cost' AND branch_id IS NULL AND channel IS NULL
+      AND effective_to IS NULL;
+  END IF;
 
   IF _branch_id IS NULL THEN
     SELECT r.* INTO _rule
@@ -615,7 +629,7 @@ BEGIN
     );
   END IF;
 
-  SELECT p.amount_fils INTO _current_price_fils
+  SELECT p.amount_fils, p.id INTO _current_price_fils, _price_event_id
   FROM public.product_prices p
   WHERE p.tenant_id = _tenant_id
     AND p.product_id = _product_id
@@ -644,7 +658,10 @@ BEGIN
     'rule_id', _rule.id,
     'rule_scope', _rule_scope,
     'cost_source', _cost_source,
-    'current_selling_price_fils', _current_price_fils
+    'cost_event_id', _cost_event_id,
+    'selling_price_event_id', _price_event_id,
+    'category_id', _product.category_id,
+    'current_selling_price_fils', _current_price_fils::text
   );
 END
 $$;
@@ -734,7 +751,7 @@ BEGIN
   );
 
   _result := _preview || jsonb_build_object(
-    'applied_price_fils', _applied_price_fils,
+    'applied_price_fils', _applied_price_fils::text,
     'pricing_operation_id', _operation_id,
     'financial_operation_id', _financial_operation_id
   );
