@@ -4,7 +4,7 @@
 
 **Goal:** Add a production-safe Bahrain supermarket pricing-policy engine that calculates exact selling-price recommendations from historical/current exact-fils cost and applies them only through explicit authorized commands.
 
-**Architecture:** Reuse the canonical product-financial authority introduced by PR #24. Pricing rules are historical effective-dated records with deterministic precedence; preview is read-only; explicit apply validates the cost snapshot and invokes the existing authoritative selling-price command so price history remains canonical. No policy activation automatically changes a completed or current product price.
+**Architecture:** Reuse the canonical product-financial authority introduced by PR #24. Pricing rules are historical effective-dated records with deterministic precedence; preview is read-only; explicit bounded batch apply validates the complete reviewed cost, current-price and policy snapshot before invoking the existing authoritative selling-price command. No policy activation automatically changes a completed or current product price.
 
 **Tech Stack:** PostgreSQL/Supabase migrations and RLS, React + TypeScript + Vite, existing exact BHD money helpers, GitHub Actions, Vitest/Node database contract tests.
 
@@ -37,7 +37,7 @@
 - [x] Write database contract tests for calculation, rule precedence, authorization, preview, explicit apply, stale-cost rejection, idempotency, audit, RLS, history integration and manual override preservation.
 - [x] Wire the test script into `package.json`.
 - [x] Add the pricing gate immediately after product-financial-history in CI.
-- [ ] Open a draft PR and capture expected RED exact-head CI.
+- [x] Open draft PR #25 and capture initial RED CI #264, category-inheritance RED #268, and approval-bypass RED #269.
 
 ### Task 2: Implement Server-Authoritative Pricing Engine
 
@@ -52,17 +52,17 @@
 - Produces: `apply_product_pricing_policy_v1(uuid,uuid,uuid,sales_channel,bigint,text,text) -> jsonb`.
 - Consumes: `set_product_selling_price_v1` for canonical selling-price mutation/history.
 
-- [ ] Create effective-dated `pricing_policy_rules` with structural tenant/branch/category/product foreign keys and deterministic valid-scope checks.
-- [ ] Create `pricing_policy_operations` with stable operation IDs, request hashes, stored results and replay protection.
-- [ ] Enable RLS and grant read-only rule visibility by legitimate tenant/branch role; deny authenticated direct mutation of rules and operations.
-- [ ] Implement exact rational markup calculation and deterministic 25-fils nearest-half-up/ceil rounding without floating-point authority.
-- [ ] Implement deterministic precedence: product+branch → product → category+branch when supported → category → branch → tenant → system default.
-- [ ] Enforce tenant-wide roles for tenant-global rule mutation and branch roles only for their branch-local rule mutation.
-- [ ] Implement effective-dated activation/deactivation preserving historical rule evidence.
-- [ ] Implement non-mutating preview returning cost, markup, raw numerator/denominator, rounded price, rule ID/scope and current price context.
-- [ ] Implement explicit apply with fresh-cost equality check, separate idempotency ledger, canonical price-history command invocation and immutable audit event.
-- [ ] Ensure manual price override remains authoritative until another explicit policy apply.
-- [ ] Run the focused pricing database gate and correct only proven failures.
+- [x] Create effective-dated `pricing_policy_rules` with structural tenant/branch/category/product foreign keys and deterministic valid-scope checks.
+- [x] Create `pricing_policy_operations` with bounded stable operation IDs, request hashes, stored results and replay protection.
+- [x] Enable RLS and grant read-only rule visibility by legitimate tenant/branch role; deny authenticated direct mutation of rules and operations.
+- [x] Implement exact rational markup calculation and deterministic 25-fils nearest-half-up/ceil rounding without floating-point authority.
+- [x] Implement deterministic precedence: product+branch → product → category+branch → category → branch → tenant → system default.
+- [x] Enforce tenant-wide roles for tenant-global rule mutation and branch roles only for their branch-local rule mutation.
+- [x] Implement effective-dated activation/deactivation preserving historical rule and before/after audit evidence.
+- [x] Implement bounded non-mutating preview returning exact calculation, cost/price source IDs, rule scope, actor, and authoritative timestamp.
+- [x] Implement atomic reviewed-batch apply with full stale-snapshot validation, idempotency, canonical price history and immutable audit.
+- [x] Ensure manual price override remains authoritative until another explicit policy apply.
+- [x] Run focused pricing database gates, including genuine overlapping PostgreSQL sessions.
 
 ### Task 3: Add Manager Pricing Operations UI
 
@@ -77,12 +77,12 @@
 - Consumes: pricing preview/rule/apply RPCs.
 - Produces: manager-facing policy configuration, explainable preview and explicit Apply Repricing controls.
 
-- [ ] Add typed client wrappers that generate stable operation IDs and never write price tables directly.
-- [ ] Add owner/admin/manager pricing route and navigation.
-- [ ] Render default/branch/category/product rule controls with exact markup/increment/mode display.
-- [ ] Render explainable repricing preview with cost, markup, raw calculation, rounded price, applied rule and price difference.
-- [ ] Require explicit user action for each pricing mutation/apply and surface stale-cost/server authorization failures.
-- [ ] Add component/client regression tests proving preview does not mutate and apply goes through the authoritative RPC.
+- [x] Add typed client wrappers that retain stable operation IDs for uncertain-result retries and never write price tables directly.
+- [x] Add owner/admin/manager pricing route and navigation.
+- [x] Render default/branch/category/product rule controls with exact markup/increment/mode display.
+- [x] Render explainable preview with cost, markup, raw target, rounding adjustment, final price, difference, source and applied rule.
+- [x] Require explicit user action for every pricing mutation/apply and surface stale/server authorization failures.
+- [x] Add component/client tests proving preview does not mutate and apply uses the authoritative reviewed-batch RPC.
 
 ### Task 4: Reconcile Existing Production Evidence
 
@@ -90,10 +90,10 @@
 - Modify: `docs/PRODUCTION_PROGRAM.md`
 - Modify: `docs/production-readiness/BURN_DOWN.md`
 
-- [ ] Mark multiple barcodes/collision handling VERIFIED COMPLETE from PR #23 evidence.
-- [ ] Mark product price history and cost history/historical COGS VERIFIED COMPLETE from PR #24 evidence.
-- [ ] Record exact PR #23/#24 branch, merge and post-merge CI evidence.
-- [ ] Keep Bahrain pricing policy unchecked until its own merge and post-merge verification complete.
+- [x] Mark multiple barcodes/collision handling VERIFIED COMPLETE from PR #23 evidence.
+- [x] Mark product price history and cost history/historical COGS VERIFIED COMPLETE from PR #24 evidence.
+- [x] Record exact PR #23/#24 branch, merge and post-merge CI evidence.
+- [x] Keep Bahrain pricing policy unchecked until its own merge and post-merge verification complete.
 
 ### Task 5: Exact-Head Integration and Merge
 

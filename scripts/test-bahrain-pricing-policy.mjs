@@ -182,7 +182,7 @@ const applyBase = (expectedCost, operationId) => `SELECT public.apply_product_pr
 )`;
 expectReject("cost-only apply cannot bypass preview approval", I.tenantManagerA, applyBase(1000, "pricing-unsafe-apply-131"), /permission/i);
 const quote = (value) => `'${JSON.stringify(value).replaceAll("'", "''")}'::jsonb`;
-const preview = (product = I.productA, branch = null) => jsonAsUser(I.tenantManagerA,
+const preview = (product = I.productA, branch = null, actor = I.tenantManagerA) => jsonAsUser(actor,
   `SELECT public.preview_product_pricing_v1('${I.tenantA}','${product}',${branch ? `'${branch}'` : 'NULL'},NULL)`);
 const batch = (previews, operationId, branch = null) => `SELECT public.apply_pricing_batch_v1(
   '${I.tenantA}',${branch ? `'${branch}'` : 'NULL'},NULL,${quote(previews)},'Explicit manager repricing','${operationId}')`;
@@ -198,12 +198,18 @@ assertEqual("apply replay is stable", JSON.stringify(replay), JSON.stringify(app
 assertEqual("price history records explicit policy apply exactly once", scalar(`SELECT count(*)::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND operation_id='${applied.financial_operation_id}';`), "1");
 assertEqual("policy apply audit exactly once", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='catalogue.pricing_policy_applied' AND entity_id='${I.productA}'::uuid;`), "1");
 
+const crossActorBranchPreview = preview(I.productA, I.branchA);
+expectReject("a preview is bound to the manager who reviewed it", I.branchManagerA,
+  batch([crossActorBranchPreview], 'pricing-cross-actor-apply-131', I.branchA), /stale/i);
+const branchManagerPreview = preview(I.productA, I.branchA, I.branchManagerA);
 const branchApply = jsonAsUser(
   I.branchManagerA,
-  batch([preview(I.productA, I.branchA)], 'pricing-branch-apply-131', I.branchA)
+  batch([branchManagerPreview], 'pricing-branch-apply-131', I.branchA)
 );
 assertEqual("branch apply uses product+branch override", branchApply[0].rule_scope, "product_branch");
 assertEqual("branch policy writes local price", scalar(`SELECT local_price_fils::text FROM public.branch_products WHERE tenant_id='${I.tenantA}'::uuid AND branch_id='${I.branchA}'::uuid AND product_id='${I.productA}'::uuid;`), "1500");
+assertEqual("branch apply audit records the approving manager", scalar(`SELECT user_id::text FROM public.audit_logs WHERE tenant_id='${I.tenantA}'::uuid AND action='catalogue.pricing_batch_applied' AND metadata->>'operation_id'='pricing-branch-apply-131'`), I.branchManagerA);
+assertEqual("branch apply audit preserves server preview provenance", scalar(`SELECT metadata#>>'{approved_previews,0,previewed_by}' FROM public.audit_logs WHERE tenant_id='${I.tenantA}'::uuid AND action='catalogue.pricing_batch_applied' AND metadata->>'operation_id'='pricing-branch-apply-131'`), I.branchManagerA);
 expectReject("branch manager cannot apply another branch", I.branchManagerA,
   batch([preview(I.productA, I.branchA2)], 'pricing-wrong-branch-apply-131', I.branchA2));
 
