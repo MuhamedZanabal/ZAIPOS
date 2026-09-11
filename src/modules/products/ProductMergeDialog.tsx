@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  createProductMergeOperationId,
   mergeDuplicateProduct,
   previewProductMerge,
   type ProductMergePreview,
@@ -116,12 +115,13 @@ export function ProductMergeDialog({
     setMerging(true);
     setError(null);
     try {
+      const operationId = `product-merge-${crypto.randomUUID()}`;
       await mergeDuplicateProduct(
         tenantId,
         sourceProduct.id,
         canonicalProductId,
         reason.trim(),
-        createProductMergeOperationId(),
+        operationId,
       );
       await onMerged();
       onOpenChange(false);
