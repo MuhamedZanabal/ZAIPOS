@@ -99,7 +99,15 @@ if (unclassified.length || stalePolicy.length || invalidClassifications.length) 
 const normalizedFunctionDefinition = (signature) => scalar(`
   SELECT regexp_replace(pg_get_functiondef('${signature}'::regprocedure), E'\\\\s+', ' ', 'g');
 `).toLowerCase();
-const previewDefinition = normalizedFunctionDefinition("public.preview_product_merge_v1(uuid,uuid,uuid)");
+
+// The hardening migration deliberately wraps the original preview function: the
+// private base retains the existing state-dependent blockers while the public
+// wrapper adds newly classified live catalogue blockers. Audit both authoritative
+// layers so refactoring the RPC does not create a false coverage failure.
+const previewDefinition = [
+  normalizedFunctionDefinition("public.preview_product_merge_v1(uuid,uuid,uuid)"),
+  normalizedFunctionDefinition("public.preview_product_merge_base_v1(uuid,uuid,uuid)"),
+].join(" ");
 const mergeDefinition = normalizedFunctionDefinition("public.merge_duplicate_product_v1(uuid,uuid,uuid,text,text)");
 
 const rowsByIdentity = new Map(manifest.map((row) => [row.identity, row]));
