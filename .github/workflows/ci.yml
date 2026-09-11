@@ -132,7 +132,22 @@ jobs:
           retention-days: 2
 
       - name: Audit duplicate merge product references
-        run: node scripts/test-product-merge-reference-safety.mjs
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-product-merge-reference-safety.mjs > product-reference-audit.log 2>&1
+          status=$?
+          cat product-reference-audit.log
+          exit "$status"
+
+      - name: Preserve product reference audit diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-reference-audit-${{ github.sha }}
+          path: product-reference-audit.log
+          if-no-files-found: error
+          retention-days: 2
 
       - name: Test POS transaction and hardware E2E
         run: npx vitest run src/modules/pos/POS.transaction-e2e.test.tsx
