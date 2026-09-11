@@ -44,34 +44,93 @@ const identity = (row) => `${row.schema}.${row.table}.${row.constraint}[${row.co
 const manifest = rows.map((row) => ({ ...row, identity: identity(row) }));
 process.stdout.write(`PRODUCT_FK_MANIFEST=${JSON.stringify(manifest)}\n`);
 
-// RED diagnostic contract: the previous table-level policy is intentionally retained
-// only long enough to expose every exact FK identity produced by the fully migrated
-// PostgreSQL schema. A table-level key is unsafe because one table may contain multiple
-// product references with different merge semantics. This commit must remain red until
-// the exact-reference policy replaces it.
-const legacyTableClassifications = new Map([
-  ["inventory_stocks", "transferred"],
-  ["inventory_movements", "historical"],
-  ["sale_items", "historical"],
-  ["product_barcodes", "transferred"],
-  ["product_prices", "historical"],
-  ["product_financial_operations", "historical"],
-  ["product_merge_aliases", "merge_ledger"],
-  ["product_merge_operations", "merge_ledger"],
+const POLICY = Object.freeze({
+  HISTORICAL_RETAIN: "HISTORICAL_RETAIN",
+  TRANSFER_TO_CANONICAL: "TRANSFER_TO_CANONICAL",
+  BLOCK_WHILE_ACTIVE: "BLOCK_WHILE_ACTIVE",
+  STATE_DEPENDENT: "STATE_DEPENDENT",
+});
+
+// Every FK to products is classified by exact schema/table/constraint/column identity.
+// This is deliberately not table-level: several tables carry multiple product roles.
+const exactReferencePolicy = new Map([
+  ["public.digital_order_items.digital_order_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.held_cart_items.held_cart_items_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
+  ["public.inventory_movements.inventory_movements_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.inventory_stocks.inventory_stocks_product_id_fkey[product_id]", POLICY.TRANSFER_TO_CANONICAL],
+  ["public.modifier_groups.modifier_groups_product_id_fkey[product_id]", POLICY.BLOCK_WHILE_ACTIVE],
+  ["public.price_override_requests.price_override_requests_tenant_product_fkey[tenant_id,product_id]", POLICY.STATE_DEPENDENT],
+  ["public.pricing_policy_operations.pricing_policy_operations_tenant_product_fkey[tenant_id,product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.pricing_policy_rules.pricing_policy_rules_tenant_product_fkey[tenant_id,product_id]", POLICY.BLOCK_WHILE_ACTIVE],
+  ["public.product_barcode_conflicts.product_barcode_conflicts_candidate_fkey[tenant_id,candidate_product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_barcode_conflicts.product_barcode_conflicts_existing_fkey[tenant_id,conflicting_product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_barcode_operations.product_barcode_operations_product_fkey[tenant_id,product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_barcodes.product_barcodes_tenant_product_fkey[tenant_id,product_id]", POLICY.TRANSFER_TO_CANONICAL],
+  ["public.product_complementaries.product_complementaries_complementary_id_fkey[complementary_id]", POLICY.BLOCK_WHILE_ACTIVE],
+  ["public.product_complementaries.product_complementaries_product_id_fkey[product_id]", POLICY.BLOCK_WHILE_ACTIVE],
+  ["public.product_components.product_components_component_product_id_fkey[component_product_id]", POLICY.BLOCK_WHILE_ACTIVE],
+  ["public.product_components.product_components_parent_product_id_fkey[parent_product_id]", POLICY.BLOCK_WHILE_ACTIVE],
+  ["public.product_financial_operations.product_financial_operations_tenant_product_fkey[tenant_id,product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_merge_aliases.product_merge_aliases_canonical_fkey[tenant_id,canonical_product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_merge_aliases.product_merge_aliases_source_fkey[tenant_id,source_product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_merge_operations.product_merge_operations_canonical_fkey[tenant_id,canonical_product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_merge_operations.product_merge_operations_source_fkey[tenant_id,source_product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_prices.product_prices_tenant_product_fkey[tenant_id,product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.production_consumptions.production_consumptions_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.production_orders.production_orders_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
+  ["public.purchase_order_items.purchase_order_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.sale_items.sale_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.sale_return_items.sale_return_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.sale_void_items.sale_void_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
 ]);
 
-const unclassified = manifest.filter((row) => !legacyTableClassifications.has(row.table));
-const refsByTable = new Map();
-for (const row of manifest) {
-  const key = `${row.schema}.${row.table}`;
-  refsByTable.set(key, [...(refsByTable.get(key) ?? []), row.identity]);
-}
-const ambiguousTablePolicies = [...refsByTable.entries()]
-  .filter(([, refs]) => refs.length > 1)
-  .map(([table, refs]) => ({ table, refs }));
+const manifestIds = new Set(manifest.map((row) => row.identity));
+const unclassified = manifest.filter((row) => !exactReferencePolicy.has(row.identity));
+const stalePolicy = [...exactReferencePolicy.keys()].filter((id) => !manifestIds.has(id));
+const invalidClassifications = [...exactReferencePolicy.entries()].filter(([, classification]) => !Object.values(POLICY).includes(classification));
 
-throw new Error(
-  `Exact product-reference policy required. ` +
-  `unclassified=${JSON.stringify(unclassified)} ` +
-  `multi_reference_tables=${JSON.stringify(ambiguousTablePolicies)}`,
-);
+if (unclassified.length || stalePolicy.length || invalidClassifications.length) {
+  throw new Error(
+    `Product FK policy drift. unclassified=${JSON.stringify(unclassified)} ` +
+    `stale=${JSON.stringify(stalePolicy)} invalid=${JSON.stringify(invalidClassifications)}`,
+  );
+}
+
+const normalizedFunctionDefinition = (signature) => scalar(`
+  SELECT regexp_replace(pg_get_functiondef('${signature}'::regprocedure), E'\\\\s+', ' ', 'g');
+`).toLowerCase();
+const previewDefinition = normalizedFunctionDefinition("public.preview_product_merge_v1(uuid,uuid,uuid)");
+const mergeDefinition = normalizedFunctionDefinition("public.merge_duplicate_product_v1(uuid,uuid,uuid,text,text)");
+
+const rowsByIdentity = new Map(manifest.map((row) => [row.identity, row]));
+const tablesFor = (classification) => [...new Set(
+  [...exactReferencePolicy.entries()]
+    .filter(([, value]) => value === classification)
+    .map(([id]) => rowsByIdentity.get(id)?.table)
+    .filter(Boolean),
+)];
+
+// Any live/state-dependent relationship must participate in the server-side preview
+// gate; otherwise a merge could strand live mutable state on an inactive source product.
+const missingBlockerCoverage = [
+  ...tablesFor(POLICY.BLOCK_WHILE_ACTIVE),
+  ...tablesFor(POLICY.STATE_DEPENDENT),
+].filter((table) => !previewDefinition.includes(table.toLowerCase()));
+
+// Any mutable state declared transferable must participate in the authoritative merge.
+const missingTransferCoverage = tablesFor(POLICY.TRANSFER_TO_CANONICAL)
+  .filter((table) => !mergeDefinition.includes(table.toLowerCase()));
+
+if (missingBlockerCoverage.length || missingTransferCoverage.length) {
+  throw new Error(
+    `Product merge policy is classified but not enforced. ` +
+    `missing_blocker_coverage=${JSON.stringify(missingBlockerCoverage)} ` +
+    `missing_transfer_coverage=${JSON.stringify(missingTransferCoverage)}`,
+  );
+}
+
+const counts = Object.fromEntries(Object.values(POLICY).map((classification) => [
+  classification,
+  [...exactReferencePolicy.values()].filter((value) => value === classification).length,
+]));
+process.stdout.write(`PRODUCT_FK_POLICY=${JSON.stringify({ counts, references: Object.fromEntries(exactReferencePolicy) })}\n`);
