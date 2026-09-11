@@ -11,10 +11,27 @@ function scalar(statement) {
 
 const rows = JSON.parse(scalar(`
   SELECT COALESCE(json_agg(json_build_object(
+    'schema', child_ns.nspname,
     'table', child.relname,
     'constraint', con.conname,
+    'columns', ARRAY(
+      SELECT att.attname
+      FROM unnest(con.conkey) WITH ORDINALITY AS key(attnum, ordinality)
+      JOIN pg_attribute att
+        ON att.attrelid = con.conrelid
+       AND att.attnum = key.attnum
+      ORDER BY key.ordinality
+    ),
+    'referenced_columns', ARRAY(
+      SELECT att.attname
+      FROM unnest(con.confkey) WITH ORDINALITY AS key(attnum, ordinality)
+      JOIN pg_attribute att
+        ON att.attrelid = con.confrelid
+       AND att.attnum = key.attnum
+      ORDER BY key.ordinality
+    ),
     'definition', pg_get_constraintdef(con.oid)
-  ) ORDER BY child.relname, con.conname), '[]'::json)::text
+  ) ORDER BY child_ns.nspname, child.relname, con.conname), '[]'::json)::text
   FROM pg_constraint con
   JOIN pg_class child ON child.oid = con.conrelid
   JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
@@ -23,11 +40,16 @@ const rows = JSON.parse(scalar(`
     AND child_ns.nspname = 'public';
 `));
 
-// Each direct FK into products must be deliberately classified before product merge
-// can be considered safe. "transferred" means the merge command moves mutable state;
-// "historical" means IDs intentionally remain immutable; "merge_ledger" is the alias/
-// operation evidence that defines the consolidation itself. New constraints fail closed.
-const classifications = new Map([
+const identity = (row) => `${row.schema}.${row.table}.${row.constraint}[${row.columns.join(",")}]`;
+const manifest = rows.map((row) => ({ ...row, identity: identity(row) }));
+process.stdout.write(`PRODUCT_FK_MANIFEST=${JSON.stringify(manifest)}\n`);
+
+// RED diagnostic contract: the previous table-level policy is intentionally retained
+// only long enough to expose every exact FK identity produced by the fully migrated
+// PostgreSQL schema. A table-level key is unsafe because one table may contain multiple
+// product references with different merge semantics. This commit must remain red until
+// the exact-reference policy replaces it.
+const legacyTableClassifications = new Map([
   ["inventory_stocks", "transferred"],
   ["inventory_movements", "historical"],
   ["sale_items", "historical"],
@@ -38,9 +60,18 @@ const classifications = new Map([
   ["product_merge_operations", "merge_ledger"],
 ]);
 
-const unclassified = rows.filter((row) => !classifications.has(row.table));
-if (unclassified.length > 0) {
-  throw new Error(`Unclassified product reference constraints: ${JSON.stringify(unclassified)}`);
+const unclassified = manifest.filter((row) => !legacyTableClassifications.has(row.table));
+const refsByTable = new Map();
+for (const row of manifest) {
+  const key = `${row.schema}.${row.table}`;
+  refsByTable.set(key, [...(refsByTable.get(key) ?? []), row.identity]);
 }
+const ambiguousTablePolicies = [...refsByTable.entries()]
+  .filter(([, refs]) => refs.length > 1)
+  .map(([table, refs]) => ({ table, refs }));
 
-process.stdout.write(`Product merge FK safety PASS: ${rows.length} product-reference constraints are explicitly classified.\n`);
+throw new Error(
+  `Exact product-reference policy required. ` +
+  `unclassified=${JSON.stringify(unclassified)} ` +
+  `multi_reference_tables=${JSON.stringify(ambiguousTablePolicies)}`,
+);
