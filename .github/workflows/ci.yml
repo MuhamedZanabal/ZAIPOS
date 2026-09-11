@@ -171,7 +171,22 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm run test
+        shell: bash
+        run: |
+          set +e
+          npm run test > vitest-test.log 2>&1
+          status=$?
+          cat vitest-test.log
+          exit "$status"
+
+      - name: Preserve Vitest failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-failure-${{ github.sha }}
+          path: vitest-test.log
+          if-no-files-found: error
+          retention-days: 2
 
       - name: Build
         run: npm run build
