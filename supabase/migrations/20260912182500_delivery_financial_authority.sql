@@ -25,7 +25,7 @@ ALTER TABLE public.delivery_orders
 CREATE TABLE IF NOT EXISTS public.delivery_operations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  branch_id uuid NOT NULL REFERENCES public.branches(id) ON DELETE RESTRICT,
+  branch_id uuid NOT NULL,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   client_mutation_id text NOT NULL,
   request_payload jsonb NOT NULL,
@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS public.delivery_operations (
   created_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz,
   UNIQUE (tenant_id, client_mutation_id),
+  CONSTRAINT delivery_operations_tenant_branch_fkey
+    FOREIGN KEY (tenant_id, branch_id)
+    REFERENCES public.branches(tenant_id, id)
+    ON DELETE RESTRICT,
   CHECK (length(trim(client_mutation_id)) >= 8),
   CHECK (
     (status = 'processing' AND delivery_order_id IS NULL AND completed_at IS NULL)
