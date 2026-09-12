@@ -1,0 +1,70 @@
+name: Supplier Subledger Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-supplier-subledger.mjs"
+      - "scripts/test-supplier-subledger-postgres.mjs"
+      - "scripts/test-supplier-subledger-branch-cutover-postgres.mjs"
+      - ".github/workflows/supplier-subledger-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-supplier-subledger.mjs"
+      - "scripts/test-supplier-subledger-postgres.mjs"
+      - "scripts/test-supplier-subledger-branch-cutover-postgres.mjs"
+      - ".github/workflows/supplier-subledger-contract.yml"
+
+jobs:
+  supplier-subledger-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Verify supplier subledger static contract
+        run: node scripts/test-supplier-subledger.mjs
+      - name: Apply production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify supplier subledger runtime contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-supplier-subledger-postgres.mjs > supplier-subledger-runtime.log 2>&1
+          status=$?
+          cat supplier-subledger-runtime.log
+          exit "$status"
+      - name: Verify future branch supplier cutover
+        run: node scripts/test-supplier-subledger-branch-cutover-postgres.mjs
+      - name: Preserve supplier subledger runtime diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-subledger-runtime-${{ github.sha }}
+          path: supplier-subledger-runtime.log
+          if-no-files-found: ignore
+          retention-days: 2
