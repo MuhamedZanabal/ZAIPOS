@@ -10,14 +10,14 @@ Add a read-only, server-authoritative branch alert feed from persisted ZAIPOS ev
 2. `low_stock`: active product branch stock is `> 0` and `<= products.min_stock`.
 3. `expired_lot_stock`: lot-controlled physical stock has `quantity_remaining > 0` and `expiry_date < as_of::date`.
 4. `expiry_due`: lot-controlled physical stock has `quantity_remaining > 0` and `expiry_date` from `as_of::date` through the explicit caller-supplied expiry horizon.
-5. `cash_variance`: a closed cash session inside the lookback window has immutable `difference_fils <> 0`.
+5. `cash_variance`: a closed cash session inside the explicit caller-supplied cash lookback has immutable `difference_fils <> 0`.
 
 ## Authority and safety invariants
 
 - Source only persisted PostgreSQL evidence; no AI-estimated metric or fabricated confidence.
 - Tenant and branch access remains server-authoritative.
 - Money evidence is integer fils only.
-- Expiry horizon is explicit input, validated to 0..365 days; no hidden business threshold.
+- Expiry horizon and cash lookback are explicit inputs, each validated to 0..365 days; no hidden business threshold.
 - Cash variance uses immutable closed-session exact-fils evidence.
 - Alerts carry source entity IDs and source timestamps/dates sufficient for operator verification.
 - Function is `STABLE`, read-only and `SECURITY DEFINER` with a fixed search path.
