@@ -66,7 +66,10 @@ interface OperationalAlertFeed {
   scope: {
     tenant_id: string;
     branch_id: string;
-    as_of_date: string;
+    as_of: string;
+    as_of_date_bahrain: string;
+    expiry_horizon_days: number;
+    cash_lookback_days: number;
   };
   evidence: {
     source_type: string;
@@ -80,23 +83,22 @@ interface OperationalAlertFeed {
 
 const filsToBhd = (fils: number | null | undefined) => (fils ?? 0) / 1000;
 
-function bahrainDateKey(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Bahrain",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${value.year}-${value.month}-${value.day}`;
-}
-
 function evidenceSummary(evidence: Record<string, unknown>) {
   return Object.entries(evidence)
     .filter(([, value]) => value !== null && value !== undefined)
     .slice(0, 4)
     .map(([key, value]) => `${key.replaceAll("_", " ")}: ${String(value)}`)
     .join(" · ");
+}
+
+function operationalAlertEvidence(alert: OperationalAlert) {
+  if (alert.type === "cash_variance" && typeof alert.evidence.difference_fils === "number") {
+    const closedAt = typeof alert.evidence.closed_at === "string"
+      ? ` · closed ${new Date(alert.evidence.closed_at).toLocaleString("en-BH")}`
+      : "";
+    return `Exact cash variance: ${formatCurrency(filsToBhd(alert.evidence.difference_fils))}${closedAt}`;
+  }
+  return evidenceSummary(alert.evidence);
 }
 
 export default function AIAgent() {
@@ -157,9 +159,11 @@ export default function AIAgent() {
     setAlertsLoading(true);
     setAlertsError(null);
     try {
-      const { data, error: alertReadError } = await (supabase as any).rpc("get_branch_operational_alerts_v1", {
-        p_branch_id: branchId,
-        p_as_of_date: bahrainDateKey(),
+      const { data, error: alertReadError } = await (supabase as any).rpc("get_operational_alerts_v1", {
+        _branch_id: branchId,
+        _as_of: new Date().toISOString(),
+        _expiry_horizon_days: 30,
+        _cash_lookback_days: 7,
       });
       if (alertReadError) throw alertReadError;
       const feed = data as OperationalAlertFeed | null;
@@ -330,7 +334,7 @@ export default function AIAgent() {
           <div className="orb grid h-10 w-10 place-items-center"><AlertTriangle className="h-5 w-5" /></div>
           <div>
             <h2 id="operational-alerts-title" className="text-lg font-semibold">Operational alerts</h2>
-            <p className="text-xs text-muted-foreground">Source-backed branch conditions from persisted inventory and lot evidence.</p>
+            <p className="text-xs text-muted-foreground">Source-backed branch conditions from persisted inventory, lot and exact-fils closed-register evidence.</p>
           </div>
           <button
             type="button"
@@ -367,7 +371,7 @@ export default function AIAgent() {
                   </div>
                   <span className={`pill ${alert.severity === "critical" ? "pill-danger" : ""}`}>{alert.severity}</span>
                 </div>
-                <div className="mt-3 text-xs text-muted-foreground">{evidenceSummary(alert.evidence)}</div>
+                <div className="mt-3 text-xs text-muted-foreground">{operationalAlertEvidence(alert)}</div>
               </article>
             ))}
           </div>
