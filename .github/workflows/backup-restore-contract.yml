@@ -52,13 +52,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Ensure PostgreSQL client
+      - name: Ensure PostgreSQL 17 client
         shell: bash
         run: |
           set -euo pipefail
-          command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
           pg_dump --version
           pg_restore --version
+          psql --version
+          pg_dump --version | grep -Eq 'PostgreSQL\) 17\.'
 
       - name: Apply and validate production migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
