@@ -26,7 +26,7 @@ function psql(args, capture = true) {
     throw new Error(`Inventory lot runtime failed during phase ${currentPhase}: ${stderr}`, { cause: error });
   }
 }
-function sql(statement) { return psql(["-c", statement], false); }
+function sql(statement) { return psql(["-c", statement]); }
 function scalar(statement) { return psql(["-Atq", "-c", statement]).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? ""; }
 function asUser(statement) {
   return scalar(`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${I.manager}'; ${statement}; COMMIT;`);
