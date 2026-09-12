@@ -4,7 +4,7 @@ const source = readFileSync(new URL("../src/modules/ai-agent/AIAgent.tsx", impor
 
 const requiredPatterns = [
   [/\.from\(["']ai_action_requests["']\)/, "AI review UI must read the authoritative approval queue"],
-  [/\.eq\(["']branch_id["'],\s*branchId/, "AI review UI must scope queue reads to the selected branch"],
+  [/\.from\(["']ai_action_requests["']\)[\s\S]{0,600}?\.eq\(["']branch_id["'],\s*branchId/, "AI review UI must scope queue reads to the selected branch"],
   [/review_ai_action_v1/, "AI review UI must use the server-authoritative review RPC"],
   [/p_request_id/, "AI review UI must bind reviews to a request ID"],
   [/p_approve/, "AI review UI must explicitly bind approve vs reject"],
@@ -25,9 +25,9 @@ const forbiddenPatterns = [
   [/request_ai_action_v1/, "This slice must not add a client-side AI request producer"],
   [/ai_quote_order/, "Approval UI must not restore legacy AI mutation RPCs"],
   [/ai_create_digital_order/, "Approval UI must not restore legacy AI mutation RPCs"],
-  [/\.from\(["']ai_action_requests["']\)\s*\.update\(/s, "Approval UI must not directly update approval rows"],
-  [/\.from\(["']ai_action_requests["']\)\s*\.insert\(/s, "Approval UI must not directly insert approval rows"],
-  [/\.from\(["']ai_action_requests["']\)\s*\.delete\(/s, "Approval UI must not directly delete approval rows"],
+  [/\.from\(["']ai_action_requests["']\)[\s\S]{0,160}?\.update\(/, "Approval UI must not directly update approval rows"],
+  [/\.from\(["']ai_action_requests["']\)[\s\S]{0,160}?\.insert\(/, "Approval UI must not directly insert approval rows"],
+  [/\.from\(["']ai_action_requests["']\)[\s\S]{0,160}?\.delete\(/, "Approval UI must not directly delete approval rows"],
 ];
 
 for (const [pattern, message] of forbiddenPatterns) {
