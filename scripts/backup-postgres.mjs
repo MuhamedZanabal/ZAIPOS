@@ -28,6 +28,8 @@ try {
   execFileSync(
     "pg_dump",
     [
+      "--dbname",
+      databaseUrl,
       "--format=custom",
       "--data-only",
       "--schema=public",
@@ -37,7 +39,7 @@ try {
       archivePath,
     ],
     {
-      env: { ...process.env, PGDATABASE: databaseUrl },
+      env: { ...process.env },
       stdio: "inherit",
     },
   );
