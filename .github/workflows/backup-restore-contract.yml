@@ -64,4 +64,20 @@ jobs:
         run: node scripts/test-production-migration-chain-supabase.mjs
 
       - name: Test backup and restore round-trip
-        run: node scripts/test-backup-restore-contract.mjs
+        id: backup_restore_contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-backup-restore-contract.mjs > backup-restore-contract.log 2>&1
+          status=$?
+          cat backup-restore-contract.log
+          exit "$status"
+
+      - name: Preserve backup/restore failure diagnostics
+        if: failure() && steps.backup_restore_contract.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-restore-failure-${{ github.sha }}
+          path: backup-restore-contract.log
+          if-no-files-found: error
+          retention-days: 2
