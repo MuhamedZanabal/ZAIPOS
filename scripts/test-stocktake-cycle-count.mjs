@@ -29,6 +29,7 @@ for (const marker of [
   "FOR UPDATE",
   "expected_stock_updated_at IS DISTINCT FROM",
   "Inventory changed after this stocktake started",
+  "Lot-controlled products require a lot-level stocktake",
   "reconcile_inventory_levels_v2",
   "finalize_client_mutation_id",
   "inventory_operation_id",
