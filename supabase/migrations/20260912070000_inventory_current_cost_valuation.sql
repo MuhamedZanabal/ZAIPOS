@@ -103,7 +103,7 @@ BEGIN
         AND pp.channel IS NULL
         AND (pp.branch_id = _branch_id OR pp.branch_id IS NULL)
       ORDER BY
-        (pp.branch_id = _branch_id) DESC,
+        (pp.branch_id = _branch_id) DESC NULLS LAST,
         pp.effective_from DESC,
         pp.id DESC
       LIMIT 1
