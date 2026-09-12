@@ -131,5 +131,14 @@ expectReject(
   /permission|denied/i,
 );
 
-assertEqual("catalogue audit emitted", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='supplier.product_catalogue_upserted' AND entity_id='${preferredB}'::uuid;`), "1");
+assertEqual(
+  "preferred supplier update audit emitted exactly once",
+  scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='supplier.product_catalogue_upserted' AND entity_id='${preferredB}'::uuid AND metadata->>'operation_id'='supplier-product-op-120';`),
+  "1",
+);
+assertEqual(
+  "supplier catalogue mutation audit history retained",
+  scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='supplier.product_catalogue_upserted' AND entity_id='${preferredB}'::uuid AND metadata->>'operation_id' IN ('supplier-product-op-112','supplier-product-op-120');`),
+  "2",
+);
 console.log("Supplier product catalogue runtime contract passed.");
