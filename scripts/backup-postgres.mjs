@@ -1,62 +1,55 @@
-import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { assertSupportedSchema, command, connection, databaseIdentity, fileDigest, migrationEvidence, privateDirectory, root, schemaDigest } from "./postgres-recovery.mjs";
 
-function fail(message) {
-  console.error(`ZAIPOS backup failed: ${message}`);
-  process.exit(1);
+async function main() {
+  if (!process.argv[2]) throw new Error("usage: node scripts/backup-postgres.mjs <archive.dump>");
+  if (!process.env.ZAIPOS_DATABASE_URL) throw new Error("ZAIPOS_DATABASE_URL is required");
+  process.umask(0o077);
+  const archive = path.resolve(process.argv[2]);
+  if (/[\r\n]/.test(archive)) throw new Error("archive path cannot contain newlines");
+  privateDirectory(path.dirname(archive));
+  const outputs = [archive, `${archive}.manifest.json`, `${archive}.sha256`];
+  if (outputs.some(existsSync)) throw new Error("backup already exists; refusing overwrite");
+  const lock = `${archive}.lock`;
+  mkdirSync(lock, { mode: 0o700 });
+  const published = [];
+  try {
+    const conn = connection(process.env.ZAIPOS_DATABASE_URL);
+    assertSupportedSchema(conn);
+    const startedAt = new Date().toISOString();
+    const source = databaseIdentity(conn);
+    const schemaSha256 = schemaDigest(conn);
+    const staged = path.join(lock, "archive.dump");
+    command("pg_dump", ["--format=custom", "--data-only", "--schema=public", "--no-owner", "--no-privileges", "--file", staged], conn.env);
+    if (schemaDigest(conn) !== schemaSha256) throw new Error("source schema changed during backup; retry during a migration freeze");
+    const digest = await fileDigest(staged);
+    let gitSha = process.env.GITHUB_SHA ?? null;
+    if (!gitSha) {
+      try { gitSha = command("git", ["-C", root, "rev-parse", "HEAD"], conn.env); } catch { /* recorded as unavailable */ }
+    }
+    const manifest = {
+      formatVersion: 1, status: "complete", startedAt, completedAt: new Date().toISOString(),
+      source, schemaSha256, migrationChain: migrationEvidence(),
+      application: { version: JSON.parse(readFileSync(path.join(root, "package.json"))).version, gitSha },
+      scope: "public-data", externalBoundaries: ["Supabase Auth", "Storage metadata and objects", "platform roles and secrets", "unsynchronized device queues"],
+      artifact: { name: path.basename(archive), format: "postgres-custom", sha256: digest, bytes: statSync(staged).size, permissions: "0600" },
+    };
+    const metadata = path.join(lock, "manifest.json");
+    writeFileSync(metadata, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+    const checksum = path.join(lock, "sha256");
+    writeFileSync(checksum, `${digest}  ${path.basename(archive)}\n${await fileDigest(metadata)}  ${path.basename(archive)}.manifest.json\n`, { mode: 0o600, flag: "wx" });
+    for (const file of [staged, metadata, checksum]) {
+      const fd = openSync(file, "r"); try { fsyncSync(fd); } finally { closeSync(fd); }
+    }
+    for (const [index, file] of [staged, metadata, checksum].entries()) {
+      linkSync(file, outputs[index]); // atomic no-clobber publication, checksum last
+      published.push(outputs[index]);
+    }
+    console.log("ZAIPOS backup complete: archive, manifest and SHA-256 evidence published with owner-only permissions");
+  } catch (error) {
+    for (const file of published) rmSync(file, { force: true });
+    throw error;
+  } finally { rmSync(lock, { recursive: true, force: true }); }
 }
-
-const outputArg = process.argv[2];
-if (!outputArg) fail("usage: node scripts/backup-postgres.mjs <archive.dump>");
-
-const databaseUrl = process.env.ZAIPOS_DATABASE_URL;
-if (!databaseUrl) fail("ZAIPOS_DATABASE_URL is required");
-
-const archivePath = path.resolve(outputArg);
-const checksumPath = `${archivePath}.sha256`;
-if (existsSync(archivePath) || existsSync(checksumPath)) {
-  fail(`backup archive or checksum already exists; refusing overwrite: ${archivePath}`);
-}
-
-// Ensure any files created by pg_dump or this process are owner-only even when the
-// caller has a permissive shell umask. Backups contain production business data.
-process.umask(0o077);
-
-try {
-  execFileSync(
-    "pg_dump",
-    [
-      "--dbname",
-      databaseUrl,
-      "--format=custom",
-      "--data-only",
-      "--schema=public",
-      "--no-owner",
-      "--no-privileges",
-      "--file",
-      archivePath,
-    ],
-    {
-      env: { ...process.env },
-      stdio: "inherit",
-    },
-  );
-
-  chmodSync(archivePath, 0o600);
-  const digest = createHash("sha256").update(readFileSync(archivePath)).digest("hex");
-  writeFileSync(checksumPath, `${digest}  ${path.basename(archivePath)}\n`, {
-    encoding: "utf8",
-    mode: 0o600,
-    flag: "wx",
-  });
-  chmodSync(checksumPath, 0o600);
-
-  const source = process.env.ZAIPOS_BACKUP_SOURCE ?? "unspecified";
-  console.log(`ZAIPOS backup created: ${archivePath}`);
-  console.log(`ZAIPOS backup checksum: ${checksumPath}`);
-  console.log(`ZAIPOS backup source: ${source}`);
-} catch (error) {
-  fail(error instanceof Error ? error.message : String(error));
-}
+main().catch((error) => { console.error(`ZAIPOS backup failed: ${error.code ?? error.message}`); process.exitCode = 1; });
