@@ -792,6 +792,7 @@ export type Database = {
           customer_phone: string | null
           delivered_at: string | null
           delivery_fee: number
+          delivery_fee_fils: number
           id: string
           neighborhood: string | null
           notes: string | null
@@ -812,6 +813,7 @@ export type Database = {
           customer_phone?: string | null
           delivered_at?: string | null
           delivery_fee?: number
+          delivery_fee_fils?: number
           id?: string
           neighborhood?: string | null
           notes?: string | null
@@ -832,6 +834,7 @@ export type Database = {
           customer_phone?: string | null
           delivered_at?: string | null
           delivery_fee?: number
+          delivery_fee_fils?: number
           id?: string
           neighborhood?: string | null
           notes?: string | null
@@ -3087,6 +3090,22 @@ export type Database = {
       }
 
       recalc_table_order: { Args: { _order_id: string }; Returns: undefined }
+      register_delivery_order_v2: {
+        Args: {
+          _tenant_id: string
+          _branch_id: string
+          _items: Json
+          _address: string
+          _delivery_fee_fils: number
+          _client_mutation_id: string
+          _customer_name?: string
+          _customer_phone?: string
+          _neighborhood?: string
+          _customer_id?: string
+          _notes?: string
+        }
+        Returns: string
+      }
       register_delivery_order: {
         Args: {
           _address: string
