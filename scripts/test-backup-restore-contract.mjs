@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { connection, query, schemaDigest, literal } from "./postgres-recovery.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   accessSync,
@@ -15,6 +17,16 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
+const restoreUrl = process.env.POSTGRES_RESTORE_TEST_URL;
+if (process.env.ZAIPOS_RECOVERY_REHEARSAL !== "DISPOSABLE_TEST_DATABASES" || !restoreUrl) {
+  throw new Error("Rehearsal requires two explicitly acknowledged disposable test databases");
+}
+const sourceConnection = connection(dbUrl);
+const targetConnection = connection(restoreUrl);
+if (![sourceConnection, targetConnection].every((c) => ["127.0.0.1", "localhost"].includes(c.env.PGHOST)) || sourceConnection.endpoint === targetConnection.endpoint) {
+  throw new Error("Rehearsal requires distinct local disposable database endpoints");
+}
+let activeUrl = dbUrl;
 const backupScript = path.join(root, "scripts", "backup-postgres.mjs");
 const restoreScript = path.join(root, "scripts", "restore-postgres.mjs");
 const runbook = path.join(root, "docs", "production-readiness", "BACKUP_RESTORE.md");
@@ -53,16 +65,17 @@ const criticalTables = [
   "sale_voids",
   "audit_logs",
   "supplier_ledger_entries",
-  "customer_credit_ledger_entries",
-  "customer_loyalty_ledger_entries",
+  "customer_credit_entries",
+  "customer_loyalty_ledger",
 ];
 
 function psql(statement, { capture = true } = {}) {
   return execFileSync(
     "psql",
-    [dbUrl, "-X", "-v", "ON_ERROR_STOP=1", ...(capture ? ["-Atq"] : []), "-c", statement],
+    ["-X", "-v", "ON_ERROR_STOP=1", ...(capture ? ["-Atq"] : []), "-c", statement],
     {
       cwd: root,
+      env: connection(activeUrl).env,
       encoding: "utf8",
       stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
     },
@@ -101,22 +114,22 @@ function quoteIdentifier(value) {
 }
 
 function existingCriticalTables() {
-  return criticalTables.filter((table) => scalar(`SELECT to_regclass('public.${table}') IS NOT NULL;`) === "t");
+  const tables = JSON.parse(scalar("SELECT COALESCE(json_agg(tablename ORDER BY tablename),'[]') FROM pg_tables WHERE schemaname='public';"));
+  for (const required of criticalTables) {
+    if (!tables.includes(required)) throw new Error(`Required recovery table missing: ${required}`);
+  }
+  return tables;
 }
-
 function tableFingerprint(table) {
-  const quoted = quoteIdentifier(table);
-  return scalar(`
-    SELECT count(*)::text || ':' || md5(COALESCE(string_agg(row_to_json(t)::text, E'\\n' ORDER BY row_to_json(t)::text), ''))
-    FROM public.${quoted} AS t;
-  `);
+  const rows = scalar(`SELECT COALESCE(json_agg(t ORDER BY row_to_json(t)::text),'[]') FROM public.${quoteIdentifier(table)} t;`);
+  return createHash('sha256').update(rows).digest('hex');
 }
-
 function captureManifest() {
   return Object.fromEntries(existingCriticalTables().map((table) => [table, tableFingerprint(table)]));
 }
 
 function truncatePublicData() {
+  if (activeUrl !== restoreUrl) throw new Error("Refusing to truncate the source database");
   const tables = scalar(`
     SELECT COALESCE(string_agg(format('%I.%I', schemaname, tablename), ', ' ORDER BY tablename), '')
     FROM pg_tables
@@ -173,7 +186,16 @@ try {
   assertEqual("fixture cost fils", scalar(`SELECT cost_fils::text FROM public.products WHERE id='${I.product}'`), "825");
   assertEqual("fixture quantity", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE product_id='${I.product}' AND inventory_center_id='${I.center}'`), "7.500");
 
+  // Populate real exact-fils ledger, payable, return/void and replay evidence
+  // using the existing PostgreSQL runtime contracts against the source only.
+  for (const script of ["test-customer-credit-subledger-postgres.mjs", "test-supplier-subledger-postgres.mjs", "test-customer-loyalty-ledger-runtime-postgres.mjs"]) {
+    execFileSync(process.execPath, [path.join(root, "scripts", script)], { env: { ...process.env, POSTGRES_ADMIN_URL: dbUrl }, stdio: "pipe" });
+  }
   const before = captureManifest();
+  for (const table of ["sales", "sale_items", "payments", "supplier_ledger_entries", "customer_credit_entries", "customer_loyalty_ledger", "audit_logs"]) {
+    assertTruthy(`nonempty recovery fixture ${table}`, Number(scalar(`SELECT count(*) FROM public.${table};`)) > 0);
+  }
+  const sourceSchema = schemaDigest(sourceConnection);
   assertTruthy("critical manifest includes products", before.products);
   assertTruthy("critical manifest includes inventory", before.inventory_stocks);
 
@@ -205,6 +227,11 @@ try {
     /already exists|overwrite/i,
   );
 
+  // Auth is an explicit provider boundary. Seed ONLY synthetic auth identities
+  // independently in the recovery provider before restoring public business data.
+  const authIds = JSON.parse(scalar("SELECT json_agg(id::text ORDER BY id) FROM auth.users;"));
+  activeUrl = restoreUrl;
+  for (const id of authIds) psql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES (${literal(id)},${literal(id + '@recovery.test')},'{}') ON CONFLICT(id) DO NOTHING;`);
   truncatePublicData();
   assertEqual("restore target is empty", scalar("SELECT count(*)::text FROM public.tenants;"), "0");
 
@@ -212,13 +239,18 @@ try {
     cwd: root,
     env: {
       ...process.env,
-      ZAIPOS_DATABASE_URL: dbUrl,
+      ZAIPOS_DATABASE_URL: restoreUrl,
+      ZAIPOS_RESTORE_TARGET: targetConnection.endpoint,
       ZAIPOS_RESTORE_CONFIRM: "RESTORE_TO_EMPTY_DATABASE",
     },
     stdio: "inherit",
   });
 
   const after = captureManifest();
+  assertEqual("restored schema and trigger states preserved", schemaDigest(targetConnection), sourceSchema);
+  activeUrl = dbUrl;
+  assertEqual("source untouched by restore rehearsal", JSON.stringify(captureManifest()), JSON.stringify(before));
+  activeUrl = restoreUrl;
   assertEqual("critical data manifest round-trips exactly", JSON.stringify(after), JSON.stringify(before));
   assertEqual("restored fixture selling price fils", scalar(`SELECT price_fils::text FROM public.products WHERE id='${I.product}'`), "1275");
   assertEqual("restored fixture cost fils", scalar(`SELECT cost_fils::text FROM public.products WHERE id='${I.product}'`), "825");
@@ -226,6 +258,7 @@ try {
 
   copyFileSync(archive, tamperedArchive);
   copyFileSync(`${archive}.sha256`, `${tamperedArchive}.sha256`);
+  copyFileSync(`${archive}.manifest.json`, `${tamperedArchive}.manifest.json`);
   const tampered = Buffer.from(readFileSync(tamperedArchive));
   tampered[Math.max(0, tampered.length - 1)] ^= 0xff;
   writeFileSync(tamperedArchive, tampered);
@@ -235,12 +268,35 @@ try {
     process.execPath,
     [restoreScript, tamperedArchive],
     {
-      ZAIPOS_DATABASE_URL: dbUrl,
+      ZAIPOS_DATABASE_URL: restoreUrl,
+      ZAIPOS_RESTORE_TARGET: targetConnection.endpoint,
       ZAIPOS_RESTORE_CONFIRM: "RESTORE_TO_EMPTY_DATABASE",
     },
     /checksum|integrity/i,
   );
 
+  const restoreEnv = { ZAIPOS_DATABASE_URL: restoreUrl, ZAIPOS_RESTORE_TARGET: targetConnection.endpoint, ZAIPOS_RESTORE_CONFIRM: "RESTORE_TO_EMPTY_DATABASE" };
+  expectFailure("explicit confirmation required", process.execPath, [restoreScript, archive], { ...restoreEnv, ZAIPOS_RESTORE_CONFIRM: "" }, /confirmation/i);
+  expectFailure("wrong endpoint rejected", process.execPath, [restoreScript, archive], { ...restoreEnv, ZAIPOS_RESTORE_TARGET: "wrong-target" }, /target identity/i);
+  expectFailure("source target rejected", process.execPath, [restoreScript, archive], { ...restoreEnv, ZAIPOS_DATABASE_URL: dbUrl, ZAIPOS_RESTORE_TARGET: sourceConnection.endpoint }, /source database/i);
+  expectFailure("nonempty target rejected", process.execPath, [restoreScript, archive], restoreEnv, /psql failed/i);
+  assertEqual("failed nonempty restore preserves all rows", JSON.stringify(captureManifest()), JSON.stringify(after));
+  psql("ALTER TABLE public.products ADD COLUMN recovery_schema_mismatch text;");
+  expectFailure("schema mismatch rejected", process.execPath, [restoreScript, archive], restoreEnv, /schema mismatch/i);
+  psql("ALTER TABLE public.products DROP COLUMN recovery_schema_mismatch;");
+  // PostgreSQL retains a dropped attribute internally but pg_dump DDL is identical.
+  truncatePublicData();
+  const empty = captureManifest();
+  psql(`DELETE FROM auth.users WHERE id=${literal(I.user)};`);
+  expectFailure("missing external Auth identity rolls back entire restore", process.execPath, [restoreScript, archive], restoreEnv, /psql failed/i);
+  assertEqual("failed FK restore leaves target empty", JSON.stringify(captureManifest()), JSON.stringify(empty));
+  assertEqual("failed restore rolls back trigger and FK DDL", schemaDigest(targetConnection), sourceSchema);
+  psql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES (${literal(I.user)},'recovery-retry@zaipos.test','{}');`);
+  truncatePublicData(); // remove profile generated by the provider's signup trigger
+  execFileSync(process.execPath, [restoreScript, archive], { cwd: root, env: { ...process.env, ...restoreEnv }, stdio: "inherit" });
+  assertEqual("repeated restore exactly preserves full state", JSON.stringify(captureManifest()), JSON.stringify(before));
+  activeUrl = dbUrl;
+  assertEqual("source still untouched after failure and retry", JSON.stringify(captureManifest()), JSON.stringify(before));
   console.log(`Backup/restore contract passed across ${Object.keys(before).length} critical tables.`);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
