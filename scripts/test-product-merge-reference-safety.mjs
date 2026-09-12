@@ -85,6 +85,7 @@ const exactReferencePolicy = new Map([
   ["public.sale_items.sale_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.sale_return_items.sale_return_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.sale_void_items.sale_void_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.stocktake_items.stocktake_items_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
 ]);
 
 const manifestIds = new Set(manifest.map((row) => row.identity));
