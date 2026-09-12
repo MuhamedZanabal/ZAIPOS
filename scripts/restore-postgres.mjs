@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { once } from "node:events";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -22,6 +23,162 @@ function psql(databaseUrl, statement) {
 
 function quoteIdentifier(value) {
   return `"${String(value).replaceAll('"', '""')}"`;
+}
+
+function parseJsonQuery(databaseUrl, statement) {
+  const value = psql(databaseUrl, statement);
+  return JSON.parse(value || "[]");
+}
+
+async function writeChunk(stream, chunk) {
+  if (stream.write(chunk)) return;
+  await once(stream, "drain");
+}
+
+async function restoreAtomically(databaseUrl, archivePath) {
+  const tables = parseJsonQuery(
+    databaseUrl,
+    `
+      SELECT COALESCE(
+        json_agg(
+          json_build_object('schema', n.nspname, 'table', c.relname)
+          ORDER BY n.nspname, c.relname
+        ),
+        '[]'::json
+      )::text
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relkind IN ('r', 'p');
+    `,
+  );
+
+  const foreignKeys = parseJsonQuery(
+    databaseUrl,
+    `
+      SELECT COALESCE(
+        json_agg(
+          json_build_object(
+            'schema', n.nspname,
+            'table', c.relname,
+            'constraint', con.conname,
+            'definition', pg_get_constraintdef(con.oid, true)
+          )
+          ORDER BY n.nspname, c.relname, con.conname
+        ),
+        '[]'::json
+      )::text
+      FROM pg_constraint con
+      JOIN pg_class c ON c.oid = con.conrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE con.contype = 'f'
+        AND n.nspname = 'public';
+    `,
+  );
+
+  if (tables.length === 0) {
+    throw new Error("target database has no migrated public schema; apply the production migration chain first");
+  }
+
+  for (const table of tables) {
+    const qualified = `public.${quoteIdentifier(table.table)}`;
+    const hasRows = psql(databaseUrl, `SELECT EXISTS (SELECT 1 FROM ${qualified} LIMIT 1);`);
+    if (hasRows === "t") {
+      throw new Error(`target database is not empty; refusing restore because ${qualified} contains data`);
+    }
+  }
+
+  // A verified disaster-recovery archive must be restored as authoritative historical
+  // state. Running normal application triggers while replaying rows is incorrect: for
+  // example, inserting products can create fresh product_prices rows before the archived
+  // product_prices ledger is copied. Circular foreign keys can likewise make a valid
+  // data-only archive impossible to replay in ordinary dependency order.
+  //
+  // Keep the whole operation in ONE database transaction. User/application triggers and
+  // public foreign keys are removed only inside that transaction; exact definitions are
+  // recreated and validated before COMMIT. Any COPY, constraint, or trigger-DDL failure
+  // aborts the transaction, leaving the migrated empty target unchanged.
+  const disableTriggers = tables
+    .map(({ table }) => `ALTER TABLE public.${quoteIdentifier(table)} DISABLE TRIGGER USER;`)
+    .join("\n");
+  const enableTriggers = [...tables]
+    .reverse()
+    .map(({ table }) => `ALTER TABLE public.${quoteIdentifier(table)} ENABLE TRIGGER USER;`)
+    .join("\n");
+  const dropForeignKeys = foreignKeys
+    .map(
+      ({ schema, table, constraint }) =>
+        `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} DROP CONSTRAINT ${quoteIdentifier(constraint)};`,
+    )
+    .join("\n");
+  const addForeignKeys = foreignKeys
+    .map(
+      ({ schema, table, constraint, definition }) =>
+        `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} ADD CONSTRAINT ${quoteIdentifier(constraint)} ${definition};`,
+    )
+    .join("\n");
+
+  const sqlClient = spawn(
+    "psql",
+    ["--dbname", databaseUrl, "-X", "-v", "ON_ERROR_STOP=1"],
+    {
+      env: { ...process.env },
+      stdio: ["pipe", "inherit", "inherit"],
+    },
+  );
+  let sqlClientError = null;
+  sqlClient.on("error", (error) => {
+    sqlClientError = error;
+  });
+
+  await writeChunk(
+    sqlClient.stdin,
+    `BEGIN;\n${disableTriggers}\n${dropForeignKeys}\n`,
+  );
+
+  const archiveReader = spawn(
+    "pg_restore",
+    [
+      "--file=-",
+      "--data-only",
+      "--schema=public",
+      "--no-owner",
+      "--no-privileges",
+      archivePath,
+    ],
+    {
+      env: { ...process.env },
+      stdio: ["ignore", "pipe", "inherit"],
+    },
+  );
+  let archiveReaderError = null;
+  archiveReader.on("error", (error) => {
+    archiveReaderError = error;
+  });
+
+  try {
+    for await (const chunk of archiveReader.stdout) {
+      await writeChunk(sqlClient.stdin, chunk);
+    }
+    const [archiveStatus] = await once(archiveReader, "close");
+    if (archiveReaderError) throw archiveReaderError;
+    if (archiveStatus !== 0) {
+      throw new Error(`pg_restore SQL generation exited with status ${archiveStatus}`);
+    }
+
+    await writeChunk(sqlClient.stdin, `\n${addForeignKeys}\n${enableTriggers}\nCOMMIT;\n`);
+    sqlClient.stdin.end();
+
+    const [sqlStatus] = await once(sqlClient, "close");
+    if (sqlClientError) throw sqlClientError;
+    if (sqlStatus !== 0) {
+      throw new Error(`atomic restore transaction exited with status ${sqlStatus}`);
+    }
+  } catch (error) {
+    if (!sqlClient.stdin.destroyed) sqlClient.stdin.end();
+    if (sqlClient.exitCode === null) await once(sqlClient, "close").catch(() => {});
+    throw error;
+  }
 }
 
 const archiveArg = process.argv[2];
@@ -50,46 +207,7 @@ if (process.env.ZAIPOS_RESTORE_CONFIRM !== "RESTORE_TO_EMPTY_DATABASE") {
 }
 
 try {
-  const tables = psql(
-    databaseUrl,
-    "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;",
-  )
-    .split(/\r?\n/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (tables.length === 0) {
-    fail("target database has no migrated public schema; apply the production migration chain first");
-  }
-
-  for (const table of tables) {
-    const hasRows = psql(
-      databaseUrl,
-      `SELECT EXISTS (SELECT 1 FROM public.${quoteIdentifier(table)} LIMIT 1);`,
-    );
-    if (hasRows === "t") {
-      fail(`target database is not empty; refusing restore because public.${table} contains data`);
-    }
-  }
-
-  execFileSync(
-    "pg_restore",
-    [
-      "--dbname",
-      databaseUrl,
-      "--data-only",
-      "--schema=public",
-      "--no-owner",
-      "--no-privileges",
-      "--exit-on-error",
-      archivePath,
-    ],
-    {
-      env: { ...process.env },
-      stdio: "inherit",
-    },
-  );
-
+  await restoreAtomically(databaseUrl, archivePath);
   console.log(`ZAIPOS restore completed from verified archive: ${archivePath}`);
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
