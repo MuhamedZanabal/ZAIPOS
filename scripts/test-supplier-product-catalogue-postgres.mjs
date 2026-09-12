@@ -6,7 +6,7 @@ function scalar(statement) {
   return execFileSync("psql", [dbUrl, "-X", "-Atq", "-v", "ON_ERROR_STOP=1", "-c", statement], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-  }).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "";
+  }).trim();
 }
 
 function assertEqual(label, actual, expected) {
