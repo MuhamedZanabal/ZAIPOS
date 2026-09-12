@@ -91,13 +91,71 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 
 ## P1/P2/P3
 
-All downstream catalogue, inventory lot, stocktake, supplier/customer ledger, reporting, AI action, alert, price-intelligence, OCR, WhatsApp and optional LAN-resilience capabilities remain unchecked until their complete definition-of-done evidence exists.
+The downstream programme is now partially reconciled rather than globally unchecked. Items below are marked complete only where implementation has merged and the current production migration/regression matrix preserves the capability. Still-unimplemented future capabilities remain explicitly unchecked.
+
+## P1 POS operations
+
+- [x] Historical receipt reprint — PR #19
+- [x] Held carts with authoritative resume validation — PR #19
+- [x] Controlled price override + manager approval — PR #21
+- [x] Secure employee POS PIN authentication — PR #22
 
 ## P1 catalogue
 
-- [x] Multiple barcodes + collision handling
-- [x] Product price history
-- [x] Cost history / historical COGS
+- [x] Multiple barcodes + collision handling — PR #23
+- [x] Product price history — PR #24
+- [x] Cost history / historical COGS — PR #24
+- [x] Bahrain cost-plus pricing policy engine with explicit manager application — PR #25
+- [x] Duplicate product review/merge — PR #26
+- [x] Atomic, payload-bound catalogue import — PR #27
+
+## P1 inventory
+
+- [x] Inventory lots, batches, expiry controls and FEFO allocation — PR #28
+- [x] Authoritative stocktake / cycle count lifecycle — PR #30
+- [x] Exact monetary current-cost inventory valuation — PR #31
+
+## P1 suppliers
+
+- [x] Immutable exact-fils supplier payable/payment subledger — PR #32
+- [x] Authoritative supplier-product catalogue — PR #33
+
+## P1 customers
+
+- [x] Immutable loyalty ledger with exact return/void reversals — PR #34
+- [x] Authoritative customer profiles and Bahrain delivery addresses — PR #35
+- [x] Exact-fils customer credit subledger — PR #36
+
+## P1 reporting, resilience and delivery authority
+
+- [x] Deterministic, server-authoritative branch reporting foundation — PR #37
+- [x] Verified PostgreSQL backup/restore rehearsal with integrity evidence — PR #38
+- [x] Delivery monetary authority converted to exact fils and server-authoritative registration — PR #40
+- [x] Delivery financial-authority runtime hardening — PR #41
+
+## P2 AI control plane
+
+- [x] Source-backed read-only AI reporting controller — PR #39
+- [x] Human-reviewed AI action request queue with no autonomous execution path — PR #42
+- [ ] User-facing AI action request/review surface beyond the database control plane
+- [ ] Proactive operational alerts with production definition-of-done evidence
+
+## Later / explicitly unresolved capabilities
+
+- [ ] Competitor / external price intelligence with authoritative provenance
+- [ ] Production OCR ingestion beyond existing inventory mutation safety boundaries
+- [ ] WhatsApp operational channel integration
+- [ ] Optional LAN-resilience expansion, only if a measured decision gate requires it
+
+## Production evidence reconciliation — 2026-09-12
+
+- Current verified `main`: `43b6cd85df0a14a7f3ab91c7e3fdeb3be2d57e63` (PR #42 squash merge).
+- PR #42 exact tested head: `8ca10ea6af115989b46b7770961349c3bfcfebdf`.
+- Exact-head PR #42 verification: all 15 triggered workflows succeeded, including AI Action Approval Contract, full CI quality, production migration chain, tenant/branch structural integrity, transaction authorization/concurrency, dependency audit, lint, full Vitest suite, production build and Windows validation packaging.
+- Post-merge `main` verification: 15 push-triggered workflows succeeded on `43b6cd85df0a14a7f3ab91c7e3fdeb3be2d57e63`; zero failed and zero remained in progress when reconciled.
+- The current `main` branch is not protected; repository-admin permission remains required to enforce the documented required checks.
+- Production Authenticode signing remains blocked on external certificate credentials `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`.
+- Physical printer, cash-drawer and installed-updater acceptance remains a deployed-hardware boundary.
 
 ## Catalogue production evidence reconciled 2026-09-10
 
@@ -105,4 +163,3 @@ All downstream catalogue, inventory lot, stocktake, supplier/customer ledger, re
 - Product financial history: PR #24, reviewed head `614df4f9739a478b0e6312e6cad2b372541c3402`; merge `ffe82e2df0d0d71818f562c6e74d708aa50872e8`; PR CI 262 and post-merge main CI 263 (`34433517501`), successful quality and Windows packaging.
 - Verified PR #24 scope: exact selling-price/cost ledgers, immutable post-migration sale COGS, supplier receipt provenance, effective intervals, authorized/idempotent RPCs, tenant/branch RLS, mutation lockdown, audit, clean and Bahrain upgrade preservation. Tenant-global financial mutations require a tenant-wide authorized role.
 - Historical pre-migration COGS remains explicitly labelled as reconstructed from cost at migration; this is not original-sale cost provenance.
-- Bahrain pricing policy remains OPEN in PR #25 until merge and post-merge verification.
