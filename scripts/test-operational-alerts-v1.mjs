@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
-const signature = "public.get_operational_alerts_v1(uuid,timestamp with time zone,integer)";
+const signature = "public.get_operational_alerts_v1(uuid,timestamp with time zone,integer,integer)";
 
 function scalar(statement) {
   return execFileSync("psql", [dbUrl, "-X", "-Atq", "-v", "ON_ERROR_STOP=1", "-c", statement], {
@@ -41,14 +41,17 @@ for (const required of [
   "expired_lot_stock",
   "expiry_due",
   "cash_variance",
+  "_expiry_horizon_days",
+  "_cash_lookback_days",
 ]) {
   if (!definition.includes(required)) throw new Error(`operational alert authority missing ${required}`);
 }
 if (/\bdifference\b(?!_fils)/.test(definition)) {
   throw new Error("cash variance alerts must not source legacy decimal difference authority");
 }
-if (!/0\s*\.\.\s*365|between\s+0\s+and\s+365|>\s*365/i.test(definition)) {
-  throw new Error("expiry horizon must be explicitly bounded to 0..365 days");
+const bounds = definition.match(/>\s*365/g) ?? [];
+if (bounds.length < 2) {
+  throw new Error("expiry horizon and cash lookback must each be explicitly bounded to 0..365 days");
 }
 
 process.stdout.write("Operational alerts v1 static/database boundary contract passed.\n");
