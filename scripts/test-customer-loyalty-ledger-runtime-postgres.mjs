@@ -55,17 +55,11 @@ sql(`
   ON CONFLICT DO NOTHING;
 
   INSERT INTO public.customers(id,tenant_id,name,loyalty_points) VALUES
-    ('${I.customerReturn}','Return Customer',0,0),
-    ('${I.customerVoid}','Void Customer',0,0),
-    ('${I.customerLegacy}','Legacy Customer',0,0)
+    ('${I.customerReturn}','${I.tenant}','Return Customer',0),
+    ('${I.customerVoid}','${I.tenant}','Void Customer',0),
+    ('${I.customerLegacy}','${I.tenant}','Legacy Customer',0)
   ON CONFLICT (id) DO NOTHING;
 `);
-
-// The production customer schema is tenant-scoped. Repair the deliberately compact seed
-// above if the column order differs by using explicit assignments after insert discovery.
-if (scalar(`SELECT count(*)::text FROM public.customers WHERE id IN ('${I.customerReturn}','${I.customerVoid}','${I.customerLegacy}')`) !== "3") {
-  throw new Error("customer fixture creation failed");
-}
 
 function createSale(id, customerId, operationId) {
   sql(`
@@ -77,14 +71,14 @@ function createSale(id, customerId, operationId) {
   `);
 }
 function captureAward(saleId, customerId, operationId) {
-  // checkout_sale_v2 has already applied the aggregate delta when operation_log is written.
+  // checkout_sale_v2 has already applied the aggregate delta before operation_log is written.
   sql(`UPDATE public.customers SET loyalty_points=loyalty_points+20 WHERE id='${customerId}';`);
   sql(`
     INSERT INTO public.operation_log(
-      tenant_id,branch_id,operation_type,client_mutation_id,entity_type,entity_id,payload,status
+      tenant_id,branch_id,operation_type,client_mutation_id,entity_type,entity_id,payload
     ) VALUES (
       '${I.tenant}','${I.branch}','checkout_sale_v2','${operationId}','sales','${saleId}',
-      jsonb_build_object('total_fils',2500),'success'
+      jsonb_build_object('total_fils',2500)
     );
   `);
 }
