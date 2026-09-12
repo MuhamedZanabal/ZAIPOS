@@ -5,8 +5,36 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { formatCurrency } from "@/lib/format";
-import { TrendingUp, Receipt, ShoppingBag, Package, Download, Calendar } from "lucide-react";
+import { TrendingUp, Receipt, ShoppingBag, Package, Download, Calendar, Banknote } from "lucide-react";
 import { toast } from "sonner";
+
+interface CashTillSession {
+  id: string;
+  opened_at: string;
+  closed_at: string;
+  expected_amount_fils: number;
+  counted_cash_fils: number;
+  counted_card_fils: number;
+  counted_transfer_fils: number;
+  counted_qr_fils: number;
+  difference_fils: number;
+  total_in_fils: number;
+  total_out_fils: number;
+}
+
+interface CashTillIntelligence {
+  branch_id: string;
+  tenant_id: string;
+  start_at: string;
+  end_at: string;
+  closed_session_count: number;
+  expected_amount_fils: number;
+  counted_cash_fils: number;
+  difference_fils: number;
+  sessions: CashTillSession[];
+}
+
+const filsToBhd = (fils: number | null | undefined) => (fils ?? 0) / 1000;
 
 export default function Reports() {
   const { branchId } = useTenantContext();
@@ -22,18 +50,26 @@ export default function Reports() {
       const to = new Date(dateTo);
       to.setHours(23, 59, 59, 999);
 
-      const [salesRes, itemsRes, paymentsRes] = await Promise.all([
+      const [salesRes, itemsRes, paymentsRes, cashTillRes] = await Promise.all([
         supabase.from("sales").select("id, total, tax_total, created_at, channel").eq("branch_id", branchId!)
           .eq("status", "completed").gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
         supabase.from("sale_items").select("product_name, quantity, line_total, sales!inner(branch_id, created_at, status)")
           .eq("sales.branch_id", branchId!).eq("sales.status", "completed").gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
         supabase.from("payments").select("method, amount, sales!inner(branch_id, created_at, status)")
           .eq("sales.branch_id", branchId!).eq("sales.status", "completed").gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
+        (supabase as any).rpc("get_cash_till_intelligence_v1", {
+          _branch_id: branchId!,
+          _start_at: from.toISOString(),
+          _end_at: to.toISOString(),
+        }),
       ]);
+
+      if (cashTillRes.error) throw cashTillRes.error;
 
       const sales = salesRes.data ?? [];
       const items = itemsRes.data ?? [];
       const payments = paymentsRes.data ?? [];
+      const cashTill = cashTillRes.data as CashTillIntelligence;
 
       const byDay: Record<string, { date: string; total: number; tickets: number }> = {};
       sales.forEach((s) => {
@@ -55,69 +91,69 @@ export default function Reports() {
       const byMethod: Record<string, number> = {};
       payments.forEach((p: any) => { byMethod[p.method] = (byMethod[p.method] ?? 0) + Number(p.amount); });
 
-      const totals = sales.reduce((s, r) => s + Number(r.total), 0);
-      const taxTotal = sales.reduce((s, r) => s + Number(r.tax_total || 0), 0);
+      const totals = sales.reduce((sum, row) => sum + Number(row.total), 0);
+      const taxTotal = sales.reduce((sum, row) => sum + Number(row.tax_total || 0), 0);
 
-      return { days, top, byMethod, totals, taxTotal, count: sales.length, avg: sales.length ? totals / sales.length : 0 };
+      return {
+        days,
+        top,
+        byMethod,
+        totals,
+        taxTotal,
+        count: sales.length,
+        avg: sales.length ? totals / sales.length : 0,
+        cashTill,
+      };
     },
   });
 
-  const exportCSV = (type: 'days' | 'products') => {
+  const exportCSV = (type: "days" | "products") => {
     if (!data) return;
     let csv = "";
     let filename = "";
 
-    if (type === 'days') {
-      csv = "Date,Tickets,Total\n" + data.days.map(d => `${d.date},${d.tickets},${d.total}`).join("\n");
-      filename = `reporte_sales_${dateFrom}_a_${dateTo}.csv`;
+    if (type === "days") {
+      csv = "Date,Tickets,Total\n" + data.days.map((d) => `${d.date},${d.tickets},${d.total}`).join("\n");
+      filename = `sales_${dateFrom}_to_${dateTo}.csv`;
     } else {
-      csv = "Product,Quantity,Total\n" + data.top.map(p => `${p.name},${p.qty},${p.total}`).join("\n");
-      filename = `reporte_products_${dateFrom}_a_${dateTo}.csv`;
+      csv = "Product,Quantity,Total\n" + data.top.map((p) => `${p.name},${p.qty},${p.total}`).join("\n");
+      filename = `products_${dateFrom}_to_${dateTo}.csv`;
     }
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("File exportado correctamente");
+    toast.success("File exported successfully");
   };
+
+  const cashTill = data?.cashTill;
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        eyebrow="SISTEMA · ANALYTICS"
+        eyebrow="SYSTEM · ANALYTICS"
         title="Advanced Reports"
-        description="Analyze your business performance with custom filters"
+        description="Analyze branch performance and authoritative till close evidence"
         actions={
           <div className="flex items-center gap-2 glass rounded-xl px-3 py-1.5">
             <Calendar className="h-4 w-4 text-ink-500" />
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="h-8 w-36 border-0 bg-transparent focus-visible:ring-0 text-sm"
-            />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-36 border-0 bg-transparent focus-visible:ring-0 text-sm" />
             <span className="h-meta">→</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="h-8 w-36 border-0 bg-transparent focus-visible:ring-0 text-sm"
-            />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-36 border-0 bg-transparent focus-visible:ring-0 text-sm" />
           </div>
         }
       />
 
-      {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {[
           { icon: <TrendingUp size={16} />, label: "Total Sales", value: formatCurrency(data?.totals ?? 0), accent: true },
-          { icon: <Receipt size={16} />,    label: "Total Tickets",   value: String(data?.count ?? 0) },
-          { icon: <ShoppingBag size={16} />,label: "Ticket Promedio", value: formatCurrency(data?.avg ?? 0) },
-          { icon: <Package size={16} />,    label: "Taxes (VAT)", value: formatCurrency(data?.taxTotal ?? 0) },
+          { icon: <Receipt size={16} />, label: "Total Tickets", value: String(data?.count ?? 0) },
+          { icon: <ShoppingBag size={16} />, label: "Average Ticket", value: formatCurrency(data?.avg ?? 0) },
+          { icon: <Package size={16} />, label: "VAT", value: formatCurrency(data?.taxTotal ?? 0) },
         ].map(({ icon, label, value, accent }) => (
           <div key={label} className={`glass flex flex-col g-kpi${accent ? " border-l-2 border-brand-600" : ""}`}>
             <div className="flex items-center justify-between gap-2.5">
@@ -129,131 +165,89 @@ export default function Reports() {
         ))}
       </div>
 
-      {/* Tables row */}
+      <div className="glass rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
+          <div className="flex items-center gap-2.5">
+            <div className="orb g-orb-32"><Banknote size={14} /></div>
+            <div>
+              <div className="h-meta uppercase tracking-wider">AUTHORITATIVE · CLOSED SESSIONS</div>
+              <div className="h-label font-semibold text-ink-900 text-sm">Cash / Till Intelligence</div>
+            </div>
+          </div>
+          <div className="h-meta">{cashTill?.closed_session_count ?? 0} closes</div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 border-b border-[var(--hairline)]">
+          <div className="glass-thin rounded-xl p-3">
+            <div className="h-meta uppercase tracking-wider">Expected total</div>
+            <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.expected_amount_fils))}</div>
+          </div>
+          <div className="glass-thin rounded-xl p-3">
+            <div className="h-meta uppercase tracking-wider">Counted cash</div>
+            <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.counted_cash_fils))}</div>
+          </div>
+          <div className="glass-thin rounded-xl p-3">
+            <div className="h-meta uppercase tracking-wider">Net variance</div>
+            <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.difference_fils))}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-[1fr_130px_130px_120px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
+          <div>Closed</div><div className="text-right">Expected</div><div className="text-right">Counted cash</div><div className="text-right">Variance</div>
+        </div>
+        <div className="divide-y divide-[var(--hairline)]">
+          {(cashTill?.sessions ?? []).map((session) => (
+            <div key={session.id} className="grid grid-cols-[1fr_130px_130px_120px] px-5 py-3 text-sm">
+              <div className="font-medium text-ink-900">{new Date(session.closed_at).toLocaleString("en-BH")}</div>
+              <div className="text-right tabular-nums">{formatCurrency(filsToBhd(session.expected_amount_fils))}</div>
+              <div className="text-right tabular-nums">{formatCurrency(filsToBhd(session.counted_cash_fils))}</div>
+              <div className="text-right tabular-nums font-bold">{formatCurrency(filsToBhd(session.difference_fils))}</div>
+            </div>
+          ))}
+          {(!cashTill?.sessions?.length) && <div className="px-5 py-8 text-center h-meta">{isLoading ? "Loading…" : "No closed till sessions in this period"}</div>}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Sales by day */}
         <div className="glass rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
-            <div className="flex items-center gap-2.5">
-              <div className="orb g-orb-32"><TrendingUp size={14} /></div>
-              <div>
-                <div className="h-meta uppercase tracking-wider">SELECTED PERIOD</div>
-                <div className="h-label font-semibold text-ink-900 text-sm">Sales by day</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="g-btn g-btn-ghost g-btn-sm"
-              onClick={() => exportCSV('days')}
-              disabled={!data?.days.length}
-            >
-              <Download size={13} className="mr-1" /> Export
-            </button>
+            <div className="flex items-center gap-2.5"><div className="orb g-orb-32"><TrendingUp size={14} /></div><div><div className="h-meta uppercase tracking-wider">SELECTED PERIOD</div><div className="h-label font-semibold text-ink-900 text-sm">Sales by day</div></div></div>
+            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => exportCSV("days")} disabled={!data?.days.length}><Download size={13} className="mr-1" /> Export</button>
           </div>
-          {/* Header */}
-          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
-            <div>Date</div>
-            <div className="text-right">Tickets</div>
-            <div className="text-right">Total</div>
-          </div>
+          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]"><div>Date</div><div className="text-right">Tickets</div><div className="text-right">Total</div></div>
           <div className="divide-y divide-[var(--hairline)]">
-            {(data?.days ?? []).map((d) => (
-              <div key={d.date} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm hover:bg-white/5 transition-colors">
-                <div className="font-medium text-ink-900">
-                  {new Date(d.date).toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short" })}
-                </div>
-                <div className="text-right tabular-nums text-ink-500">{d.tickets}</div>
-                <div className="text-right tabular-nums font-bold text-ink-900">{formatCurrency(d.total)}</div>
-              </div>
-            ))}
-            {(!data?.days || data.days.length === 0) && (
-              <div className="px-5 py-10 text-center h-meta italic">
-                {isLoading ? "Loading…" : "No activity in this period"}
-              </div>
-            )}
+            {(data?.days ?? []).map((day) => <div key={day.date} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm"><div className="font-medium text-ink-900">{new Date(day.date).toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short" })}</div><div className="text-right tabular-nums text-ink-500">{day.tickets}</div><div className="text-right tabular-nums font-bold text-ink-900">{formatCurrency(day.total)}</div></div>)}
+            {(!data?.days.length) && <div className="px-5 py-10 text-center h-meta italic">{isLoading ? "Loading…" : "No activity in this period"}</div>}
           </div>
         </div>
 
-        {/* Top-selling products */}
         <div className="glass rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
-            <div className="flex items-center gap-2.5">
-              <div className="orb g-orb-32"><Package size={14} /></div>
-              <div>
-                <div className="h-meta uppercase tracking-wider">RANKING</div>
-                <div className="h-label font-semibold text-ink-900 text-sm">Top-selling products</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="g-btn g-btn-ghost g-btn-sm"
-              onClick={() => exportCSV('products')}
-              disabled={!data?.top.length}
-            >
-              <Download size={13} className="mr-1" /> Export
-            </button>
+            <div className="flex items-center gap-2.5"><div className="orb g-orb-32"><Package size={14} /></div><div><div className="h-meta uppercase tracking-wider">RANKING</div><div className="h-label font-semibold text-ink-900 text-sm">Top-selling products</div></div></div>
+            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => exportCSV("products")} disabled={!data?.top.length}><Download size={13} className="mr-1" /> Export</button>
           </div>
-          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
-            <div>Product</div>
-            <div className="text-right">Unidades</div>
-            <div className="text-right">Total</div>
-          </div>
+          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]"><div>Product</div><div className="text-right">Units</div><div className="text-right">Total</div></div>
           <div className="divide-y divide-[var(--hairline)]">
-            {(data?.top ?? []).map((p) => (
-              <div key={p.name} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm hover:bg-white/5 transition-colors">
-                <div className="font-medium text-ink-900 truncate">{p.name}</div>
-                <div className="text-right tabular-nums text-ink-500 font-bold">{p.qty.toFixed(0)}</div>
-                <div className="text-right tabular-nums font-bold text-brand-600">{formatCurrency(p.total)}</div>
-              </div>
-            ))}
-            {(!data?.top || data.top.length === 0) && (
-              <div className="px-5 py-10 text-center h-meta italic">
-                {isLoading ? "Loading…" : "No products sold"}
-              </div>
-            )}
+            {(data?.top ?? []).map((product) => <div key={product.name} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm"><div className="font-medium text-ink-900 truncate">{product.name}</div><div className="text-right tabular-nums text-ink-500 font-bold">{product.qty.toFixed(0)}</div><div className="text-right tabular-nums font-bold text-brand-600">{formatCurrency(product.total)}</div></div>)}
+            {(!data?.top.length) && <div className="px-5 py-10 text-center h-meta italic">{isLoading ? "Loading…" : "No products sold"}</div>}
           </div>
         </div>
       </div>
 
-      {/* Bottom row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Medios de pago */}
         <div className="glass rounded-2xl p-5">
           <div className="h-meta uppercase tracking-wider mb-4">MIX · PAYMENT METHODS</div>
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(data?.byMethod ?? {}).map(([m, total]) => (
-              <div key={m} className="glass-thin rounded-xl p-3">
-                <div className="h-meta uppercase tracking-wider mb-1">{m}</div>
-                <div className="h-num g-val-18">{formatCurrency(total)}</div>
-              </div>
-            ))}
-            {Object.keys(data?.byMethod ?? {}).length === 0 && (
-              <div className="col-span-full text-center h-meta py-6">No payments recorded</div>
-            )}
+            {Object.entries(data?.byMethod ?? {}).map(([method, total]) => <div key={method} className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{method}</div><div className="h-num g-val-18">{formatCurrency(total)}</div></div>)}
+            {Object.keys(data?.byMethod ?? {}).length === 0 && <div className="col-span-full text-center h-meta py-6">No payments recorded</div>}
           </div>
         </div>
-
-        {/* Resumen impositivo */}
         <div className="glass rounded-2xl p-5 relative overflow-hidden">
-          <div className="h-meta uppercase tracking-wider mb-4">RESUMEN IMPOSITIVO</div>
+          <div className="h-meta uppercase tracking-wider mb-4">TAX SUMMARY</div>
           <div className="space-y-4">
-            {[
-              { label: "Subtotal neto", value: formatCurrency((data?.totals ?? 0) - (data?.taxTotal ?? 0)) },
-              { label: "VAT Taxes", value: formatCurrency(data?.taxTotal ?? 0) },
-            ].map(({ label, value }) => (
-              <div key={label} className="flex justify-between items-baseline">
-                <span className="h-label">{label}</span>
-                <span className="h-num g-val-22 tabular-nums">{value}</span>
-              </div>
-            ))}
-            <div className="flex justify-between items-baseline pt-2 border-t border-[var(--hairline)]">
-              <span className="h-label font-semibold">Total Bruto</span>
-              <span className="h-num g-val-28 tabular-nums">{formatCurrency(data?.totals ?? 0)}</span>
-            </div>
+            <div className="flex justify-between items-baseline"><span className="h-label">Net subtotal</span><span className="h-num g-val-22 tabular-nums">{formatCurrency((data?.totals ?? 0) - (data?.taxTotal ?? 0))}</span></div>
+            <div className="flex justify-between items-baseline"><span className="h-label">VAT</span><span className="h-num g-val-22 tabular-nums">{formatCurrency(data?.taxTotal ?? 0)}</span></div>
+            <div className="flex justify-between items-baseline pt-2 border-t border-[var(--hairline)]"><span className="h-label font-semibold">Gross total</span><span className="h-num g-val-28 tabular-nums">{formatCurrency(data?.totals ?? 0)}</span></div>
           </div>
-          <div className="absolute bottom-4 right-4 opacity-5 pointer-events-none">
-            <TrendingUp className="h-28 w-28" />
-          </div>
+          <div className="absolute bottom-4 right-4 opacity-5 pointer-events-none"><TrendingUp className="h-28 w-28" /></div>
         </div>
       </div>
     </div>
