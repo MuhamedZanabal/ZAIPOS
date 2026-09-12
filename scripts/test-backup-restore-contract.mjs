@@ -188,6 +188,12 @@ try {
   });
 
   assertTruthy("backup archive created", statSync(archive).size > 0);
+  const metadata = JSON.parse(readFileSync(`${archive}.manifest.json`, "utf8"));
+  assertEqual("manifest format", metadata.formatVersion, 1);
+  assertTruthy("schema compatibility fingerprint", /^[a-f0-9]{64}$/.test(metadata.schemaSha256));
+  assertTruthy("source identity", metadata.source.database && metadata.source.endpoint);
+  assertTruthy("backup timestamp", Number.isFinite(Date.parse(metadata.startedAt)));
+  assertEqual("archive byte size", metadata.artifact.bytes, statSync(archive).size);
   assertEqual("backup archive is owner-only", String(statSync(archive).mode & 0o077), "0");
   assertTruthy("checksum sidecar created", readFileSync(`${archive}.sha256`, "utf8").includes(path.basename(archive)));
 
