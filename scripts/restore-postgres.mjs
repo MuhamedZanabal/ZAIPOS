@@ -48,7 +48,7 @@ async function main() {
     if (schemaDigest(conn) !== manifest.schemaSha256) throw new Error("schema mismatch: apply the matching reviewed migration chain and provider prerequisites");
     const tables = jsonQuery(conn, `SELECT COALESCE(json_agg(c.relname ORDER BY c.relname), '[]') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p');`);
     if (!tables.length) throw new Error("target has no migrated public schema");
-    const fks = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',con.conname,'definition',pg_get_constraintdef(con.oid,false)) ORDER BY c.relname,con.conname),'[]') FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE con.contype='f' AND n.nspname='public';`);
+    const fks = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',con.conname,'definition',pg_get_constraintdef(con.oid,false),'validated',con.convalidated) ORDER BY c.relname,con.conname),'[]') FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE con.contype='f' AND n.nspname='public';`);
     const triggers = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',t.tgname,'enabled',t.tgenabled) ORDER BY c.relname,t.tgname),'[]') FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal;`);
     const sequences = jsonQuery(conn, `SELECT COALESCE(json_agg(c.relname ORDER BY c.relname),'[]') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S';`);
     const sql = path.join(work, "data.sql");
@@ -71,6 +71,12 @@ async function main() {
       "SET LOCAL search_path = public, pg_catalog;",
       ...fks.map((fk) => `ALTER TABLE ${qualified(fk.table)} ADD CONSTRAINT ${ident(fk.name)} ${fk.definition};`),
       ...fks.map((fk) => `ALTER TABLE ${qualified(fk.table)} VALIDATE CONSTRAINT ${ident(fk.name)};`),
+      // Preserve an originally NOT VALID declaration only AFTER checking every
+      // restored reference. Data validation is mandatory even for legacy FKs.
+      ...fks.filter((fk) => !fk.validated).flatMap((fk) => [
+        `ALTER TABLE ${qualified(fk.table)} DROP CONSTRAINT ${ident(fk.name)};`,
+        `ALTER TABLE ${qualified(fk.table)} ADD CONSTRAINT ${ident(fk.name)} ${fk.definition};`,
+      ]),
       ...triggers.map((trigger) => `ALTER TABLE ${qualified(trigger.table)} ${enable[trigger.enabled]} TRIGGER ${ident(trigger.name)};`),
     ].join("\n") + "\n", { mode: 0o600, flag: "wx" });
     command("psql", ["-X", "-q", "-v", "ON_ERROR_STOP=1", "--single-transaction", "--file", wrapper], conn.env);

@@ -6,7 +6,7 @@ ZAIPOS main uses React 18, Electron, Dexie browser persistence and Supabase Post
 
 **External prerequisites:** independently recover Supabase Auth identities with their original UUIDs, provider roles/extensions/functions, Storage metadata and object bytes (including return evidence and product images), secrets and deployment configuration. Restoring public profiles without the referenced Auth users must fail foreign-key validation. Public-schema data is not a complete Supabase project backup.
 
-The archive contains data, not executable schema installation. Apply the matching reviewed migrations to an isolated replacement provider environment first. Restore compares the actual public-schema DDL fingerprint before writing. The manifest's local migration-chain hash identifies the code used to create the backup; it does not independently attest which migrations were applied to the source. The live schema fingerprint is the compatibility check.
+The archive contains data, not executable schema installation. Apply the matching reviewed migrations to an isolated replacement provider environment first. Restore compares the actual public-schema DDL/grant fingerprint before writing. The manifest's local migration-chain hash identifies the code used to create the backup; it does not independently attest which migrations were applied to the source. The live schema fingerprint is the compatibility check.
 
 ZAIPOS also owns a sale ticket-number sequence. Restore transactionally restarts sequence storage before replaying archived `setval` state. The rehearsal compares both `last_value` and `is_called` after successful restore and failed transaction rollback. Foreign tables and materialized views require a separately reviewed strategy and are rejected.
 
@@ -65,7 +65,7 @@ node scripts/restore-postgres.mjs /secure/backups/zaipos-YYYYMMDD-HHMMSS.dump
 
 There is no overwrite, checksum-bypass or schema-bypass option. The script verifies private copies of the archive and manifest before opening a database connection, checks format/size/hash, requires exact target acknowledgement, rejects source identity and mismatched PostgreSQL/schema versions, and generates SQL before starting database mutation.
 
-Restoration takes access-exclusive locks on all public tables and checks emptiness **inside the same transaction**. User triggers are temporarily disabled; public foreign keys are temporarily dropped. All foreign keys are recreated/validated and each user trigger's original enabled/disabled/replica/always state restored before commit. COPY, lock timeout, constraint validation or client failure rolls back transactional data and DDL. A successful restore is not authorization to route traffic.
+Restoration takes access-exclusive locks on all public tables and checks emptiness **inside the same transaction**. User triggers are temporarily disabled; public foreign keys are temporarily dropped. All foreign keys are recreated/validated (including archived rows behind legacy `NOT VALID` declarations); original constraint validation flags are then restored. Each user trigger's original enabled/disabled/replica/always state restored before commit. COPY, lock timeout, constraint validation or client failure rolls back transactional data and DDL. A successful restore is not authorization to route traffic.
 
 ## Acceptance and rollback
 

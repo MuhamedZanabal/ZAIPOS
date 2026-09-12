@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { connection, query, schemaDigest, literal, command } from "./postgres-recovery.mjs";
+import { connection, query, schemaDigest, literal } from "./postgres-recovery.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   accessSync,
@@ -199,7 +199,6 @@ try {
     assertTruthy(`nonempty recovery fixture ${table}`, Number(scalar(`SELECT count(*) FROM public.${table};`)) > 0);
   }
   const sourceSchema = schemaDigest(sourceConnection);
-  const sourceDdl = command("pg_dump", ["--schema-only", "--schema=public", "--no-owner", "--no-privileges"], sourceConnection.env);
   assertTruthy("critical manifest includes products", before.products);
   assertTruthy("critical manifest includes inventory", before.inventory_stocks);
 
@@ -251,12 +250,6 @@ try {
   });
 
   const after = captureManifest();
-  if (schemaDigest(targetConnection) !== sourceSchema) {
-    writeFileSync(path.join(tempDir, "source.sql"), sourceDdl);
-    writeFileSync(path.join(tempDir, "target.sql"), command("pg_dump", ["--schema-only", "--schema=public", "--no-owner", "--no-privileges"], targetConnection.env));
-    const difference = spawnSync("diff", ["-u", path.join(tempDir, "source.sql"), path.join(tempDir, "target.sql")], { encoding: "utf8" });
-    console.error(difference.stdout);
-  }
   assertEqual("restored schema and trigger states preserved", schemaDigest(targetConnection), sourceSchema);
   activeUrl = dbUrl;
   assertEqual("source untouched by restore rehearsal", JSON.stringify(captureManifest()), JSON.stringify(before));

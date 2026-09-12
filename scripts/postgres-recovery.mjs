@@ -52,7 +52,7 @@ export function databaseIdentity(conn) {
 export function schemaDigest(conn) {
   // Ignore random psql restriction tokens and client/server version comments;
   // retain all DDL and RLS definitions.
-  const schema = command("pg_dump", ["--schema-only", "--schema=public", "--no-owner", "--no-privileges"], conn.env)
+  const schema = command("pg_dump", ["--schema-only", "--schema=public", "--no-owner"], conn.env)
     .split(/\r?\n/).filter((line) => !/^\\(?:un)?restrict /.test(line) && !/^-- Dumped (?:from|by) /.test(line)).join("\n");
   return sha256(schema);
 }
