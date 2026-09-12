@@ -49,4 +49,18 @@ jobs:
       - name: Apply production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Verify inventory valuation runtime contract
-        run: node scripts/test-inventory-current-cost-valuation-postgres.mjs
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-inventory-current-cost-valuation-postgres.mjs > inventory-valuation-runtime.log 2>&1
+          status=$?
+          cat inventory-valuation-runtime.log
+          exit "$status"
+      - name: Preserve inventory valuation runtime diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-valuation-runtime-${{ github.sha }}
+          path: inventory-valuation-runtime.log
+          if-no-files-found: error
+          retention-days: 2
