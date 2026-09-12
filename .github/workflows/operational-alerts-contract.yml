@@ -6,6 +6,7 @@ on:
       - "supabase/migrations/**"
       - "scripts/test-operational-alerts-postgres.mjs"
       - "scripts/test-operational-alerts-ui.mjs"
+      - "scripts/test-operational-alerts-cash-variance.mjs"
       - "src/modules/ai-agent/**"
       - ".github/workflows/operational-alerts-contract.yml"
   push:
@@ -14,6 +15,7 @@ on:
       - "supabase/migrations/**"
       - "scripts/test-operational-alerts-postgres.mjs"
       - "scripts/test-operational-alerts-ui.mjs"
+      - "scripts/test-operational-alerts-cash-variance.mjs"
       - "src/modules/ai-agent/**"
       - ".github/workflows/operational-alerts-contract.yml"
 
@@ -56,6 +58,8 @@ jobs:
           status=$?
           cat operational-alerts.log
           exit "$status"
+      - name: Verify exact-fils cash variance alerts
+        run: node scripts/test-operational-alerts-cash-variance.mjs
       - name: Preserve alert diagnostics
         if: failure() && steps.alerts_contract.outcome == 'failure'
         uses: actions/upload-artifact@v4
