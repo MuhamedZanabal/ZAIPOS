@@ -166,7 +166,13 @@ async function restoreAtomically(databaseUrl, archivePath) {
       throw new Error(`pg_restore SQL generation exited with status ${archiveStatus}`);
     }
 
-    await writeChunk(sqlClient.stdin, `\n${addForeignKeys}\n${enableTriggers}\nCOMMIT;\n`);
+    // pg_restore intentionally emits an empty search_path. FK definitions returned by
+    // pg_get_constraintdef() can contain unqualified public-table references, so restore
+    // the transaction-local application search path before recreating and validating FKs.
+    await writeChunk(
+      sqlClient.stdin,
+      `\nSET LOCAL search_path = public, pg_catalog;\n${addForeignKeys}\n${enableTriggers}\nCOMMIT;\n`,
+    );
     sqlClient.stdin.end();
 
     const [sqlStatus] = await once(sqlClient, "close");
