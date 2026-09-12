@@ -47,7 +47,21 @@ jobs:
       - name: Apply production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Verify supplier product catalogue schema contract
-        run: node scripts/test-supplier-product-catalogue-postgres.mjs
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-supplier-product-catalogue-postgres.mjs > supplier-product-catalogue-schema.log 2>&1
+          status=$?
+          cat supplier-product-catalogue-schema.log
+          exit "$status"
+      - name: Preserve supplier product catalogue schema diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-product-catalogue-schema-${{ github.sha }}
+          path: supplier-product-catalogue-schema.log
+          if-no-files-found: ignore
+          retention-days: 2
       - name: Verify supplier product catalogue runtime contract
         shell: bash
         run: |
