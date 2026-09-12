@@ -1,0 +1,30 @@
+name: Inventory Stocktake Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-inventory-stocktake.mjs"
+      - ".github/workflows/inventory-stocktake-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-inventory-stocktake.mjs"
+      - ".github/workflows/inventory-stocktake-contract.yml"
+
+jobs:
+  inventory-stocktake-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify inventory stocktake static contract
+        run: node scripts/test-inventory-stocktake.mjs
