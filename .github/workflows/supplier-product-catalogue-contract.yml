@@ -5,6 +5,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "scripts/test-supplier-product-catalogue-postgres.mjs"
+      - "scripts/test-supplier-product-catalogue-runtime-postgres.mjs"
       - ".github/workflows/supplier-product-catalogue-contract.yml"
   push:
     branches:
@@ -12,6 +13,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "scripts/test-supplier-product-catalogue-postgres.mjs"
+      - "scripts/test-supplier-product-catalogue-runtime-postgres.mjs"
       - ".github/workflows/supplier-product-catalogue-contract.yml"
 
 jobs:
@@ -44,5 +46,21 @@ jobs:
         run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: Apply production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
-      - name: Verify supplier product catalogue contract
+      - name: Verify supplier product catalogue schema contract
         run: node scripts/test-supplier-product-catalogue-postgres.mjs
+      - name: Verify supplier product catalogue runtime contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-supplier-product-catalogue-runtime-postgres.mjs > supplier-product-catalogue-runtime.log 2>&1
+          status=$?
+          cat supplier-product-catalogue-runtime.log
+          exit "$status"
+      - name: Preserve supplier product catalogue diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-product-catalogue-runtime-${{ github.sha }}
+          path: supplier-product-catalogue-runtime.log
+          if-no-files-found: ignore
+          retention-days: 2
