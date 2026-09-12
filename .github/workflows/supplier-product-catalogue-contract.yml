@@ -1,0 +1,98 @@
+name: Supplier Product Catalogue Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-supplier-product-catalogue-postgres.mjs"
+      - "scripts/test-supplier-product-catalogue-runtime-postgres.mjs"
+      - "scripts/test-product-merge-supplier-catalogue-safety.mjs"
+      - ".github/workflows/supplier-product-catalogue-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-supplier-product-catalogue-postgres.mjs"
+      - "scripts/test-supplier-product-catalogue-runtime-postgres.mjs"
+      - "scripts/test-product-merge-supplier-catalogue-safety.mjs"
+      - ".github/workflows/supplier-product-catalogue-contract.yml"
+
+jobs:
+  supplier-product-catalogue-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify supplier product catalogue schema contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-supplier-product-catalogue-postgres.mjs > supplier-product-catalogue-schema.log 2>&1
+          status=$?
+          cat supplier-product-catalogue-schema.log
+          exit "$status"
+      - name: Preserve supplier product catalogue schema diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-product-catalogue-schema-${{ github.sha }}
+          path: supplier-product-catalogue-schema.log
+          if-no-files-found: ignore
+          retention-days: 2
+      - name: Verify supplier product catalogue runtime contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-supplier-product-catalogue-runtime-postgres.mjs > supplier-product-catalogue-runtime.log 2>&1
+          status=$?
+          cat supplier-product-catalogue-runtime.log
+          exit "$status"
+      - name: Preserve supplier product catalogue diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-product-catalogue-runtime-${{ github.sha }}
+          path: supplier-product-catalogue-runtime.log
+          if-no-files-found: ignore
+          retention-days: 2
+      - name: Verify supplier catalogue duplicate-product merge safety
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-product-merge-supplier-catalogue-safety.mjs > supplier-product-merge-safety.log 2>&1
+          status=$?
+          cat supplier-product-merge-safety.log
+          exit "$status"
+      - name: Preserve supplier catalogue merge-safety diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-product-merge-safety-${{ github.sha }}
+          path: supplier-product-merge-safety.log
+          if-no-files-found: ignore
+          retention-days: 2
