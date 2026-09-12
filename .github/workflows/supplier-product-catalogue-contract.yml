@@ -6,6 +6,7 @@ on:
       - "supabase/migrations/**"
       - "scripts/test-supplier-product-catalogue-postgres.mjs"
       - "scripts/test-supplier-product-catalogue-runtime-postgres.mjs"
+      - "scripts/test-product-merge-supplier-catalogue-safety.mjs"
       - ".github/workflows/supplier-product-catalogue-contract.yml"
   push:
     branches:
@@ -14,6 +15,7 @@ on:
       - "supabase/migrations/**"
       - "scripts/test-supplier-product-catalogue-postgres.mjs"
       - "scripts/test-supplier-product-catalogue-runtime-postgres.mjs"
+      - "scripts/test-product-merge-supplier-catalogue-safety.mjs"
       - ".github/workflows/supplier-product-catalogue-contract.yml"
 
 jobs:
@@ -76,5 +78,21 @@ jobs:
         with:
           name: supplier-product-catalogue-runtime-${{ github.sha }}
           path: supplier-product-catalogue-runtime.log
+          if-no-files-found: ignore
+          retention-days: 2
+      - name: Verify supplier catalogue duplicate-product merge safety
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-product-merge-supplier-catalogue-safety.mjs > supplier-product-merge-safety.log 2>&1
+          status=$?
+          cat supplier-product-merge-safety.log
+          exit "$status"
+      - name: Preserve supplier catalogue merge-safety diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-product-merge-safety-${{ github.sha }}
+          path: supplier-product-merge-safety.log
           if-no-files-found: ignore
           retention-days: 2
