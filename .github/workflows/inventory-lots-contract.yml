@@ -1,0 +1,26 @@
+name: Inventory Lots Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-inventory-lots-expiry.mjs"
+      - ".github/workflows/inventory-lots-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-inventory-lots-expiry.mjs"
+      - ".github/workflows/inventory-lots-contract.yml"
+
+jobs:
+  inventory-lots-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify inventory lots and expiry migration contract
+        run: node scripts/test-inventory-lots-expiry.mjs
