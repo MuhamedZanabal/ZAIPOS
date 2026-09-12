@@ -3,11 +3,15 @@ import { readFileSync } from "node:fs";
 
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 
-function scalar(statement) {
+function queryText(statement) {
   return execFileSync("psql", [dbUrl, "-X", "-Atq", "-v", "ON_ERROR_STOP=1", "-c", statement], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-  }).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "";
+  }).trim();
+}
+
+function scalar(statement) {
+  return queryText(statement).split(/\r?\n/).filter(Boolean).at(-1) ?? "";
 }
 
 function assertEqual(label, actual, expected) {
@@ -46,7 +50,7 @@ assertEqual(
   "t",
 );
 
-const definition = scalar(`SELECT pg_get_functiondef(to_regprocedure('${signature}'));`);
+const definition = queryText(`SELECT pg_get_functiondef(to_regprocedure('${signature}'));`);
 for (const required of ["expected_amount_fils", "counted_cash_fils", "difference_fils", "closed_at"]) {
   if (!definition.includes(required)) throw new Error(`cash/till intelligence must source immutable ${required}`);
 }
