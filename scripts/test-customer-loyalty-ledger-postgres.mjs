@@ -50,18 +50,36 @@ for (const privilege of ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]) {
 }
 assertEqual("loyalty ledger RLS enabled", scalar("SELECT relrowsecurity FROM pg_class WHERE oid='public.customer_loyalty_ledger'::regclass;"), "t");
 
-const checkout = scalar("SELECT pg_get_functiondef('public.checkout_sale_v2(uuid,uuid,jsonb,jsonb,bigint,text,uuid,public.sales_channel,text)'::regprocedure);");
-assertIncludes("checkout persists loyalty evidence", checkout, "customer_loyalty_ledger");
-assertIncludes("checkout snapshots loyalty policy", checkout, "points_per_thousand_snapshot");
+const checkoutEvidence = scalar("SELECT pg_get_functiondef('public.capture_checkout_loyalty_evidence_v1()'::regprocedure);");
+assertIncludes("checkout evidence uses immutable ledger", checkoutEvidence, "customer_loyalty_ledger");
+assertIncludes("checkout evidence snapshots loyalty policy", checkoutEvidence, "points_per_thousand_snapshot");
+assertEqual(
+  "checkout evidence trigger installed",
+  scalar("SELECT count(*)::text FROM pg_trigger WHERE tgrelid='public.operation_log'::regclass AND tgname='capture_checkout_loyalty_evidence';"),
+  "1",
+);
 
-const returnFn = scalar("SELECT pg_get_functiondef('public.process_sale_return_v2(uuid,jsonb,text,text,uuid,text,text)'::regprocedure);");
-assertIncludes("return reverses loyalty", returnFn, "customer_loyalty_ledger");
-assertIncludes("return no longer fail-closed by legacy trigger", scalar("SELECT count(*)::text FROM pg_trigger WHERE tgrelid='public.sale_returns'::regclass AND tgname='guard_customer_linked_return_loyalty';"), "0");
+const returnReversal = scalar("SELECT pg_get_functiondef('public.apply_return_loyalty_reversal_v1()'::regprocedure);");
+assertIncludes("return reversal uses immutable ledger", returnReversal, "customer_loyalty_ledger");
+assertEqual(
+  "return reversal trigger installed",
+  scalar("SELECT count(*)::text FROM pg_trigger WHERE tgrelid='public.sale_returns'::regclass AND tgname='apply_return_loyalty_reversal';"),
+  "1",
+);
+const guard = scalar("SELECT pg_get_functiondef('public.guard_customer_linked_return_without_loyalty_evidence()'::regprocedure);");
+assertIncludes("legacy returns still fail closed without exact award", guard, "customer_loyalty_ledger");
+assertIncludes("legacy return guard checks sale award", guard, "sale_earn");
 
+const voidReversal = scalar("SELECT pg_get_functiondef('public.apply_void_loyalty_reversal_v1()'::regprocedure);");
+assertIncludes("void reversal uses immutable ledger", voidReversal, "customer_loyalty_ledger");
+assertEqual(
+  "void reversal trigger installed",
+  scalar("SELECT count(*)::text FROM pg_trigger WHERE tgrelid='public.sale_voids'::regclass AND tgname='apply_void_loyalty_reversal';"),
+  "1",
+);
 const voidFn = scalar("SELECT pg_get_functiondef('public.process_sale_void_v2(uuid,text,uuid,text)'::regprocedure);");
-assertIncludes("void reverses loyalty", voidFn, "customer_loyalty_ledger");
 if (voidFn.includes("Customer-linked sale void requires loyalty reversal evidence")) {
-  throw new Error("customer-linked void still fails closed instead of using exact loyalty evidence");
+  throw new Error("customer-linked void still fails closed even when exact loyalty evidence can be reversed");
 }
 
 console.log("Customer loyalty ledger schema/integration contract passed.");
