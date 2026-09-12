@@ -1,0 +1,61 @@
+name: Backup Restore Contract
+
+on:
+  pull_request:
+    paths:
+      - "scripts/test-backup-restore-contract.mjs"
+      - "scripts/verify-backup-restore.mjs"
+      - ".github/workflows/backup-restore-contract.yml"
+      - "supabase/migrations/**"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/test-backup-restore-contract.mjs"
+      - "scripts/verify-backup-restore.mjs"
+      - ".github/workflows/backup-restore-contract.yml"
+      - "supabase/migrations/**"
+
+jobs:
+  backup-restore-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - run: npm ci
+      - name: Ensure PostgreSQL client
+        run: command -v pg_dump >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify backup and isolated restore
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-backup-restore-contract.mjs > backup-restore.log 2>&1
+          status=$?
+          cat backup-restore.log
+          exit "$status"
+      - name: Preserve backup restore diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-restore-${{ github.sha }}
+          path: backup-restore.log
+          if-no-files-found: ignore
+          retention-days: 2
