@@ -43,6 +43,13 @@ const signature = "public.ai_read_reporting_context_v1(uuid,timestamp with time 
 assertEqual("AI read controller exists", scalar(`SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
 assertEqual("anonymous cannot execute AI read controller", scalar(`SELECT has_function_privilege('anon','${signature}','EXECUTE');`), "f");
 assertEqual("authenticated can execute AI read controller", scalar(`SELECT has_function_privilege('authenticated','${signature}','EXECUTE');`), "t");
+assertEqual("service role cannot bypass AI read controller auth", scalar(`SELECT has_function_privilege('service_role','${signature}','EXECUTE');`), "f");
+
+const definition = scalar(`SELECT pg_get_functiondef('${signature}'::regprocedure);`);
+assertTrue("controller delegates to reporting authority", definition.includes("get_branch_reporting_snapshot_v1"));
+for (const forbiddenMutation of ["INSERT INTO public.sales", "UPDATE public.sales", "DELETE FROM public.sales", "ai_create_digital_order", "ai_quote_order"]) {
+  assertTrue(`controller definition excludes ${forbiddenMutation}`, !definition.includes(forbiddenMutation));
+}
 
 for (const legacy of [
   "public.ai_search_catalog(uuid,uuid,text,integer)",
@@ -119,4 +126,4 @@ for (const forbidden of ["ai_create_digital_order", "ai_quote_order", "ai_handof
   assertTrue(`AI workspace does not expose ${forbidden}`, !workspace.includes(forbidden));
 }
 
-process.stdout.write("P2 AI read-controller contract PASS: authorized source-backed reporting facts, exact fils, evidence scope, and legacy mutation lockdown verified.\n");
+process.stdout.write("P2 AI read-controller contract PASS: authorized source-backed reporting facts, exact fils, evidence scope, service-role denial, and legacy mutation lockdown verified.\n");
