@@ -5,6 +5,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "scripts/test-ai-action-approval.mjs"
+      - "scripts/test-ai-action-approval-ui.mjs"
       - "src/modules/ai-agent/**"
       - "docs/AI_AGENT.md"
       - ".github/workflows/ai-action-approval-contract.yml"
@@ -13,6 +14,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "scripts/test-ai-action-approval.mjs"
+      - "scripts/test-ai-action-approval-ui.mjs"
       - "src/modules/ai-agent/**"
       - "docs/AI_AGENT.md"
       - ".github/workflows/ai-action-approval-contract.yml"
@@ -53,10 +55,14 @@ jobs:
         shell: bash
         run: |
           set +e
-          node scripts/test-ai-action-approval.mjs > ai-action-approval.log 2>&1
-          status=$?
+          : > ai-action-approval.log
+          node scripts/test-ai-action-approval.mjs >> ai-action-approval.log 2>&1
+          db_status=$?
+          node scripts/test-ai-action-approval-ui.mjs >> ai-action-approval.log 2>&1
+          ui_status=$?
           cat ai-action-approval.log
-          exit "$status"
+          if [ "$db_status" -ne 0 ]; then exit "$db_status"; fi
+          exit "$ui_status"
       - name: Preserve failure diagnostics
         if: failure() && steps.contract.outcome == 'failure'
         uses: actions/upload-artifact@v4
