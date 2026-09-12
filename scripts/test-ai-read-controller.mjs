@@ -17,8 +17,9 @@ function psql(args, capture = true) {
   });
 }
 function sql(statement) { return psql(["-c", statement], false); }
+function text(statement) { return psql(["-Atq", "-c", statement]).trim(); }
 function scalar(statement) {
-  return psql(["-Atq", "-c", statement]).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "";
+  return text(statement).split(/\r?\n/).filter(Boolean).at(-1) ?? "";
 }
 function asUser(userId, statement) {
   return scalar(`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${userId}'; ${statement}; COMMIT;`);
@@ -45,7 +46,7 @@ assertEqual("anonymous cannot execute AI read controller", scalar(`SELECT has_fu
 assertEqual("authenticated can execute AI read controller", scalar(`SELECT has_function_privilege('authenticated','${signature}','EXECUTE');`), "t");
 assertEqual("service role cannot bypass AI read controller auth", scalar(`SELECT has_function_privilege('service_role','${signature}','EXECUTE');`), "f");
 
-const definition = scalar(`SELECT pg_get_functiondef('${signature}'::regprocedure);`);
+const definition = text(`SELECT pg_get_functiondef('${signature}'::regprocedure);`);
 assertTrue("controller delegates to reporting authority", definition.includes("get_branch_reporting_snapshot_v1"));
 for (const forbiddenMutation of ["INSERT INTO public.sales", "UPDATE public.sales", "DELETE FROM public.sales", "ai_create_digital_order", "ai_quote_order"]) {
   assertTrue(`controller definition excludes ${forbiddenMutation}`, !definition.includes(forbiddenMutation));
