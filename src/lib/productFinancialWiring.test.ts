@@ -22,9 +22,12 @@ describe("product financial client wiring", () => {
     expect(channelPrices).toContain('step="0.001"');
   });
 
-  it("records financial changes made through catalogue CSV updates", () => {
+  it("routes catalogue CSV financials through the atomic exact-fils import authority", () => {
     const dataManagement = source("src/modules/settings/DataManagement.tsx");
-    expect(dataManagement).toContain("setProductBaseFinancials");
-    expect(dataManagement).toContain("Catalogue CSV import");
+    expect(dataManagement).toContain("bhdToFils");
+    expect(dataManagement).toContain("createCatalogueImportOperationId");
+    expect(dataManagement).toContain("importProductCatalogue");
+    expect(dataManagement).not.toContain("setProductBaseFinancials");
+    expect(dataManagement).not.toContain("replaceProductBarcodes");
   });
 });
