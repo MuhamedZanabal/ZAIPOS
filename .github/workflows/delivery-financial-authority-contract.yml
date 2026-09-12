@@ -21,7 +21,7 @@ on:
       - ".github/workflows/delivery-financial-authority-contract.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   delivery-financial-authority:
@@ -42,52 +42,12 @@ jobs:
     env:
       POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
-      - name: Checkout exact PR head
+      - name: Checkout exact head
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: "npm"
-      - name: Synchronize generated delivery financial types once
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = 'src/integrations/supabase/types.ts';
-          let text = fs.readFileSync(path, 'utf8');
-          if (text.includes('register_delivery_order_v2:') && text.includes('delivery_fee_fils: number')) process.exit(0);
-
-          const blockStart = text.indexOf('      delivery_orders: {');
-          const blockEnd = text.indexOf('      digital_orders: {', blockStart);
-          if (blockStart < 0 || blockEnd < 0 || blockEnd <= blockStart) throw new Error('Could not isolate generated delivery_orders block');
-          let block = text.slice(blockStart, blockEnd);
-          const rowFrom = '          delivery_fee: number\n          id: string';
-          const rowTo = '          delivery_fee: number\n          delivery_fee_fils: number\n          id: string';
-          const optionalFrom = '          delivery_fee?: number\n          id?: string';
-          const optionalTo = '          delivery_fee?: number\n          delivery_fee_fils?: number\n          id?: string';
-          if ((block.split(rowFrom).length - 1) !== 1) throw new Error('Expected one delivery_orders Row delivery_fee pattern');
-          if ((block.split(optionalFrom).length - 1) !== 2) throw new Error('Expected delivery_orders Insert and Update delivery_fee patterns');
-          block = block.replace(rowFrom, rowTo).replaceAll(optionalFrom, optionalTo);
-          text = text.slice(0, blockStart) + block + text.slice(blockEnd);
-
-          const marker = '      register_delivery_order: {';
-          if ((text.split(marker).length - 1) !== 1) throw new Error('Expected one legacy register_delivery_order type marker');
-          const rpc = `      register_delivery_order_v2: {\n        Args: {\n          _tenant_id: string\n          _branch_id: string\n          _items: Json\n          _address: string\n          _delivery_fee_fils: number\n          _client_mutation_id: string\n          _customer_name?: string\n          _customer_phone?: string\n          _neighborhood?: string\n          _customer_id?: string\n          _notes?: string\n        }\n        Returns: string\n      }\n`;
-          text = text.replace(marker, rpc + marker);
-          fs.writeFileSync(path, text);
-          NODE
-          if git diff --quiet -- src/integrations/supabase/types.ts; then exit 0; fi
-          node scripts/test-delivery-financial-authority.mjs
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/integrations/supabase/types.ts
-          git commit -m "fix: synchronize delivery exact-money database types"
-          git push origin HEAD:${{ github.head_ref }}
       - name: Install dependencies
         run: npm ci
       - name: Ensure PostgreSQL client
@@ -97,6 +57,7 @@ jobs:
       - name: Apply production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Verify delivery PostgreSQL authority contract
+        id: delivery_runtime
         shell: bash
         run: |
           set +e
@@ -105,10 +66,10 @@ jobs:
           cat delivery-financial-authority-runtime.log
           exit "$status"
       - name: Preserve delivery runtime diagnostics
-        if: failure()
+        if: failure() && steps.delivery_runtime.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: delivery-financial-authority-${{ github.sha }}
           path: delivery-financial-authority-runtime.log
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 2
