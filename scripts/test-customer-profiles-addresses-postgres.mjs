@@ -22,6 +22,9 @@ function psql(args, capture = true) {
 function scalar(statement) {
   return psql(["-Atq", "-c", statement]).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "";
 }
+function text(statement) {
+  return psql(["-Atq", "-c", statement]).trim();
+}
 function sql(statement) { psql(["-c", statement], false); }
 function asUser(userId, statement) {
   return scalar(`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${userId}'; ${statement}; COMMIT;`);
@@ -72,11 +75,11 @@ for (const signature of [
 ]) {
   assertEqual(`required function ${signature}`, scalar(`SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
 }
-const profileFn = scalar("SELECT pg_get_functiondef('public.upsert_customer_profile_v1(uuid,jsonb,text)'::regprocedure);");
+const profileFn = text("SELECT pg_get_functiondef('public.upsert_customer_profile_v1(uuid,jsonb,text)'::regprocedure);");
 assertIncludes("profile command binds operation id", profileFn, "operation_id");
 assertIncludes("profile command audits mutation", profileFn, "audit_logs");
 assertIncludes("profile command resolves tenant from auth", profileFn, "auth.uid");
-const addressFn = scalar("SELECT pg_get_functiondef('public.upsert_customer_address_v1(uuid,uuid,jsonb,text)'::regprocedure);");
+const addressFn = text("SELECT pg_get_functiondef('public.upsert_customer_address_v1(uuid,uuid,jsonb,text)'::regprocedure);");
 assertIncludes("address command binds operation id", addressFn, "operation_id");
 assertIncludes("address command enforces tenant customer", addressFn, "tenant_id");
 assertIncludes("address command handles default address", addressFn, "is_default");
