@@ -8,7 +8,7 @@ ZAIPOS main uses React 18, Electron, Dexie browser persistence and Supabase Post
 
 The archive contains data, not executable schema installation. Apply the matching reviewed migrations to an isolated replacement provider environment first. Restore compares the actual public-schema DDL fingerprint before writing. The manifest's local migration-chain hash identifies the code used to create the backup; it does not independently attest which migrations were applied to the source. The live schema fingerprint is the compatibility check.
 
-Current UUID-based ZAIPOS has no public sequences, foreign tables or materialized views. The scripts reject these object types if introduced: PostgreSQL `setval` is not transactional, and silently accepting it would invalidate atomic rollback guarantees. Such schema additions require a reviewed recovery implementation before deployment.
+ZAIPOS also owns a sale ticket-number sequence. Restore transactionally restarts sequence storage before replaying archived `setval` state. The rehearsal compares both `last_value` and `is_called` after successful restore and failed transaction rollback. Foreign tables and materialized views require a separately reviewed strategy and are rejected.
 
 ## Prerequisites and responsibility
 

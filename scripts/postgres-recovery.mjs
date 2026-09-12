@@ -81,9 +81,8 @@ export function privateDirectory(dir) {
   }
 }
 export function assertSupportedSchema(conn) {
-  // Current ZAIPOS has UUID keys and no sequences. setval is not transactional:
-  // reject future additions until their recovery strategy has been reviewed.
-  if (query(conn, "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('S','f','m');") !== "0") {
-    throw new Error("unsupported recovery schema: sequences, foreign tables or materialized views require a reviewed recovery strategy");
+  // Foreign data and materialized views need an explicit recovery strategy.
+  if (query(conn, "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('f','m');") !== "0") {
+    throw new Error("unsupported recovery schema: foreign tables or materialized views require a reviewed recovery strategy");
   }
 }

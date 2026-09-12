@@ -50,6 +50,7 @@ async function main() {
     if (!tables.length) throw new Error("target has no migrated public schema");
     const fks = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',con.conname,'definition',pg_get_constraintdef(con.oid,false)) ORDER BY c.relname,con.conname),'[]') FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE con.contype='f' AND n.nspname='public';`);
     const triggers = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',t.tgname,'enabled',t.tgenabled) ORDER BY c.relname,t.tgname),'[]') FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal;`);
+    const sequences = jsonQuery(conn, `SELECT COALESCE(json_agg(c.relname ORDER BY c.relname),'[]') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S';`);
     const sql = path.join(work, "data.sql");
     const sqlFd = openSync(sql, "wx", 0o600);
     try { command("pg_restore", ["--file=-", "--data-only", "--schema=public", "--no-owner", "--no-privileges", staged], conn.env, sqlFd); } finally { closeSync(sqlFd); }
@@ -60,6 +61,10 @@ async function main() {
       "SET LOCAL lock_timeout = '15s';", "SET LOCAL statement_timeout = '30min';",
       `LOCK TABLE ${tables.map(qualified).join(', ')} IN ACCESS EXCLUSIVE MODE;`,
       ...tables.map((table) => `DO $empty$ BEGIN IF EXISTS (SELECT FROM ${qualified(table)} LIMIT 1) THEN RAISE EXCEPTION 'target database is not empty'; END IF; END $empty$;`),
+      // RESTART transactionally replaces sequence storage before pg_restore's
+      // nontransactional setval writes. On rollback the old storage/state returns.
+      // The PostgreSQL contract checks both last_value and is_called on failure.
+      ...sequences.map((sequence) => `ALTER SEQUENCE ${qualified(sequence)} RESTART;`),
       ...tables.map((table) => `ALTER TABLE ${qualified(table)} DISABLE TRIGGER USER;`),
       ...fks.map((fk) => `ALTER TABLE ${qualified(fk.table)} DROP CONSTRAINT ${ident(fk.name)};`),
       `\\i ${literal(sql)}`,

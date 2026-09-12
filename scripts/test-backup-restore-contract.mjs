@@ -121,11 +121,14 @@ function existingCriticalTables() {
   return tables;
 }
 function tableFingerprint(table) {
-  const rows = scalar(`SELECT COALESCE(json_agg(t ORDER BY row_to_json(t)::text),'[]') FROM public.${quoteIdentifier(table)} t;`);
+  const rows = psql(`SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb)::text FROM public.${quoteIdentifier(table)} t;`).trim();
   return createHash('sha256').update(rows).digest('hex');
 }
 function captureManifest() {
-  return Object.fromEntries(existingCriticalTables().map((table) => [table, tableFingerprint(table)]));
+  const result = Object.fromEntries(existingCriticalTables().map((table) => [table, tableFingerprint(table)]));
+  const sequences = JSON.parse(scalar("SELECT COALESCE(json_agg(sequencename ORDER BY sequencename),'[]') FROM pg_sequences WHERE schemaname='public';"));
+  for (const sequence of sequences) result[`sequence:${sequence}`] = scalar(`SELECT last_value::text || ':' || is_called::text FROM public.${quoteIdentifier(sequence)};`);
+  return result;
 }
 
 function truncatePublicData() {
