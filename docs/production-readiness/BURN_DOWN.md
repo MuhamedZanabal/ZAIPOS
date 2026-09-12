@@ -91,7 +91,7 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 
 ## P1/P2/P3
 
-The downstream programme is now partially reconciled rather than globally unchecked. Items below are marked complete only where implementation has merged and the current production migration/regression matrix preserves the capability. Still-unimplemented future capabilities remain explicitly unchecked.
+The downstream programme is now reconciled through the implemented P2 control-plane/operational-alert slices. Items below are marked complete only where implementation has merged and the production migration/regression matrix preserves the capability. Still-unimplemented future capabilities remain explicitly unchecked.
 
 ## P1 POS operations
 
@@ -126,19 +126,20 @@ The downstream programme is now partially reconciled rather than globally unchec
 - [x] Authoritative customer profiles and Bahrain delivery addresses — PR #35
 - [x] Exact-fils customer credit subledger — PR #36
 
-## P1 reporting, resilience and delivery authority
+## P1 reporting, resilience, cash and delivery authority
 
 - [x] Deterministic, server-authoritative branch reporting foundation — PR #37
 - [x] Verified PostgreSQL backup/restore rehearsal with integrity evidence — PR #38
 - [x] Delivery monetary authority converted to exact fils and server-authoritative registration — PR #40
 - [x] Delivery financial-authority runtime hardening — PR #41
+- [x] Authoritative cash/till intelligence from immutable exact-fils close snapshots — PR #44
 
 ## P2 AI control plane
 
 - [x] Source-backed read-only AI reporting controller — PR #39
 - [x] Human-reviewed AI action request queue with no autonomous execution path — PR #42
-- [ ] User-facing AI action request/review surface beyond the database control plane
-- [ ] Proactive operational alerts with production definition-of-done evidence
+- [x] User-facing branch-scoped AI action request/review surface with no execution path — PR #45
+- [x] Proactive operational alerts with server-authoritative source evidence and user-facing read-only surface — PR #46
 
 ## Later / explicitly unresolved capabilities
 
@@ -149,10 +150,13 @@ The downstream programme is now partially reconciled rather than globally unchec
 
 ## Production evidence reconciliation — 2026-09-12
 
-- Current verified `main`: `43b6cd85df0a14a7f3ab91c7e3fdeb3be2d57e63` (PR #42 squash merge).
-- PR #42 exact tested head: `8ca10ea6af115989b46b7770961349c3bfcfebdf`.
-- Exact-head PR #42 verification: all 15 triggered workflows succeeded, including AI Action Approval Contract, full CI quality, production migration chain, tenant/branch structural integrity, transaction authorization/concurrency, dependency audit, lint, full Vitest suite, production build and Windows validation packaging.
-- Post-merge `main` verification: 15 push-triggered workflows succeeded on `43b6cd85df0a14a7f3ab91c7e3fdeb3be2d57e63`; zero failed and zero remained in progress when reconciled.
+- Current verified `main`: `e34c88acab90b874bbf6aa636975013348222d2d` (PR #46 squash merge).
+- PR #45 merged as `96128ebd81c26301566b8389989dd5569186a12c`; its exact-head AI approval/read contracts, full CI quality gate and Windows validation packaging were green before merge.
+- PR #46 exact tested head: `4bf183b6e751fb0057a7aaa29b4dbfcf3deb1173`.
+- Exact-head PR #46 verification: Operational Alerts Contract plus all 15 listed subsystem regression contracts succeeded; general CI run `34717012506` completed successfully. Its `quality` job passed localization, migrations, exact money, checkout/transaction/inventory/security contracts, dependency audit, lint, full Vitest and production build; Windows validation packaging completed successfully.
+- PR #46 squash merge: `e34c88acab90b874bbf6aa636975013348222d2d`.
+- Post-merge exact-main workflow snapshot returned 17 push-triggered runs for `e34c88acab90b874bbf6aa636975013348222d2d`; no failed, in-progress or cancelled run was present in the reconciled snapshot.
+- Superseded PR #47 was closed rather than merging its conflicting RED operational-alert implementation. Its unique cash-variance/configurable-horizon idea remains eligible only as a fresh incremental slice from current `main`, preserving PR #44 cash/till authority and PR #46 alert boundaries.
 - The current `main` branch is not protected; repository-admin permission remains required to enforce the documented required checks.
 - Production Authenticode signing remains blocked on external certificate credentials `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`.
 - Physical printer, cash-drawer and installed-updater acceptance remains a deployed-hardware boundary.
