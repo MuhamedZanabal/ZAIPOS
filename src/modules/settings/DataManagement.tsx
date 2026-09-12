@@ -12,12 +12,13 @@ import { toast } from "sonner";
 import { useInventoryCenters } from "@/hooks/useInventoryCenters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { analyzeBarcodeCandidates, parseBarcodeCell, type ProductBarcode } from "@/lib/productBarcodes";
-import { inspectProductBarcodes, replaceProductBarcodes } from "@/lib/productBarcodeCommands";
-import type { Database } from "@/integrations/supabase/types";
 import { bhdToFils } from "@/lib/bahrain";
-import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
-
-type DatabaseProductImport = Database["public"]["Tables"]["products"]["Insert"];
+import {
+  createCatalogueImportOperationId,
+  createDeterministicCatalogueProductId,
+  importProductCatalogue,
+  type CatalogueImportRow,
+} from "@/lib/catalogueImportCommands";
 
 export function DataManagement() {
   const { tenantId, branchId } = useTenantContext();
@@ -26,7 +27,6 @@ export function DataManagement() {
   const [selectedCenterId, setSelectedCenterId] = useState<string>("");
   const [progress, setProgress] = useState<{ total: number; current: number } | null>(null);
 
-  // Auto-select centro por defecto
   if (!selectedCenterId && defaultCenter) {
     setSelectedCenterId(defaultCenter.id);
   }
@@ -46,7 +46,7 @@ export function DataManagement() {
         barcodes: product.product_barcodes.map((entry) => entry.barcode).join("|"),
         product_barcodes: undefined,
       }));
-      exportToCsv(`products_${new Date().toISOString().split('T')[0]}.csv`, exported);
+      exportToCsv(`products_${new Date().toISOString().split("T")[0]}.csv`, exported);
       toast.success("Catalog exported");
     } catch (err: any) {
       toast.error("Export error: " + err.message);
@@ -66,14 +66,14 @@ export function DataManagement() {
 
       if (error) throw error;
 
-      const flatData = (data || []).map((s: any) => ({
-        product: s.products?.name,
-        sku: s.products?.sku,
-        center: s.inventory_centers?.name,
-        quantity: s.quantity
+      const flatData = (data || []).map((stock: any) => ({
+        product: stock.products?.name,
+        sku: stock.products?.sku,
+        center: stock.inventory_centers?.name,
+        quantity: stock.quantity,
       }));
 
-      exportToCsv(`inventory_${new Date().toISOString().split('T')[0]}.csv`, flatData);
+      exportToCsv(`inventory_${new Date().toISOString().split("T")[0]}.csv`, flatData);
       toast.success("Inventory exported");
     } catch (err: any) {
       toast.error("Export error: " + err.message);
@@ -82,139 +82,130 @@ export function DataManagement() {
     }
   };
 
-  const importProducts = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const importProducts = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     if (!tenantId) {
       toast.error("Tenant context is required");
-      e.target.value = "";
+      event.target.value = "";
       return;
     }
+
     setLoading(true);
     try {
       const rows = parseCsv(await file.text());
       if (rows.length === 0) throw new Error("The file is empty or has an invalid format");
-      setProgress({ total: rows.length, current: 0 });
+      if (rows.length > 10000) throw new Error("Catalogue imports are limited to 10,000 products per file");
 
-      const prepared = [] as Array<{
-        existingId: string | null;
-        productId: string;
-        productData: DatabaseProductImport;
-        barcodes: ProductBarcode[];
-        currentPriceFils: number | null;
-        currentCostFils: number | null;
-      }>;
-      for (const row of rows) {
-        if (!(row.name || row.nombre)) throw new Error("Every product import row requires a name");
+      setProgress({ total: rows.length, current: 0 });
+      const prepared: CatalogueImportRow[] = [];
+
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+        const name = String(row.name || row.nombre || "").trim();
+        if (!name) throw new Error(`Row ${index + 1}: every product requires a name`);
+
+        const sku = String(row.sku || "").trim() || null;
         const barcodeValues = parseBarcodeCell(row.barcodes || row.barcode || row.codigo_barras);
-        const barcodes: ProductBarcode[] = barcodeValues.map((barcode, index) => ({
+        const barcodes: ProductBarcode[] = barcodeValues.map((barcode, barcodeIndex) => ({
           barcode,
-          barcode_type: index === 0 ? "legacy" : "supplier",
-          is_primary: index === 0,
+          barcode_type: barcodeIndex === 0 ? "legacy" : "supplier",
+          is_primary: barcodeIndex === 0,
         }));
-        let existingId = row.id || null;
-        if (!existingId && row.sku) {
-          const { data: existing, error } = await supabase.from("products")
-            .select("id, price_fils, cost_fils").eq("sku", row.sku).eq("tenant_id", tenantId).maybeSingle();
-          if (error) throw error;
-          existingId = existing?.id ?? null;
-        }
-        let currentPriceFils: number | null = null;
-        let currentCostFils: number | null = null;
-        if (existingId) {
-          const { data: existing, error } = await supabase.from("products")
-            .select("price_fils, cost_fils")
-            .eq("id", existingId)
+
+        let productId = String(row.id || "").trim() || null;
+        if (!productId && sku) {
+          const { data: existing, error } = await supabase
+            .from("products")
+            .select("id")
+            .eq("sku", sku)
             .eq("tenant_id", tenantId)
-            .single();
+            .maybeSingle();
           if (error) throw error;
-          currentPriceFils = Number(existing.price_fils);
-          currentCostFils = Number(existing.cost_fils);
+          productId = existing?.id ?? null;
         }
+
+        if (!productId) {
+          const stableSeed = sku
+            ? `sku:${sku}`
+            : barcodes[0]?.barcode
+              ? `barcode:${barcodes[0].barcode.trim().toUpperCase()}`
+              : `row:${index + 1}:name:${name.normalize("NFC")}`;
+          productId = await createDeterministicCatalogueProductId(tenantId, stableSeed);
+        }
+
+        const sellingAmountFils = bhdToFils(row.price || 0);
+        const costAmountFils = bhdToFils(row.cost || row.costo || 0);
+        if (!Number.isSafeInteger(sellingAmountFils) || sellingAmountFils < 0) {
+          throw new Error(`Row ${index + 1}: selling price is outside the exact-fils range`);
+        }
+        if (!Number.isSafeInteger(costAmountFils) || costAmountFils < 0) {
+          throw new Error(`Row ${index + 1}: cost is outside the exact-fils range`);
+        }
+
+        const taxRate = Number(row.tax_rate || row.iva || 10);
+        const minStock = Number(row.min_stock || row.stock_minimo || 0);
+        if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
+          throw new Error(`Row ${index + 1}: tax rate must be between 0 and 100`);
+        }
+        if (!Number.isFinite(minStock) || minStock < 0) {
+          throw new Error(`Row ${index + 1}: minimum stock must be non-negative`);
+        }
+
         prepared.push({
-          existingId,
-          productId: existingId ?? crypto.randomUUID(),
-          productData: {
-            tenant_id: tenantId,
-            name: row.name || row.nombre,
-            sku: row.sku || null,
-            price: Number(row.price || 0),
-            cost: Number(row.cost || row.costo || 0),
-            tax_rate: Number(row.tax_rate || row.iva || 10),
-            min_stock: Number(row.min_stock || row.stock_minimo || 0),
-            status: (row.status || "active") as DatabaseProductImport["status"],
-            unit_code: row.unit_code || "unit",
-            product_type: (row.product_type || "simple") as DatabaseProductImport["product_type"],
-          },
-          barcodes,
-          currentPriceFils,
-          currentCostFils,
+          id: productId,
+          name,
+          sku,
+          selling_amount_fils: sellingAmountFils,
+          cost_amount_fils: costAmountFils,
+          tax_rate: taxRate,
+          min_stock: minStock,
+          status: (row.status || "active") as CatalogueImportRow["status"],
+          unit_code: String(row.unit_code || "unit").trim() || "unit",
+          product_type: (row.product_type || "simple") as CatalogueImportRow["product_type"],
+          barcodes: barcodes as CatalogueImportRow["barcodes"],
         });
+
+        setProgress({ total: rows.length, current: index + 1 });
       }
 
       const localInspection = analyzeBarcodeCandidates(prepared.flatMap((row) => row.barcodes));
       const invalidLocal = localInspection.find((entry) => entry.state !== "valid");
-      if (invalidLocal) throw new Error(`Barcode ${invalidLocal.normalized_barcode || "(empty)"} is ${invalidLocal.state.replace("_", " ")} in the import file`);
-
-      for (const row of prepared) {
-        const inspection = await inspectProductBarcodes(tenantId, row.existingId, row.barcodes);
-        const conflict = inspection.find((entry) => entry.state !== "valid");
-        if (conflict) {
-          throw new Error(`Barcode ${conflict.normalized_barcode} conflicts with ${conflict.conflicting_product_name ?? "another catalog product"}`);
-        }
+      if (invalidLocal) {
+        throw new Error(
+          `Barcode ${invalidLocal.normalized_barcode || "(empty)"} is ${invalidLocal.state.replace("_", " ")} in the import file`,
+        );
       }
 
-      for (let index = 0; index < prepared.length; index += 1) {
-        const row = prepared[index];
-        if (row.existingId) {
-          const { price, cost, price_fils: _priceFils, cost_fils: _costFils, ...nonFinancialData } = row.productData;
-          const nextPriceFils = bhdToFils(price ?? 0);
-          const nextCostFils = bhdToFils(cost ?? 0);
-          if (nextPriceFils !== row.currentPriceFils || nextCostFils !== row.currentCostFils) {
-            await setProductBaseFinancials({
-              tenantId,
-              productId: row.productId,
-              sellingPriceBhd: price ?? 0,
-              costBhd: cost ?? 0,
-              reason: "Catalogue CSV import",
-              operationId: createProductFinancialOperationId("catalogue-import-financials"),
-            });
-          }
-          const { error } = await supabase.from("products").update(nonFinancialData)
-            .eq("id", row.existingId).eq("tenant_id", tenantId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from("products").insert({ id: row.productId, ...row.productData });
-          if (error) throw error;
-        }
-        await replaceProductBarcodes(tenantId, row.productId, row.barcodes, `data-import-${crypto.randomUUID()}`);
-        setProgress({ total: prepared.length, current: index + 1 });
-      }
-
-      toast.success(`Import complete: ${rows.length} products processed`);
+      const operationId = await createCatalogueImportOperationId(tenantId, prepared);
+      const result = await importProductCatalogue({ tenantId, operationId, rows: prepared });
+      setProgress({ total: rows.length, current: rows.length });
+      toast.success(
+        `Import complete: ${result.processed} products processed (${result.created} created, ${result.updated} updated)`,
+      );
     } catch (err: any) {
       toast.error("Import error: " + err.message);
     } finally {
       setLoading(false);
       setProgress(null);
-      e.target.value = "";
+      event.target.value = "";
     }
   };
 
-  const importInventory = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const importInventory = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     if (!tenantId || !branchId) {
       toast.error("Tenant and branch context are required");
-      e.target.value = "";
+      event.target.value = "";
       return;
     }
 
     if (!selectedCenterId) {
       toast.error("You must select an inventory center");
-      e.target.value = "";
+      event.target.value = "";
       return;
     }
 
@@ -227,11 +218,11 @@ export function DataManagement() {
       const targets: { productId: string; targetQuantity: number; effectKey: string }[] = [];
       const seenSkus = new Set<string>();
 
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
         const sku = String(row.sku ?? "").trim();
         if (!sku) {
-          setProgress(p => p ? { ...p, current: i + 1 } : null);
+          setProgress((progressState) => progressState ? { ...progressState, current: index + 1 } : null);
           continue;
         }
         if (seenSkus.has(sku)) throw new Error(`Duplicate SKU in inventory import: ${sku}`);
@@ -258,7 +249,7 @@ export function DataManagement() {
           });
         }
 
-        setProgress(p => p ? { ...p, current: i + 1 } : null);
+        setProgress((progressState) => progressState ? { ...progressState, current: index + 1 } : null);
       }
 
       if (targets.length === 0) throw new Error("No matching products were found for the imported SKUs");
@@ -273,20 +264,18 @@ export function DataManagement() {
       });
 
       toast.success(`Inventory reconciliation complete: ${targets.length} product(s) set to their physical counts`);
-      setProgress(null);
     } catch (err: any) {
       toast.error("Error importing inventory: " + err.message);
     } finally {
       setLoading(false);
       setProgress(null);
-      e.target.value = "";
+      event.target.value = "";
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Product Catalog */}
         <div className="glass rounded-2xl p-5 space-y-4">
           <div>
             <div className="flex items-center gap-2 text-brand-600">
@@ -297,36 +286,34 @@ export function DataManagement() {
               Export or import the complete product list (prices, costs, categories).
             </div>
           </div>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 h-12"
-              onClick={exportProducts}
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Export Catalog (.csv)
-            </Button>
-            
-            <div className="space-y-2">
-              <Label htmlFor="import-products">Import / Update Catalog</Label>
-              <div className="relative">
-                <Input 
-                  id="import-products" 
-                  type="file" 
-                  accept=".csv" 
-                  onChange={importProducts}
-                  className="cursor-pointer"
-                  disabled={loading}
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                * If you include the 'id' column, the existing product will be updated. 
-                Otherwise, the system will try to match by 'sku'.
-              </p>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 h-12"
+            onClick={exportProducts}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export Catalog (.csv)
+          </Button>
+
+          <div className="space-y-2">
+            <Label htmlFor="import-products">Import / Update Catalog</Label>
+            <div className="relative">
+              <Input
+                id="import-products"
+                type="file"
+                accept=".csv"
+                onChange={importProducts}
+                className="cursor-pointer"
+                disabled={loading}
+              />
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              * Existing products are matched by 'id' or 'sku'. New product identities and retry IDs are deterministic for the same file.
+            </p>
+          </div>
         </div>
 
-        {/* Stock de Insalerio */}
         <div className="glass rounded-2xl p-5 space-y-4">
           <div>
             <div className="flex items-center gap-2 text-brand-600">
@@ -337,47 +324,46 @@ export function DataManagement() {
               Bulk-adjust physical quantities in your inventory centers.
             </div>
           </div>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 h-12"
-              onClick={exportInventory}
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Export Current Stock (.csv)
-            </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 h-12"
+            onClick={exportInventory}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export Current Stock (.csv)
+          </Button>
 
-            <div className="space-y-3 pt-2 border-t">
-              <div className="space-y-1.5">
-                <Label>Destination center for import</Label>
-                <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a center..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {centers.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="import-inventory">Import Stock (Physical Adjustment)</Label>
-                <Input 
-                  id="import-inventory" 
-                  type="file" 
-                  accept=".csv" 
-                  onChange={importInventory}
-                  className="cursor-pointer"
-                  disabled={loading || !selectedCenterId}
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  * The file must contain 'sku' and 'quantity' columns. 
-                  Each quantity is treated as the authoritative physical count for the selected center.
-                </p>
-              </div>
+          <div className="space-y-3 pt-2 border-t">
+            <div className="space-y-1.5">
+              <Label>Destination center for import</Label>
+              <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a center..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {centers.map((center) => (
+                    <SelectItem key={center.id} value={center.id}>{center.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="import-inventory">Import Stock (Physical Adjustment)</Label>
+              <Input
+                id="import-inventory"
+                type="file"
+                accept=".csv"
+                onChange={importInventory}
+                className="cursor-pointer"
+                disabled={loading || !selectedCenterId}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                * The file must contain 'sku' and 'quantity' columns. Each quantity is treated as the authoritative physical count for the selected center.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
