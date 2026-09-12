@@ -26,6 +26,11 @@ assertEqual(
   scalar("SELECT to_regclass('public.supplier_products') IS NOT NULL;"),
   "t",
 );
+assertEqual(
+  "supplier product operations table exists",
+  scalar("SELECT to_regclass('public.supplier_product_operations') IS NOT NULL;"),
+  "t",
+);
 
 for (const [column, type] of [
   ["tenant_id", "uuid"],
@@ -67,7 +72,7 @@ assertIncludes("one supplier-product mapping per branch", indexes, "tenant_id, b
 assertIncludes("supplier SKU collision protection", indexes, "supplier_sku");
 
 for (const signature of [
-  "public.upsert_supplier_product_v1(uuid,uuid,uuid,uuid,text,text,bigint,bigint,integer,boolean,text)",
+  "public.upsert_supplier_product_v1(uuid,uuid,uuid,uuid,text,text,bigint,bigint,integer,boolean,text,text)",
   "public.list_supplier_products_v1(uuid,uuid,uuid)",
 ]) {
   assertEqual(
@@ -77,18 +82,19 @@ for (const signature of [
   );
 }
 
-for (const privilege of ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]) {
+for (const table of ["supplier_products", "supplier_product_operations"]) {
+  for (const privilege of ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]) {
+    assertEqual(
+      `${table} authenticated direct ${privilege} denied`,
+      scalar(`SELECT has_table_privilege('authenticated','public.${table}','${privilege}');`),
+      "f",
+    );
+  }
   assertEqual(
-    `authenticated direct ${privilege} denied`,
-    scalar(`SELECT has_table_privilege('authenticated','public.supplier_products','${privilege}');`),
-    "f",
+    `${table} RLS enabled`,
+    scalar(`SELECT relrowsecurity FROM pg_class WHERE oid='public.${table}'::regclass;`),
+    "t",
   );
 }
-
-assertEqual(
-  "RLS enabled",
-  scalar("SELECT relrowsecurity FROM pg_class WHERE oid='public.supplier_products'::regclass;"),
-  "t",
-);
 
 console.log("Supplier product catalogue PostgreSQL contract passed.");
