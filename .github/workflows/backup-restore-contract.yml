@@ -1,0 +1,67 @@
+name: Backup Restore Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/backup-postgres.mjs"
+      - "scripts/restore-postgres.mjs"
+      - "scripts/test-backup-restore-contract.mjs"
+      - "docs/production-readiness/BACKUP_RESTORE.md"
+      - ".github/workflows/backup-restore-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/backup-postgres.mjs"
+      - "scripts/restore-postgres.mjs"
+      - "scripts/test-backup-restore-contract.mjs"
+      - "docs/production-readiness/BACKUP_RESTORE.md"
+      - ".github/workflows/backup-restore-contract.yml"
+
+jobs:
+  backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure PostgreSQL client
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+          pg_dump --version
+          pg_restore --version
+
+      - name: Apply and validate production migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+
+      - name: Test backup and restore round-trip
+        run: node scripts/test-backup-restore-contract.mjs
