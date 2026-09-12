@@ -11,9 +11,9 @@ function fail(message) {
 function psql(databaseUrl, statement) {
   return execFileSync(
     "psql",
-    ["-X", "-Atq", "-v", "ON_ERROR_STOP=1", "-c", statement],
+    ["--dbname", databaseUrl, "-X", "-Atq", "-v", "ON_ERROR_STOP=1", "-c", statement],
     {
-      env: { ...process.env, PGDATABASE: databaseUrl },
+      env: { ...process.env },
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -75,6 +75,8 @@ try {
   execFileSync(
     "pg_restore",
     [
+      "--dbname",
+      databaseUrl,
       "--data-only",
       "--schema=public",
       "--no-owner",
@@ -83,7 +85,7 @@ try {
       archivePath,
     ],
     {
-      env: { ...process.env, PGDATABASE: databaseUrl },
+      env: { ...process.env },
       stdio: "inherit",
     },
   );
