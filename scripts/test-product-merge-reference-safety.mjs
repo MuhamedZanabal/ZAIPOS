@@ -56,6 +56,8 @@ const POLICY = Object.freeze({
 const exactReferencePolicy = new Map([
   ["public.digital_order_items.digital_order_items_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.held_cart_items.held_cart_items_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
+  ["public.inventory_lot_movements.inventory_lot_movements_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.inventory_lots.inventory_lots_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
   ["public.inventory_movements.inventory_movements_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.inventory_stocks.inventory_stocks_product_id_fkey[product_id]", POLICY.TRANSFER_TO_CANONICAL],
   ["public.modifier_groups.modifier_groups_product_id_fkey[product_id]", POLICY.BLOCK_WHILE_ACTIVE],
@@ -71,6 +73,7 @@ const exactReferencePolicy = new Map([
   ["public.product_components.product_components_component_product_id_fkey[component_product_id]", POLICY.BLOCK_WHILE_ACTIVE],
   ["public.product_components.product_components_parent_product_id_fkey[parent_product_id]", POLICY.BLOCK_WHILE_ACTIVE],
   ["public.product_financial_operations.product_financial_operations_tenant_product_fkey[tenant_id,product_id]", POLICY.HISTORICAL_RETAIN],
+  ["public.product_inventory_controls.product_inventory_controls_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
   ["public.product_merge_aliases.product_merge_aliases_canonical_fkey[tenant_id,canonical_product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.product_merge_aliases.product_merge_aliases_source_fkey[tenant_id,source_product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.product_merge_operations.product_merge_operations_canonical_fkey[tenant_id,canonical_product_id]", POLICY.HISTORICAL_RETAIN],
