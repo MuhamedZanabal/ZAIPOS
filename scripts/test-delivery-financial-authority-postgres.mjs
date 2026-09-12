@@ -118,7 +118,7 @@ assertEqual("delivery legacy numeric compatibility mirrors exact fils", scalar(`
 const saleId = scalar(`SELECT sale_id::text FROM public.delivery_orders WHERE id='${orderId}'::uuid;`);
 if (!/^[0-9a-f-]{36}$/i.test(saleId)) throw new Error(`delivery did not link an authoritative sale: ${saleId}`);
 assertEqual("server price authority ignored client unit-price hint", scalar(`SELECT unit_price_fils::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid AND product_id='${I.productA}'::uuid;`), "1000");
-assertEqual("server tax authority ignored client tax hint", scalar(`SELECT tax_fils::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid AND product_id='${I.productA}'::uuid;`), "0");
+assertEqual("server tax authority ignored client tax hint", scalar(`SELECT (tax_rate = 0::numeric)::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid AND product_id='${I.productA}'::uuid;`), "true");
 assertEqual("authoritative delivery sale total", scalar(`SELECT total_fils::text FROM public.sales WHERE id='${saleId}'::uuid;`), "1000");
 assertEqual("inventory decremented exactly once", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${I.centerA}'::uuid AND product_id='${I.productA}'::uuid;`), "2.000");
 assertEqual("one sale effect", scalar(`SELECT count(*)::text FROM public.sales WHERE id='${saleId}'::uuid;`), "1");
