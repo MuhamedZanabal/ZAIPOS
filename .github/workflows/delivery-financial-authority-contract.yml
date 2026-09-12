@@ -60,34 +60,28 @@ jobs:
           const fs = require('node:fs');
           const path = 'src/integrations/supabase/types.ts';
           let text = fs.readFileSync(path, 'utf8');
-          if (text.includes('register_delivery_order_v2:') && text.includes('delivery_fee_fils: number')) {
-            process.exit(0);
-          }
-          const replacements = [
-            [
-              '          delivery_fee: number\n          id: string',
-              '          delivery_fee: number\n          delivery_fee_fils: number\n          id: string',
-            ],
-            [
-              '          delivery_fee?: number\n          id?: string',
-              '          delivery_fee?: number\n          delivery_fee_fils?: number\n          id?: string',
-            ],
-          ];
-          for (const [from, to] of replacements) {
-            const count = text.split(from).length - 1;
-            if (count !== 1) throw new Error(`Expected exactly one generated delivery field pattern, found ${count}: ${from}`);
-            text = text.replace(from, to);
-          }
+          if (text.includes('register_delivery_order_v2:') && text.includes('delivery_fee_fils: number')) process.exit(0);
+
+          const blockStart = text.indexOf('      delivery_orders: {');
+          const blockEnd = text.indexOf('      digital_orders: {', blockStart);
+          if (blockStart < 0 || blockEnd < 0 || blockEnd <= blockStart) throw new Error('Could not isolate generated delivery_orders block');
+          let block = text.slice(blockStart, blockEnd);
+          const rowFrom = '          delivery_fee: number\n          id: string';
+          const rowTo = '          delivery_fee: number\n          delivery_fee_fils: number\n          id: string';
+          const optionalFrom = '          delivery_fee?: number\n          id?: string';
+          const optionalTo = '          delivery_fee?: number\n          delivery_fee_fils?: number\n          id?: string';
+          if ((block.split(rowFrom).length - 1) !== 1) throw new Error('Expected one delivery_orders Row delivery_fee pattern');
+          if ((block.split(optionalFrom).length - 1) !== 2) throw new Error('Expected delivery_orders Insert and Update delivery_fee patterns');
+          block = block.replace(rowFrom, rowTo).replaceAll(optionalFrom, optionalTo);
+          text = text.slice(0, blockStart) + block + text.slice(blockEnd);
+
           const marker = '      register_delivery_order: {';
-          const markerCount = text.split(marker).length - 1;
-          if (markerCount !== 1) throw new Error(`Expected exactly one legacy delivery RPC marker, found ${markerCount}`);
+          if ((text.split(marker).length - 1) !== 1) throw new Error('Expected one legacy register_delivery_order type marker');
           const rpc = `      register_delivery_order_v2: {\n        Args: {\n          _tenant_id: string\n          _branch_id: string\n          _items: Json\n          _address: string\n          _delivery_fee_fils: number\n          _client_mutation_id: string\n          _customer_name?: string\n          _customer_phone?: string\n          _neighborhood?: string\n          _customer_id?: string\n          _notes?: string\n        }\n        Returns: string\n      }\n`;
           text = text.replace(marker, rpc + marker);
           fs.writeFileSync(path, text);
           NODE
-          if git diff --quiet -- src/integrations/supabase/types.ts; then
-            exit 0
-          fi
+          if git diff --quiet -- src/integrations/supabase/types.ts; then exit 0; fi
           node scripts/test-delivery-financial-authority.mjs
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
