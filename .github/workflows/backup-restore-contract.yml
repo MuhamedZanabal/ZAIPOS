@@ -1,0 +1,102 @@
+name: Backup Restore Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/backup-postgres.mjs"
+      - "scripts/restore-postgres.mjs"
+      - "scripts/test-backup-restore-contract.mjs"
+      - "docs/production-readiness/BACKUP_RESTORE.md"
+      - ".github/workflows/backup-restore-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/backup-postgres.mjs"
+      - "scripts/restore-postgres.mjs"
+      - "scripts/test-backup-restore-contract.mjs"
+      - "docs/production-readiness/BACKUP_RESTORE.md"
+      - ".github/workflows/backup-restore-contract.yml"
+
+jobs:
+  backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure PostgreSQL 17 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          architecture="$(dpkg --print-architecture)"
+          printf '%s\n' \
+            'Types: deb' \
+            'URIs: https://apt.postgresql.org/pub/repos/apt' \
+            "Suites: ${VERSION_CODENAME}-pgdg" \
+            "Architectures: ${architecture}" \
+            'Components: main' \
+            'Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc' \
+            | sudo tee /etc/apt/sources.list.d/pgdg.sources >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          pg_dump --version
+          pg_restore --version
+          psql --version
+          pg_dump --version | grep -Eq 'PostgreSQL\) 17\.'
+
+      - name: Apply and validate production migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+
+      - name: Test backup and restore round-trip
+        id: backup_restore_contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-backup-restore-contract.mjs > backup-restore-contract.log 2>&1
+          status=$?
+          cat backup-restore-contract.log
+          exit "$status"
+
+      - name: Preserve backup/restore failure diagnostics
+        if: failure() && steps.backup_restore_contract.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-restore-failure-${{ github.sha }}
+          path: backup-restore-contract.log
+          if-no-files-found: error
+          retention-days: 2
