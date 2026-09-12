@@ -91,7 +91,7 @@ This inventory is evidence-based. An unchecked item may have partial or branch-v
 
 ## P1/P2/P3
 
-The downstream programme is now partially reconciled rather than globally unchecked. Items below are marked complete only where implementation has merged and the current production migration/regression matrix preserves the capability. Still-unimplemented future capabilities remain explicitly unchecked.
+The downstream programme is reconciled through the implemented P2 control-plane and operational-alert slices. Items below are marked complete only where implementation has merged and the production migration/regression matrix preserves the capability. Still-unimplemented future capabilities remain explicitly unchecked.
 
 ## P1 POS operations
 
@@ -126,19 +126,22 @@ The downstream programme is now partially reconciled rather than globally unchec
 - [x] Authoritative customer profiles and Bahrain delivery addresses — PR #35
 - [x] Exact-fils customer credit subledger — PR #36
 
-## P1 reporting, resilience and delivery authority
+## P1 reporting, resilience, cash and delivery authority
 
 - [x] Deterministic, server-authoritative branch reporting foundation — PR #37
 - [x] Verified PostgreSQL backup/restore rehearsal with integrity evidence — PR #38
 - [x] Delivery monetary authority converted to exact fils and server-authoritative registration — PR #40
 - [x] Delivery financial-authority runtime hardening — PR #41
+- [x] Authoritative cash/till intelligence from immutable exact-fils close snapshots — PR #44
 
 ## P2 AI control plane
 
 - [x] Source-backed read-only AI reporting controller — PR #39
 - [x] Human-reviewed AI action request queue with no autonomous execution path — PR #42
-- [ ] User-facing AI action request/review surface beyond the database control plane
-- [ ] Proactive operational alerts with production definition-of-done evidence
+- [x] User-facing branch-scoped AI action request/review surface with no execution path — PR #45
+- [x] Source-backed proactive stock/expiry alert foundation and read-only operator surface — PR #46
+- [x] Deterministic alert v1 with caller-bounded expiry/cash windows, Bahrain date handling and exact-fils cash variance — PR #48
+- [x] Operator UI cutover to alert v1 with 30-day expiry and 7-day cash lookback, including exact-fils cash variance display — PR #51
 
 ## Later / explicitly unresolved capabilities
 
@@ -149,10 +152,14 @@ The downstream programme is now partially reconciled rather than globally unchec
 
 ## Production evidence reconciliation — 2026-09-12
 
-- Current verified `main`: `43b6cd85df0a14a7f3ab91c7e3fdeb3be2d57e63` (PR #42 squash merge).
-- PR #42 exact tested head: `8ca10ea6af115989b46b7770961349c3bfcfebdf`.
-- Exact-head PR #42 verification: all 15 triggered workflows succeeded, including AI Action Approval Contract, full CI quality, production migration chain, tenant/branch structural integrity, transaction authorization/concurrency, dependency audit, lint, full Vitest suite, production build and Windows validation packaging.
-- Post-merge `main` verification: 15 push-triggered workflows succeeded on `43b6cd85df0a14a7f3ab91c7e3fdeb3be2d57e63`; zero failed and zero remained in progress when reconciled.
+- Current verified `main`: `f54d2e73c1a4676dd740b7e7cd4d81863fdd545e` (PR #51 squash merge).
+- PR #44 merged authoritative manager-scoped cash/till intelligence from immutable exact-fils close snapshots.
+- PR #45 merged the branch-scoped human review UI while preserving the approval-only/no-execution boundary.
+- PR #46 exact tested head `4bf183b6e751fb0057a7aaa29b4dbfcf3deb1173`; Operational Alerts Contract, full CI quality and Windows validation packaging were green before merge. Merge: `e34c88acab90b874bbf6aa636975013348222d2d`.
+- PR #48 exact tested head `aa408315205e03e2da7337a324bf967e31ac601e`; merge `b1e55d00fbef0358c6672a18af1e4372aeb9b8ff`. Post-merge CI run `34717926014` passed full quality and Windows validation packaging; no failed, queued or in-progress runs remained when verified.
+- PR #51 RED head `e3012b4ee7111ae0e2082a8526ff1dddffd55057` failed at the proactive-alert UI contract before implementation. Implementation head `34943c635512bbe3c173faa3b305317a16712507` passed Operational Alerts Contract, AI Read Controller Contract, AI Action Approval Contract, full CI run `34718514806` quality and Windows validation packaging.
+- PR #51 merge: `f54d2e73c1a4676dd740b7e7cd4d81863fdd545e`. Post-merge CI run `34718777647` passed full quality and Windows validation packaging; no failed, queued or in-progress runs remained when reconciled.
+- Superseded draft PRs #47 and #50 were closed rather than merging overlapping alert authorities.
 - The current `main` branch is not protected; repository-admin permission remains required to enforce the documented required checks.
 - Production Authenticode signing remains blocked on external certificate credentials `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`.
 - Physical printer, cash-drawer and installed-updater acceptance remains a deployed-hardware boundary.
