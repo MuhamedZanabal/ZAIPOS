@@ -1,0 +1,60 @@
+name: Operational Alerts V1 Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-operational-alerts-v1.mjs"
+      - ".github/workflows/operational-alerts-v1-contract.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-operational-alerts-v1.mjs"
+      - ".github/workflows/operational-alerts-v1-contract.yml"
+
+jobs:
+  operational-alerts-v1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - run: npm ci
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify deterministic operational alerts v1
+        id: alerts_v1_contract
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-operational-alerts-v1.mjs > operational-alerts-v1.log 2>&1
+          status=$?
+          cat operational-alerts-v1.log
+          exit "$status"
+      - name: Preserve alerts v1 diagnostics
+        if: failure() && steps.alerts_v1_contract.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: operational-alerts-v1-${{ github.sha }}
+          path: operational-alerts-v1.log
+          if-no-files-found: error
+          retention-days: 2
