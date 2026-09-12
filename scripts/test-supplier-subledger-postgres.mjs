@@ -187,7 +187,7 @@ assertEqual("payment statement delta", String(statement[2].balance_delta_fils), 
 assertEqual("final supplier payable", String(statement[2].running_balance_fils), "500");
 assertEqual("statement coverage complete from cutover", statement[2].coverage_status, "complete_from_cutover");
 
--- A supplier with post-cutover activity but no opening balance must expose incomplete coverage.
+// A supplier with post-cutover activity but no opening balance must expose incomplete coverage.
 sql(`
   INSERT INTO public.supplier_ledger_entries(tenant_id,branch_id,supplier_id,entry_type,amount_fils,payment_method,operation_id,note,recorded_by)
   VALUES('${I.tenantA}','${I.branchA}','${I.supplierB}','payment',100,'cash','supplier-test-seed-111','Coverage seed','${I.managerA}');
