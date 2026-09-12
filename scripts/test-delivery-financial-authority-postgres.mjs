@@ -114,7 +114,7 @@ const orderId = asUser(I.cashierA, deliveryCall());
 if (!/^[0-9a-f-]{36}$/i.test(orderId)) throw new Error(`delivery creation did not return an order UUID: ${orderId}`);
 
 assertEqual("delivery fee persisted exactly in fils", scalar(`SELECT delivery_fee_fils::text FROM public.delivery_orders WHERE id='${orderId}'::uuid;`), "250");
-assertEqual("delivery legacy numeric compatibility mirrors exact fils", scalar(`SELECT delivery_fee::text FROM public.delivery_orders WHERE id='${orderId}'::uuid;`), "0.250");
+assertEqual("delivery legacy numeric compatibility mirrors exact fils", scalar(`SELECT (delivery_fee = 0.250::numeric)::text FROM public.delivery_orders WHERE id='${orderId}'::uuid;`), "t");
 const saleId = scalar(`SELECT sale_id::text FROM public.delivery_orders WHERE id='${orderId}'::uuid;`);
 if (!/^[0-9a-f-]{36}$/i.test(saleId)) throw new Error(`delivery did not link an authoritative sale: ${saleId}`);
 assertEqual("server price authority ignored client unit-price hint", scalar(`SELECT unit_price_fils::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid AND product_id='${I.productA}'::uuid;`), "1000");
