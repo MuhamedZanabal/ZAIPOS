@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, ClipboardCheck, Database, SearchCheck, ShieldCheck, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Database, SearchCheck, ShieldCheck, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { formatCurrency } from "@/lib/format";
@@ -51,7 +51,53 @@ interface AiActionRequest {
   created_at: string;
 }
 
+interface OperationalAlert {
+  type: string;
+  severity: "critical" | "warning" | string;
+  branch_id: string;
+  source_type: string;
+  source_id: string;
+  title: string;
+  evidence: Record<string, unknown>;
+}
+
+interface OperationalAlertFeed {
+  mode: "read_only";
+  scope: {
+    tenant_id: string;
+    branch_id: string;
+    as_of_date: string;
+  };
+  evidence: {
+    source_type: string;
+    authoritative: boolean;
+    currency: "BHD";
+    money_unit: "fils";
+  };
+  alerts: OperationalAlert[];
+  limitations: string[];
+}
+
 const filsToBhd = (fils: number | null | undefined) => (fils ?? 0) / 1000;
+
+function bahrainDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bahrain",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function evidenceSummary(evidence: Record<string, unknown>) {
+  return Object.entries(evidence)
+    .filter(([, value]) => value !== null && value !== undefined)
+    .slice(0, 4)
+    .map(([key, value]) => `${key.replaceAll("_", " ")}: ${String(value)}`)
+    .join(" · ");
+}
 
 export default function AIAgent() {
   const { tenantId, branchId, branches } = useTenantContext();
@@ -70,6 +116,9 @@ export default function AIAgent() {
   const [queueError, setQueueError] = useState<string | null>(null);
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [operationalAlerts, setOperationalAlerts] = useState<OperationalAlert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
   const reviewOperationIds = useRef<Record<string, string>>({});
 
   const loadActionRequests = useCallback(async () => {
@@ -98,9 +147,39 @@ export default function AIAgent() {
     }
   }, [branchId]);
 
+  const loadOperationalAlerts = useCallback(async () => {
+    if (!branchId) {
+      setOperationalAlerts([]);
+      setAlertsError(null);
+      return;
+    }
+
+    setAlertsLoading(true);
+    setAlertsError(null);
+    try {
+      const { data, error: alertReadError } = await (supabase as any).rpc("get_branch_operational_alerts_v1", {
+        p_branch_id: branchId,
+        p_as_of_date: bahrainDateKey(),
+      });
+      if (alertReadError) throw alertReadError;
+      const feed = data as OperationalAlertFeed | null;
+      setOperationalAlerts(Array.isArray(feed?.alerts) ? feed.alerts : []);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Operational alerts could not be loaded.";
+      setAlertsError(message);
+      setOperationalAlerts([]);
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, [branchId]);
+
   useEffect(() => {
     void loadActionRequests();
   }, [loadActionRequests]);
+
+  useEffect(() => {
+    void loadOperationalAlerts();
+  }, [loadOperationalAlerts]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -245,6 +324,55 @@ export default function AIAgent() {
           </div>
         </>
       )}
+
+      <section className="glass space-y-4 p-6" aria-labelledby="operational-alerts-title">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="orb grid h-10 w-10 place-items-center"><AlertTriangle className="h-5 w-5" /></div>
+          <div>
+            <h2 id="operational-alerts-title" className="text-lg font-semibold">Operational alerts</h2>
+            <p className="text-xs text-muted-foreground">Source-backed branch conditions from persisted inventory and lot evidence.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadOperationalAlerts()}
+            disabled={alertsLoading || !branchId}
+            className="ml-auto rounded-lg border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+          >
+            {alertsLoading ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
+
+        {alertsError && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            Alert source unavailable. No fallback conditions are invented. {alertsError}
+          </div>
+        )}
+
+        {alertsLoading ? (
+          <div className="py-6 text-sm text-muted-foreground">Loading persisted branch conditions…</div>
+        ) : operationalAlerts.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+            No operational alerts from persisted branch state.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {operationalAlerts.map((alert) => (
+              <article key={`${alert.source_type}:${alert.source_id}:${alert.type}`} className="rounded-xl border border-border bg-background/50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{alert.title}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {alert.type.replaceAll("_", " ")} · {alert.source_type} · source {alert.source_id}
+                    </div>
+                  </div>
+                  <span className={`pill ${alert.severity === "critical" ? "pill-danger" : ""}`}>{alert.severity}</span>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">{evidenceSummary(alert.evidence)}</div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="glass space-y-4 p-6" aria-labelledby="ai-review-queue-title">
         <div className="flex flex-wrap items-center gap-3">
