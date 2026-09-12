@@ -1,0 +1,52 @@
+name: Stocktake Contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-stocktake-cycle-count.mjs"
+      - "scripts/test-stocktake-cycle-count-postgres.mjs"
+      - ".github/workflows/stocktake-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-stocktake-cycle-count.mjs"
+      - "scripts/test-stocktake-cycle-count-postgres.mjs"
+      - ".github/workflows/stocktake-contract.yml"
+
+jobs:
+  stocktake-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Verify stocktake static contract
+        run: node scripts/test-stocktake-cycle-count.mjs
+      - name: Apply production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify stocktake runtime contract
+        run: node scripts/test-stocktake-cycle-count-postgres.mjs
