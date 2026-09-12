@@ -11,13 +11,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Bike, Trash2, Phone, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { formatCurrency, formatDate } from "@/lib/format";
-import { resolvePrice } from "@/lib/channels";
-import { normalizeBahrainPhone, roundBhd } from "@/lib/bahrain";
+import { formatDate } from "@/lib/format";
+import {
+  addMoney,
+  bhdToFils,
+  formatFils,
+  normalizeBahrainPhone,
+  percentageOfFils,
+} from "@/lib/bahrain";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
 
 type DeliveryStatus = Database["public"]["Enums"]["delivery_status"];
+
+type LineDraft = {
+  product_id: string;
+  name: string;
+  quantity: number;
+  unit_price_fils: number;
+  tax_rate: number;
+};
 
 const STATUSES: { id: DeliveryStatus; label: string; pillClass: string }[] = [
   { id: "received", label: "Received", pillClass: "s-pill s-pill-mute" },
@@ -39,14 +52,6 @@ const NEXT_STATUS: Record<DeliveryStatus, DeliveryStatus | null> = {
   cancelled: null,
 };
 
-type LineDraft = {
-  product_id: string;
-  name: string;
-  quantity: number;
-  unit_price: number;
-  tax_rate: number;
-};
-
 const EMPTY_FORM = {
   customer_name: "",
   customer_phone: "",
@@ -56,6 +61,10 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+function newMutationId() {
+  return `delivery-${crypto.randomUUID()}`;
+}
+
 export default function Delivery() {
   const { tenantId, branchId, branches } = useTenantContext();
   const qc = useQueryClient();
@@ -64,6 +73,7 @@ export default function Delivery() {
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [clientMutationId, setClientMutationId] = useState(newMutationId);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["delivery-orders", branchId],
@@ -98,13 +108,14 @@ export default function Delivery() {
     queryKey: ["delivery-products", tenantId],
     enabled: !!tenantId && open,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("products")
-        .select("id, name, price, tax_rate, sku, product_type")
+        .select("id, name, price_fils, tax_rate, sku, product_type")
         .eq("tenant_id", tenantId!)
         .eq("status", "active")
         .neq("product_type", "ingredient")
         .order("name");
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -113,10 +124,12 @@ export default function Delivery() {
     queryKey: ["delivery-chprices", tenantId],
     enabled: !!tenantId && open,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("product_channel_prices")
-        .select("product_id, branch_id, channel, price")
-        .eq("tenant_id", tenantId!);
+        .select("product_id, branch_id, channel, price_fils")
+        .eq("tenant_id", tenantId!)
+        .eq("channel", "delivery");
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -125,25 +138,43 @@ export default function Delivery() {
     queryKey: ["delivery-bprods", branchId],
     enabled: !!branchId && open,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("branch_products")
-        .select("product_id, branch_id, is_available, local_price")
+        .select("product_id, branch_id, is_available, local_price_fils")
         .eq("branch_id", branchId!);
+      if (error) throw error;
       return data ?? [];
     },
   });
+
+  const resolveDeliveryPriceFils = (product: any): number => {
+    const branchChannel = (channelPrices ?? []).find(
+      (value) => value.product_id === product.id && value.branch_id === branchId,
+    );
+    const globalChannel = (channelPrices ?? []).find(
+      (value) => value.product_id === product.id && value.branch_id == null,
+    );
+    const branchProduct = (branchProducts ?? []).find(
+      (value) => value.product_id === product.id,
+    );
+    const resolved =
+      branchChannel?.price_fils ??
+      globalChannel?.price_fils ??
+      branchProduct?.local_price_fils ??
+      product.price_fils;
+    return Number.isSafeInteger(resolved) && resolved >= 0 ? resolved : 0;
+  };
 
   const filtered = useMemo(() => {
     let list = (products ?? []).filter((product) => {
       const branchProduct = (branchProducts ?? []).find((value) => value.product_id === product.id);
       return !branchProduct || branchProduct.is_available;
     });
-
     if (search) {
       const normalized = search.toLowerCase();
       list = list.filter((product) =>
         product.name.toLowerCase().includes(normalized) ||
-        (product.sku ?? "").toLowerCase().includes(normalized)
+        (product.sku ?? "").toLowerCase().includes(normalized),
       );
     }
     return list.slice(0, 12);
@@ -162,23 +193,16 @@ export default function Delivery() {
     setForm(EMPTY_FORM);
     setLines([]);
     setSearch("");
+    setClientMutationId(newMutationId());
   };
 
   const addProduct = (product: any) => {
-    const price = roundBhd(resolvePrice(
-      product.id,
-      Number(product.price),
-      branchId,
-      "delivery",
-      channelPrices ?? [],
-      branchProducts ?? []
-    ));
-
+    const unitPriceFils = resolveDeliveryPriceFils(product);
     setLines((previous) => {
       const existing = previous.find((line) => line.product_id === product.id);
       if (existing) {
         return previous.map((line) =>
-          line.product_id === product.id ? { ...line, quantity: line.quantity + 1 } : line
+          line.product_id === product.id ? { ...line, quantity: line.quantity + 1 } : line,
         );
       }
       return [
@@ -187,7 +211,7 @@ export default function Delivery() {
           product_id: product.id,
           name: product.name,
           quantity: 1,
-          unit_price: price,
+          unit_price_fils: unitPriceFils,
           tax_rate: Number(product.tax_rate) || 0,
         },
       ];
@@ -195,38 +219,57 @@ export default function Delivery() {
     setSearch("");
   };
 
-  const total = useMemo(() => roundBhd(
-    lines.reduce(
-      (sum, line) => sum + line.quantity * line.unit_price * (1 + (line.tax_rate || 0) / 100),
-      0
-    ) + (Number(form.delivery_fee) || 0)
-  ), [lines, form.delivery_fee]);
+  const lineTotalFils = (line: LineDraft) => {
+    const netFils = line.unit_price_fils * line.quantity;
+    return addMoney(netFils, percentageOfFils(netFils, line.tax_rate));
+  };
+
+  const deliveryFeeFils = useMemo(() => {
+    try {
+      return bhdToFils(form.delivery_fee || "0");
+    } catch {
+      return 0;
+    }
+  }, [form.delivery_fee]);
+
+  const totalFils = useMemo(
+    () => addMoney(...lines.map(lineTotalFils), deliveryFeeFils),
+    [lines, deliveryFeeFils],
+  );
 
   const submit = async () => {
     if (!tenantId || !branchId) return;
     if (!form.address.trim()) return toast.error("Bahrain delivery address is required");
     if (lines.length === 0) return toast.error("Add products to the delivery");
 
+    let exactDeliveryFeeFils: number;
+    try {
+      exactDeliveryFeeFils = bhdToFils(form.delivery_fee || "0");
+      if (exactDeliveryFeeFils < 0) throw new RangeError("Delivery fee cannot be negative");
+    } catch (error: any) {
+      return toast.error(error.message ?? "Enter a valid BHD delivery fee");
+    }
+
     setSubmitting(true);
     try {
       const items = lines.map((line) => ({
         product_id: line.product_id,
         quantity: line.quantity,
-        unit_price: line.unit_price,
-        tax_rate: line.tax_rate,
-        discount: 0,
+        unit_price_fils: line.unit_price_fils,
+        discount_fils: 0,
       }));
 
       const rawPhone = form.customer_phone.trim();
-      const { error } = await supabase.rpc("register_delivery_order", {
+      const { error } = await (supabase.rpc as any)("register_delivery_order_v2", {
         _tenant_id: tenantId,
         _branch_id: branchId,
-        _items: items as any,
+        _items: items,
+        _address: form.address,
+        _delivery_fee_fils: exactDeliveryFeeFils,
+        _client_mutation_id: clientMutationId,
         _customer_name: form.customer_name || null,
         _customer_phone: rawPhone ? normalizeBahrainPhone(rawPhone) : null,
-        _address: form.address,
         _neighborhood: form.neighborhood || null,
-        _delivery_fee: roundBhd(Number(form.delivery_fee) || 0),
         _customer_id: null,
         _notes: form.notes || null,
       });
@@ -290,74 +333,41 @@ export default function Delivery() {
                 <span className="h-label font-semibold uppercase tracking-wider">{column.label}</span>
                 <span className="s-pill s-pill-mute">{grouped[column.id].length}</span>
               </div>
-
               <div className="flex flex-col gap-2 min-h-[80px]">
                 {grouped[column.id].length === 0 && (
-                  <div className="glass-thin rounded-xl px-3 py-6 text-center h-meta border border-dashed border-[var(--hairline)]">
-                    Empty
-                  </div>
+                  <div className="glass-thin rounded-xl px-3 py-6 text-center h-meta border border-dashed border-[var(--hairline)]">Empty</div>
                 )}
-
                 {grouped[column.id].map((order) => {
                   const next = NEXT_STATUS[order.status as DeliveryStatus];
+                  const feeFils = Number.isSafeInteger((order as any).delivery_fee_fils)
+                    ? (order as any).delivery_fee_fils
+                    : bhdToFils(String(order.delivery_fee ?? "0"));
                   return (
                     <div key={order.id} className="glass rounded-2xl p-3 flex flex-col gap-2">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="font-semibold text-sm text-ink-900 leading-tight">
-                          {order.customer_name || "No name"}
-                        </div>
+                        <div className="font-semibold text-sm text-ink-900 leading-tight">{order.customer_name || "No name"}</div>
                         <span className={column.pillClass}>{column.label}</span>
                       </div>
-
                       <div className="flex flex-col gap-0.5 text-xs text-ink-500">
-                        {order.customer_phone && (
-                          <div className="flex items-center gap-1"><Phone size={11} /> {order.customer_phone}</div>
-                        )}
-                        <div className="flex items-start gap-1">
-                          <MapPin size={11} className="mt-0.5 shrink-0" />
-                          <span>{order.address}{order.neighborhood ? ` · ${order.neighborhood}` : ""}</span>
-                        </div>
+                        {order.customer_phone && <div className="flex items-center gap-1"><Phone size={11} /> {order.customer_phone}</div>}
+                        <div className="flex items-start gap-1"><MapPin size={11} className="mt-0.5 shrink-0" /><span>{order.address}{order.neighborhood ? ` · ${order.neighborhood}` : ""}</span></div>
                         <div className="flex items-center gap-1"><Clock size={11} /> {formatDate(order.created_at)}</div>
                       </div>
-
                       <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--hairline)]">
                         <span className="h-meta">Delivery fee</span>
-                        <span className="tabular-nums text-ink-900 font-semibold">{formatCurrency(Number(order.delivery_fee))}</span>
+                        <span className="tabular-nums text-ink-900 font-semibold">{formatFils(feeFils)}</span>
                       </div>
-
                       {(column.id === "ready" || column.id === "assigned") && (couriers?.length ?? 0) > 0 && (
-                        <Select
-                          value={order.courier_id ?? undefined}
-                          onValueChange={(value) => updateStatus(order.id, "assigned", value)}
-                        >
+                        <Select value={order.courier_id ?? undefined} onValueChange={(value) => updateStatus(order.id, "assigned", value)}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Assign courier" /></SelectTrigger>
                           <SelectContent>
-                            {(couriers ?? []).map((courier) => (
-                              <SelectItem key={courier.id} value={courier.id}>{courier.full_name}</SelectItem>
-                            ))}
+                            {(couriers ?? []).map((courier) => <SelectItem key={courier.id} value={courier.id}>{courier.full_name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       )}
-
                       <div className="flex gap-1.5">
-                        {next && (
-                          <button
-                            type="button"
-                            className="g-btn g-btn-primary g-btn-sm flex-1"
-                            onClick={() => updateStatus(order.id, next)}
-                          >
-                            → {STATUSES.find((status) => status.id === next)?.label}
-                          </button>
-                        )}
-                        {order.status !== "delivered" && order.status !== "cancelled" && (
-                          <button
-                            type="button"
-                            className="g-btn g-btn-ghost g-btn-sm text-red-500"
-                            onClick={() => updateStatus(order.id, "cancelled")}
-                          >
-                            Cancel
-                          </button>
-                        )}
+                        {next && <button type="button" className="g-btn g-btn-primary g-btn-sm flex-1" onClick={() => updateStatus(order.id, next)}>→ {STATUSES.find((status) => status.id === next)?.label}</button>}
+                        {order.status !== "delivered" && order.status !== "cancelled" && <button type="button" className="g-btn g-btn-ghost g-btn-sm text-red-500" onClick={() => updateStatus(order.id, "cancelled")}>Cancel</button>}
                       </div>
                     </div>
                   );
@@ -368,99 +378,29 @@ export default function Delivery() {
         </div>
       )}
 
-      <Dialog
-        open={open}
-        onOpenChange={(value) => {
-          setOpen(value);
-          if (!value) resetForm();
-        }}
-      >
+      <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader><DialogTitle>New delivery</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
-              <div>
-                <Label>Customer</Label>
-                <Input
-                  value={form.customer_name}
-                  onChange={(event) => setForm({ ...form, customer_name: event.target.value })}
-                  placeholder="Customer name"
-                />
-              </div>
-              <div>
-                <Label>Phone</Label>
-                <Input
-                  value={form.customer_phone}
-                  onChange={(event) => setForm({ ...form, customer_phone: event.target.value })}
-                  placeholder="+973 3600 1234"
-                  inputMode="tel"
-                />
-              </div>
-              <div>
-                <Label>Address</Label>
-                <Input
-                  value={form.address}
-                  onChange={(event) => setForm({ ...form, address: event.target.value })}
-                  placeholder="Building, road, block, Bahrain"
-                />
-              </div>
-              <div>
-                <Label>Area</Label>
-                <Input
-                  value={form.neighborhood}
-                  onChange={(event) => setForm({ ...form, neighborhood: event.target.value })}
-                  placeholder="Amwaj Islands, Juffair, Riffa, Seef..."
-                />
-              </div>
-              <div>
-                <Label>Delivery fee (BHD)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  value={form.delivery_fee}
-                  onChange={(event) => setForm({ ...form, delivery_fee: event.target.value })}
-                  placeholder="0.500"
-                />
-              </div>
-              <div>
-                <Label>Notes</Label>
-                <Input
-                  value={form.notes}
-                  onChange={(event) => setForm({ ...form, notes: event.target.value })}
-                  placeholder="Landmark or delivery instructions"
-                />
-              </div>
+              <div><Label>Customer</Label><Input value={form.customer_name} onChange={(event) => setForm({ ...form, customer_name: event.target.value })} placeholder="Customer name" /></div>
+              <div><Label>Phone</Label><Input value={form.customer_phone} onChange={(event) => setForm({ ...form, customer_phone: event.target.value })} placeholder="+973 3600 1234" inputMode="tel" /></div>
+              <div><Label>Address</Label><Input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Building, road, block, Bahrain" /></div>
+              <div><Label>Area</Label><Input value={form.neighborhood} onChange={(event) => setForm({ ...form, neighborhood: event.target.value })} placeholder="Amwaj Islands, Juffair, Riffa, Seef..." /></div>
+              <div><Label>Delivery fee (BHD)</Label><Input type="text" inputMode="decimal" value={form.delivery_fee} onChange={(event) => setForm({ ...form, delivery_fee: event.target.value })} placeholder="0.500" /></div>
+              <div><Label>Notes</Label><Input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Landmark or delivery instructions" /></div>
             </div>
 
             <div className="space-y-2">
               <Label>Add products</Label>
-              <Input
-                placeholder="Search product..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+              <Input placeholder="Search product..." value={search} onChange={(event) => setSearch(event.target.value)} />
               {search && (
                 <ScrollArea className="h-44 border rounded-lg">
                   <div className="divide-y">
                     {filtered.map((product) => (
-                      <button
-                        type="button"
-                        key={product.id}
-                        onClick={() => addProduct(product)}
-                        className="w-full text-left px-3 py-2 hover:bg-muted/40 flex items-center justify-between text-sm"
-                      >
+                      <button type="button" key={product.id} onClick={() => addProduct(product)} className="w-full text-left px-3 py-2 hover:bg-muted/40 flex items-center justify-between text-sm">
                         <span>{product.name}</span>
-                        <span className="tabular-nums text-muted-foreground">
-                          {formatCurrency(resolvePrice(
-                            product.id,
-                            Number(product.price),
-                            branchId,
-                            "delivery",
-                            channelPrices ?? [],
-                            branchProducts ?? []
-                          ))}
-                        </span>
+                        <span className="tabular-nums text-muted-foreground">{formatFils(resolveDeliveryPriceFils(product))}</span>
                       </button>
                     ))}
                   </div>
@@ -468,48 +408,35 @@ export default function Delivery() {
               )}
 
               <div className="glass rounded-2xl p-3">
-                {lines.length === 0 ? (
-                  <div className="h-meta py-3 text-center">No items yet</div>
-                ) : (
+                {lines.length === 0 ? <div className="h-meta py-3 text-center">No items yet</div> : (
                   <div className="space-y-2 max-h-44 overflow-auto">
                     {lines.map((line) => (
                       <div key={line.product_id} className="flex items-center gap-2 text-sm">
                         <Input
                           type="number"
                           min="1"
+                          step="1"
                           value={line.quantity}
                           onChange={(event) => {
-                            const quantity = Math.max(1, Number(event.target.value) || 1);
-                            setLines((previous) => previous.map((value) =>
-                              value.product_id === line.product_id ? { ...value, quantity } : value
-                            ));
+                            const quantity = Math.max(1, Math.floor(Number(event.target.value) || 1));
+                            setLines((previous) => previous.map((value) => value.product_id === line.product_id ? { ...value, quantity } : value));
                           }}
                           className="w-16 h-8 text-center tabular-nums"
                         />
                         <div className="flex-1 truncate">{line.name}</div>
-                        <div className="tabular-nums w-24 text-right">
-                          {formatCurrency(roundBhd(line.unit_price * line.quantity * (1 + (line.tax_rate || 0) / 100)))}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setLines((previous) => previous.filter((value) => value.product_id !== line.product_id))}
-                        >
+                        <div className="tabular-nums w-28 text-right">{formatFils(lineTotalFils(line))}</div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setLines((previous) => previous.filter((value) => value.product_id !== line.product_id))}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     ))}
                   </div>
                 )}
-                <div className="mt-3 pt-3 border-t border-[var(--hairline)] flex justify-between font-bold">
-                  <span>Total</span>
-                  <span>{formatCurrency(total)}</span>
-                </div>
+                <div className="mt-3 pt-3 border-t border-[var(--hairline)] flex justify-between font-bold"><span>Total estimate</span><span>{formatFils(totalFils)}</span></div>
+                <div className="h-meta mt-1">Final price and tax are re-resolved by the server at commit.</div>
               </div>
             </div>
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={submit} disabled={submitting || lines.length === 0}>Record delivery</Button>
