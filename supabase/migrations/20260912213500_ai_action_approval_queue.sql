@@ -4,7 +4,7 @@
 CREATE TABLE public.ai_action_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  branch_id UUID NOT NULL REFERENCES public.branches(id) ON DELETE CASCADE,
+  branch_id UUID NOT NULL,
   requested_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   action_type TEXT NOT NULL CHECK (btrim(action_type) <> ''),
   payload JSONB NOT NULL,
@@ -16,6 +16,10 @@ CREATE TABLE public.ai_action_requests (
   review_operation_id TEXT,
   reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT ai_action_requests_tenant_branch_fkey
+    FOREIGN KEY (tenant_id, branch_id)
+    REFERENCES public.branches(tenant_id, id)
+    ON DELETE CASCADE,
   CONSTRAINT ai_action_requests_request_idempotency UNIQUE (requested_by, operation_id),
   CONSTRAINT ai_action_requests_review_idempotency UNIQUE (reviewed_by, review_operation_id),
   CONSTRAINT ai_action_requests_review_shape CHECK (
