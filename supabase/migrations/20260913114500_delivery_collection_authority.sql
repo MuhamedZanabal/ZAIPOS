@@ -35,6 +35,7 @@ FOR SELECT TO authenticated USING (
 
 -- App clients cannot change fees, sale links, assignment or completion evidence.
 REVOKE ALL ON public.delivery_orders FROM PUBLIC, anon;
+GRANT SELECT ON public.delivery_orders TO authenticated;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.delivery_orders FROM authenticated;
 DROP POLICY IF EXISTS delivery_orders_member_all ON public.delivery_orders;
 DROP POLICY IF EXISTS delivery_orders_member_select ON public.delivery_orders;
