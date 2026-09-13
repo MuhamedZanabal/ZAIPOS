@@ -11,6 +11,16 @@ export default defineConfig(async ({ mode }) => {
   // Plugins base (siempre activos)
   const plugins: any[] = [
     react(),
+    {
+      name: "zaipos-production-csp",
+      apply: "build",
+      transformIndexHtml() {
+        return [{ tag: "meta", attrs: {
+          "http-equiv": "Content-Security-Policy",
+          content: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; frame-src 'none'; form-action 'self'",
+        }, injectTo: "head-prepend" }];
+      },
+    },
     // El tagger de Lovable solo en modo web development
     mode === "development" && !isElectronMode && componentTagger(),
     // PWA: solo en despliegue web, nunca en Electron
