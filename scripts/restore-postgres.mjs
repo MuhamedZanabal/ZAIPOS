@@ -1,220 +1,86 @@
-import { createHash } from "node:crypto";
-import { execFileSync, spawn } from "node:child_process";
-import { once } from "node:events";
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, copyFileSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { assertSupportedSchema, command, connection, databaseIdentity, fileDigest, ident, jsonQuery, literal, privateDirectory, privateFile, schemaDigest } from "./postgres-recovery.mjs";
 
-function fail(message) {
-  console.error(`ZAIPOS restore failed: ${message}`);
-  process.exit(1);
-}
-
-function psql(databaseUrl, statement) {
-  return execFileSync(
-    "psql",
-    ["--dbname", databaseUrl, "-X", "-Atq", "-v", "ON_ERROR_STOP=1", "-c", statement],
-    {
-      env: { ...process.env },
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  ).trim();
-}
-
-function quoteIdentifier(value) {
-  return `"${String(value).replaceAll('"', '""')}"`;
-}
-
-function parseJsonQuery(databaseUrl, statement) {
-  const value = psql(databaseUrl, statement);
-  return JSON.parse(value || "[]");
-}
-
-async function writeChunk(stream, chunk) {
-  if (stream.write(chunk)) return;
-  await once(stream, "drain");
-}
-
-async function restoreAtomically(databaseUrl, archivePath) {
-  const tables = parseJsonQuery(
-    databaseUrl,
-    `
-      SELECT COALESCE(
-        json_agg(
-          json_build_object('schema', n.nspname, 'table', c.relname)
-          ORDER BY n.nspname, c.relname
-        ),
-        '[]'::json
-      )::text
-      FROM pg_class c
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public'
-        AND c.relkind IN ('r', 'p');
-    `,
-  );
-
-  const foreignKeys = parseJsonQuery(
-    databaseUrl,
-    `
-      SELECT COALESCE(
-        json_agg(
-          json_build_object(
-            'schema', n.nspname,
-            'table', c.relname,
-            'constraint', con.conname,
-            'definition', pg_get_constraintdef(con.oid, true)
-          )
-          ORDER BY n.nspname, c.relname, con.conname
-        ),
-        '[]'::json
-      )::text
-      FROM pg_constraint con
-      JOIN pg_class c ON c.oid = con.conrelid
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE con.contype = 'f'
-        AND n.nspname = 'public';
-    `,
-  );
-
-  if (tables.length === 0) {
-    throw new Error("target database has no migrated public schema; apply the production migration chain first");
-  }
-
-  for (const table of tables) {
-    const qualified = `public.${quoteIdentifier(table.table)}`;
-    const hasRows = psql(databaseUrl, `SELECT EXISTS (SELECT 1 FROM ${qualified} LIMIT 1);`);
-    if (hasRows === "t") {
-      throw new Error(`target database is not empty; refusing restore because ${qualified} contains data`);
-    }
-  }
-
-  // A verified disaster-recovery archive must be restored as authoritative historical
-  // state. Running normal application triggers while replaying rows is incorrect: for
-  // example, inserting products can create fresh product_prices rows before the archived
-  // product_prices ledger is copied. Circular foreign keys can likewise make a valid
-  // data-only archive impossible to replay in ordinary dependency order.
-  //
-  // Keep the whole operation in ONE database transaction. User/application triggers and
-  // public foreign keys are removed only inside that transaction; exact definitions are
-  // recreated and validated before COMMIT. Any COPY, constraint, or trigger-DDL failure
-  // aborts the transaction, leaving the migrated empty target unchanged.
-  const disableTriggers = tables
-    .map(({ table }) => `ALTER TABLE public.${quoteIdentifier(table)} DISABLE TRIGGER USER;`)
-    .join("\n");
-  const enableTriggers = [...tables]
-    .reverse()
-    .map(({ table }) => `ALTER TABLE public.${quoteIdentifier(table)} ENABLE TRIGGER USER;`)
-    .join("\n");
-  const dropForeignKeys = foreignKeys
-    .map(
-      ({ schema, table, constraint }) =>
-        `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} DROP CONSTRAINT ${quoteIdentifier(constraint)};`,
-    )
-    .join("\n");
-  const addForeignKeys = foreignKeys
-    .map(
-      ({ schema, table, constraint, definition }) =>
-        `ALTER TABLE ${quoteIdentifier(schema)}.${quoteIdentifier(table)} ADD CONSTRAINT ${quoteIdentifier(constraint)} ${definition};`,
-    )
-    .join("\n");
-
-  const sqlClient = spawn(
-    "psql",
-    ["--dbname", databaseUrl, "-X", "-v", "ON_ERROR_STOP=1"],
-    {
-      env: { ...process.env },
-      stdio: ["pipe", "inherit", "inherit"],
-    },
-  );
-  let sqlClientError = null;
-  sqlClient.on("error", (error) => {
-    sqlClientError = error;
-  });
-
-  await writeChunk(
-    sqlClient.stdin,
-    `BEGIN;\n${disableTriggers}\n${dropForeignKeys}\n`,
-  );
-
-  const archiveReader = spawn(
-    "pg_restore",
-    [
-      "--file=-",
-      "--data-only",
-      "--schema=public",
-      "--no-owner",
-      "--no-privileges",
-      archivePath,
-    ],
-    {
-      env: { ...process.env },
-      stdio: ["ignore", "pipe", "inherit"],
-    },
-  );
-  let archiveReaderError = null;
-  archiveReader.on("error", (error) => {
-    archiveReaderError = error;
-  });
-
+async function main() {
+  if (!process.argv[2]) throw new Error("usage: node scripts/restore-postgres.mjs <archive.dump>");
+  if (!process.env.ZAIPOS_DATABASE_URL) throw new Error("ZAIPOS_DATABASE_URL is required");
+  process.umask(0o077);
+  const archive = path.resolve(process.argv[2]);
+  privateDirectory(path.dirname(archive));
+  const work = mkdtempSync(path.join(os.tmpdir(), "zaipos-restore-"));
   try {
-    for await (const chunk of archiveReader.stdout) {
-      await writeChunk(sqlClient.stdin, chunk);
+    // Verify private copies so later changes to input paths cannot swap the
+    // archive that pg_restore actually reads.
+    for (const [input, output] of [[archive, "archive.dump"], [`${archive}.manifest.json`, "manifest.json"], [`${archive}.sha256`, "sha256"]]) {
+      privateFile(input);
+      copyFileSync(input, path.join(work, output));
     }
-    const [archiveStatus] = await once(archiveReader, "close");
-    if (archiveReaderError) throw archiveReaderError;
-    if (archiveStatus !== 0) {
-      throw new Error(`pg_restore SQL generation exited with status ${archiveStatus}`);
+    const staged = path.join(work, "archive.dump");
+    const metadata = path.join(work, "manifest.json");
+    const lines = readFileSync(path.join(work, "sha256"), "utf8").trim().split(/\r?\n/);
+    const names = [path.basename(archive), `${path.basename(archive)}.manifest.json`];
+    if (lines.length !== 2) throw new Error("checksum evidence is invalid");
+    for (const [i, file] of [staged, metadata].entries()) {
+      const match = /^([a-f0-9]{64})  (.+)$/.exec(lines[i]);
+      if (!match || match[2] !== names[i] || match[1] !== await fileDigest(file)) throw new Error("checksum integrity verification failed");
     }
-
-    // pg_restore intentionally emits an empty search_path. FK definitions returned by
-    // pg_get_constraintdef() can contain unqualified public-table references, so restore
-    // the transaction-local application search path before recreating and validating FKs.
-    await writeChunk(
-      sqlClient.stdin,
-      `\nSET LOCAL search_path = public, pg_catalog;\n${addForeignKeys}\n${enableTriggers}\nCOMMIT;\n`,
-    );
-    sqlClient.stdin.end();
-
-    const [sqlStatus] = await once(sqlClient, "close");
-    if (sqlClientError) throw sqlClientError;
-    if (sqlStatus !== 0) {
-      throw new Error(`atomic restore transaction exited with status ${sqlStatus}`);
+    const manifest = JSON.parse(readFileSync(metadata, "utf8"));
+    const stat = privateFile(staged);
+    if (manifest.formatVersion !== 1 || manifest.status !== "complete" || manifest.scope !== "public-data" ||
+      manifest.artifact?.format !== "postgres-custom" || manifest.artifact?.name !== names[0] ||
+      manifest.artifact?.bytes !== stat.size || manifest.artifact?.sha256 !== await fileDigest(staged) ||
+      !/^[a-f0-9]{64}$/.test(manifest.schemaSha256)) throw new Error("invalid recovery manifest");
+    const fd = openSync(staged, "r");
+    const magic = Buffer.alloc(5); try { readSync(fd, magic, 0, 5, 0); } finally { closeSync(fd); }
+    if (magic.toString() !== "PGDMP") throw new Error("expected PostgreSQL custom archive format");
+    if (process.env.ZAIPOS_RESTORE_CONFIRM !== "RESTORE_TO_EMPTY_DATABASE") throw new Error("explicit restore confirmation required");
+    const conn = connection(process.env.ZAIPOS_DATABASE_URL);
+    if (process.env.ZAIPOS_RESTORE_TARGET !== conn.endpoint) throw new Error("explicit restore target identity does not match connection endpoint");
+    const target = databaseIdentity(conn);
+    if (target.endpoint === manifest.source?.endpoint ||
+      (target.serverAddress && target.serverAddress === manifest.source?.serverAddress && target.serverPort === manifest.source?.serverPort && target.database === manifest.source?.database)) {
+      throw new Error("restore target is the source database; refusing overwrite");
     }
-  } catch (error) {
-    if (!sqlClient.stdin.destroyed) sqlClient.stdin.end();
-    if (sqlClient.exitCode === null) await once(sqlClient, "close").catch(() => {});
-    throw error;
-  }
+    if (target.postgresMajor !== manifest.source?.postgresMajor) throw new Error("incompatible PostgreSQL major version");
+    assertSupportedSchema(conn);
+    if (schemaDigest(conn) !== manifest.schemaSha256) throw new Error("schema mismatch: apply the matching reviewed migration chain and provider prerequisites");
+    const tables = jsonQuery(conn, `SELECT COALESCE(json_agg(c.relname ORDER BY c.relname), '[]') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p');`);
+    if (!tables.length) throw new Error("target has no migrated public schema");
+    const fks = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',con.conname,'definition',pg_get_constraintdef(con.oid,false),'validated',con.convalidated) ORDER BY c.relname,con.conname),'[]') FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE con.contype='f' AND n.nspname='public';`);
+    const triggers = jsonQuery(conn, `SELECT COALESCE(json_agg(json_build_object('table',c.relname,'name',t.tgname,'enabled',t.tgenabled) ORDER BY c.relname,t.tgname),'[]') FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal;`);
+    const sequences = jsonQuery(conn, `SELECT COALESCE(json_agg(c.relname ORDER BY c.relname),'[]') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S';`);
+    const sql = path.join(work, "data.sql");
+    const sqlFd = openSync(sql, "wx", 0o600);
+    try { command("pg_restore", ["--file=-", "--data-only", "--schema=public", "--no-owner", "--no-privileges", staged], conn.env, sqlFd); } finally { closeSync(sqlFd); }
+    const qualified = (table) => `public.${ident(table)}`;
+    const wrapper = path.join(work, "restore.sql");
+    const enable = { O: "ENABLE", D: "DISABLE", R: "ENABLE REPLICA", A: "ENABLE ALWAYS" };
+    writeFileSync(wrapper, [
+      "SET LOCAL lock_timeout = '15s';", "SET LOCAL statement_timeout = '30min';",
+      `LOCK TABLE ${tables.map(qualified).join(', ')} IN ACCESS EXCLUSIVE MODE;`,
+      ...tables.map((table) => `DO $empty$ BEGIN IF EXISTS (SELECT FROM ${qualified(table)} LIMIT 1) THEN RAISE EXCEPTION 'target database is not empty'; END IF; END $empty$;`),
+      // RESTART transactionally replaces sequence storage before pg_restore's
+      // nontransactional setval writes. On rollback the old storage/state returns.
+      // The PostgreSQL contract checks both last_value and is_called on failure.
+      ...sequences.map((sequence) => `ALTER SEQUENCE ${qualified(sequence)} RESTART;`),
+      ...tables.map((table) => `ALTER TABLE ${qualified(table)} DISABLE TRIGGER USER;`),
+      ...fks.map((fk) => `ALTER TABLE ${qualified(fk.table)} DROP CONSTRAINT ${ident(fk.name)};`),
+      `\\i ${literal(sql)}`,
+      "SET LOCAL search_path = public, pg_catalog;",
+      ...fks.map((fk) => `ALTER TABLE ${qualified(fk.table)} ADD CONSTRAINT ${ident(fk.name)} ${fk.definition};`),
+      ...fks.map((fk) => `ALTER TABLE ${qualified(fk.table)} VALIDATE CONSTRAINT ${ident(fk.name)};`),
+      // Preserve an originally NOT VALID declaration only AFTER checking every
+      // restored reference. Data validation is mandatory even for legacy FKs.
+      ...fks.filter((fk) => !fk.validated).flatMap((fk) => [
+        `ALTER TABLE ${qualified(fk.table)} DROP CONSTRAINT ${ident(fk.name)};`,
+        `ALTER TABLE ${qualified(fk.table)} ADD CONSTRAINT ${ident(fk.name)} ${fk.definition};`,
+      ]),
+      ...triggers.map((trigger) => `ALTER TABLE ${qualified(trigger.table)} ${enable[trigger.enabled]} TRIGGER ${ident(trigger.name)};`),
+    ].join("\n") + "\n", { mode: 0o600, flag: "wx" });
+    command("psql", ["-X", "-q", "-v", "ON_ERROR_STOP=1", "--single-transaction", "--file", wrapper], conn.env);
+    console.log("ZAIPOS restore committed: verified artifact, matching schema, locked empty target, validated foreign keys and preserved trigger states");
+  } finally { rmSync(work, { recursive: true, force: true }); }
 }
-
-const archiveArg = process.argv[2];
-if (!archiveArg) fail("usage: node scripts/restore-postgres.mjs <archive.dump>");
-
-const databaseUrl = process.env.ZAIPOS_DATABASE_URL;
-if (!databaseUrl) fail("ZAIPOS_DATABASE_URL is required");
-
-const archivePath = path.resolve(archiveArg);
-const checksumPath = `${archivePath}.sha256`;
-if (!existsSync(archivePath)) fail(`backup archive not found: ${archivePath}`);
-if (!existsSync(checksumPath)) fail(`checksum sidecar not found: ${checksumPath}`);
-
-// Integrity is checked before any target inspection or mutation. This keeps a corrupt
-// or tampered archive incapable of reaching pg_restore.
-const checksumText = readFileSync(checksumPath, "utf8").trim();
-const expected = checksumText.split(/\s+/)[0]?.toLowerCase();
-if (!expected || !/^[a-f0-9]{64}$/.test(expected)) {
-  fail("checksum sidecar is invalid");
-}
-const actual = createHash("sha256").update(readFileSync(archivePath)).digest("hex");
-if (actual !== expected) fail("checksum integrity verification failed");
-
-if (process.env.ZAIPOS_RESTORE_CONFIRM !== "RESTORE_TO_EMPTY_DATABASE") {
-  fail("explicit restore confirmation required: set ZAIPOS_RESTORE_CONFIRM=RESTORE_TO_EMPTY_DATABASE");
-}
-
-try {
-  await restoreAtomically(databaseUrl, archivePath);
-  console.log(`ZAIPOS restore completed from verified archive: ${archivePath}`);
-} catch (error) {
-  fail(error instanceof Error ? error.message : String(error));
-}
+main().catch((error) => { console.error(`ZAIPOS restore failed: ${error.code ?? error.message}`); process.exitCode = 1; });

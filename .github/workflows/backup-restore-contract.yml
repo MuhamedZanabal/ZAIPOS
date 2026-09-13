@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/**"
+      - "scripts/postgres-recovery.mjs"
+      - "scripts/test-postgres-recovery-unit.mjs"
       - "scripts/backup-postgres.mjs"
       - "scripts/restore-postgres.mjs"
       - "scripts/test-backup-restore-contract.mjs"
@@ -14,6 +16,8 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+      - "scripts/postgres-recovery.mjs"
+      - "scripts/test-postgres-recovery-unit.mjs"
       - "scripts/backup-postgres.mjs"
       - "scripts/restore-postgres.mjs"
       - "scripts/test-backup-restore-contract.mjs"
@@ -36,8 +40,21 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      recovery:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_RESTORE_TEST_URL: postgresql://postgres:postgres@127.0.0.1:5433/postgres
+      ZAIPOS_RECOVERY_REHEARSAL: DISPOSABLE_TEST_DATABASES
 
     steps:
       - name: Checkout exact head
@@ -81,6 +98,14 @@ jobs:
 
       - name: Apply and validate production migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
+
+      - name: Apply independent recovery database migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+        env:
+          POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5433/postgres
+
+      - name: Test recovery process and artifact security boundaries
+        run: node --test scripts/test-postgres-recovery-unit.mjs
 
       - name: Test backup and restore round-trip
         id: backup_restore_contract

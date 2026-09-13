@@ -1,101 +1,91 @@
-# ZAIPOS PostgreSQL Backup and Restore
+# PostgreSQL disaster recovery
 
-This runbook defines the production-safe recovery path for ZAIPOS business data.
+## Authority and scope
 
-## Scope
+ZAIPOS main uses React 18, Electron, Dexie browser persistence and Supabase PostgreSQL. PostgreSQL owns committed business truth. This recovery procedure captures every ordinary/partitioned `public` table using a consistent PostgreSQL custom data archive, including authorization, immutable money and stock records, audit evidence and operation ledgers. It does not recover pending Dexie queues on lost devices.
 
-The runtime backs up PostgreSQL `public`-schema **data** in custom `pg_dump` format. Database structure remains owned by the reviewed ZAIPOS migration chain. A restore therefore targets an empty database that has already been migrated to the exact application schema required by the backup.
+**External prerequisites:** independently recover Supabase Auth identities with their original UUIDs, provider roles/extensions/functions, Storage metadata and object bytes (including return evidence and product images), secrets and deployment configuration. Restoring public profiles without the referenced Auth users must fail foreign-key validation. Public-schema data is not a complete Supabase project backup.
 
-The backup includes authoritative business records such as tenants, branches, products, exact-fils price/cost history, inventory, sales, payments, checkout operation ledgers, returns, voids, audit evidence, supplier accounting, customer credit and loyalty data where those tables exist in the deployed schema.
+The archive contains data, not executable schema installation. Apply the matching reviewed migrations to an isolated replacement provider environment first. Restore compares the actual public-schema DDL/grant fingerprint before writing. The manifest's local migration-chain hash identifies the code used to create the backup; it does not independently attest which migrations were applied to the source. The live schema fingerprint is the compatibility check.
 
-Authentication-provider infrastructure and secrets are outside this business-data archive and require the platform provider's independent recovery controls.
+ZAIPOS also owns a sale ticket-number sequence. Restore transactionally restarts sequence storage before replaying archived `setval` state. The rehearsal compares both `last_value` and `is_called` after successful restore and failed transaction rollback. Foreign tables and materialized views require a separately reviewed strategy and are rejected.
 
-## Required tools
+## Prerequisites and responsibility
 
-- Node.js supported by the repository CI/runtime.
-- PostgreSQL client utilities compatible with the production PostgreSQL major version: `psql`, `pg_dump`, and `pg_restore`.
-- A database credential with the minimum privileges necessary to read the production `public` schema for backup, or populate an isolated migrated recovery database for restore.
+- Node.js 24 and matching PostgreSQL 17 client utilities (`psql`, `pg_dump`, `pg_restore`). Use the same client patch release for backup and rehearsal to avoid schema-rendering differences.
+- A direct database connection, rather than a transaction pooler. Preserve TLS validation; remote production URLs should use `sslmode=verify-full` with the appropriate root certificate.
+- Backup principal: complete read access to public business data, bypassing RLS as authorized, plus schema metadata visibility. A partial RLS-visible dump is not acceptable.
+- Recovery principal: reviewed DDL/insert privileges on the isolated target and ability to restore and validate foreign keys/triggers. Ordinary cashier credentials cannot perform recovery.
+- Owner-only directory (`0700`) on a filesystem supporting restrictive POSIX permissions, atomic hard links and fsync. Run the operator utilities on a secured Linux recovery host; Windows installer validation does not certify these filesystem guarantees.
+- DBA/operator maintains retention, encrypted off-site copies and provider recovery; store owner accepts reconciled balances and operational cutover.
+- Freeze migrations during backup and recovery. Keep application traffic and other administrative writers disconnected from the recovery target throughout validation.
 
-Never commit database URLs, passwords, archive files, or checksum sidecars to the repository.
+Credentials are parsed into libpq environment variables, never PostgreSQL command-line arguments. The tools suppress raw subprocess diagnostics because COPY errors may contain private rows. Protect the recovery host/process environment and database logs. Never include credentials, production rows or archives in CI, chat or issue comments.
 
-## Create a backup
-
-Set the database URL in the environment rather than command-line arguments so credentials are not deliberately embedded in the process argument list.
+## Backup
 
 ```bash
-export ZAIPOS_DATABASE_URL='postgresql://...'
-export ZAIPOS_BACKUP_SOURCE='production-primary'
+install -d -m 700 /secure/backups
+# Supply this through your secret manager; do not put a real URL in shell history.
+export ZAIPOS_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full'
 node scripts/backup-postgres.mjs /secure/backups/zaipos-YYYYMMDD-HHMMSS.dump
 ```
 
-The command:
+Success publishes three `0600` files:
 
-1. refuses to overwrite an existing archive or checksum sidecar;
-2. creates a custom-format, data-only `public` schema archive;
-3. forces the archive to owner-only permissions (`0600`);
-4. writes an SHA-256 sidecar beside the archive;
-5. fails non-zero if `pg_dump` or file creation fails.
+1. `*.dump`: PostgreSQL custom-format public data.
+2. `*.dump.manifest.json`: completion state, timestamps, non-secret source endpoint/server identity, PostgreSQL major, live schema SHA-256, migration-chain hash/count/latest file, application version/Git SHA when available, byte size, artifact SHA-256, permission expectation and excluded boundaries.
+3. `*.dump.sha256`: hashes of both archive and manifest; published last as the completion marker.
 
-Store the `.dump` and `.dump.sha256` together in access-controlled, encrypted backup storage. Copy them to a separate failure domain from the production database. Protect retention/storage policy outside the application repository.
+Existing artifacts are never overwritten. A private per-archive lock prevents competing writers. Ordinary dump/hash/write failures remove artifacts published by that failed attempt. A hard kill/power loss can leave a lock or incomplete set: quarantine it and create a new backup filename. Never fabricate a completion marker. Hashing streams the archive rather than loading it into RAM.
 
-## Verify and rehearse restore
+Copy all three files together to encrypted, access-controlled off-site storage. Verify after copying, retain multiple generations, and monitor failed/missed backup runs externally. SHA-256 detects corruption; it does not authenticate a maliciously replaced archive and manifest. Use a trusted, immutable or independently authenticated backup repository. PostgreSQL restore archives must come from trusted operators.
 
-A production backup is not considered recoverable merely because `pg_dump` exited successfully. Regularly rehearse restoration into an **isolated**, non-production database created for recovery verification.
+## Verify and restore
 
-1. Provision an isolated PostgreSQL database.
-2. Check out the ZAIPOS release/schema version associated with the backup.
-3. Apply the full production migration chain to the isolated database.
-4. Confirm all `public` tables are empty before restoration.
-5. Set the target database URL and explicit destructive-operation acknowledgement.
-6. Run restore.
+On the secure recovery host:
 
 ```bash
-export ZAIPOS_DATABASE_URL='postgresql://.../isolated_restore'
+cd /secure/backups
+sha256sum --check zaipos-YYYYMMDD-HHMMSS.dump.sha256
+```
+
+1. Record the incident and selected backup timestamp/hash. Preserve the damaged database and unsynchronized device queues for reconciliation.
+2. Provision an isolated replacement provider environment; recover Auth/Storage and provider prerequisites independently.
+3. Apply the matching reviewed migration chain; ensure all public tables are empty. Remove migration seed data only through the separately reviewed provisioning procedure on that disposable target.
+4. Keep applications disconnected. Inspect the manifest and target identity. Allocate free space for the archive copy, expanded SQL and restored database/indexes.
+5. Set the acknowledgement and the exact expected endpoint (`hostname:port/percent-encoded-database-name`). The endpoint must match the connection URL and differ from the source.
+
+```bash
+export ZAIPOS_DATABASE_URL='postgresql://USER:PASSWORD@RECOVERY_HOST:5432/DATABASE?sslmode=verify-full'
 export ZAIPOS_RESTORE_CONFIRM='RESTORE_TO_EMPTY_DATABASE'
+export ZAIPOS_RESTORE_TARGET='RECOVERY_HOST:5432/DATABASE'
 node scripts/restore-postgres.mjs /secure/backups/zaipos-YYYYMMDD-HHMMSS.dump
 ```
 
-The restore runtime verifies SHA-256 integrity **before** target mutation, rejects a missing/invalid checksum, requires the exact confirmation token, refuses a target containing public-schema rows, and invokes `pg_restore` with exit-on-error behavior.
+There is no overwrite, checksum-bypass or schema-bypass option. The script verifies private copies of the archive and manifest before opening a database connection, checks format/size/hash, requires exact target acknowledgement, rejects source identity and mismatched PostgreSQL/schema versions, and generates SQL before starting database mutation.
 
-After restore, verify at minimum:
+Restoration takes access-exclusive locks on all public tables and checks emptiness **inside the same transaction**. User triggers are temporarily disabled; public foreign keys are temporarily dropped. All foreign keys are recreated/validated (including archived rows behind legacy `NOT VALID` declarations); original constraint validation flags are then restored. Each user trigger's original enabled/disabled/replica/always state restored before commit. COPY, lock timeout, constraint validation or client failure rolls back transactional data and DDL. A successful restore is not authorization to route traffic.
 
-- tenant and branch identity;
-- authoritative transaction and audit ledgers;
-- product/barcode identity;
-- exact-fils selling prices, costs, payments, supplier balances, customer credit and loyalty balances;
-- inventory quantities and movement history;
-- row counts/fingerprints for critical tables;
-- application read-only smoke paths against the restored database.
+## Acceptance and rollback
 
-The repository contract `scripts/test-backup-restore-contract.mjs` performs an automated round-trip rehearsal and checks exact-fils values, inventory quantity, critical-table fingerprints, overwrite refusal, archive permissions, checksum creation, and tamper rejection.
+- Compare deterministic row SHA-256 fingerprints for **every** public table, stable IDs, operation IDs, integer-fils values, quantities and immutable ledgers against the selected backup's independent evidence/rehearsal.
+- Reconcile payments to sales; supplier/customer ledger balances; loyalty reversals; inventory and lots; retained historical prices/VAT/COGS.
+- Confirm Auth login/role/tenant/branch isolation, external evidence objects, receipt reprint and read-only reporting.
+- Reconcile pending offline operations before reconnecting terminals to avoid losing unsynchronized sales.
+- Record operator, source/target, Git/schema version, hashes, timestamps, duration, validation outcomes and business sign-off.
+- Route traffic only after operator and business acceptance. Keep the previous environment isolated through the agreed retention period.
 
-## Production restore procedure
+On checksum/format/permission/identity/schema failure, stop and select a trusted compatible artifact or fix target provisioning. On database failure, preserve restricted server diagnostics and verify the target is still empty with unchanged schema. Re-provision if there is uncertainty; never bypass checks. If recovery must be abandoned, retain the old database and replacement in isolation and return to the incident procedure. Do not switch traffic back to a known corrupted database automatically.
 
-Do not restore directly over a live production database.
+## Rehearsal and failure evidence
 
-1. Declare the incident and stop application writes to the affected production database.
-2. Preserve the damaged database and logs for forensic/reconciliation purposes when storage permits.
-3. Select the intended backup and verify its SHA-256 sidecar independently.
-4. Provision a fresh replacement database.
-5. Deploy/apply the matching reviewed ZAIPOS migration chain.
-6. Confirm the replacement `public` schema contains no business rows.
-7. Restore with the explicit confirmation token.
-8. Run reconciliation and smoke tests before routing production traffic to the replacement database.
-9. Record backup timestamp/source, archive hash, restore operator, target database identity, verification results, and incident/change reference in the operational change record.
-10. Keep the previous database isolated until recovery acceptance and retention policy permit disposal.
+`Backup Restore Contract` provisions **two separate Supabase PostgreSQL instances**, runs fresh and upgrade migration chains on each, creates actual source sales/payments and supplier/customer/loyalty/return/void evidence, independently provisions synthetic target Auth identities, and clears only the disposable target. The source remains intact.
 
-## Failure handling
+The contract hashes all public tables and requires named critical tables to exist. It checks exact fils/quantity, nonempty ledger fixtures, full fidelity, unchanged source, unchanged schema/trigger configuration, repeat restore, nonempty/source/wrong-target/confirmation/schema rejection, corrupt archive rejection, and rollback on missing provider Auth references. Process-boundary tests separately cover credential redaction, missing tools, permissions and pre-mutation integrity rejection; these are not substitutes for PostgreSQL round-trip evidence.
 
-- **Checksum mismatch / integrity failure:** quarantine the archive; do not bypass the check. Use another verified backup or investigate storage corruption.
-- **Target is not empty:** stop. Provision a fresh recovery target or explicitly clear it through the controlled incident procedure. The restore script deliberately has no force-overwrite path.
-- **Migration/schema mismatch:** use the release/migration version matching the backup and rehearse again. Do not edit historical migrations to make an old archive fit.
-- **`pg_restore` failure:** preserve command output and target database for diagnosis. Discard/re-provision the failed target before the next attempt.
-- **Missing authentication/provider data:** recover that layer through the provider's independent backup/recovery mechanism before reopening user access.
+The rehearsal refuses to run without `ZAIPOS_RECOVERY_REHEARSAL=DISPOSABLE_TEST_DATABASES`, two distinct local endpoints and `POSTGRES_RESTORE_TEST_URL`. Never run the migration fixture scripts against production.
 
-## Recovery objectives and retention
+## Recovery objectives
 
-Define RPO/RTO and retention according to business requirements and available storage. At minimum, production operations should maintain multiple generations and at least one copy outside the primary database failure domain. Recovery objectives are operational commitments and must be measured by timed restore rehearsals; repository code alone cannot prove them.
-
-## Security boundaries
-
-Backups contain sensitive business and financial records. Apply least privilege, encryption at rest/in transit, access logging, controlled retention, and secure deletion. Do not transmit archives through chat, issue comments, CI logs, or public artifacts. The repository CI uses only deterministic test data.
+RPO and RTO are **unmeasured business targets**, not verified production performance. Define them with the store owner, automate backups to meet the approved RPO, and time representative full recoveries to establish RTO. Recommended operational cadence: monitor each backup and off-site copy, rehearse after schema/recovery changes and at least monthly. Record database size, hardware, tool versions, restore duration and acceptance duration. CI's small synthetic dataset does not establish production RTO.
