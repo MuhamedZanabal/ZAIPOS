@@ -3121,14 +3121,19 @@ export type Database = {
         }
         Returns: string
       }
-      register_delivery_payment: {
+      collect_delivery_payment_v2: {
         Args: {
-          _amount: number
-          _method: Database["public"]["Enums"]["payment_method"]
           _order_id: string
+          _method: Database["public"]["Enums"]["payment_method"]
+          _session_id: string
+          _client_mutation_id: string
           _reference?: string
         }
         Returns: string
+      }
+      list_courier_deliveries: {
+        Args: { _tenant_id: string; _branch_id: string }
+        Returns: Json
       }
       register_digital_order: {
         Args: {

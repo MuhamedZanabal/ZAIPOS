@@ -1,3 +1,4 @@
+import { handleTrustedIpc } from '../security.js';
 /**
  * electron/services/printer.ts
  * Servicio de impresora térmica ESC/POS para el Main Process.
@@ -5,7 +6,7 @@
  * Usa la librería node-thermal-printer.
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import type { TicketData, PrintResult, PrinterConfig } from '../types.js';
 import { IPC_HANDLERS, DEFAULT_SETTINGS } from '../types.js';
 import { buildReceiptTextLines } from './receipt-format.js';
@@ -119,11 +120,11 @@ export async function openCashDrawer(config: PrinterConfig): Promise<PrintResult
 // ─── Registro de Handlers IPC ────────────────────────────────────────────────
 
 export function setupPrinterHandlers(getConfig: () => PrinterConfig): void {
-  ipcMain.handle(IPC_HANDLERS.PRINT_TICKET, async (_event, data: TicketData) => {
+  handleTrustedIpc(IPC_HANDLERS.PRINT_TICKET, async (_event, data: TicketData) => {
     return printTicket(getConfig(), data);
   });
 
-  ipcMain.handle(IPC_HANDLERS.OPEN_DRAWER, async () => {
+  handleTrustedIpc(IPC_HANDLERS.OPEN_DRAWER, async () => {
     return openCashDrawer(getConfig());
   });
 

@@ -143,4 +143,32 @@ BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION public.update_delivery_status(uuid,public.delivery_status,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.update_delivery_status(uuid,public.delivery_status,uuid) TO authenticated;
+-- Narrow read model: no reliance on nonexistent legacy sale FK/PostgREST join,
+-- and couriers never receive another courier's customer details or till totals.
+CREATE FUNCTION public.list_courier_deliveries(_tenant_id uuid,_branch_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+DECLARE _manager boolean; _orders jsonb; _sessions jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  _manager:=public.has_branch_role(auth.uid(),_tenant_id,_branch_id,ARRAY['owner','admin','manager','cashier']::public.app_role[]);
+  IF NOT _manager AND NOT public.has_branch_role(auth.uid(),_tenant_id,_branch_id,ARRAY['courier']::public.app_role[]) THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  SELECT COALESCE(jsonb_agg(to_jsonb(q) ORDER BY q.created_at DESC),'[]'::jsonb) INTO _orders FROM (
+    SELECT o.id,o.status,o.customer_name,o.customer_phone,o.address,o.neighborhood,o.delivered_at,o.updated_at,o.created_at,
+      (s.total_fils+o.delivery_fee_fils)::text AS collection_total_fils,
+      c.id AS collection_id
+    FROM public.delivery_orders o
+    LEFT JOIN public.sales s ON s.id=o.sale_id AND s.tenant_id=o.tenant_id AND s.branch_id=o.branch_id
+    LEFT JOIN public.delivery_collections c ON c.order_id=o.id
+    WHERE o.tenant_id=_tenant_id AND o.branch_id=_branch_id AND (
+      _manager OR EXISTS (SELECT 1 FROM public.employees e WHERE e.id=o.courier_id AND e.user_id=auth.uid()
+        AND e.tenant_id=_tenant_id AND (e.branch_id IS NULL OR e.branch_id=_branch_id) AND e.status='active')
+    ) ORDER BY o.created_at DESC LIMIT 100
+  ) q;
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('id',c.id,'opened_at',c.opened_at,'register_name',COALESCE(r.name,'Register')) ORDER BY c.opened_at),'[]'::jsonb)
+  INTO _sessions FROM public.cash_sessions c LEFT JOIN public.cash_registers r ON r.id=c.register_id AND r.tenant_id=c.tenant_id
+  WHERE c.tenant_id=_tenant_id AND c.branch_id=_branch_id AND c.status='open';
+  RETURN jsonb_build_object('orders',_orders,'sessions',_sessions,'limit',100);
+END; $$;
+REVOKE ALL ON FUNCTION public.list_courier_deliveries(uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.list_courier_deliveries(uuid,uuid) TO authenticated;
 COMMIT;

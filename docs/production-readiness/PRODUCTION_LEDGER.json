@@ -1,0 +1,261 @@
+{
+  "classification": "PARTIALLY COMPLETE",
+  "observed_main_sha": "8f1c46b388e4c74eb6d19425c52fc50f62c1530f",
+  "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
+  "items": [
+    {
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "PR": 53,
+      "commit": "2d8b74c317ae6efbb0a4babae57e0a1ddc53f02f",
+      "merge_sha": "b48c217f1e33b467ab53adc1d2850804c85913a5",
+      "external_dependency": "Production credentials, encrypted offsite storage, managed Auth and Storage recovery",
+      "ID": "DR-001",
+      "domain": "Backup and restore",
+      "severity": "P0",
+      "invariant": "Restore preserves every public table and sequence and rejects unsafe targets",
+      "evidence": [
+        "PR53",
+        "Actions 34723323278",
+        "Post-merge Actions 34754641708"
+      ],
+      "tests": [
+        "test-postgres-recovery-unit.mjs",
+        "test-backup-restore-contract.mjs"
+      ],
+      "next_action": "Periodic offsite operator rehearsal; separately restore managed Auth/Storage and offline queues"
+    },
+    {
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "PR": 54,
+      "commit": "93212fa6b4dfc6043d68db901283b9d32e4614d0",
+      "merge_sha": "8f1c46b388e4c74eb6d19425c52fc50f62c1530f",
+      "external_dependency": null,
+      "ID": "SEC-001",
+      "domain": "Desktop sender and navigation",
+      "severity": "P0",
+      "invariant": "Only the current application main frame invokes native effects",
+      "evidence": [
+        "PR54",
+        "Actions 34754684475",
+        "Windows artifact 10316996183"
+      ],
+      "tests": [
+        "src/test/desktop/trust-boundary.test.ts"
+      ],
+      "next_action": "Verify post-merge CI and deployed desktop acceptance"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": 55,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "DEL-001",
+      "domain": "Delivery collection",
+      "severity": "P0",
+      "invariant": "Collection is server-derived, exact, authorized, atomic and once-only",
+      "evidence": [
+        "Legacy exploit confirmed in Actions 34754897744",
+        "Initial replacement PostgreSQL contract Actions 34755084413 passed"
+      ],
+      "tests": [
+        "scripts/test-delivery-financial-authority-postgres.mjs",
+        "src/test/delivery-collection-money.test.ts"
+      ],
+      "next_action": "Complete UI/read projection and adversarial contracts, verify final head and merge"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "DEL-002",
+      "domain": "Delivery fee accounting",
+      "severity": "P1",
+      "invariant": "Fee tax, reports and reversals have immutable accounting evidence",
+      "evidence": [
+        "Delivery fee is separate from sales.total_fils; PR55 preserves separate collection component"
+      ],
+      "tests": [],
+      "next_action": "Implement explicit fee tax/history and refund/report integration; do not rewrite historical sale VAT"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "SEC-002",
+      "domain": "Native settings and hardware",
+      "severity": "P0",
+      "invariant": "Renderer input cannot choose arbitrary file destinations or bypass manager authorization",
+      "evidence": [
+        "electron/main.ts settings/kiosk handlers",
+        "electron/services/printer.ts interface configuration"
+      ],
+      "tests": [],
+      "next_action": "Reproduce device-path and role-boundary risks; validate native input and privileged settings"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "CSV-001",
+      "domain": "Data export/import",
+      "severity": "P1",
+      "invariant": "CSV exports cannot execute spreadsheet formulas and parser rejects malformed input",
+      "evidence": [
+        "src/lib/csv.ts quotes only; parser splits lines before handling quoted fields"
+      ],
+      "tests": [],
+      "next_action": "Add adversarial formula/multiline/header tests and harden parser/export"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "EXP-001",
+      "domain": "Data portability",
+      "severity": "P1",
+      "invariant": "Exports cover authorized complete data with exact fils",
+      "evidence": [
+        "src/modules/settings/DataManagement.tsx uses unpaginated selects and legacy numeric prices"
+      ],
+      "tests": [],
+      "next_action": "Paginate scoped deterministic exports and preserve authoritative integer-fils columns"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "UI-001",
+      "domain": "Customer credit operations",
+      "severity": "P1",
+      "invariant": "Operators can use and reconcile the authoritative credit ledger",
+      "evidence": [
+        "Customer credit backend exists; initial UI search did not find full credit workflows"
+      ],
+      "tests": [],
+      "next_action": "Trace routes and implement missing credit workflow integration; verify against RPCs"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "UI-002",
+      "domain": "Supplier accounting operations",
+      "severity": "P1",
+      "invariant": "Operators can record and reconcile supplier subledger transactions",
+      "evidence": [
+        "Supplier subledger backend exists; initial supplier UI inspection shows profile/procurement focus"
+      ],
+      "tests": [],
+      "next_action": "Finish route audit and missing ledger payment/statement UI"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "UI-003",
+      "domain": "Inventory operations",
+      "severity": "P1",
+      "invariant": "Operators can use stocktake and lot authority",
+      "evidence": [
+        "Stocktake/lot contracts exist; full management UI not established by current audit"
+      ],
+      "tests": [],
+      "next_action": "Trace inventory routes and complete missing operational integrations"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "REL-001",
+      "domain": "Release engineering",
+      "severity": "P1",
+      "invariant": "Only verified immutable release refs produce release artifacts",
+      "evidence": [
+        "No GitHub release observed; package version 1.0.0; release workflow dispatch/tag checks need full review"
+      ],
+      "tests": [],
+      "next_action": "Reproduce dispatch gate behavior and verify actual release procedure/artifacts"
+    },
+    {
+      "status": "BLOCKED \u2014 EXTERNAL",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": "Authenticode certificate/signing provider credentials",
+      "ID": "EXT-SIGN",
+      "domain": "Production signing",
+      "severity": "P1",
+      "invariant": "Production signing fails closed without a trusted certificate",
+      "evidence": [
+        "Windows validation artifacts are explicitly unsigned"
+      ],
+      "tests": [],
+      "next_action": "Provide trusted signing credentials and execute signed release acceptance"
+    },
+    {
+      "status": "BLOCKED \u2014 EXTERNAL",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": "Physical store hardware and deployed Windows terminals",
+      "ID": "EXT-HW",
+      "domain": "Physical acceptance",
+      "severity": "P1",
+      "invariant": "Real hardware behavior is verified on target devices",
+      "evidence": [
+        "No scanner/printer/drawer/Windows target is connected in this environment"
+      ],
+      "tests": [],
+      "next_action": "Execute hardware and updater acceptance procedures"
+    },
+    {
+      "status": "BLOCKED \u2014 EXTERNAL",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": "Repository administration interface",
+      "ID": "EXT-PROTECT",
+      "domain": "Repository protection",
+      "severity": "P1",
+      "invariant": "Main requires reviewed green CI before merges",
+      "evidence": [
+        "Main was observed unprotected; connector cannot administer branch protection"
+      ],
+      "tests": [],
+      "next_action": "Administrator configures required status checks and branch protections"
+    },
+    {
+      "status": "PARTIALLY COMPLETE",
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "ID": "AUDIT-ALL",
+      "domain": "Complete system audit",
+      "severity": "P1",
+      "invariant": "No executable P0/P1 is hidden by historical completion claims",
+      "evidence": [
+        "Current audit discovered collection and desktop defects despite old readiness claims"
+      ],
+      "tests": [],
+      "next_action": "Complete remaining domain, scale, offline, release, authorization and failure-mode audits after each merge"
+    }
+  ]
+}

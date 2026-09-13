@@ -157,6 +157,16 @@ expectReject(
 assertEqual("delivery direct financial mutation is revoked", scalar(`SELECT has_table_privilege('authenticated','public.delivery_orders','UPDATE');`), "f");
 assertEqual("delivery collection v2 exists", scalar(`SELECT to_regprocedure('public.collect_delivery_payment_v2(uuid,public.payment_method,uuid,text,text)') IS NOT NULL;`), "t");
 
+const outsider='3d000000-0000-0000-0000-000000000002';
+const wrongBranchUser='3d000000-0000-0000-0000-000000000003';
+const branchA2='2d000000-0000-0000-0000-000000000003';
+sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES ('${outsider}','delivery-outsider@zaipos.test','{}'),('${wrongBranchUser}','delivery-wrongbranch@zaipos.test','{}');
+INSERT INTO public.branches(id,tenant_id,name,status) VALUES ('${branchA2}','${I.tenantA}','Other same-tenant branch','active');
+INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES ('${outsider}','${I.tenantB}','${I.branchB}','cashier'),('${wrongBranchUser}','${I.tenantA}','${branchA2}','cashier');`);
+expectReject('cross tenant collection denied',outsider,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-outsider',NULL)`,/forbidden/i);
+expectReject('wrong branch collection denied',wrongBranchUser,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-wrongbranch',NULL)`,/forbidden/i);
+expectReject('cross tenant courier read denied',outsider,`SELECT public.list_courier_deliveries('${I.tenantA}','${I.branchA}')`,/forbidden/i);
+assertEqual('wrong branch direct delivery read isolated',asUser(wrongBranchUser,`SELECT count(*)::text FROM public.delivery_orders WHERE id='${orderId}'`),'0');
 const sessionId = "6d000000-0000-0000-0000-000000000001";
 sql(`INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id) VALUES ('${sessionId}','${I.tenantA}','${I.branchA}','${I.cashierA}');`);
 asUser(I.cashierA, `SELECT public.update_delivery_status('${orderId}','ready',NULL)`);
@@ -195,5 +205,8 @@ asUser(I.cashierA,collect({order:rollbackOrder,op:'collection-rollback-0001'}));
 assertEqual('failed transaction retry converges',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'2500');
 sql(`UPDATE public.cash_sessions SET status='closed' WHERE id='${sessionId}';`);
 assertEqual('lost response retry survives later till closure',asUser(I.cashierA,collect()),collectionId);
+assertEqual('courier read model exposes exact strings',asUser(I.cashierA,`SELECT jsonb_typeof(public.list_courier_deliveries('${I.tenantA}','${I.branchA}')->'orders'->0->'collection_total_fils')`),'string');
+sql(`DELETE FROM public.user_roles WHERE user_id='${I.cashierA}' AND tenant_id='${I.tenantA}';`);
+expectReject('revoked actor cannot replay collection',I.cashierA,collect(),/forbidden/i);
 
 process.stdout.write("Delivery financial-authority PostgreSQL PASS: exact fee fils, server price/tax authority, atomic sale/inventory linkage, payload-bound idempotency, and tenant/branch denial verified.\n");
