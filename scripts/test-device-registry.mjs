@@ -141,6 +141,11 @@ for(const action of ['settings','kiosk','download_update','install_update']) {
  assertEqual('authorization branch binding',result.branch_id,I.branchA);
  assertEqual('authorization audit exists',scalar(`SELECT count(*)::text FROM public.audit_logs WHERE id='${result.authorization_id}' AND user_id='${I.managerA}' AND action='desktop.action_authorized'`),'1');
 }
+sql(`UPDATE auth.users SET deleted_at=now() WHERE id='${I.managerA}';`);
+expectReject('deleted manager denied',I.managerA,authorize(),/not active/i);
+sql(`UPDATE auth.users SET deleted_at=NULL,banned_until=now()+interval '1 day' WHERE id='${I.managerA}';`);
+expectReject('banned manager denied',I.managerA,authorize(),/not active/i);
+sql(`UPDATE auth.users SET banned_until=NULL WHERE id='${I.managerA}';`);
 sql(`DELETE FROM public.user_roles WHERE user_id='${I.managerA}' AND role='manager';`);
 expectReject('revoked manager cannot reuse desktop authority',I.managerA,authorize(),/forbidden|not authorized/i);
 

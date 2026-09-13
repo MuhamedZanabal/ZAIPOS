@@ -9,7 +9,7 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
   IF NOT public.has_branch_role(auth.uid(),_tenant_id,_branch_id,ARRAY['owner','admin','manager']::public.app_role[]) THEN RAISE EXCEPTION 'Forbidden'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.branches WHERE id=_branch_id AND tenant_id=_tenant_id AND status='active') THEN RAISE EXCEPTION 'Branch is not active'; END IF;
-  IF EXISTS (SELECT 1 FROM auth.users WHERE id=auth.uid() AND (deleted_at IS NOT NULL OR banned_until>now())) THEN RAISE EXCEPTION 'User is not active'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id=auth.uid() AND deleted_at IS NULL AND (banned_until IS NULL OR banned_until<=now())) THEN RAISE EXCEPTION 'User is not active'; END IF;
   IF EXISTS (SELECT 1 FROM public.employees WHERE user_id=auth.uid() AND tenant_id=_tenant_id AND (branch_id IS NULL OR branch_id=_branch_id) AND status='inactive') THEN RAISE EXCEPTION 'Employee is not active'; END IF;
   IF _action IS NULL OR _action NOT IN ('settings','kiosk','download_update','install_update') THEN RAISE EXCEPTION 'Unsupported desktop action'; END IF;
   IF _nonce IS NULL OR _payload_sha256 IS NULL OR _payload_sha256 !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION 'Invalid desktop payload binding'; END IF;
