@@ -1,3 +1,5 @@
+> Superseded for current readiness by [PRODUCTION_LEDGER.json](PRODUCTION_LEDGER.json). The continuation audit reproduced a delivery overcollection defect and identified additional executable security and operational gaps. Historical evidence below is not a current no-P0/P1 certification.
+
 # ZAIPOS current verified production state — 2026-09-12
 
 This addendum supersedes only stale **current-state / current-main** assertions in `BURN_DOWN.md`. Historical evidence in that file remains valid unless explicitly superseded here.

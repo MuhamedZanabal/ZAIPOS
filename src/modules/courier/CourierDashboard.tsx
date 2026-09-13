@@ -6,11 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { Phone, MapPin, Bike, CheckCircle2, Navigation, CreditCard, Banknote, Smartphone, QrCode, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
+
+import { collectionFils, formatCollectionFils } from "./collectionMoney";
 
 type DeliveryStatus = Database["public"]["Enums"]["delivery_status"];
 type PayMethod = "cash" | "card" | "transfer" | "qr";
@@ -29,7 +31,7 @@ const PAY_METHODS: { id: PayMethod; label: string; icon: any }[] = [
   { id: "cash",     label: "Cash",      icon: Banknote },
   { id: "card",     label: "Card terminal",      icon: CreditCard },
   { id: "transfer", label: "Transfer", icon: Smartphone },
-  { id: "qr",       label: "QR",            icon: QrCode },
+  { id: "qr",       label: "BenefitPay",            icon: QrCode },
 ];
 
 export default function CourierDashboard() {
@@ -37,47 +39,25 @@ export default function CourierDashboard() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const branchName = branches.find((b) => b.id === branchId)?.name ?? "—";
-  const isSuperAdmin = roles.includes("super_admin");
+  const isSuperAdmin = roles.some((role) => ["super_admin", "owner", "admin", "manager", "cashier"].includes(role));
 
   const [payOrder, setPayOrder] = useState<any | null>(null);
   const [method, setMethod] = useState<PayMethod>("cash");
   const [submitting, setSubmitting] = useState(false);
+  const [sessionId, setSessionId] = useState("");
 
-  // Search el employee_id del courier basado en el user_id
-  const { data: employee } = useQuery({
-    queryKey: ["courier-employee", user?.id, tenantId],
-    enabled: !!user && !!tenantId && !isSuperAdmin,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("employees")
-        .select("id, full_name")
-        .eq("tenant_id", tenantId!)
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
-
-  const { data: orders, isLoading } = useQuery({
-    queryKey: ["courier-orders", branchId, employee?.id, isSuperAdmin],
-    enabled: !!branchId && (isSuperAdmin || !!employee?.id),
+  const { data: deliveryData, isLoading, error: deliveryError } = useQuery({
+    queryKey: ["courier-orders", tenantId, branchId, user?.id],
+    enabled: !!tenantId && !!branchId && !!user,
     refetchInterval: 15000,
     queryFn: async () => {
-      let q = supabase
-        .from("delivery_orders")
-        .select("*, sales(total)")
-        .eq("branch_id", branchId!)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      // Super admin sees all orders; courier sees only their own
-      if (!isSuperAdmin && employee?.id) {
-        q = q.eq("courier_id", employee.id);
-      }
-      const { data, error } = await q;
+      const { data, error } = await supabase.rpc("list_courier_deliveries", { _tenant_id: tenantId!, _branch_id: branchId! });
       if (error) throw error;
-      return data ?? [];
+      return data as { orders: any[]; sessions: { id: string; opened_at: string; register_name: string }[]; limit: number };
     },
   });
+  const orders = useMemo(() => deliveryData?.orders ?? [], [deliveryData]);
+  const sessions = deliveryData?.sessions ?? [];
 
   const grouped = useMemo(() => {
     const active = (orders ?? []).filter((o: any) => !["delivered", "cancelled"].includes(o.status));
@@ -89,15 +69,7 @@ export default function CourierDashboard() {
     return <div className="p-6 h-meta">Loading...</div>;
   }
 
-  if (!isSuperAdmin && !employee) {
-    return (
-      <div className="p-6">
-        <div className="glass rounded-2xl p-8 text-center h-meta">
-          Your user is not linked to an employee at this branch. Ask an administrator to register you as a courier.
-        </div>
-      </div>
-    );
-  }
+  if (deliveryError) return <div className="p-6" role="alert">Could not load authorized deliveries. {deliveryError.message}</div>;
 
   const updateStatus = async (id: string, status: DeliveryStatus) => {
     const { error } = await supabase.rpc("update_delivery_status", {
@@ -121,26 +93,25 @@ export default function CourierDashboard() {
   const openPay = (o: any) => {
     setPayOrder(o);
     setMethod("cash");
+    setSessionId("");
   };
 
   const confirmPayment = async () => {
     if (!payOrder) return;
-    const amount = Number(payOrder.sales?.total ?? 0) + Number(payOrder.delivery_fee ?? 0);
-    if (amount <= 0) return toast.error("Invalid amount");
+    const amount = collectionFils(payOrder.collection_total_fils);
+    if (amount === null || amount <= 0n) return toast.error("Collection amount unavailable; refresh or ask a manager to reconcile this order.");
+    if (!sessionId) return toast.error("Select the receiving register.");
     setSubmitting(true);
     try {
-      const { error } = await supabase.rpc("register_delivery_payment", {
+      const { error } = await supabase.rpc("collect_delivery_payment_v2", {
         _order_id: payOrder.id,
         _method: method,
-        _amount: amount,
+        _session_id: sessionId,
+        _client_mutation_id: `delivery-collect:${payOrder.id}`,
         _reference: null,
       });
       if (error) throw error;
-      // Marcar como entregado
-      await supabase.rpc("update_delivery_status", {
-        _order_id: payOrder.id, _status: "delivered" as DeliveryStatus, _courier_id: null,
-      });
-      toast.success(`Cobro registrado · ${formatCurrency(amount)}`);
+      toast.success(`Collection recorded · ${formatCollectionFils(amount)}`);
       setPayOrder(null);
       qc.invalidateQueries({ queryKey: ["courier-orders"] });
     } catch (e: any) {
@@ -152,7 +123,7 @@ export default function CourierDashboard() {
 
   const renderCard = (o: any) => {
     const meta  = STATUS_META[o.status as DeliveryStatus];
-    const total = Number(o.sales?.total ?? 0) + Number(o.delivery_fee ?? 0);
+    const total = collectionFils(o.collection_total_fils);
     return (
       <div key={o.id} className="glass rounded-2xl p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
@@ -181,8 +152,8 @@ export default function CourierDashboard() {
         </div>
 
         <div className="flex items-center justify-between border-t border-[var(--g-hairline)] pt-2">
-          <span className="h-label">Total a cobrar</span>
-          <span className="h-num text-lg text-[var(--brand-600)]">{formatCurrency(total)}</span>
+          <span className="h-label">Amount to collect</span>
+          <span className="h-num text-lg text-[var(--brand-600)]">{formatCollectionFils(total)}</span>
         </div>
 
         {o.status === "assigned" && (
@@ -192,7 +163,7 @@ export default function CourierDashboard() {
         )}
         {o.status === "on_way" && (
           <button type="button" className="g-btn g-btn-primary w-full" onClick={() => openPay(o)}>
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Cobrar y entregar
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Collect and deliver
           </button>
         )}
         {o.status === "ready" && (
@@ -208,10 +179,11 @@ export default function CourierDashboard() {
     <div className="p-6 space-y-6">
       <PageHeader
         eyebrow="OPERATIONS · DELIVERY"
-        title="Panel del domiciliario"
-        description={`${employee?.full_name ?? (isSuperAdmin ? "Super Admin" : "—")} · ${branchName}`}
+        title="Courier dashboard"
+        description={`${isSuperAdmin ? "Dispatch" : "Assigned courier"} · ${branchName}`}
       />
 
+      <p className="h-meta">Showing the latest 100 assigned orders. Totals cover this displayed list.</p>
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="glass g-kpi">
@@ -233,10 +205,9 @@ export default function CourierDashboard() {
           </div>
         </div>
         <div className="glass g-kpi">
-          <div className="h-label uppercase tracking-wider">Total a cobrar</div>
+          <div className="h-label uppercase tracking-wider">Amount to collect</div>
           <div className="h-num text-2xl tabular-nums">
-            {formatCurrency(grouped.active.reduce((s: number, o: any) =>
-              s + Number(o.sales?.total ?? 0) + Number(o.delivery_fee ?? 0), 0))}
+            {grouped.active.some((o: any) => collectionFils(o.collection_total_fils) === null) ? "Unavailable" : formatCollectionFils(grouped.active.reduce((s: bigint, o: any) => s + collectionFils(o.collection_total_fils)!, 0n))}
           </div>
         </div>
       </div>
@@ -273,7 +244,7 @@ export default function CourierDashboard() {
       </Tabs>
 
       {/* Payment dialog */}
-      <Dialog open={!!payOrder} onOpenChange={(o) => !o && setPayOrder(null)}>
+      <Dialog open={!!payOrder} onOpenChange={(o) => !o && !submitting && setPayOrder(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="h-display text-lg">Charge and deliver</DialogTitle>
@@ -288,8 +259,17 @@ export default function CourierDashboard() {
               <div className="flex items-baseline justify-between border-t border-b border-[var(--g-hairline)] py-3">
                 <span className="h-label">Total received</span>
                 <span className="h-num text-3xl text-[var(--brand-600)]">
-                  {formatCurrency(Number(payOrder.sales?.total ?? 0) + Number(payOrder.delivery_fee ?? 0))}
+                  {formatCollectionFils(collectionFils(payOrder.collection_total_fils))}
                 </span>
+              </div>
+              <div>
+                <label className="h-label" htmlFor="receiving-register">Receiving register</label>
+                <select id="receiving-register" value={sessionId} onChange={(e) => setSessionId(e.target.value)} disabled={submitting} className="w-full p-2 rounded border">
+                  <option value="">Select an open register</option>
+                  {sessions.map((session) => <option key={session.id} value={session.id}>{session.register_name} · {session.id.slice(0, 8)} · {formatDate(session.opened_at)}</option>)}
+                </select>
+                <p className="h-meta">Confirm only when the payment is received and accountable to this register. Electronic payment must be verified in the provider. Fees remain separate from merchandise sales.</p>
+                {sessions.length === 0 && <p role="alert">No open receiving register. Ask a cashier or manager to open one.</p>}
               </div>
               <div>
                 <div className="h-label mb-2">Payment method</div>
@@ -301,6 +281,7 @@ export default function CourierDashboard() {
                         key={m.id}
                         type="button"
                         onClick={() => setMethod(m.id)}
+                        disabled={submitting}
                         className={cn(
                           "flex items-center gap-2 p-3 rounded-xl border-2 transition-all",
                           method === m.id
@@ -319,7 +300,7 @@ export default function CourierDashboard() {
           )}
           <DialogFooter>
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setPayOrder(null)} disabled={submitting}>Cancel</button>
-            <button type="button" className="g-btn g-btn-primary" onClick={confirmPayment} disabled={submitting}>
+            <button type="button" className="g-btn g-btn-primary" onClick={confirmPayment} disabled={submitting || !sessionId}>
               {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Confirm delivery
             </button>
