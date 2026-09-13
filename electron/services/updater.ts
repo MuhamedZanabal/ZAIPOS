@@ -110,7 +110,9 @@ export async function setupUpdater(
       detail: 'ZAIPOS will restart to complete the installation.',
     });
 
-    if (result.response === 0) updater.quitAndInstall(false, true);
+    if (result.response !== 0) return { ok: false, cancelled: true };
+    updater.quitAndInstall(false, true);
+    return { ok: true };
   });
 
   setTimeout(() => {

@@ -43,7 +43,8 @@ export function handleManagerIpc(channel: string, action: ManagerAction, handler
   handleTrustedIpc(channel, async (event, payload, authorization) => {
     const authorizationId = await authorize(action, payload, authorization);
     const result = await handler(event, payload);
-    log('info','desktop_authorized_action_completed',{action,authorizationId});
+    const outcome = result?.cancelled ? 'cancelled' : result?.ok === false ? 'failed' : 'completed';
+    log(outcome === 'failed' ? 'error' : 'info',`desktop_authorized_action_${outcome}`,{action,authorizationId});
     return result;
   });
 }
