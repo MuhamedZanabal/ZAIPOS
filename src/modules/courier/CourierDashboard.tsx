@@ -110,7 +110,12 @@ export default function CourierDashboard() {
 
   const openMaps = (address: string, neighborhood?: string | null) => {
     const q = encodeURIComponent([address, neighborhood].filter(Boolean).join(", "));
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+    const url = `https://www.google.com/maps/search/?api=1&query=${q}`;
+    if (window.electron?.openExternal) {
+      void window.electron.openExternal(url).catch(() => toast.error("Could not open the map"));
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   const openPay = (o: any) => {

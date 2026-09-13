@@ -10,9 +10,10 @@
  * - Initialize the auto-updater
  */
 
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
+import { app, BrowserWindow, shell, dialog } from 'electron';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { configureTrustedWindow, handleTrustedIpc, safeExternalUrl } from './security.js';
 import type { AppSettings } from './types.js';
 import { DEFAULT_SETTINGS, IPC_HANDLERS } from './types.js';
 import { setupPrinterHandlers } from './services/printer.js';
@@ -65,6 +66,7 @@ function createWindow(settings: AppSettings): BrowserWindow {
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
+      sandbox: true,
       nodeIntegration: false,
       webSecurity: true,
       allowRunningInsecureContent: false,
@@ -78,16 +80,15 @@ function createWindow(settings: AppSettings): BrowserWindow {
     }
   });
 
-  win.webContents.on('will-navigate', (event, url) => {
-    const appUrl = process.env.VITE_DEV_SERVER_URL ?? `file://${path.join(__dirname, '../dist/index.html')}`;
-    if (!url.startsWith(appUrl)) {
-      event.preventDefault();
-      if (!kiosk) shell.openExternal(url);
+  const devUrl = !app.isPackaged ? process.env.VITE_DEV_SERVER_URL : undefined;
+  const appUrl = devUrl ?? pathToFileURL(path.join(__dirname, '../dist/index.html')).href;
+  configureTrustedWindow(win, appUrl);
+  if (devUrl) {
+    const parsed = new URL(devUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) {
+      throw new Error('Desktop development server must use an explicit loopback origin');
     }
-  });
-
-  if (process.env.VITE_DEV_SERVER_URL) {
-    win.loadURL(process.env.VITE_DEV_SERVER_URL);
+    win.loadURL(devUrl);
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
@@ -98,11 +99,11 @@ function createWindow(settings: AppSettings): BrowserWindow {
 // ─── Global IPC Handlers ──────────────────────────────────────────────────────
 
 function setupGlobalHandlers(): void {
-  ipcMain.handle(IPC_HANDLERS.GET_SETTINGS, async () => {
+  handleTrustedIpc(IPC_HANDLERS.GET_SETTINGS, async () => {
     return getSettings();
   });
 
-  ipcMain.handle(IPC_HANDLERS.SAVE_SETTINGS, async (_event, newSettings: Partial<AppSettings>) => {
+  handleTrustedIpc(IPC_HANDLERS.SAVE_SETTINGS, async (_event, newSettings: Partial<AppSettings>) => {
     if (!store) return;
     const current = getSettings();
     const merged = { ...current, ...newSettings };
@@ -117,7 +118,7 @@ function setupGlobalHandlers(): void {
     }
   });
 
-  ipcMain.handle(IPC_HANDLERS.SET_KIOSK, async (_event, enabled: boolean) => {
+  handleTrustedIpc(IPC_HANDLERS.SET_KIOSK, async (_event, enabled: boolean) => {
     if (!mainWindow) return;
 
     store?.set('kiosk', enabled);
@@ -128,13 +129,13 @@ function setupGlobalHandlers(): void {
     log("info", "kiosk_mode_updated", { enabled });
   });
 
-  ipcMain.handle(IPC_HANDLERS.OPEN_EXTERNAL, async (_event, url: string) => {
-    if (/^https?:\/\/.+/.test(url)) {
-      await shell.openExternal(url);
-    }
+  handleTrustedIpc(IPC_HANDLERS.OPEN_EXTERNAL, async (_event, url: string) => {
+    const safeUrl = safeExternalUrl(url);
+    if (!safeUrl) throw new Error("External URL is not allowed");
+    await shell.openExternal(safeUrl);
   });
 
-  ipcMain.handle(IPC_HANDLERS.GET_APP_VERSION, () => {
+  handleTrustedIpc(IPC_HANDLERS.GET_APP_VERSION, () => {
     return app.getVersion();
   });
 
