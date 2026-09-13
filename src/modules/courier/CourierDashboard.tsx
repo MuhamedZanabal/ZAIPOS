@@ -46,21 +46,6 @@ export default function CourierDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [sessionId, setSessionId] = useState("");
 
-  // Search el employee_id del courier basado en el user_id
-  const { data: employee } = useQuery({
-    queryKey: ["courier-employee", user?.id, tenantId],
-    enabled: !!user && !!tenantId && !isSuperAdmin,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("employees")
-        .select("id, full_name")
-        .eq("tenant_id", tenantId!)
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
-
   const { data: deliveryData, isLoading, error: deliveryError } = useQuery({
     queryKey: ["courier-orders", tenantId, branchId, user?.id],
     enabled: !!tenantId && !!branchId && !!user,
@@ -85,16 +70,6 @@ export default function CourierDashboard() {
   }
 
   if (deliveryError) return <div className="p-6" role="alert">Could not load authorized deliveries. {deliveryError.message}</div>;
-
-  if (!isSuperAdmin && !employee) {
-    return (
-      <div className="p-6">
-        <div className="glass rounded-2xl p-8 text-center h-meta">
-          Your user is not linked to an employee at this branch. Ask an administrator to register you as a courier.
-        </div>
-      </div>
-    );
-  }
 
   const updateStatus = async (id: string, status: DeliveryStatus) => {
     const { error } = await supabase.rpc("update_delivery_status", {
@@ -205,7 +180,7 @@ export default function CourierDashboard() {
       <PageHeader
         eyebrow="OPERATIONS · DELIVERY"
         title="Courier dashboard"
-        description={`${employee?.full_name ?? (isSuperAdmin ? "Super Admin" : "—")} · ${branchName}`}
+        description={`${isSuperAdmin ? "Dispatch" : "Assigned courier"} · ${branchName}`}
       />
 
       <p className="h-meta">Showing the latest 100 assigned orders. Totals cover this displayed list.</p>

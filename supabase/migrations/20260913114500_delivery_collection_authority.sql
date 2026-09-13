@@ -39,13 +39,19 @@ GRANT SELECT ON public.delivery_orders TO authenticated;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.delivery_orders FROM authenticated;
 DROP POLICY IF EXISTS delivery_orders_member_all ON public.delivery_orders;
 DROP POLICY IF EXISTS delivery_orders_member_select ON public.delivery_orders;
+CREATE FUNCTION public.is_assigned_delivery_courier(_tenant_id uuid,_branch_id uuid,_courier_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT public.has_branch_role(auth.uid(),_tenant_id,_branch_id,ARRAY['courier']::public.app_role[]) AND EXISTS (
+    SELECT 1 FROM public.employees e WHERE e.id=_courier_id AND e.user_id=auth.uid()
+      AND e.tenant_id=_tenant_id AND (e.branch_id IS NULL OR e.branch_id=_branch_id) AND e.status='active'
+  );
+$$;
+REVOKE ALL ON FUNCTION public.is_assigned_delivery_courier(uuid,uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.is_assigned_delivery_courier(uuid,uuid,uuid) TO authenticated;
 CREATE POLICY delivery_orders_scoped_read ON public.delivery_orders FOR SELECT TO authenticated
 USING (
   public.has_branch_role(auth.uid(),tenant_id,branch_id,ARRAY['owner','admin','manager','cashier','waiter']::public.app_role[])
-  OR (public.has_branch_role(auth.uid(),tenant_id,branch_id,ARRAY['courier']::public.app_role[]) AND EXISTS (
-    SELECT 1 FROM public.employees e WHERE e.id=courier_id AND e.user_id=auth.uid()
-      AND e.tenant_id=delivery_orders.tenant_id AND (e.branch_id IS NULL OR e.branch_id=delivery_orders.branch_id) AND e.status='active'
-  ))
+  OR public.is_assigned_delivery_courier(tenant_id,branch_id,courier_id)
 );
 REVOKE ALL ON FUNCTION public.register_delivery_payment(uuid,public.payment_method,numeric,text) FROM PUBLIC, anon, authenticated;
 
