@@ -148,4 +148,13 @@ expectReject(
   /delivery fee cannot be negative/i,
 );
 
+expectReject(
+  "legacy arbitrary collection is not executable",
+  I.cashierA,
+  `SELECT public.register_delivery_payment('${orderId}', 'cash', 999.999, 'forged-collection')`,
+  /permission denied/i,
+);
+assertEqual("delivery direct financial mutation is revoked", scalar(`SELECT has_table_privilege('authenticated','public.delivery_orders','UPDATE');`), "f");
+assertEqual("delivery collection v2 exists", scalar(`SELECT to_regprocedure('public.collect_delivery_payment_v2(uuid,public.payment_method,uuid,text,text)') IS NOT NULL;`), "t");
+
 process.stdout.write("Delivery financial-authority PostgreSQL PASS: exact fee fils, server price/tax authority, atomic sale/inventory linkage, payload-bound idempotency, and tenant/branch denial verified.\n");

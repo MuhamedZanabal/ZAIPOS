@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "src/modules/delivery/**"
+      - "src/modules/courier/**"
       - "src/integrations/supabase/types.ts"
       - "supabase/migrations/**"
       - "scripts/test-delivery-financial-authority.mjs"
@@ -14,6 +15,7 @@ on:
       - main
     paths:
       - "src/modules/delivery/**"
+      - "src/modules/courier/**"
       - "src/integrations/supabase/types.ts"
       - "supabase/migrations/**"
       - "scripts/test-delivery-financial-authority.mjs"
