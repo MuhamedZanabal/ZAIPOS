@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, Loader2, AlertCircle, FileSpreadsheet, Box } from "lucide-react";
 import { exportToCsv, parseCsv } from "@/lib/csv";
+import { parseInventoryCounts } from "@/lib/inventoryImport";
 import { createInventoryMutationId, reconcileInventoryLevelsV2 } from "@/lib/inventory";
 import { toast } from "sonner";
 import { useInventoryCenters } from "@/hooks/useInventoryCenters";
@@ -211,27 +212,17 @@ export function DataManagement() {
 
     setLoading(true);
     try {
-      const rows = parseCsv(await file.text());
+      const rows = parseInventoryCounts(await file.text());
       if (rows.length === 0) throw new Error("The file is empty or has an invalid format");
 
       setProgress({ total: rows.length, current: 0 });
       const targets: { productId: string; targetQuantity: number; effectKey: string }[] = [];
-      const seenSkus = new Set<string>();
+      const selectedCenter = centers.find((center) => center.id === selectedCenterId);
+      if (!selectedCenter) throw new Error("Selected inventory center is unavailable");
 
       for (let index = 0; index < rows.length; index += 1) {
-        const row = rows[index];
-        const sku = String(row.sku ?? "").trim();
-        if (!sku) {
-          setProgress((progressState) => progressState ? { ...progressState, current: index + 1 } : null);
-          continue;
-        }
-        if (seenSkus.has(sku)) throw new Error(`Duplicate SKU in inventory import: ${sku}`);
-        seenSkus.add(sku);
-
-        const targetQuantity = Number(row.quantity ?? 0);
-        if (!Number.isFinite(targetQuantity) || targetQuantity < 0 || Math.round(targetQuantity * 1000) / 1000 !== targetQuantity) {
-          throw new Error(`Invalid physical quantity for SKU ${sku}: use a non-negative value with at most three decimals`);
-        }
+        const {sku,quantity:targetQuantity,center} = rows[index];
+        if (center && center !== selectedCenter.name) throw new Error(`Inventory row for ${sku} belongs to a different center`);
 
         const { data: product, error } = await supabase
           .from("products")
@@ -241,13 +232,8 @@ export function DataManagement() {
           .maybeSingle();
         if (error) throw error;
 
-        if (product) {
-          targets.push({
-            productId: product.id,
-            targetQuantity,
-            effectKey: `sku:${sku}`,
-          });
-        }
+        if (!product) throw new Error(`Unknown SKU in inventory import: ${sku}`);
+        targets.push({productId:product.id,targetQuantity,effectKey:`sku:${sku}`});
 
         setProgress((progressState) => progressState ? { ...progressState, current: index + 1 } : null);
       }
