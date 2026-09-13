@@ -8,7 +8,9 @@ import { handleTrustedIpc } from '../security.js';
 
 import { BrowserWindow } from 'electron';
 import type { TicketData, PrintResult, PrinterConfig } from '../types.js';
-import { IPC_HANDLERS, DEFAULT_SETTINGS } from '../types.js';
+import { IPC_HANDLERS } from '../types.js';
+import { printerInterface, validatePrinterConfig, validateTicket } from '../hardware-security.js';
+import { log } from '../logger.js';
 import { buildReceiptTextLines } from './receipt-format.js';
 
 // Importamos de forma lazy para que el app arranque aunque la impresora no esté conectada
@@ -24,7 +26,7 @@ async function loadPrinterLibrary() {
       PrinterTypes = lib.PrinterTypes;
       CharacterSet = lib.CharacterSet;
     } catch (err) {
-      console.error('[Printer] No se pudo cargar node-thermal-printer:', err);
+      log('error', 'printer_library_unavailable');
       throw new Error('Printer library unavailable');
     }
   }
@@ -32,24 +34,14 @@ async function loadPrinterLibrary() {
 
 // ─── Builder de Ticket ──────────────────────────────────────────────────────
 
-function buildInterface(config: PrinterConfig): string {
-  switch (config.connectionType) {
-    case 'network':
-      return `tcp://${config.host ?? '192.168.1.100'}:${config.port ?? 9100}`;
-    case 'bluetooth':
-      return config.bluetoothAddress ?? '';
-    case 'usb':
-    default:
-      return config.devicePath ?? DEFAULT_SETTINGS.printer.devicePath!;
-  }
-}
-
 async function createPrinterInstance(config: PrinterConfig): Promise<any> {
+  config = validatePrinterConfig(config);
+  const destination = printerInterface(config);
   await loadPrinterLibrary();
 
   const printer = new ThermalPrinter({
     type: PrinterTypes.EPSON,
-    interface: buildInterface(config),
+    interface: destination,
     width: config.width ?? 42,
     characterSet: CharacterSet[config.characterSet ?? 'SLOVENIA'] ?? CharacterSet.SLOVENIA,
     removeSpecialCharacters: false,
@@ -66,6 +58,7 @@ export async function printTicket(
   data: TicketData
 ): Promise<PrintResult> {
   try {
+    validateTicket(data);
     const printer = await createPrinterInstance(config);
     const width = config.width ?? 42;
     printer.alignLeft();
@@ -94,8 +87,8 @@ export async function printTicket(
 
     return { ok: true };
   } catch (err: any) {
-    console.error('[Printer] Error al imprimir:', err);
-    return { ok: false, error: err?.message ?? 'Unknown printing error' };
+    log('error', 'receipt_print_failed');
+    return { ok: false, error: 'Printing failed. Check the approved device configuration and connection.' };
   }
 }
 
@@ -112,8 +105,8 @@ export async function openCashDrawer(config: PrinterConfig): Promise<PrintResult
 
     return { ok: true };
   } catch (err: any) {
-    console.error('[Drawer] Error opening cash drawer:', err);
-    return { ok: false, error: err?.message ?? 'Error opening cash drawer' };
+    log('error', 'cash_drawer_open_failed');
+    return { ok: false, error: 'Drawer operation failed. Check the approved printer connection.' };
   }
 }
 
