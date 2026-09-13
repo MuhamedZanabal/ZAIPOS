@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 const I = {
@@ -156,5 +156,44 @@ expectReject(
 );
 assertEqual("delivery direct financial mutation is revoked", scalar(`SELECT has_table_privilege('authenticated','public.delivery_orders','UPDATE');`), "f");
 assertEqual("delivery collection v2 exists", scalar(`SELECT to_regprocedure('public.collect_delivery_payment_v2(uuid,public.payment_method,uuid,text,text)') IS NOT NULL;`), "t");
+
+const sessionId = "6d000000-0000-0000-0000-000000000001";
+sql(`INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id) VALUES ('${sessionId}','${I.tenantA}','${I.branchA}','${I.cashierA}');`);
+asUser(I.cashierA, `SELECT public.update_delivery_status('${orderId}','ready',NULL)`);
+const collect = ({order=orderId, method='cash', session=sessionId, op='collection-contract-0001'}={}) =>
+  `SELECT public.collect_delivery_payment_v2('${order}','${method}','${session}','${op}',NULL)::text`;
+expectReject('wrong receiving session', I.cashierA, collect({session:I.branchB}), /open receiving cash session/i);
+expectReject('cannot mark delivered without collection', I.cashierA, `SELECT public.update_delivery_status('${orderId}','delivered',NULL)`, /atomic delivery collection/i);
+expectReject('cannot directly rewrite delivery fee', I.cashierA, `UPDATE public.delivery_orders SET delivery_fee_fils=1 WHERE id='${orderId}'`, /permission denied/i);
+const collectionId=asUser(I.cashierA,collect());
+assertEqual('replay returns original collection',asUser(I.cashierA,collect()),collectionId);
+assertEqual('payment matches merchandise exactly, fee separate',scalar(`SELECT sum(amount_fils)::text FROM public.payments WHERE sale_id='${saleId}'`),'1000');
+assertEqual('collection preserves fee and gross',scalar(`SELECT sale_amount_fils||':'||fee_amount_fils||':'||collected_fils FROM public.delivery_collections WHERE id='${collectionId}'`),'1000:250:1250');
+assertEqual('receiving cash session updated exactly once',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1250');
+assertEqual('collection atomically completes delivery',scalar(`SELECT status::text FROM public.delivery_orders WHERE id='${orderId}'`),'delivered');
+expectReject('altered retry rejected',I.cashierA,collect({method:'card'}),/payload mismatch/i);
+expectReject('new operation cannot recollect same order',I.cashierA,collect({op:'collection-contract-0002'}),/already collected/i);
+expectReject('immutable collection ledger',I.cashierA,`DELETE FROM public.delivery_collections WHERE id='${collectionId}'`,/permission denied/i);
+assertEqual('one collection audit',scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='delivery.collected_v2' AND entity_id='${collectionId}'`),'1');
+
+const concurrentOrder=asUser(I.cashierA,deliveryCall({op:'delivery-concurrent-0001'}));
+asUser(I.cashierA,`SELECT public.update_delivery_status('${concurrentOrder}','ready',NULL)`);
+function asyncUser(statement) {
+  return new Promise((resolve,reject)=>execFile('psql',[dbUrl,'-X','-v','ON_ERROR_STOP=1','-Atq','-c',`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${I.cashierA}'; ${statement}; COMMIT;`],{encoding:'utf8'},(error,stdout)=>error?reject(error):resolve(stdout.trim().split(/\r?\n/).filter(Boolean).at(-1))));
+}
+const concurrentCall=collect({order:concurrentOrder,op:'collection-concurrent-0001',method:'qr'});
+const results=await Promise.all([asyncUser(concurrentCall),asyncUser(concurrentCall)]);
+assertEqual('concurrent replay converges',results[0],results[1]);
+assertEqual('concurrent BenefitPay credited once',scalar(`SELECT total_qr_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1250');
+const rollbackOrder=asUser(I.cashierA,deliveryCall({op:'delivery-rollback-0001'}));
+asUser(I.cashierA,`SELECT public.update_delivery_status('${rollbackOrder}','ready',NULL)`);
+expectReject('post-effect failure rolls back collection',I.cashierA,`${collect({order:rollbackOrder,op:'collection-rollback-0001'})}; SELECT 1/0`,/division by zero/i);
+assertEqual('failed transaction has no collection',scalar(`SELECT count(*)::text FROM public.delivery_collections WHERE order_id='${rollbackOrder}'`),'0');
+assertEqual('failed transaction leaves status ready',scalar(`SELECT status::text FROM public.delivery_orders WHERE id='${rollbackOrder}'`),'ready');
+assertEqual('failed transaction leaves till unchanged',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1250');
+asUser(I.cashierA,collect({order:rollbackOrder,op:'collection-rollback-0001'}));
+assertEqual('failed transaction retry converges',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'2500');
+sql(`UPDATE public.cash_sessions SET status='closed' WHERE id='${sessionId}';`);
+assertEqual('lost response retry survives later till closure',asUser(I.cashierA,collect()),collectionId);
 
 process.stdout.write("Delivery financial-authority PostgreSQL PASS: exact fee fils, server price/tax authority, atomic sale/inventory linkage, payload-bound idempotency, and tenant/branch denial verified.\n");
