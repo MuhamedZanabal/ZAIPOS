@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 const I = {
@@ -147,5 +147,90 @@ expectReject(
   deliveryCall({ op: "delivery-authority-op-0003", feeFils: -1 }),
   /delivery fee cannot be negative/i,
 );
+
+expectReject(
+  "legacy arbitrary collection is not executable",
+  I.cashierA,
+  `SELECT public.register_delivery_payment('${orderId}', 'cash', 999.999, 'forged-collection')`,
+  /permission denied/i,
+);
+assertEqual("delivery direct financial mutation is revoked", scalar(`SELECT has_table_privilege('authenticated','public.delivery_orders','UPDATE');`), "f");
+assertEqual("delivery collection v2 exists", scalar(`SELECT to_regprocedure('public.collect_delivery_payment_v2(uuid,public.payment_method,uuid,text,text)') IS NOT NULL;`), "t");
+
+const outsider='3d000000-0000-0000-0000-000000000002';
+const wrongBranchUser='3d000000-0000-0000-0000-000000000003';
+const branchA2='2d000000-0000-0000-0000-000000000003';
+sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES ('${outsider}','delivery-outsider@zaipos.test','{}'),('${wrongBranchUser}','delivery-wrongbranch@zaipos.test','{}');
+INSERT INTO public.branches(id,tenant_id,name,status) VALUES ('${branchA2}','${I.tenantA}','Other same-tenant branch','active');
+INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES ('${outsider}','${I.tenantB}','${I.branchB}','cashier'),('${wrongBranchUser}','${I.tenantA}','${branchA2}','cashier');`);
+expectReject('cross tenant collection denied',outsider,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-outsider',NULL)`,/forbidden/i);
+expectReject('wrong branch collection denied',wrongBranchUser,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-wrongbranch',NULL)`,/forbidden/i);
+expectReject('cross tenant courier read denied',outsider,`SELECT public.list_courier_deliveries('${I.tenantA}','${I.branchA}')`,/forbidden/i);
+assertEqual('wrong branch direct delivery read isolated',asUser(wrongBranchUser,`SELECT count(*)::text FROM public.delivery_orders WHERE id='${orderId}'`),'0');
+const sessionId = "6d000000-0000-0000-0000-000000000001";
+sql(`INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id) VALUES ('${sessionId}','${I.tenantA}','${I.branchA}','${I.cashierA}');`);
+asUser(I.cashierA, `SELECT public.update_delivery_status('${orderId}','ready',NULL)`);
+const collect = ({order=orderId, method='cash', session=sessionId, op='collection-contract-0001'}={}) =>
+  `SELECT public.collect_delivery_payment_v2('${order}','${method}','${session}','${op}',NULL)::text`;
+expectReject('wrong receiving session', I.cashierA, collect({session:I.branchB}), /open receiving cash session/i);
+expectReject('cannot mark delivered without collection', I.cashierA, `SELECT public.update_delivery_status('${orderId}','delivered',NULL)`, /atomic delivery collection/i);
+expectReject('cannot directly rewrite delivery fee', I.cashierA, `UPDATE public.delivery_orders SET delivery_fee_fils=1 WHERE id='${orderId}'`, /permission denied/i);
+const collectionId=asUser(I.cashierA,collect());
+assertEqual('replay returns original collection',asUser(I.cashierA,collect()),collectionId);
+assertEqual('payment matches merchandise exactly, fee separate',scalar(`SELECT sum(amount_fils)::text FROM public.payments WHERE sale_id='${saleId}'`),'1000');
+assertEqual('collection preserves fee and gross',scalar(`SELECT sale_amount_fils||':'||fee_amount_fils||':'||collected_fils FROM public.delivery_collections WHERE id='${collectionId}'`),'1000:250:1250');
+assertEqual('receiving cash session updated exactly once',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1250');
+assertEqual('collection atomically completes delivery',scalar(`SELECT status::text FROM public.delivery_orders WHERE id='${orderId}'`),'delivered');
+expectReject('altered retry rejected',I.cashierA,collect({method:'card'}),/payload mismatch/i);
+expectReject('new operation cannot recollect same order',I.cashierA,collect({op:'collection-contract-0002'}),/already collected/i);
+expectReject('immutable collection ledger',I.cashierA,`DELETE FROM public.delivery_collections WHERE id='${collectionId}'`,/permission denied/i);
+assertEqual('one collection audit',scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='delivery.collected_v2' AND entity_id='${collectionId}'`),'1');
+
+const concurrentOrder=asUser(I.cashierA,deliveryCall({op:'delivery-concurrent-0001'}));
+asUser(I.cashierA,`SELECT public.update_delivery_status('${concurrentOrder}','ready',NULL)`);
+function asyncUser(statement) {
+  return new Promise((resolve,reject)=>execFile('psql',[dbUrl,'-X','-v','ON_ERROR_STOP=1','-Atq','-c',`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${I.cashierA}'; ${statement}; COMMIT;`],{encoding:'utf8'},(error,stdout)=>error?reject(error):resolve(stdout.trim().split(/\r?\n/).filter(Boolean).at(-1))));
+}
+const concurrentCall=collect({order:concurrentOrder,op:'collection-concurrent-0001',method:'qr'});
+const results=await Promise.all([asyncUser(concurrentCall),asyncUser(concurrentCall)]);
+assertEqual('concurrent replay converges',results[0],results[1]);
+assertEqual('concurrent BenefitPay credited once',scalar(`SELECT total_qr_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1250');
+const rollbackOrder=asUser(I.cashierA,deliveryCall({op:'delivery-rollback-0001'}));
+asUser(I.cashierA,`SELECT public.update_delivery_status('${rollbackOrder}','ready',NULL)`);
+expectReject('post-effect failure rolls back collection',I.cashierA,`${collect({order:rollbackOrder,op:'collection-rollback-0001'})}; SELECT 1/0`,/division by zero/i);
+assertEqual('failed transaction has no collection',scalar(`SELECT count(*)::text FROM public.delivery_collections WHERE order_id='${rollbackOrder}'`),'0');
+assertEqual('failed transaction leaves status ready',scalar(`SELECT status::text FROM public.delivery_orders WHERE id='${rollbackOrder}'`),'ready');
+assertEqual('failed transaction leaves till unchanged',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1250');
+asUser(I.cashierA,collect({order:rollbackOrder,op:'collection-rollback-0001'}));
+assertEqual('failed transaction retry converges',scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'2500');
+// Exercise courier-specific authorization, exact one-fils precision and all methods.
+const courier='3d000000-0000-0000-0000-000000000004';
+const courierOther='3d000000-0000-0000-0000-000000000005';
+const employee='7d000000-0000-0000-0000-000000000001';
+sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES ('${courier}','delivery-courier@zaipos.test','{}'),('${courierOther}','delivery-unassigned@zaipos.test','{}');
+INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES ('${courier}','${I.tenantA}','${I.branchA}','courier'),('${courierOther}','${I.tenantA}','${I.branchA}','courier');
+INSERT INTO public.employees(id,tenant_id,branch_id,user_id,full_name,role,status) VALUES ('${employee}','${I.tenantA}','${I.branchA}','${courier}','Contract courier','courier','active');
+UPDATE public.inventory_stocks SET quantity=5.000 WHERE inventory_center_id='${I.centerA}' AND product_id='${I.productA}';`);
+const courierOrder=asUser(I.cashierA,deliveryCall({op:'delivery-courier-0001',feeFils:251}));
+asUser(I.cashierA,`SELECT public.update_delivery_status('${courierOrder}','assigned','${employee}')`);
+const courierCall=collect({order:courierOrder,method:'card',op:'collection-courier-0001'});
+expectReject('unassigned courier denied',courierOther,courierCall,/forbidden/i);
+assertEqual('assigned courier can read only their order',asUser(courier,`SELECT jsonb_array_length(public.list_courier_deliveries('${I.tenantA}','${I.branchA}')->'orders')::text`),'1');
+assertEqual('unassigned courier sees no customer orders',asUser(courierOther,`SELECT jsonb_array_length(public.list_courier_deliveries('${I.tenantA}','${I.branchA}')->'orders')::text`),'0');
+assertEqual('assigned courier direct read uses private employee authorization safely',asUser(courier,`SELECT count(*)::text FROM public.delivery_orders WHERE id='${courierOrder}'`),'1');
+sql(`UPDATE public.employees SET status='inactive' WHERE id='${employee}';`);
+expectReject('inactive courier cannot collect',courier,courierCall,/forbidden/i);
+sql(`UPDATE public.employees SET status='active' WHERE id='${employee}';`);
+asUser(courier,courierCall);
+assertEqual('card collection preserves a single fils',scalar(`SELECT total_card_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1251');
+const transferOrder=asUser(I.cashierA,deliveryCall({op:'delivery-transfer-0001',feeFils:251}));
+asUser(I.cashierA,`SELECT public.update_delivery_status('${transferOrder}','ready',NULL)`);
+asUser(I.cashierA,collect({order:transferOrder,method:'transfer',op:'collection-transfer-0001'}));
+assertEqual('transfer collection preserves a single fils',scalar(`SELECT total_transfer_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1251');
+sql(`UPDATE public.cash_sessions SET status='closed' WHERE id='${sessionId}';`);
+assertEqual('lost response retry survives later till closure',asUser(I.cashierA,collect()),collectionId);
+assertEqual('courier read model exposes exact strings',asUser(I.cashierA,`SELECT jsonb_typeof(public.list_courier_deliveries('${I.tenantA}','${I.branchA}')->'orders'->0->'collection_total_fils')`),'string');
+sql(`DELETE FROM public.user_roles WHERE user_id='${I.cashierA}' AND tenant_id='${I.tenantA}';`);
+expectReject('revoked actor cannot replay collection',I.cashierA,collect(),/forbidden/i);
 
 process.stdout.write("Delivery financial-authority PostgreSQL PASS: exact fee fils, server price/tax authority, atomic sale/inventory linkage, payload-bound idempotency, and tenant/branch denial verified.\n");
