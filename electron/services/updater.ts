@@ -1,4 +1,4 @@
-import { handleTrustedIpc } from '../security.js';
+import { handleManagerIpc } from '../manager-authorization.js';
 import { BrowserWindow, dialog } from 'electron';
 import { IPC_EVENTS, IPC_HANDLERS } from '../types.js';
 import type { AppSettings } from '../types.js';
@@ -88,7 +88,7 @@ export async function setupUpdater(
     console.error('[Updater] Update operation failed', { message: error.message, channel });
   });
 
-  handleTrustedIpc(IPC_HANDLERS.DOWNLOAD_UPDATE, async () => {
+  handleManagerIpc(IPC_HANDLERS.DOWNLOAD_UPDATE, 'download_update', async () => {
     try {
       await updater.downloadUpdate();
       return { ok: true };
@@ -99,7 +99,7 @@ export async function setupUpdater(
     }
   });
 
-  handleTrustedIpc(IPC_HANDLERS.INSTALL_UPDATE, async () => {
+  handleManagerIpc(IPC_HANDLERS.INSTALL_UPDATE, 'install_update', async () => {
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'question',
       buttons: ['Install and restart', 'Cancel'],

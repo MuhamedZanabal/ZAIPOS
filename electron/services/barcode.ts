@@ -15,6 +15,7 @@
 
 import { BrowserWindow } from 'electron';
 import type { BarcodeConfig } from '../types.js';
+import { validateBarcodeConfig } from '../hardware-security.js';
 import { IPC_EVENTS } from '../types.js';
 
 let serialPortInstance: any = null;
@@ -45,6 +46,8 @@ async function setupSerialMode(
     const { SerialPort } = await import('serialport');
     const { ReadlineParser } = await import('@serialport/parser-readline');
 
+    const devices = await SerialPort.list();
+    if (!devices.some((device) => device.path === config.serialPort || `\\\\.\\${device.path}` === config.serialPort)) throw new Error('Configured scanner is not an enumerated serial device');
     serialPortInstance = new SerialPort({
       path: config.serialPort,
       baudRate: config.baudRate ?? 9600,
@@ -57,7 +60,7 @@ async function setupSerialMode(
       const code = line.trim();
       if (!code) return;
 
-      console.log('[Barcode] Código leído (serial):', code);
+      if (code.length > 4096) return;
 
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send(IPC_EVENTS.BARCODE_SCANNED, code);
@@ -78,7 +81,7 @@ async function setupSerialMode(
 
   } catch (err) {
     console.error('[Barcode] No se pudo cargar serialport:', err);
-    console.warn('[Barcode] Fallback a modo HID silencioso.');
+    console.warn('[Barcode] Serial scanner unavailable; no automatic mode change.');
   }
 }
 
@@ -101,7 +104,11 @@ export async function setupBarcodeScanner(
   config: BarcodeConfig,
   mainWindow: BrowserWindow
 ): Promise<void> {
-  console.log(`[Barcode] Iniciando en modo: ${config.mode.toUpperCase()}`);
+  try { config = validateBarcodeConfig(config); } catch {
+    console.error('[Barcode] Invalid stored configuration; scanner disabled.');
+    return;
+  }
+  console.log(`[Barcode] Starting ${config.mode} mode`);
 
   if (config.mode === 'serial') {
     await setupSerialMode(config, mainWindow);

@@ -10,7 +10,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { TicketData, AppSettings } from './types.js';
+import type { TicketData, AppSettings, ManagerAuthorization } from './types.js';
 import { IPC_EVENTS, IPC_HANDLERS } from './types.js';
 
 // ─── API expuesta como window.electron ───────────────────────────────────────
@@ -57,25 +57,25 @@ const electronAPI = {
   /**
    * Guarda la configuration de la app.
    */
-  saveSettings: (settings: Partial<AppSettings>): Promise<void> =>
-    ipcRenderer.invoke(IPC_HANDLERS.SAVE_SETTINGS, settings),
+  saveSettings: (settings: Partial<AppSettings>, authorization: ManagerAuthorization): Promise<void> =>
+    ipcRenderer.invoke(IPC_HANDLERS.SAVE_SETTINGS, settings, authorization),
 
   /**
    * Activa o desactiva el modo kiosco.
    * (Habilitable/deshabilitado desde el panel de Admin)
    */
-  setKiosk: (enabled: boolean): Promise<void> =>
-    ipcRenderer.invoke(IPC_HANDLERS.SET_KIOSK, enabled),
+  setKiosk: (enabled: boolean, authorization: ManagerAuthorization): Promise<void> =>
+    ipcRenderer.invoke(IPC_HANDLERS.SET_KIOSK, enabled, authorization),
 
   // ── Auto-actualizaciones ───────────────────────────────────────────────
 
   /** Downloads an available update after explicit operator approval. */
-  downloadUpdate: () =>
-    ipcRenderer.invoke(IPC_HANDLERS.DOWNLOAD_UPDATE),
+  downloadUpdate: (authorization: ManagerAuthorization) =>
+    ipcRenderer.invoke(IPC_HANDLERS.DOWNLOAD_UPDATE, null, authorization),
 
   /** Instala la actualización descargada y reinicia la app. */
-  installUpdate: () =>
-    ipcRenderer.invoke(IPC_HANDLERS.INSTALL_UPDATE),
+  installUpdate: (authorization: ManagerAuthorization) =>
+    ipcRenderer.invoke(IPC_HANDLERS.INSTALL_UPDATE, null, authorization),
 
   /** Escucha cuando hay una actualización disponible. */
   onUpdateAvailable: (

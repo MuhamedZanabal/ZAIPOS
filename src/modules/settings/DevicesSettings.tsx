@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTenantContext } from '@/hooks/useTenantContext';
 import { hardware, isElectron } from '@/lib/hardware';
+import { desktopAuthorization } from '@/lib/desktopAuthorization';
 import { supabase } from '@/integrations/supabase/client';
 
 type DeviceRow = {
@@ -56,7 +57,7 @@ export default function DevicesSettings() {
     if (!hardware) return;
     setSaving(true);
     try {
-      await hardware.saveSettings({ updateChannel: channel });
+      await hardware.saveSettings({ updateChannel: channel }, await desktopAuthorization());
       toast.success(`Update channel changed to ${channel}. Restart ZAIPOS to apply it.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save update channel.');

@@ -19,6 +19,8 @@ import { DEFAULT_SETTINGS, IPC_HANDLERS } from './types.js';
 import { setupPrinterHandlers } from './services/printer.js';
 import { setupBarcodeScanner, closeBarcodeScanner, restartBarcodeScanner } from './services/barcode.js';
 import { setupUpdater } from './services/updater.js';
+import { validateSettings, validateSettingsPatch } from './hardware-security.js';
+import { handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
@@ -103,22 +105,25 @@ function setupGlobalHandlers(): void {
     return getSettings();
   });
 
-  handleTrustedIpc(IPC_HANDLERS.SAVE_SETTINGS, async (_event, newSettings: Partial<AppSettings>) => {
-    if (!store) return;
+  handleManagerIpc(IPC_HANDLERS.SAVE_SETTINGS, 'settings', async (_event, newSettings: Partial<AppSettings>) => {
+    validateSettingsPatch(newSettings);
+    if (!store) throw new Error('Settings are unavailable');
     const current = getSettings();
     const merged = { ...current, ...newSettings };
 
     if (newSettings.printer) merged.printer = { ...current.printer, ...newSettings.printer };
     if (newSettings.barcode) merged.barcode = { ...current.barcode, ...newSettings.barcode };
 
-    store.set(merged);
+    const validated = validateSettings(merged);
+    store.set(validated);
 
     if (newSettings.barcode && mainWindow) {
-      await restartBarcodeScanner(merged.barcode, mainWindow);
+      await restartBarcodeScanner(validated.barcode, mainWindow);
     }
   });
 
-  handleTrustedIpc(IPC_HANDLERS.SET_KIOSK, async (_event, enabled: boolean) => {
+  handleManagerIpc(IPC_HANDLERS.SET_KIOSK, 'kiosk', async (_event, enabled: boolean) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid kiosk setting');
     if (!mainWindow) return;
 
     store?.set('kiosk', enabled);
@@ -147,7 +152,7 @@ function setupGlobalHandlers(): void {
 async function bootstrap(): Promise<void> {
   await initStore();
   const settings = getSettings();
-  log("info", "settings_loaded", { kiosk: settings.kiosk, printer: settings.printer, barcode: settings.barcode });
+  log("info", "settings_loaded", { kiosk: settings.kiosk, printerType: settings.printer?.connectionType, barcodeMode: settings.barcode?.mode });
 
   setupGlobalHandlers();
   setupPrinterHandlers(() => getSettings().printer);
