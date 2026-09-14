@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, Loader2, AlertCircle, FileSpreadsheet, Box } from "lucide-react";
 import { exportToCsv, parseCsv } from "@/lib/csv";
-import { parseInventoryCounts } from "@/lib/inventoryImport";
-import { createInventoryMutationId, reconcileInventoryLevelsV2 } from "@/lib/inventory";
+import { inventoryCountOperationId, parseInventoryCounts } from "@/lib/inventoryImport";
+import { reconcileInventoryLevelsV2 } from "@/lib/inventory";
 import { toast } from "sonner";
 import { useInventoryCenters } from "@/hooks/useInventoryCenters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -67,11 +67,13 @@ export function DataManagement() {
 
       if (error) throw error;
 
+      const countReference = crypto.randomUUID();
       const flatData = (data || []).map((stock: any) => ({
         product: stock.products?.name,
         sku: stock.products?.sku,
         center: stock.inventory_centers?.name,
         quantity: stock.quantity,
+        count_reference: countReference,
       }));
 
       exportToCsv(`inventory_${new Date().toISOString().split("T")[0]}.csv`, flatData);
@@ -244,8 +246,8 @@ export function DataManagement() {
         tenantId,
         branchId,
         inventoryCenterId: selectedCenterId,
-        targets,
-        clientMutationId: createInventoryMutationId("inventory-reconcile"),
+        targets: targets.sort((left,right) => left.productId < right.productId ? -1 : left.productId > right.productId ? 1 : 0),
+        clientMutationId: await inventoryCountOperationId(tenantId,branchId,selectedCenterId,rows[0].countReference),
         reason: "Bulk physical inventory import",
       });
 
@@ -346,7 +348,7 @@ export function DataManagement() {
                 disabled={loading || !selectedCenterId}
               />
               <p className="text-[10px] text-muted-foreground">
-                * The file must contain 'sku' and 'quantity' columns. Each quantity is treated as the authoritative physical count for the selected center.
+                * Required columns: 'sku', 'quantity', and 'count_reference'. Export a new file for each new physical count. Retain its reference and contents when retrying; retries do not apply the count again. Each quantity replaces stock for the selected center.
               </p>
             </div>
           </div>

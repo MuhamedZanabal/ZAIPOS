@@ -10,27 +10,27 @@ import { DataManagement } from '../modules/settings/DataManagement';
 beforeEach(()=>{vi.clearAllMocks();mocks.lookup.mockResolvedValue({data:{id:'product'},error:null});mocks.reconcile.mockResolvedValue('operation');});
 it('never converts a blank physical count into zero stock',async()=>{
  render(<DataManagement />);
- fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity\nSKU-1,'}]}});
+ fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity,count_reference\nSKU-1,,61000000-0000-0000-0000-000000000001'}]}});
  await waitFor(()=>expect(mocks.error).toHaveBeenCalled());
  expect(mocks.reconcile).not.toHaveBeenCalled();
 });
 it('rejects the whole import when any SKU is unresolved',async()=>{
  mocks.lookup.mockResolvedValueOnce({data:{id:'product'},error:null}).mockResolvedValueOnce({data:null,error:null});
  render(<DataManagement />);
- fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity\nSKU-1,2\nUNKNOWN,3'}]}});
+ fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity,count_reference\nSKU-1,2,61000000-0000-0000-0000-000000000001\nUNKNOWN,3,61000000-0000-0000-0000-000000000001'}]}});
  await waitFor(()=>expect(mocks.error).toHaveBeenCalled());
  expect(mocks.reconcile).not.toHaveBeenCalled();
 });
 it('accepts explicit zero without rounding a one-thousandth count',async()=>{
  mocks.lookup.mockResolvedValueOnce({data:{id:'zero-product'},error:null}).mockResolvedValueOnce({data:{id:'fraction-product'},error:null});
  render(<DataManagement />);
- fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity\nZERO,0\nFRACTION,1.001'}]}});
+ fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity,count_reference\nZERO,0,61000000-0000-0000-0000-000000000001\nFRACTION,1.001,61000000-0000-0000-0000-000000000001'}]}});
  await waitFor(()=>expect(mocks.reconcile).toHaveBeenCalledTimes(1));
- expect(mocks.reconcile.mock.calls[0][0].targets).toEqual([{productId:'zero-product',targetQuantity:0,effectKey:'sku:ZERO'},{productId:'fraction-product',targetQuantity:1.001,effectKey:'sku:FRACTION'}]);
+ expect(mocks.reconcile.mock.calls[0][0].targets).toEqual([{productId:'fraction-product',targetQuantity:1.001,effectKey:'sku:FRACTION'},{productId:'zero-product',targetQuantity:0,effectKey:'sku:ZERO'}]);
 });
 it('rejects a physical count exported from another destination center',async()=>{
  render(<DataManagement />);
- fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity,center\nSKU-1,2,Other'}]}});
+ fireEvent.change(screen.getByLabelText('Import Stock (Physical Adjustment)'),{target:{files:[{text:async()=> 'sku,quantity,center,count_reference\nSKU-1,2,Other,61000000-0000-0000-0000-000000000001'}]}});
  await waitFor(()=>expect(mocks.error).toHaveBeenCalled());
  expect(mocks.reconcile).not.toHaveBeenCalled();
 });

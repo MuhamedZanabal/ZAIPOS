@@ -1,6 +1,6 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "3cfd345963b1abc2674e5023e642ac25d756072d",
+  "observed_main_sha": "12b79c21eb37b65b30ee367114dc9177622812d8",
   "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
   "items": [
     {
@@ -96,19 +96,20 @@
       "evidence": [
         "Current main native handlers validate sender but do not verify business-role authorization",
         "Six local native verifier tests passed; PostgreSQL RED 34774859660 confirms missing server authorization in main",
-        "All 18 final-head workflows passed; CI/Windows 34775669561, recovery 34775669570; merged PR57"
+        "All 18 final-head workflows passed; CI/Windows 34775669561, recovery 34775669570; merged PR57",
+        "All 18 post-merge main workflows passed; CI/Windows 34798582545"
       ],
       "tests": [
         "src/test/desktop/manager-authorization.test.ts",
         "scripts/test-device-registry.mjs"
       ],
-      "next_action": "Verify post-merge gates and deployed manager/cashier acceptance; device enrollment remains SEC-004"
+      "next_action": "Perform deployed manager/cashier acceptance; device enrollment remains SEC-004"
     },
     {
-      "status": "PARTIALLY COMPLETE",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
       "PR": 58,
-      "commit": "ab49f0057367a84e64d73f104f77ed7145a56639",
-      "merge_sha": null,
+      "commit": "ba3b71f9c6a3cb27966912bbdc3aaaf45e2535ee",
+      "merge_sha": "12b79c21eb37b65b30ee367114dc9177622812d8",
       "external_dependency": null,
       "ID": "CSV-001",
       "domain": "Data export/import",
@@ -116,10 +117,11 @@
       "invariant": "CSV exports cannot execute spreadsheet formulas and parser rejects malformed input",
       "evidence": [
         "src/lib/csv.ts quotes only; parser splits lines before handling quoted fields",
-        "Nine CSV and two inventory UI RED assertions reproduced; 19 focused tests and 202 full-regression tests pass; initial CI/Windows 34775587708 and catalogue 34775587675 pass"
+        "Nine CSV and two inventory UI RED assertions reproduced; 19 focused tests and 202 full-regression tests pass; initial CI/Windows 34775587708 and catalogue 34775587675 pass",
+        "Integrated CI/Windows 34798643398 and catalogue 34798643382 passed; local 210 tests; PR58 merged"
       ],
       "tests": [],
-      "next_action": "Verify integrated main head and merge PR58; complete export/retry work under EXP-001"
+      "next_action": "Verify post-merge gates; count retry is INV-RETRY-001, export completeness is EXP-001"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -304,6 +306,26 @@
       "merge_sha": null,
       "external_dependency": null,
       "next_action": "Audit actual checkout/native enforcement and define enrolled-device/offline revocation boundary; implement missing repository enforcement"
+    },
+    {
+      "ID": "INV-RETRY-001",
+      "domain": "Inventory count retry identity",
+      "severity": "P0",
+      "status": "PARTIALLY COMPLETE",
+      "invariant": "Retrying a committed count after a later stock movement must return its original result without resetting stock",
+      "evidence": [
+        "Three UI RED assertions reproduced; stock incorrectly returned from 9 to 10 after lost-response retry",
+        "Reference-bound implementation: seven focused UI tests and full 213 tests pass"
+      ],
+      "tests": [
+        "src/test/inventory-import-retry.test.tsx",
+        "scripts/test-inventory-count-retry-postgres.mjs"
+      ],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "next_action": "Verify real PostgreSQL concurrent replay contract and exact-head CI/Windows, then merge"
     }
   ]
 }
