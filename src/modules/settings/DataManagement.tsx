@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, Loader2, AlertCircle, FileSpreadsheet, Box } from "lucide-react";
 import { exportToCsv, parseCsv } from "@/lib/csv";
+import { downloadBusinessJson, exportBusinessData, exportCsvRows, type ExportDomain } from "@/lib/businessExports";
 import { inventoryCountOperationId, parseInventoryCounts } from "@/lib/inventoryImport";
 import { reconcileInventoryLevelsV2 } from "@/lib/inventory";
 import { toast } from "sonner";
@@ -32,54 +33,19 @@ export function DataManagement() {
     setSelectedCenterId(defaultCenter.id);
   }
 
-  const exportProducts = async () => {
+  const downloadExport = async (domain: ExportDomain, format: 'csv' | 'json') => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, sku, barcode, price, cost, tax_rate, min_stock, status, unit_code, product_type, product_barcodes(barcode, barcode_type, is_primary, sort_order)")
-        .eq("tenant_id", tenantId!);
-
-      if (error) throw error;
-      const exported = (data ?? []).map((product) => ({
-        ...product,
-        barcode: product.product_barcodes.find((entry) => entry.is_primary)?.barcode ?? "",
-        barcodes: product.product_barcodes.map((entry) => entry.barcode).join("|"),
-        product_barcodes: undefined,
-      }));
-      exportToCsv(`products_${new Date().toISOString().split("T")[0]}.csv`, exported);
-      toast.success("Catalog exported");
+      const snapshot = await exportBusinessData(tenantId, branchId, domain);
+      const filename = `${domain}_${snapshot.tenant_id}_${snapshot.branch_id}_${snapshot.exported_at.replaceAll(':', '-')}.${format}`;
+      if (format === 'json') downloadBusinessJson(filename, snapshot);
+      else {
+        if (!snapshot.row_count) throw new Error('No records to export. JSON can preserve an empty snapshot.');
+        exportToCsv(filename, exportCsvRows(snapshot));
+      }
+      toast.success(`${snapshot.row_count} records exported`);
     } catch (err: any) {
-      toast.error("Export error: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const exportInventory = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("inventory_stocks")
-        .select("products(name, sku), inventory_centers(name), quantity")
-        .eq("tenant_id", tenantId!)
-        .eq("branch_id", branchId!);
-
-      if (error) throw error;
-
-      const countReference = crypto.randomUUID();
-      const flatData = (data || []).map((stock: any) => ({
-        product: stock.products?.name,
-        sku: stock.products?.sku,
-        center: stock.inventory_centers?.name,
-        quantity: stock.quantity,
-        count_reference: countReference,
-      }));
-
-      exportToCsv(`inventory_${new Date().toISOString().split("T")[0]}.csv`, flatData);
-      toast.success("Inventory exported");
-    } catch (err: any) {
-      toast.error("Export error: " + err.message);
+      toast.error('Export error: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -214,7 +180,7 @@ export function DataManagement() {
 
     setLoading(true);
     try {
-      const rows = parseInventoryCounts(await file.text());
+      const rows = parseInventoryCounts(await file.text(), {tenantId,branchId,centerId:selectedCenterId});
       if (rows.length === 0) throw new Error("The file is empty or has an invalid format");
 
       setProgress({ total: rows.length, current: 0 });
@@ -271,18 +237,19 @@ export function DataManagement() {
               <div className="g-title-16">Product Catalog</div>
             </div>
             <div className="h-meta mt-1">
-              Export or import the complete product list (prices, costs, categories).
+              Export base catalogue prices, costs, categories and barcodes. JSON preserves original field values; CSV is for spreadsheets.
             </div>
           </div>
           <Button
             variant="outline"
             className="w-full justify-start gap-2 h-12"
-            onClick={exportProducts}
+            onClick={() => downloadExport('catalogue', 'csv')}
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export Catalog (.csv)
           </Button>
+          <Button variant="outline" disabled={loading} onClick={() => downloadExport('catalogue', 'json')}>Export Catalog Snapshot (.json)</Button>
 
           <div className="space-y-2">
             <Label htmlFor="import-products">Import / Update Catalog</Label>
@@ -315,12 +282,13 @@ export function DataManagement() {
           <Button
             variant="outline"
             className="w-full justify-start gap-2 h-12"
-            onClick={exportInventory}
+            onClick={() => downloadExport('inventory', 'csv')}
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export Current Stock (.csv)
           </Button>
+          <Button variant="outline" disabled={loading} onClick={() => downloadExport('inventory', 'json')}>Export Stock Snapshot (.json)</Button>
 
           <div className="space-y-3 pt-2 border-t">
             <div className="space-y-1.5">
@@ -369,7 +337,7 @@ export function DataManagement() {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Recommendation</AlertTitle>
         <AlertDescription>
-          Export your data before a bulk import so you have a backup.
+          Create a verified database backup before bulk changes. These catalogue and stock exports are scoped snapshots, not disaster-recovery backups.
         </AlertDescription>
       </Alert>
     </div>
