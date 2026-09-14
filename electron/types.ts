@@ -124,3 +124,10 @@ export const IPC_HANDLERS = {
   OPEN_EXTERNAL: 'open-external',
   GET_APP_VERSION: 'get-app-version',
 } as const;
+
+/** Short-lived session evidence is passed to main for online verification only. */
+export interface ManagerAuthorization {
+  accessToken: string;
+  tenantId: string;
+  branchId: string;
+}

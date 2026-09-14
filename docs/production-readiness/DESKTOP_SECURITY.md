@@ -16,7 +16,7 @@ Review reference: [Electron security recommendations](https://www.electronjs.org
 
 ## Remaining boundaries
 
-Sender validation identifies trusted application code, not the cashier's business role. PostgreSQL remains responsible for financial authorization. Native settings/kiosk authorization and device-path/payload validation require their own manager/session enforcement review; a renderer compromise must not be treated as equivalent to verified manager approval. Hardware effects still need deployed-device acceptance.
+Sender validation identifies trusted application code, not the cashier's business role. PostgreSQL remains responsible for financial authorization. Device-path validation is described below. Native manager authorization is described in NATIVE_MANAGER_AUTHORIZATION.md; a renderer compromise must not be treated as equivalent to verified manager approval. Hardware effects still need deployed-device acceptance.
 
 ## Native destination and payload validation
 
@@ -24,4 +24,4 @@ A local disposable-sentinel reproduction proved node-thermal-printer treats an a
 
 Barcode serial paths must have a supported device name and match an enumerated serial port. Invalid stored scanner configuration disables that scanner; it does not silently switch modes. Raw barcode values are no longer logged. Receipt payloads are bounded and reject embedded ESC/POS control characters and nonfinite numeric values. Printer errors use generic structured diagnostics rather than logging raw payload/error objects.
 
-This prevents arbitrary renderer-selected file writes. It does not yet prove the business role behind settings/kiosk changes. Native manager/session authorization remains a separate unresolved repository task. Direct local administrator tampering with application files is outside this renderer-input boundary. Validate printer/serial compatibility on the actual store hardware before rollout.
+This prevents arbitrary renderer-selected file writes. It does not yet prove the business role behind settings/kiosk changes. Native manager/session authorization is being verified in PR57; see NATIVE_MANAGER_AUTHORIZATION.md. Direct local administrator tampering with application files is outside this renderer-input boundary. Validate printer/serial compatibility on the actual store hardware before rollout.

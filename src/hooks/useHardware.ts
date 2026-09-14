@@ -24,6 +24,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { desktopAuthorization } from '@/lib/desktopAuthorization';
 import { toast } from 'sonner';
 import {
   isElectron,
@@ -227,7 +228,7 @@ export function useHardware(): UseHardwareReturn {
       console.warn('[Hardware] saveSettings no disponible en versión web.');
       return;
     }
-    await hardware.saveSettings(settings);
+    await hardware.saveSettings(settings, await desktopAuthorization());
   }, [available]);
 
   // ── Kiosk ────────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ export function useHardware(): UseHardwareReturn {
       console.warn('[Hardware] setKiosk no disponible en versión web.');
       return;
     }
-    await hardware.setKiosk(enabled);
+    await hardware.setKiosk(enabled, await desktopAuthorization());
     toast.success(`Modo kiosco ${enabled ? 'activado' : 'desactivado'}.`);
   }, [available]);
 
@@ -274,9 +275,11 @@ export function useAutoUpdater(): void {
         action: {
           label: 'Download update',
           onClick: async () => {
-            const result = await hardware?.downloadUpdate();
-            if (result && !result.ok) {
-              toast.error(`Update download failed: ${result.error ?? 'Unknown error'}`);
+            try {
+              const result = await hardware?.downloadUpdate(await desktopAuthorization());
+              if (result && !result.ok) toast.error(`Update download failed: ${result.error ?? 'Unknown error'}`);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : 'Manager authorization failed.');
             }
           },
         },
@@ -288,7 +291,10 @@ export function useAutoUpdater(): void {
       toast.success(`v${version} downloaded. Install now?`, {
         action: {
           label: 'Install and restart',
-          onClick: () => hardware?.installUpdate(),
+          onClick: async () => {
+            try { await hardware?.installUpdate(await desktopAuthorization()); }
+            catch (error) { toast.error(error instanceof Error ? error.message : 'Manager authorization failed.'); }
+          },
         },
         duration: Infinity,
       });

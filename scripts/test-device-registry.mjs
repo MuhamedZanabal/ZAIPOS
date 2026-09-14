@@ -121,4 +121,32 @@ expectReject(
 sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${deviceId}'::uuid;`);
 expectReject('revoked device heartbeat', I.cashierA, heartbeatSql(I.tenantA, I.branchA, 'terminal-device-a-001'));
 
+// Native configuration authority is checked by the main process against this RPC.
+const signature='public.authorize_desktop_action(uuid,uuid,text,text,uuid)';
+assertEqual('desktop authorization RPC exists',scalar(`SELECT to_regprocedure('${signature}') IS NOT NULL`),'t');
+const nonce='91000000-0000-0000-0000-000000000081';
+const hash='a'.repeat(64);
+const authorize=(tenant=I.tenantA,branch=I.branchA,action='settings',digest=hash)=>`SELECT public.authorize_desktop_action('${tenant}','${branch}','${action}','${digest}','${nonce}')::text`;
+expectReject('cashier cannot authorize native configuration',I.cashierA,authorize(),/forbidden|not authorized/i);
+expectReject('wrong branch manager cannot authorize native configuration',I.managerAOther,authorize(),/forbidden|not authorized/i);
+expectReject('cross tenant manager cannot authorize native configuration',I.managerB,authorize(),/forbidden|not authorized/i);
+expectReject('unknown native action',I.managerA,authorize(I.tenantA,I.branchA,'shell'),/unsupported/i);
+expectReject('invalid native payload binding',I.managerA,authorize(I.tenantA,I.branchA,'settings','bad'),/payload/i);
+assertEqual('anonymous cannot execute native authorization',scalar(`SELECT has_function_privilege('anon','${signature}','EXECUTE')::text`),'false');
+for(const action of ['settings','kiosk','download_update','install_update']) {
+ const result=JSON.parse(asAuthenticated(I.managerA,authorize(I.tenantA,I.branchA,action)));
+ assertEqual('authorization nonce binding',result.nonce,nonce);
+ assertEqual('authorization payload binding',result.payload_sha256,hash);
+ assertEqual('authorization action binding',result.action,action);
+ assertEqual('authorization branch binding',result.branch_id,I.branchA);
+ assertEqual('authorization audit exists',scalar(`SELECT count(*)::text FROM public.audit_logs WHERE id='${result.authorization_id}' AND user_id='${I.managerA}' AND action='desktop.action_authorized'`),'1');
+}
+sql(`UPDATE auth.users SET deleted_at=now() WHERE id='${I.managerA}';`);
+expectReject('deleted manager denied',I.managerA,authorize(),/not active/i);
+sql(`UPDATE auth.users SET deleted_at=NULL,banned_until=now()+interval '1 day' WHERE id='${I.managerA}';`);
+expectReject('banned manager denied',I.managerA,authorize(),/not active/i);
+sql(`UPDATE auth.users SET banned_until=NULL WHERE id='${I.managerA}';`);
+sql(`DELETE FROM public.user_roles WHERE user_id='${I.managerA}' AND role='manager';`);
+expectReject('revoked manager cannot reuse desktop authority',I.managerA,authorize(),/forbidden|not authorized/i);
+
 process.stdout.write('Device registry PASS: heartbeat, tenant/branch authorization, RLS visibility, revocation, and direct-mutation lockdown hold.\n');
