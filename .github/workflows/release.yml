@@ -100,6 +100,7 @@ jobs:
           node scripts/test-checkout-concurrency.mjs
           node scripts/test-transaction-auth-audit.mjs
           node scripts/test-inventory-count-retry-postgres.mjs
+          node scripts/test-business-export-postgres.mjs
           npm run test:migrations:devices
 
       - name: Test production release contract

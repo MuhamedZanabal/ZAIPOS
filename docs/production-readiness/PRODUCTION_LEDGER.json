@@ -1,6 +1,6 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "12b79c21eb37b65b30ee367114dc9177622812d8",
+  "observed_main_sha": "cfcd0228998c937f77e1afb13a931f51ce82e439",
   "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
   "items": [
     {
@@ -118,14 +118,15 @@
       "evidence": [
         "src/lib/csv.ts quotes only; parser splits lines before handling quoted fields",
         "Nine CSV and two inventory UI RED assertions reproduced; 19 focused tests and 202 full-regression tests pass; initial CI/Windows 34775587708 and catalogue 34775587675 pass",
-        "Integrated CI/Windows 34798643398 and catalogue 34798643382 passed; local 210 tests; PR58 merged"
+        "Integrated CI/Windows 34798643398 and catalogue 34798643382 passed; local 210 tests; PR58 merged",
+        "PR58 post-merge CI/Windows 34799003789 and catalogue 34799003786 passed"
       ],
       "tests": [],
-      "next_action": "Verify post-merge gates; count retry is INV-RETRY-001, export completeness is EXP-001"
+      "next_action": "Further export scope under EXP-001; physical count retry is addressed by PR59"
     },
     {
       "status": "PARTIALLY COMPLETE",
-      "PR": null,
+      "PR": 60,
       "commit": null,
       "merge_sha": null,
       "external_dependency": null,
@@ -134,10 +135,11 @@
       "severity": "P1",
       "invariant": "Exports cover authorized complete data with exact fils",
       "evidence": [
-        "src/modules/settings/DataManagement.tsx uses unpaginated selects and legacy numeric prices"
+        "src/modules/settings/DataManagement.tsx uses unpaginated selects and legacy numeric prices",
+        "Two RED UI assertions: 1501 records under simulated 1000-row cap and authorization denial; PostgreSQL RED 34799590424 proves missing export RPC"
       ],
       "tests": [],
-      "next_action": "Paginate scoped deterministic exports and preserve authoritative integer-fils columns"
+      "next_action": "Verify and merge catalogue/stock scalar snapshots and JSON portability; audit statement/history exports and larger streaming separately"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -311,21 +313,22 @@
       "ID": "INV-RETRY-001",
       "domain": "Inventory count retry identity",
       "severity": "P0",
-      "status": "PARTIALLY COMPLETE",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
       "invariant": "Retrying a committed count after a later stock movement must return its original result without resetting stock",
       "evidence": [
         "Three UI RED assertions reproduced; stock incorrectly returned from 9 to 10 after lost-response retry",
-        "Reference-bound implementation: seven focused UI tests and full 213 tests pass"
+        "Reference-bound implementation: seven focused UI tests and full 213 tests pass",
+        "CI/Windows 34799060617 and catalogue 34799060598 passed; full-schema concurrent replay contract green; ten focused tests green; PR59 merged"
       ],
       "tests": [
         "src/test/inventory-import-retry.test.tsx",
         "scripts/test-inventory-count-retry-postgres.mjs"
       ],
-      "PR": null,
-      "commit": null,
-      "merge_sha": null,
+      "PR": 59,
+      "commit": "80029799eccd34ee74028a54759b44c59b5a6663",
+      "merge_sha": "cfcd0228998c937f77e1afb13a931f51ce82e439",
       "external_dependency": null,
-      "next_action": "Verify real PostgreSQL concurrent replay contract and exact-head CI/Windows, then merge"
+      "next_action": "Verify post-merge CI; reconcile ambiguous imports from older clients before retrying them"
     }
   ]
 }

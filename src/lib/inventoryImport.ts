@@ -1,11 +1,14 @@
 import { parseCsv } from './csv';
 
-export function parseInventoryCounts(content: string): {sku:string;quantity:number;center?:string;countReference:string}[] {
+export function parseInventoryCounts(content: string, scope?: {tenantId:string;branchId:string;centerId:string}): {sku:string;quantity:number;center?:string;countReference:string}[] {
   const rows=parseCsv(content);
   if (!rows.length) throw new Error('Inventory import must contain physical counts');
   const seen=new Set<string>();
   let countReference: string | undefined;
   return rows.map((row,index)=>{
+    if(scope)for(const [field,expected] of [['tenant_id',scope.tenantId],['branch_id',scope.branchId],['center_id',scope.centerId]]) {
+      if(row[field]?.trim() && row[field].trim()!==expected)throw new Error(`Inventory count ${field} does not match the selected destination`);
+    }
     const reference=String(row.count_reference ?? '').trim().toLowerCase();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(reference)) throw new Error('Every inventory row requires a UUID count_reference. Export a new count file to start a new physical count; retain its reference for retries.');
     if (countReference && reference !== countReference) throw new Error('All rows must belong to the same count_reference');

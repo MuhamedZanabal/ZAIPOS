@@ -18,3 +18,6 @@ it('normalizes reference casing without changing exact thousandths',()=>{
  const result=parseInventoryCounts(`sku,quantity,count_reference\nA,0.001,${lower.toUpperCase()}`);
  expect(result[0].countReference).toBe(lower);expect(result[0].quantity).toBe(0.001);
 });
+it('rejects exported destination identity mismatches even when center names match',()=>{
+ for(const field of ['tenant_id','branch_id','center_id'])expect(()=>parseInventoryCounts(`sku,quantity,count_reference,${field}\nA,1,${reference},wrong`,{tenantId:'tenant',branchId:'branch',centerId:'center'})).toThrow(/selected destination/);
+});
