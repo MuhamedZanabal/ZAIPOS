@@ -1,3 +1,4 @@
+import type { ManagerAuthorization } from '../../electron/types';
 /**
  * src/types/electron.d.ts
  * Declaraciones de tipos para window.electron en el renderer.
@@ -24,19 +25,19 @@ export interface ElectronBridge {
   getSettings: () => Promise<AppSettings>;
 
   /** Guarda la configuration de la app */
-  saveSettings: (settings: Partial<AppSettings>) => Promise<void>;
+  saveSettings: (settings: Partial<AppSettings>, authorization: ManagerAuthorization) => Promise<void>;
 
   /**
    * Activa o desactiva el modo kiosco.
    * Solo disponible para el rol Admin.
    */
-  setKiosk: (enabled: boolean) => Promise<void>;
+  setKiosk: (enabled: boolean, authorization: ManagerAuthorization) => Promise<void>;
 
   /** Downloads an available update after explicit operator approval. */
-  downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
+  downloadUpdate: (authorization: ManagerAuthorization) => Promise<{ ok: boolean; error?: string }>;
 
   /** Instala la actualización descargada y reinicia la app */
-  installUpdate: () => Promise<void>;
+  installUpdate: (authorization: ManagerAuthorization) => Promise<void>;
 
   /** Escucha el evento de actualización disponible */
   onUpdateAvailable: (

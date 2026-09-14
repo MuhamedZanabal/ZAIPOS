@@ -2767,6 +2767,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authorize_desktop_action: {
+        Args: { _tenant_id: string; _branch_id: string; _action: string; _payload_sha256: string; _nonce: string }
+        Returns: Json
+      }
       preview_pricing_batch_v1: {
         Args: { _tenant_id: string; _branch_id: string | null; _channel: Database['public']['Enums']['sales_channel'] | null; _product_ids: string[] }
         Returns: Json

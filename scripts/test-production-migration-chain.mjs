@@ -144,6 +144,13 @@ function createClusterRoles() {
 }
 
 function resetPlatformDatabase(label) {
+  // The postgres-only image does not run GoTrue's Auth migrations. Match the
+  // Auth lifecycle columns already present in our ordinary database fixture;
+  // this is isolated rehearsal setup, never application-owned production DDL.
+  privilegedSql(`
+    ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+    ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS banned_until timestamptz;
+  `);
   process.stdout.write(`[platform-reset:${label}] ${platformDatabase}\n`);
   privilegedSql(`
     DROP SCHEMA IF EXISTS public CASCADE;

@@ -20,6 +20,7 @@ import { setupPrinterHandlers } from './services/printer.js';
 import { setupBarcodeScanner, closeBarcodeScanner, restartBarcodeScanner } from './services/barcode.js';
 import { setupUpdater } from './services/updater.js';
 import { validateSettings, validateSettingsPatch } from './hardware-security.js';
+import { handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ function setupGlobalHandlers(): void {
     return getSettings();
   });
 
-  handleTrustedIpc(IPC_HANDLERS.SAVE_SETTINGS, async (_event, newSettings: Partial<AppSettings>) => {
+  handleManagerIpc(IPC_HANDLERS.SAVE_SETTINGS, 'settings', async (_event, newSettings: Partial<AppSettings>) => {
     validateSettingsPatch(newSettings);
     if (!store) throw new Error('Settings are unavailable');
     const current = getSettings();
@@ -121,7 +122,7 @@ function setupGlobalHandlers(): void {
     }
   });
 
-  handleTrustedIpc(IPC_HANDLERS.SET_KIOSK, async (_event, enabled: boolean) => {
+  handleManagerIpc(IPC_HANDLERS.SET_KIOSK, 'kiosk', async (_event, enabled: boolean) => {
     if (typeof enabled !== 'boolean') throw new Error('Invalid kiosk setting');
     if (!mainWindow) return;
 
