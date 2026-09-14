@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { formatCurrency } from "@/lib/format";
-import { BAHRAIN_LOCALE, roundBhd } from "@/lib/bahrain";
+import { BAHRAIN_LOCALE, bhdToFils, filsToBhd, roundBhd } from "@/lib/bahrain";
 import { toast } from "sonner";
 import {
   LockOpen,
@@ -391,7 +391,7 @@ function CountField({
   );
 }
 
-function CashMovementDialog({
+export function CashMovementDialog({
   open,
   type,
   sessionId,
@@ -409,20 +409,27 @@ function CashMovementDialog({
   const submit = async () => {
     if (!sessionId) return;
     setSaving(true);
-    const { error } = await supabase.rpc("add_cash_movement", {
-      _session_id: sessionId,
-      _type: type,
-      _amount: roundBhd(Number(amount) || 0),
-      _reason: reason || null,
-    });
-    setSaving(false);
-
-    if (error) return toast.error(error.message);
-
-    toast.success(type === "in" ? "Cash in recorded" : "Cash out recorded");
-    setAmount("");
-    setReason("");
-    onClose();
+    try {
+      const amountFils = bhdToFils(amount);
+      if (amountFils <= 0) throw new Error('Enter a positive cash amount');
+      if (reason.trim().length < 2 || reason.trim().length > 500) throw new Error('Enter a reason of 2 to 500 characters');
+      // PostgreSQL numeric accepts decimal text; avoid an intermediate float.
+      const { error } = await supabase.rpc("add_cash_movement" as never, {
+        _session_id: sessionId,
+        _type: type,
+        _amount: filsToBhd(amountFils),
+        _reason: reason.trim(),
+      } as never);
+      if (error) throw error;
+      toast.success(type === "in" ? "Cash in recorded" : "Cash out recorded");
+      setAmount("");
+      setReason("");
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message ?? 'Cash movement failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -445,7 +452,7 @@ function CashMovementDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Reason</Label>
+            <Label>Reason (required)</Label>
             <Input
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -455,7 +462,7 @@ function CashMovementDialog({
           <button
             type="button"
             className="g-btn g-btn-primary g-btn-touch w-full"
-            disabled={saving || !amount}
+            disabled={saving || !amount || reason.trim().length < 2}
             onClick={submit}
           >
             Record

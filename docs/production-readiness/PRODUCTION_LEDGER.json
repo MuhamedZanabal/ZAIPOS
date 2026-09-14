@@ -1,6 +1,6 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "cfcd0228998c937f77e1afb13a931f51ce82e439",
+  "observed_main_sha": "7dac797456274e80f0f34754e3d68f5a291cf18e",
   "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
   "items": [
     {
@@ -127,8 +127,8 @@
     {
       "status": "PARTIALLY COMPLETE",
       "PR": 60,
-      "commit": null,
-      "merge_sha": null,
+      "commit": "1dbcdafa94d067c75e84f54f377c8ea9da41950f",
+      "merge_sha": "7dac797456274e80f0f34754e3d68f5a291cf18e",
       "external_dependency": null,
       "ID": "EXP-001",
       "domain": "Data portability",
@@ -136,10 +136,11 @@
       "invariant": "Exports cover authorized complete data with exact fils",
       "evidence": [
         "src/modules/settings/DataManagement.tsx uses unpaginated selects and legacy numeric prices",
-        "Two RED UI assertions: 1501 records under simulated 1000-row cap and authorization denial; PostgreSQL RED 34799590424 proves missing export RPC"
+        "Two RED UI assertions: 1501 records under simulated 1000-row cap and authorization denial; PostgreSQL RED 34799590424 proves missing export RPC",
+        "All 18 PR60 workflows green, CI/Windows 34799792266, recovery 34799792239; 222 tests; full-schema 1501-record export fixture 618 ms; PR60 merged"
       ],
       "tests": [],
-      "next_action": "Verify and merge catalogue/stock scalar snapshots and JSON portability; audit statement/history exports and larger streaming separately"
+      "next_action": "Verify post-merge gates; audit statement/history exports and larger streaming separately"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -318,7 +319,8 @@
       "evidence": [
         "Three UI RED assertions reproduced; stock incorrectly returned from 9 to 10 after lost-response retry",
         "Reference-bound implementation: seven focused UI tests and full 213 tests pass",
-        "CI/Windows 34799060617 and catalogue 34799060598 passed; full-schema concurrent replay contract green; ten focused tests green; PR59 merged"
+        "CI/Windows 34799060617 and catalogue 34799060598 passed; full-schema concurrent replay contract green; ten focused tests green; PR59 merged",
+        "Post-merge CI 34799503224 and catalogue 34799503230 passed"
       ],
       "tests": [
         "src/test/inventory-import-retry.test.tsx",
@@ -328,7 +330,60 @@
       "commit": "80029799eccd34ee74028a54759b44c59b5a6663",
       "merge_sha": "cfcd0228998c937f77e1afb13a931f51ce82e439",
       "external_dependency": null,
-      "next_action": "Verify post-merge CI; reconcile ambiguous imports from older clients before retrying them"
+      "next_action": "Reconcile ambiguous imports from older clients before retrying them; deployed operator acceptance"
+    },
+    {
+      "ID": "CASH-001",
+      "domain": "Cash movement mutation authority",
+      "severity": "P0",
+      "status": "PARTIALLY COMPLETE",
+      "invariant": "Only currently authorized branch commands may alter till totals, with exact amounts and immutable movement/audit evidence",
+      "evidence": [
+        "PostgreSQL RED 34906936039: wrong-branch cashier accepted and fractional fils silently rounded",
+        "Direct DML already denied in the tested environment; permissive mutation policies removed explicitly to protect other deployment grant configurations",
+        "Two UI RED assertions reproduced typed-input rounding; focused tests now green"
+      ],
+      "tests": [
+        "scripts/test-cash-mutation-authority-postgres.mjs",
+        "src/test/cash-movement-ui.test.tsx"
+      ],
+      "PR": 61,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "next_action": "Verify full-schema authorization/close-concurrency and full exact-head regression before merge"
+    },
+    {
+      "ID": "CASH-002",
+      "domain": "Cash lifecycle retry identity",
+      "severity": "P0",
+      "status": "PARTIALLY COMPLETE",
+      "invariant": "Cash in/out and session lifecycle retries must converge without duplicated physical-money records",
+      "evidence": [
+        "Cash.tsx invokes legacy add_cash_movement without an operation ID; the server inserts a new movement on each call"
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "next_action": "Implement durable client command identity and server payload-bound replay; verify restart, ambiguous response and concurrency"
+    },
+    {
+      "ID": "CASH-003",
+      "domain": "Customer and supplier settlement till integration",
+      "severity": "P1",
+      "status": "PARTIALLY COMPLETE",
+      "invariant": "Physical cash settlements update the receivable/payable evidence and the accountable till atomically",
+      "evidence": [
+        "Customer credit payment v1 changes receivable ledger/cache and audit without a receiving cash session; UI integration is absent"
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": null,
+      "next_action": "Define and implement explicit receiving/paying-session settlement commands before enabling UI collection workflows"
     }
   ]
 }
