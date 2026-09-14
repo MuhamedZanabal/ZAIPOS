@@ -95,6 +95,9 @@ jobs:
       - name: Test complete and scoped business exports
         run: node scripts/test-business-export-postgres.mjs
 
+      - name: Test cash mutation authority
+        run: node scripts/test-cash-mutation-authority-postgres.mjs
+
       - name: Test device registry authorization
         run: npm run test:migrations:devices
 
