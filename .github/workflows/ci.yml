@@ -89,6 +89,9 @@ jobs:
       - name: Test transaction authorization and audit
         run: node scripts/test-transaction-auth-audit.mjs
 
+      - name: Test count import retry after intervening stock movement
+        run: node scripts/test-inventory-count-retry-postgres.mjs
+
       - name: Test device registry authorization
         run: npm run test:migrations:devices
 
