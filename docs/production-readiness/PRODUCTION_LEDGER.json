@@ -1,6 +1,6 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "895e9b97c75f52fce1dd44c90914b1f0973e15c3",
+  "observed_main_sha": "3cfd345963b1abc2674e5023e642ac25d756072d",
   "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
   "items": [
     {
@@ -65,7 +65,7 @@
         "scripts/test-delivery-financial-authority-postgres.mjs",
         "src/test/delivery-collection-money.test.ts"
       ],
-      "next_action": "Verify post-merge main, then finish DEL-002 fee accounting and courier remittance scope"
+      "next_action": "Perform deployed receiving-register acceptance; remaining fee accounting is DEL-002"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -84,10 +84,10 @@
       "next_action": "Implement explicit fee tax/history and refund/report integration; do not rewrite historical sale VAT"
     },
     {
-      "status": "PARTIALLY COMPLETE",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
       "PR": 57,
-      "commit": null,
-      "merge_sha": null,
+      "commit": "012b9f20dbea7eb7e17876940ed2e1ec2e25b604",
+      "merge_sha": "3cfd345963b1abc2674e5023e642ac25d756072d",
       "external_dependency": null,
       "ID": "SEC-002",
       "domain": "Native settings and hardware",
@@ -95,15 +95,19 @@
       "invariant": "Settings, kiosk and updater controls require a currently authorized manager at the native boundary",
       "evidence": [
         "Current main native handlers validate sender but do not verify business-role authorization",
-        "Six local native verifier tests passed; PostgreSQL RED 34774859660 confirms missing server authorization in main"
+        "Six local native verifier tests passed; PostgreSQL RED 34774859660 confirms missing server authorization in main",
+        "All 18 final-head workflows passed; CI/Windows 34775669561, recovery 34775669570; merged PR57"
       ],
-      "tests": [],
-      "next_action": "Verify server/native authorization contracts on final integrated head and merge"
+      "tests": [
+        "src/test/desktop/manager-authorization.test.ts",
+        "scripts/test-device-registry.mjs"
+      ],
+      "next_action": "Verify post-merge gates and deployed manager/cashier acceptance; device enrollment remains SEC-004"
     },
     {
       "status": "PARTIALLY COMPLETE",
-      "PR": null,
-      "commit": null,
+      "PR": 58,
+      "commit": "ab49f0057367a84e64d73f104f77ed7145a56639",
       "merge_sha": null,
       "external_dependency": null,
       "ID": "CSV-001",
@@ -111,10 +115,11 @@
       "severity": "P1",
       "invariant": "CSV exports cannot execute spreadsheet formulas and parser rejects malformed input",
       "evidence": [
-        "src/lib/csv.ts quotes only; parser splits lines before handling quoted fields"
+        "src/lib/csv.ts quotes only; parser splits lines before handling quoted fields",
+        "Nine CSV and two inventory UI RED assertions reproduced; 19 focused tests and 202 full-regression tests pass; initial CI/Windows 34775587708 and catalogue 34775587675 pass"
       ],
       "tests": [],
-      "next_action": "Add adversarial formula/multiline/header tests and harden parser/export"
+      "next_action": "Verify integrated main head and merge PR58; complete export/retry work under EXP-001"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -270,7 +275,8 @@
         "Disposable sentinel overwrite reproduced with actual node-thermal-printer",
         "Five RED assertions; 19 focused desktop tests green",
         "PR56 initial CI 34755611994 passed",
-        "Final integrated CI/Windows 34774584946 passed"
+        "Final integrated CI/Windows 34774584946 passed",
+        "Post-merge CI/Windows 34774946728 passed"
       ],
       "tests": [
         "src/test/desktop/printer-paths.test.ts"
@@ -279,7 +285,7 @@
       "commit": "a08acde08d066650513f6310c5cd248dbbbe525a",
       "merge_sha": "895e9b97c75f52fce1dd44c90914b1f0973e15c3",
       "external_dependency": null,
-      "next_action": "Verify post-merge CI; validate supported transport on store hardware"
+      "next_action": "Validate supported transport on store hardware"
     },
     {
       "ID": "SEC-004",
