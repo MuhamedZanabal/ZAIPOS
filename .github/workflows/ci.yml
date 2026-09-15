@@ -98,6 +98,9 @@ jobs:
       - name: Test cash mutation authority
         run: node scripts/test-cash-mutation-authority-postgres.mjs
 
+      - name: Test cash movement replay
+        run: node scripts/test-cash-replay-postgres.mjs
+
       - name: Test device registry authorization
         run: npm run test:migrations:devices
 

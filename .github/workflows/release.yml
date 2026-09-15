@@ -102,6 +102,7 @@ jobs:
           node scripts/test-inventory-count-retry-postgres.mjs
           node scripts/test-business-export-postgres.mjs
           node scripts/test-cash-mutation-authority-postgres.mjs
+          node scripts/test-cash-replay-postgres.mjs
           npm run test:migrations:devices
 
       - name: Test production release contract
