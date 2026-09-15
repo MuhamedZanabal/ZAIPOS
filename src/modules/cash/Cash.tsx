@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
@@ -391,6 +391,24 @@ function CountField({
   );
 }
 
+type CashMovementDraft = {
+  sessionId: string;
+  type: "in" | "out";
+  amount: string;
+  reason: string;
+  reference: string;
+};
+
+function newCashMovementReference() {
+  const randomUuid = globalThis.crypto?.randomUUID?.();
+  if (randomUuid) return `CASH-${randomUuid}`;
+  return `CASH-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function cashMovementDraftKey(sessionId: string, type: "in" | "out") {
+  return `zaipos:cash-movement-draft:${sessionId}:${type}`;
+}
+
 export function CashMovementDialog({
   open,
   type,
@@ -404,29 +422,91 @@ export function CashMovementDialog({
 }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [reference, setReference] = useState(newCashMovementReference);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !sessionId) return;
+
+    const key = cashMovementDraftKey(sessionId, type);
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<CashMovementDraft>;
+        if (
+          draft.sessionId === sessionId &&
+          draft.type === type &&
+          typeof draft.amount === "string" &&
+          typeof draft.reason === "string" &&
+          typeof draft.reference === "string" &&
+          draft.reference.trim().length >= 8
+        ) {
+          setAmount(draft.amount);
+          setReason(draft.reason);
+          setReference(draft.reference);
+          return;
+        }
+      }
+    } catch {
+      // Opening the dialog may continue, but submit will refuse the mutation if
+      // durable draft storage is unavailable.
+    }
+
+    setAmount("");
+    setReason("");
+    setReference(newCashMovementReference());
+  }, [open, sessionId, type]);
 
   const submit = async () => {
     if (!sessionId) return;
     setSaving(true);
     try {
       const amountFils = bhdToFils(amount);
-      if (amountFils <= 0) throw new Error('Enter a positive cash amount');
-      if (reason.trim().length < 2 || reason.trim().length > 500) throw new Error('Enter a reason of 2 to 500 characters');
-      // PostgreSQL numeric accepts decimal text; avoid an intermediate float.
-      const { error } = await supabase.rpc("add_cash_movement" as never, {
+      const reasonValue = reason.trim();
+      const referenceValue = reference.trim();
+      if (amountFils <= 0) throw new Error("Enter a positive cash amount");
+      if (reasonValue.length < 2 || reasonValue.length > 500) {
+        throw new Error("Enter a reason of 2 to 500 characters");
+      }
+      if (referenceValue.length < 8 || referenceValue.length > 128) {
+        throw new Error("Movement reference must contain 8 to 128 characters");
+      }
+
+      const key = cashMovementDraftKey(sessionId, type);
+      const draft: CashMovementDraft = {
+        sessionId,
+        type,
+        amount,
+        reason: reasonValue,
+        reference: referenceValue,
+      };
+
+      // The draft is the durable identity for an uncertain RPC response. If it
+      // cannot be persisted first, do not risk sending a physical-money effect.
+      localStorage.setItem(key, JSON.stringify(draft));
+
+      const { error } = await supabase.rpc("record_cash_movement_v2" as never, {
         _session_id: sessionId,
         _type: type,
         _amount: filsToBhd(amountFils),
-        _reason: reason.trim(),
+        _reason: reasonValue,
+        _reference: referenceValue,
       } as never);
       if (error) throw error;
+
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // A stale draft is replay-safe because the server binds this reference
+        // to the exact committed payload and returns the original movement.
+      }
       toast.success(type === "in" ? "Cash in recorded" : "Cash out recorded");
       setAmount("");
       setReason("");
+      setReference(newCashMovementReference());
       onClose();
     } catch (error: any) {
-      toast.error(error.message ?? 'Cash movement failed');
+      toast.error(error.message ?? "Cash movement failed");
     } finally {
       setSaving(false);
     }
@@ -459,10 +539,20 @@ export function CashMovementDialog({
               placeholder={type === "in" ? "e.g. Extra float" : "e.g. Supplier payment"}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cash-movement-reference">Movement reference</Label>
+            <Input
+              id="cash-movement-reference"
+              value={reference}
+              onChange={(event) => setReference(event.target.value)}
+              maxLength={128}
+              autoComplete="off"
+            />
+          </div>
           <button
             type="button"
             className="g-btn g-btn-primary g-btn-touch w-full"
-            disabled={saving || !amount || reason.trim().length < 2}
+            disabled={saving || !amount || reason.trim().length < 2 || reference.trim().length < 8}
             onClick={submit}
           >
             Record
