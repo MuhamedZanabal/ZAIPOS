@@ -21,6 +21,9 @@ CREATE TABLE public.cash_movement_operations (
   movement_id uuid UNIQUE REFERENCES public.cash_movements(id) ON DELETE RESTRICT,
   requested_by uuid NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT cash_movement_operations_tenant_branch_fkey
+    FOREIGN KEY (tenant_id, branch_id)
+    REFERENCES public.branches(tenant_id, id) ON DELETE RESTRICT,
   CONSTRAINT cash_movement_operations_reference CHECK (length(reference) BETWEEN 8 AND 128 AND reference = btrim(reference)),
   CONSTRAINT cash_movement_operations_type CHECK (movement_type IN ('in','out')),
   CONSTRAINT cash_movement_operations_amount CHECK (amount_fils > 0),
