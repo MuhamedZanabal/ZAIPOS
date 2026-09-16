@@ -21,6 +21,12 @@ const deny=s=>assert.throws(()=>sql(auth(s)));
 deny(`SELECT public.add_cash_movement('${I.session}','in',1,'Legacy bypass')`);
 deny(call('SUBFILS','0.0001'));
 const id=sql(auth(call()));assert.match(id,/^[a-f0-9-]{36}$/);
+const peer='c7000000-0000-0000-0000-000000000003';
+sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES('${peer}','cash-replay-peer@zaipos.test','{}');
+INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES('${peer}','${I.tenant}','${I.branch}','cashier');`);
+assert.throws(()=>sql(auth(call(),peer)),'Another cashier cannot replay the original actor reference');
+assert.throws(()=>sql(auth(call('FLOAT-001','1.001','cancel_cash_movement_v2'),peer)),'Another cashier cannot resolve the original actor reference');
+
 // Simulate a lost response, then intervening real business activity.
 const later=sql(auth(call('FLOAT-002','2.002')));assert.notEqual(later,id);
 const exec=promisify(execFile);
