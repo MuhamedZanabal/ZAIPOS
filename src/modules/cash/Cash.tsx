@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { PendingTableOrders } from "./PendingTableOrders";
 import { cn } from "@/lib/utils";
+import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
 
 export default function Cash() {
   const { tenantId, branchId, hasRole } = useTenantContext();
@@ -120,6 +121,7 @@ export default function Cash() {
           <div className="h-display g-page-title">Cash Register</div>
           <div className="g-page-hd-meta">BHD opening, closing, reconciliation, and cash movements</div>
         </div>
+        <button type="button" className="g-btn g-btn-ghost" onClick={() => setMoveDialog("in")}>Cash movement recovery</button>
         {session && (
           <div className="flex items-center gap-2 flex-wrap">
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setMoveDialog("in")}>
@@ -351,6 +353,7 @@ export default function Cash() {
       </Dialog>
 
       <CashMovementDialog
+        actorId={user?.id ?? null}
         open={moveDialog !== null}
         type={moveDialog ?? "in"}
         sessionId={session?.id ?? null}
@@ -392,81 +395,84 @@ function CountField({
 }
 
 export function CashMovementDialog({
-  open,
-  type,
-  sessionId,
-  onClose,
+  open, type, sessionId, actorId, onClose,
 }: {
   open: boolean;
   type: "in" | "out";
   sessionId: string | null;
+  actorId: string | null;
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [reference, setReference] = useState("");
+  const [draft, setDraft] = useState<CashMovementDraft | null>(null);
+  const [recoveryError, setRecoveryError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const submit = async () => {
-    if (!sessionId) return;
+  const recover = useCallback(() => {
+    try {
+      const saved = actorId ? readCashMovement(actorId) : null;
+      setDraft(saved);
+      setAmount(saved?.request._amount ?? "");
+      setReason(saved?.request._reason ?? "");
+      setReference(saved?.request._reference ?? "");
+      setRecoveryError("");
+    } catch (error: any) { setRecoveryError(error.message); }
+  }, [actorId]);
+  useEffect(() => { if (open) recover(); }, [open, recover]);
+  const submit = async (cancel = false) => {
+    if (!actorId || saving) return;
     setSaving(true);
     try {
-      const amountFils = bhdToFils(amount);
-      if (amountFils <= 0) throw new Error('Enter a positive cash amount');
-      if (reason.trim().length < 2 || reason.trim().length > 500) throw new Error('Enter a reason of 2 to 500 characters');
-      // PostgreSQL numeric accepts decimal text; avoid an intermediate float.
-      const { error } = await supabase.rpc("add_cash_movement" as never, {
-        _session_id: sessionId,
-        _type: type,
-        _amount: filsToBhd(amountFils),
-        _reason: reason.trim(),
-      } as never);
-      if (error) throw error;
-      toast.success(type === "in" ? "Cash in recorded" : "Cash out recorded");
-      setAmount("");
-      setReason("");
-      onClose();
+      const request = draft?.request ?? {
+        _session_id: sessionId ?? "", _type: type,
+        _amount: filsToBhd(bhdToFils(amount)), _reason: reason.trim(), _reference: reference.trim(),
+      };
+      const completed = await executeCashMovement(actorId, request, cancel);
+      setDraft(completed);
+      if (completed.state === 'rejected') toast.error('Reference already belongs to a different request. Verify the voucher before starting another movement.');
+      else toast.success(completed.state === 'cancelled' ? 'Movement cancelled before recording cash' : 'Cash movement confirmed');
+      // Retain the confirmed reference until an explicit new physical movement.
     } catch (error: any) {
-      toast.error(error.message ?? 'Cash movement failed');
-    } finally {
-      setSaving(false);
-    }
+      toast.error(error.message ?? 'Cash movement response is uncertain; recover the original reference');
+      try { if (actorId) setDraft(readCashMovement(actorId)); }
+      catch (readError: any) { setRecoveryError(readError.message); }
+    } finally { setSaving(false); }
   };
-
+  const startAnother = async () => {
+    if (!actorId) return;
+    setSaving(true);
+    try { await clearCompletedCashMovement(actorId); recover(); }
+    catch (error: any) { toast.error(error.message); }
+    finally { setSaving(false); }
+  };
+  const locked = saving || !!draft || !!recoveryError;
+  const movementType = draft?.request._type ?? type;
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{type === "in" ? "Record cash in" : "Record cash out"}</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>{movementType === 'in' ? 'Record cash in' : 'Record cash out'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          {recoveryError && <p role="alert">{recoveryError}</p>}
+          {draft && <p role="status">{draft.state === 'pending' ? 'Saved movement awaiting confirmation. Retry or cancel this same request before starting another.' : `Movement ${draft.state}. Reference: ${draft.request._reference}`}</p>}
+          {draft && draft.request._session_id !== sessionId && <p>This saved movement belongs to an earlier cash session. Recovery uses that original session.</p>}
+          <div className="space-y-1.5">
+            <Label htmlFor="cash-movement-reference">Movement reference</Label>
+            <Input id="cash-movement-reference" value={reference} disabled={locked} maxLength={128} onChange={event => setReference(event.target.value)} placeholder="e.g. FLOAT-20260915-001" />
+            <p className="text-xs">Use one unique voucher reference per physical movement. Reuse it after a network failure.</p>
+          </div>
           <div className="space-y-1.5">
             <Label>Amount (BHD)</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.001"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              className="h-12 text-lg"
-              placeholder="0.000"
-            />
+            <Input type="number" min="0" step="0.001" value={amount} disabled={locked} onChange={event => setAmount(event.target.value)} className="h-12 text-lg" placeholder="0.000" />
           </div>
           <div className="space-y-1.5">
             <Label>Reason (required)</Label>
-            <Input
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder={type === "in" ? "e.g. Extra float" : "e.g. Supplier payment"}
-            />
+            <Input value={reason} disabled={locked} onChange={event => setReason(event.target.value)} placeholder={movementType === 'in' ? 'e.g. Extra float' : 'e.g. Safe withdrawal'} />
           </div>
-          <button
-            type="button"
-            className="g-btn g-btn-primary g-btn-touch w-full"
-            disabled={saving || !amount || reason.trim().length < 2}
-            onClick={submit}
-          >
-            Record
-          </button>
+          {(!draft || draft.state === 'pending') ? <>
+            <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={saving || !!recoveryError || !actorId || !amount || !reference || reason.trim().length < 2} onClick={() => submit()}>Record</button>
+            {draft && <button type="button" className="g-btn g-btn-ghost w-full" disabled={saving || !!recoveryError} onClick={() => submit(true)}>Resolve cancellation</button>}
+          </> : <button type="button" className="g-btn g-btn-primary w-full" disabled={saving || !!recoveryError || !sessionId} onClick={startAnother}>Start another physical movement</button>}
         </div>
       </DialogContent>
     </Dialog>
