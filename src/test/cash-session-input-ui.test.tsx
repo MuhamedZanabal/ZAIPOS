@@ -26,3 +26,12 @@ it('requires all blind close counts explicitly, including zero buckets',async()=
  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Close register'}));
  await waitFor(()=>expect(mocks.error).toHaveBeenCalled());expect(mocks.rpc).not.toHaveBeenCalled();
 });
+it('sends each explicitly counted bucket as exact decimal text',async()=>{
+ mocks.session={id:'session',opening_amount:1,total_cash:0,total_card:0,total_transfer:0,total_qr:0,total_in:0,total_out:0};
+ render(<Cash/>);fireEvent.click(screen.getByRole('button',{name:/Close register/}));
+ const dialog=within(screen.getByRole('dialog'));
+ dialog.getAllByRole('spinbutton').forEach((input,index)=>fireEvent.change(input,{target:{value:index===0?'1.001':'0.000'}}));
+ fireEvent.click(dialog.getByRole('button',{name:'Close register'}));
+ await waitFor(()=>expect(mocks.rpc).toHaveBeenCalled());
+ expect(mocks.rpc.mock.calls[0][1]).toMatchObject({_counted_amount:'1.001',_counted_card:'0.000',_counted_transfer:'0.000',_counted_qr:'0.000'});
+});

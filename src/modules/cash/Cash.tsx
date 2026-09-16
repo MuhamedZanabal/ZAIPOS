@@ -33,6 +33,7 @@ export default function Cash() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [openAmount, setOpenAmount] = useState("0.000");
+  const [sessionSaving, setSessionSaving] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [moveDialog, setMoveDialog] = useState<null | "in" | "out">(null);
   const [counts, setCounts] = useState({ cash: "", card: "", transfer: "", qr: "" });
@@ -81,36 +82,38 @@ export default function Cash() {
       )
     : 0;
 
-  const openSession = async () => {
-    if (!tenantId || !branchId || !user) return;
-    const { error } = await supabase.rpc("open_cash_session" as any, {
-      _tenant_id: tenantId,
-      _branch_id: branchId,
-      _opening_amount: roundBhd(Number(openAmount) || 0),
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Register opened");
-    qc.invalidateQueries();
+  const exactCount = (value: string) => {
+    if (!value.trim()) throw new Error('Enter every counted amount explicitly, including zero');
+    const fils = bhdToFils(value);
+    if (fils < 0) throw new Error('Cash amounts cannot be negative');
+    return filsToBhd(fils);
   };
-
+  const openSession = async () => {
+    if (!tenantId || !branchId || !user || sessionSaving) return;
+    setSessionSaving(true);
+    try {
+      const { error } = await supabase.rpc("open_cash_session" as never, {
+        _tenant_id: tenantId, _branch_id: branchId, _opening_amount: exactCount(openAmount),
+      } as never);
+      if (error) throw error;
+      toast.success("Register opened");
+      qc.invalidateQueries();
+    } catch (error: any) { toast.error(error.message ?? 'Opening response uncertain; check register history before retrying'); }
+    finally { setSessionSaving(false); }
+  };
   const closeSession = async () => {
-    if (!session) return;
-
-    const { error } = await supabase.rpc("close_cash_session", {
-      _session_id: session.id,
-      _counted_amount: roundBhd(Number(counts.cash || 0)),
-      _notes: null,
-      _counted_card: roundBhd(Number(counts.card || 0)),
-      _counted_transfer: roundBhd(Number(counts.transfer || 0)),
-      _counted_qr: roundBhd(Number(counts.qr || 0)),
-    } as any);
-
-    if (error) return toast.error(error.message);
-
-    toast.success("Register closed successfully");
-    setCloseOpen(false);
-    setCounts({ cash: "", card: "", transfer: "", qr: "" });
-    qc.invalidateQueries();
+    if (!session || sessionSaving) return;
+    setSessionSaving(true);
+    try {
+      const { error } = await supabase.rpc("close_cash_session" as never, {
+        _session_id: session.id, _counted_amount: exactCount(counts.cash), _notes: null,
+        _counted_card: exactCount(counts.card), _counted_transfer: exactCount(counts.transfer), _counted_qr: exactCount(counts.qr),
+      } as never);
+      if (error) throw error;
+      toast.success("Register closed successfully");
+      setCloseOpen(false);setCounts({cash: '',card: '',transfer: '',qr: ''});qc.invalidateQueries();
+    } catch (error: any) { toast.error(error.message ?? 'Closing response uncertain; check register history before retrying'); }
+    finally { setSessionSaving(false); }
   };
 
   return (
@@ -175,7 +178,7 @@ export default function Cash() {
                     />
                   </div>
                 </div>
-                <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" onClick={openSession}>
+                <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={sessionSaving} onClick={openSession}>
                   <LockOpen size={20} className="mr-2" /> Open register now
                 </button>
               </div>
@@ -345,7 +348,7 @@ export default function Cash() {
                 <CountField label="BenefitPay" value={counts.qr} onChange={(value) => setCounts({ ...counts, qr: value })} compact />
               </div>
             </div>
-            <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" onClick={closeSession}>
+            <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={sessionSaving} onClick={closeSession}>
               Close register
             </button>
           </div>

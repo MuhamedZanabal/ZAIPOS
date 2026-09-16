@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {connection,query} from './postgres-recovery.mjs';
 if(!process.env.POSTGRES_ADMIN_URL)throw new Error('Disposable contract database required');
 const conn=connection(process.env.POSTGRES_ADMIN_URL),sql=s=>query(conn,s);
@@ -32,4 +34,15 @@ assert.equal(sql(`SELECT opening_amount_fils FROM public.cash_sessions WHERE id=
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE entity_id='${session}' AND action='cash_session.opened'`),'1');
 auth(close(),true);
 assert.equal(sql(`SELECT difference_fils FROM public.cash_sessions WHERE id='${session}'`),'0');
+// A failed audit must roll back opening rather than leave an unaudited till.
+sql(`CREATE FUNCTION public.cash_open_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='cash_session.opened' AND NEW.tenant_id='${tenant}' THEN RAISE EXCEPTION 'Controlled audit failure'; END IF; RETURN NEW; END; $$;
+CREATE TRIGGER cash_open_audit_failure BEFORE INSERT ON public.audit_logs FOR EACH ROW EXECUTE FUNCTION public.cash_open_audit_failure();`);
+assert.throws(()=>auth(open('0.001'),true));
+assert.equal(sql(`SELECT count(*) FROM public.cash_sessions WHERE branch_id='${branch}' AND status='open'`),'0');
+sql('DROP TRIGGER cash_open_audit_failure ON public.audit_logs; DROP FUNCTION public.cash_open_audit_failure()');
+const exec=promisify(execFile);
+const race=await Promise.allSettled(Array.from({length:4},()=>exec('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${user}';${open('0.001')};COMMIT;`],{env:conn.env,encoding:'utf8'})));
+assert.equal(race.filter(r=>r.status==='fulfilled').length,1);
+assert.equal(sql(`SELECT count(*) FROM public.cash_sessions WHERE branch_id='${branch}' AND status='open'`),'1');
+assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE metadata->>'branch_id'='${branch}' AND action='cash_session.opened'`),'2');
 console.log('PASS: explicit exact-fils cash counts, current active account/branch and atomic opening audit required.');
