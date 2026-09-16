@@ -53,6 +53,8 @@ assert.equal(sql(`SELECT count(*) FROM public.cash_movement_operations WHERE ten
 sql(`UPDATE public.cash_sessions SET status='closed',closed_at=now() WHERE id='${I.session}'`);
 assert.equal(sql(auth(call())),id,'Committed replay survives session closure');
 deny(call('FLOAT-CLOSED'));
+assert.equal(sql(auth(call('CLOSED-CANCEL','1.001','cancel_cash_movement_v2'))),'','A no-effect cancellation can resolve uncertainty after closure');
+deny(call('CLOSED-CANCEL'));
 assert.equal(sql(`SELECT count(*) FROM public.cash_movement_operations WHERE tenant_id='${I.tenant}' AND reference='FLOAT-CLOSED'`),'0');
 deny(`UPDATE public.cash_movement_operations SET reference='REWRITE' WHERE tenant_id='${I.tenant}'`);
 deny(`DELETE FROM public.cash_movement_operations WHERE tenant_id='${I.tenant}'`);

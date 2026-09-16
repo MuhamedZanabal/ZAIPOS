@@ -142,13 +142,14 @@ BEGIN
   WHERE tenant_id = _s.tenant_id AND reference = _reference_value;
 
   IF FOUND THEN
-    IF _existing.branch_id IS DISTINCT FROM _s.branch_id
+    IF _existing.requested_by IS DISTINCT FROM _user_id
+       OR _existing.branch_id IS DISTINCT FROM _s.branch_id
        OR _existing.session_id IS DISTINCT FROM _session_id
        OR _existing.movement_type IS DISTINCT FROM _type
        OR _existing.amount_fils IS DISTINCT FROM _amount_fils
        OR _existing.reason IS DISTINCT FROM _reason_value
     THEN
-      RAISE EXCEPTION 'Cash movement reference was already used for a different request';
+      RAISE EXCEPTION USING ERRCODE='ZC001', MESSAGE='Cash movement reference was already used for a different actor or request';
     END IF;
     IF _existing.state = 'recorded' THEN
       RETURN _existing.movement_id;
@@ -244,13 +245,14 @@ BEGIN
   WHERE tenant_id = _s.tenant_id AND reference = _reference_value;
 
   IF FOUND THEN
-    IF _existing.branch_id IS DISTINCT FROM _s.branch_id
+    IF _existing.requested_by IS DISTINCT FROM _user_id
+       OR _existing.branch_id IS DISTINCT FROM _s.branch_id
        OR _existing.session_id IS DISTINCT FROM _session_id
        OR _existing.movement_type IS DISTINCT FROM _type
        OR _existing.amount_fils IS DISTINCT FROM _amount_fils
        OR _existing.reason IS DISTINCT FROM _reason_value
     THEN
-      RAISE EXCEPTION 'Cash movement reference was already used for a different request';
+      RAISE EXCEPTION USING ERRCODE='ZC001', MESSAGE='Cash movement reference was already used for a different actor or request';
     END IF;
     IF _existing.state = 'recorded' THEN
       RETURN _existing.movement_id;
@@ -258,7 +260,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  IF _s.status <> 'open' THEN RAISE EXCEPTION 'Cash session is not open'; END IF;
+  -- Cancellation has no money effect and must remain possible after closure.
 
   INSERT INTO public.cash_movement_operations(
     tenant_id, branch_id, session_id, reference, movement_type,
