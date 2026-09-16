@@ -1,6 +1,6 @@
 # Cash movement retry and recovery
 
-Status: implementation under PR62 verification. Session opening and closing retry identity remain separate work; this procedure covers manual cash in/out only.
+Status: PR62 merged at `a9ac4e42213887213eb4cbb03c617b754587e2c7`; all 18 pre-merge workflows passed at head `4d509d721061a56353ee873602ecff90b9148961` (CI/Windows 35109570113, recovery 35109570209). Post-merge verification is tracked in the ledger. Session opening and closing retry identity remain separate work; this procedure covers manual cash in/out only.
 
 ## Operator procedure
 

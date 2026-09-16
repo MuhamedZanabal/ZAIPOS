@@ -1,6 +1,6 @@
 # Remaining production tasks
 
-Classification: **PARTIALLY COMPLETE**. Repository baseline: main `77e64793e473c769af988dcce15e91483c5fdbfa` (PR61); all 18 post-merge workflows passed, including CI/Windows 34908061038 and backup/restore 34908060965. PR62 is the active cash movement replay change. Version 1.0.0 does not itself establish an accepted release.
+Classification: **PARTIALLY COMPLETE**. Repository baseline: main `a9ac4e42213887213eb4cbb03c617b754587e2c7` (PR62). All 18 exact-head PR62 workflows passed, including CI/Windows 35109570113 and backup/restore 35109570209; post-merge verification is tracked separately. PR63 addresses cash-session authorization/input defects. Version 1.0.0 does not itself establish an accepted release.
 
 This is the complete currently identified execution queue, including unfinished audits. Audit rows are obligations to inspect and prove scope, not assertions that every named feature is broken or absent. A final exhaustive defect list cannot truthfully precede those audits. Update this file and PRODUCTION_LEDGER.json as evidence changes. Do not redo named green contracts without a relevant change or contrary evidence.
 
@@ -8,7 +8,7 @@ This is the complete currently identified execution queue, including unfinished 
 
 | ID | Priority | Remaining task / completion evidence |
 |---|---|---|
-| CASH-002A | P0 | Finish PR62 exact-head PostgreSQL/UI/security/concurrency/regression/Windows verification, merge and verify post-merge main. Prove manual cash movement retry, cancellation and restart recovery. |
+| CASH-004 | P0 | Finish PR63 verification/merge/post-merge gates for cash-session exact-input, explicit counts and active-account/branch authorization. Eight unsafe cases were reproduced by PostgreSQL RED 35110071684. |
 | CASH-002B | P0 | Add payload-bound operation identity and restart recovery for opening and closing cash sessions; reject sub-fils or omitted blind counts; verify duplicate/concurrent/lost-response/closed-session behavior. |
 | SEC-004 | P0 audit frontier | Establish actual enrolled-device and revocation enforcement for checkout/native/offline paths. Device UUID/heartbeat currently does not itself prove trusted enrollment. Reproduce any bypass before implementing controls; document offline revocation limits. |
 | CASH-003 | P1 | Integrate customer-credit cash repayments and supplier cash settlements with explicit receiving/paying tills atomically; prove ledger plus till plus audit replay and rollback. |
