@@ -1,3 +1,5 @@
+> Historical scoped evidence. Current production status and outstanding P0/P1 work are maintained in [REMAINING_TASKS.md](REMAINING_TASKS.md) and [PRODUCTION_LEDGER.json](PRODUCTION_LEDGER.json). Checked items below do not certify later code or the whole production scope.
+
 # ZAIPOS production programme burn-down
 
 This inventory is evidence-based. An unchecked item may have partial or branch-verified code but still lacks one or more required database, authorization, failure, test, documentation, CI, merge or post-merge proofs.

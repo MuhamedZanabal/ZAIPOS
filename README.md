@@ -4,6 +4,10 @@ ZAIPOS is an offline-first, multi-tenant point-of-sale and operations platform d
 
 The application runs as a browser/PWA experience and as an Electron desktop application with hardware support.
 
+## Production status
+
+**PARTIALLY COMPLETE.** Consult the [remaining production tasks](docs/production-readiness/REMAINING_TASKS.md) and [evidence ledger](docs/production-readiness/PRODUCTION_LEDGER.json). Historical completion reports and unsigned Windows packages are not current production certification.
+
 ## Screenshots
 
 The screenshots below are rendered from the current ZAIPOS React application using deterministic Bahrain demonstration data. They contain no production records or credentials.

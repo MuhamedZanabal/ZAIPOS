@@ -1,6 +1,6 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "a9ac4e42213887213eb4cbb03c617b754587e2c7",
+  "observed_main_sha": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
   "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
   "items": [
     {
@@ -364,7 +364,8 @@
         "Cash.tsx invokes legacy add_cash_movement without an operation ID; the server inserts a new movement on each call",
         "PostgreSQL RED 34908245777 reproduced one physical 1001-fils float recorded twice as 2002 fils",
         "PR62 all 18 exact-head workflows green; CI/Windows 35109570113, recovery 35109570209; local 236 tests; PR62 merged",
-        "Additional PostgreSQL RED 35109251053 proved cross-actor replay; actor binding and UI recovery hardening verified"
+        "Additional PostgreSQL RED 35109251053 proved cross-actor replay; actor binding and UI recovery hardening verified",
+        "All 18 PR62 post-merge workflows green; CI/Windows 35110388715, recovery 35110388832"
       ],
       "tests": [
         "scripts/test-cash-replay-postgres.mjs",
@@ -374,7 +375,7 @@
       "commit": "4d509d721061a56353ee873602ecff90b9148961",
       "merge_sha": "a9ac4e42213887213eb4cbb03c617b754587e2c7",
       "external_dependency": null,
-      "next_action": "Verify PR62 post-merge gates; implement opening/closing session operation identity and durable recovery; current input/account defects tracked in CASH-004"
+      "next_action": "Implement opening/closing session operation identity and durable recovery; manual movement runtime coverage is DESKTOP-RECOVERY-001"
     },
     {
       "ID": "CASH-003",
@@ -396,21 +397,41 @@
       "ID": "CASH-004",
       "domain": "Cash session input and active-account authorization",
       "severity": "P0",
-      "status": "PARTIALLY COMPLETE",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
       "invariant": "Opening and blind counts are explicit exact fils, with current active branch/account authority and atomic audit",
       "evidence": [
         "PostgreSQL RED 35110071684 reproduced sub-fils/negative/missing opening input, banned opening/closing, inactive branch opening and omitted close buckets",
-        "Three UI RED checks reproduced typed-input rounding and implicit zero counts"
+        "Three UI RED checks reproduced typed-input rounding and implicit zero counts",
+        "All 18 exact-head workflow families green, CI/Windows 35110609116; local 240 tests; PR63 merged"
       ],
       "tests": [
         "scripts/test-cash-session-boundaries-postgres.mjs",
         "src/test/cash-session-input-ui.test.tsx"
       ],
       "PR": 63,
+      "commit": "602ab832d6148e9c4ec6519cba0d3a8189349e2e",
+      "merge_sha": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "external_dependency": null,
+      "next_action": "Verify post-merge gates and deployed cashier acceptance; lifecycle replay remains CASH-002"
+    },
+    {
+      "ID": "DESKTOP-RECOVERY-001",
+      "domain": "Actual Electron recovery primitives",
+      "severity": "P1",
+      "status": "PARTIALLY COMPLETE",
+      "invariant": "The actual file-origin Electron renderer provides exclusive cross-window locking and persistent cash draft recovery",
+      "evidence": [
+        "Node and mocked UI tests do not prove Electron file-origin storage/lock behavior",
+        "Local Linux runtime probe failed during missing-display initialization, before assertions; no recovery claim derived"
+      ],
+      "tests": [
+        "scripts/test-desktop-cash-recovery.cjs"
+      ],
+      "PR": 64,
       "commit": null,
       "merge_sha": null,
-      "external_dependency": null,
-      "next_action": "Verify exact-head authority/precision/concurrency/failure contracts and regression before merge; session replay identity remains CASH-002"
+      "external_dependency": "Physical power-loss acceptance remains external; Windows CI can verify renderer runtime",
+      "next_action": "Run the actual Electron fixture on Windows, diagnose any failures, then verify exact-head and post-merge gates"
     }
   ]
 }

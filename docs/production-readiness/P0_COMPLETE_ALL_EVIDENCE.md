@@ -1,3 +1,5 @@
+> Historical scoped evidence. Current production status and outstanding P0/P1 work are maintained in [REMAINING_TASKS.md](REMAINING_TASKS.md) and [PRODUCTION_LEDGER.json](PRODUCTION_LEDGER.json). Checked items below do not certify later code or the whole production scope.
+
 # P0 complete-all production evidence
 
 PR #17 was merged and its exact merge SHA passed `main` CI. External controls remain explicitly blocked until their evidence exists.
