@@ -104,6 +104,7 @@ jobs:
           node scripts/test-cash-mutation-authority-postgres.mjs
           node scripts/test-cash-replay-postgres.mjs
           node scripts/test-cash-session-boundaries-postgres.mjs
+          node scripts/test-cash-session-lifecycle-postgres.mjs
           npm run test:migrations:devices
 
       - name: Test production release contract
