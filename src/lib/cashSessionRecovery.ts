@@ -10,7 +10,7 @@ export type CashSessionDraft = {
   version: 1; actorId: string; operationId: string; request: CashSessionRequest;
   state: 'pending' | 'recorded' | 'cancelled' | 'rejected'; sessionId: string | null;
 };
-const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const key = (actor: string) => `zaipos:cash-session:v1:${actor}`;
 export function validateCashSessionRequest(request: CashSessionRequest) {
   if (!request || !uuid.test(request.tenant_id) || !uuid.test(request.branch_id)) throw new Error('An identified tenant and branch are required');
@@ -91,7 +91,10 @@ export async function recoverCashSession(actor: string, cancel = false) {
 }
 export async function acknowledgeCashSession(actor: string) {
   return locked(actor, async () => {
-    if (readCashSession(actor)?.state === 'pending') throw new Error('Recover or resolve cancellation first');
+    const draft = readCashSession(actor);
+    if (draft && draft.state !== 'recorded' && draft.state !== 'cancelled') {
+      throw new Error('Reconcile the unresolved session request with a verified server receipt before acknowledging');
+    }
     localStorage.removeItem(key(actor));
     if (localStorage.getItem(key(actor)) !== null) throw new Error('Session recovery receipt could not be acknowledged');
   });
