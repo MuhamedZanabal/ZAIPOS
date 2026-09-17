@@ -485,7 +485,8 @@
         "PostgreSQL RED35187126061 at32c4d104cad08a9af7daebd86b37f6708bfa504b returned a different session after closing the original.",
         "Focused local tests:26 passed across session UI/journal and existing cash movement recovery; SQL/CI pending.",
         "All 18 workflows passed at e97245ae94fca6019528940e220da3c959212c33; CI/Windows35187830882, seeded backup/restore35187830861. Real lifecycle contract passed in job105093620854.",
-        "Local npm test:250 tests across52 files passed; npm run lint:zero errors (13 pre-existing warnings); production build passed. Additional close-remount/corrupt-UI checks:7 UI tests passed."
+        "Local npm test:250 tests across52 files passed; npm run lint:zero errors (13 pre-existing warnings); production build passed. Additional close-remount/corrupt-UI checks:7 UI tests passed.",
+        "PR67 repaired UUID regression and preserved conflict recovery. CI35237634656 passed at75b4ba32a72cb2f981888bc287d788ba8a8df775. Integrated development source retains all PR65 migrations and server contracts."
       ],
       "tests": [
         "scripts/test-cash-session-lifecycle-postgres.mjs",
@@ -495,7 +496,7 @@
         "src/test/cash-session-recovery.test.ts"
       ],
       "external_dependency": "Explicit merge authorization; deployed operator and physical power-loss acceptance",
-      "next_action": "Finish exact-head verification of added recovery/authorization assertions, then await explicit PR65 merge authorization and post-merge verification"
+      "next_action": "Verify combined PR65 integration head before requesting main merge authorization; no production deployment acceptance claimed"
     },
     {
       "ID": "AUD-DB",
@@ -1060,15 +1061,16 @@
       "ID": "CASH-002B-CONFLICT",
       "domain": "Cash session conflict recovery",
       "severity": "P0",
-      "status": "PARTIALLY COMPLETE",
-      "workflow_state": "VERIFIED_LOCAL",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "workflow_state": "VERIFIED_CI",
       "baseline": "cc5b30a01803b51fa6eec9ba03ccf189fded340a",
       "working_branch": "fix/cash-session-conflict-reconciliation",
       "invariant": "Valid UUIDs reach recovery; unresolved conflicts retain their original identity until a matching server receipt is verified",
       "root_cause": "PR67 accidentally removed a UUID group; its acknowledgement guard also contradicted an older rejection-clearing test and UI flow",
       "evidence": [
         "CI35211472796:14 tests failed; reproduced locally on exact repair baseline",
-        "Standard UUID validator restored without weakening malformed-input rejection;20 focused local tests passed"
+        "Standard UUID validator restored without weakening malformed-input rejection;20 focused local tests passed",
+        "CI35237634656 passed quality and Windows packaging on repair75b4ba32a72cb2f981888bc287d788ba8a8df775;256 tests/53 files passed; tested merge276d6b9d665aa5b051656d251df6edb67da72274 has identical tree d1d1a6f1afa78ae429c091f4f9744cce25d58751."
       ],
       "tests": [
         "src/test/cash-session-conflict-reconciliation.test.ts",
@@ -1076,10 +1078,10 @@
         "src/test/cash-session-input-ui.test.tsx"
       ],
       "PR": 67,
-      "commit": null,
+      "commit": "75b4ba32a72cb2f981888bc287d788ba8a8df775",
       "merge_sha": null,
       "external_dependency": null,
-      "next_action": "Verify exact-head CI, integrate into PR65 development branch and rerun combined checks; main merge requires authorization"
+      "next_action": "Integrate the verified repair into PR65, verify combined CI, then obtain separate main merge authorization"
     }
   ],
   "workflow_state_note": "workflow_state tracks execution separately from status (production-readiness classification). Historical evidence is retained; later dated/head-specific entries supersede stale observations."
