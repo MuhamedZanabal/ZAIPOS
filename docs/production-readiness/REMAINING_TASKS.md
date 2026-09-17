@@ -1,6 +1,6 @@
 # Remaining production tasks
 
-Classification: **PARTIALLY COMPLETE**. Observed main `f7926fa2ddfe83b41a1549c6208b21e06495eba7` (PR63). PR62 and PR63 post-merge gates passed (CI/Windows 35110388715 and 35158977078). PR64 real Electron recovery verification passed CI35159156896 and awaits explicit merge authorization. PR65 implements CASH-002B on an independent development branch; its verification is in progress. Version 1.0.0 is not an accepted production release.
+Classification: **PARTIALLY COMPLETE**. Observed main `f7926fa2ddfe83b41a1549c6208b21e06495eba7` (PR63). PR62 and PR63 post-merge gates passed (CI/Windows 35110388715 and 35158977078). PR64 real Electron recovery verification passed CI35159156896 and awaits explicit merge authorization. PR65 CASH-002B passed all 18 workflow families at e97245ae94fca6019528940e220da3c959212c33 (CI/Windows35187830882, recovery35187830861); final added assertions require exact-head confirmation before merge approval. Version 1.0.0 is not an accepted production release.
 
 This is the complete currently identified execution queue, including unfinished audits. Audit rows are obligations to inspect and prove scope, not assertions that every named feature is broken or absent. A final exhaustive defect list cannot truthfully precede those audits. Update this file and PRODUCTION_LEDGER.json as evidence changes. Do not redo named green contracts without a relevant change or contrary evidence.
 
@@ -12,7 +12,7 @@ PR64: runtime verification is green; merge authorization and post-merge evidence
 |---|---|---|
 | CASH-004 | P0 | Finish PR63 verification/merge/post-merge gates for cash-session exact-input, explicit counts and active-account/branch authorization. Eight unsafe cases were reproduced by PostgreSQL RED 35110071684. |
 | CASH-002B | P0 | PR65: verify payload-bound opening/closing identity, durable recovery, cancellation, concurrency and rollback, then obtain merge authorization and verify post-merge. Exact-input/active-account checks are already merged in PR63; do not double-count them. |
-| SEC-004 | P0 audit frontier | Establish actual enrolled-device and revocation enforcement for checkout/native/offline paths. Device UUID/heartbeat currently does not itself prove trusted enrollment. Reproduce any bypass before implementing controls; document offline revocation limits. |
+| SEC-004 | P0 reproduced | PR66 RED35188046578 proves replacement UID self-registration and checkout after revocation (one sale,1000 till fils, stock decremented). Review/authorize the proposed native-held credential boundary and offline policy, then implement and verify enrollment/revocation across financial, native and sync paths. |
 | CASH-003 | P1 | Integrate customer-credit cash repayments and supplier cash settlements with explicit receiving/paying tills atomically; prove ledger plus till plus audit replay and rollback. |
 | UI-001 | P1 | Complete customer credit limits, repayment, balance, statement/history and address workflows against authoritative RPCs; preserve exact fils and authorization. |
 | UI-002 | P1 | Complete supplier ledger payment/credit/statement/ageing and reconciliation workflows; review PO/receipt/return integration and historical liabilities. |

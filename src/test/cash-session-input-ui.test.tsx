@@ -47,3 +47,23 @@ it('saves opening intent before sending and recovers the same request after remo
  await waitFor(()=>expect(mocks.rpc).toHaveBeenCalledTimes(2));
  expect(mocks.rpc.mock.calls[1]).toEqual(first);
 });
+it('recovers original closing counts after the session disappears from the active list',async()=>{
+ mocks.session={id:'e9000000-0000-0000-0000-000000000001',opening_amount:1,total_cash:0,total_card:0,total_transfer:0,total_qr:0,total_in:0,total_out:0};
+ mocks.rpc.mockRejectedValueOnce(new Error('response lost'));
+ const view=render(<Cash/>);fireEvent.click(screen.getByRole('button',{name:/Close register/}));
+ const dialog=within(screen.getByRole('dialog'));
+ dialog.getAllByRole('spinbutton').forEach((input,index)=>fireEvent.change(input,{target:{value:index===0?'1.001':'0.000'}}));
+ fireEvent.click(dialog.getByRole('button',{name:'Close register'}));
+ await waitFor(()=>expect(mocks.error).toHaveBeenCalled());
+ expect(dialog.getAllByRole('spinbutton').every(input=>input.hasAttribute('disabled'))).toBe(true);
+ const original=mocks.rpc.mock.calls[0];view.unmount();mocks.session=null;render(<Cash/>);
+ fireEvent.click(screen.getByRole('button',{name:/Retry saved session request/}));
+ await waitFor(()=>expect(mocks.rpc).toHaveBeenCalledTimes(2));expect(mocks.rpc.mock.calls[1]).toEqual(original);
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Acknowledge session receipt'})).toBeInTheDocument());
+ expect(screen.getByRole('button',{name:/Open register now/})).toBeDisabled();
+});
+it('blocks corrupt persisted lifecycle data without sending a replacement request',async()=>{
+ localStorage.setItem('zaipos:cash-session:v1:actor','{broken');render(<Cash/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent('unreadable');
+ expect(screen.getByRole('button',{name:/Open register now/})).toBeDisabled();expect(mocks.rpc).not.toHaveBeenCalled();
+});
