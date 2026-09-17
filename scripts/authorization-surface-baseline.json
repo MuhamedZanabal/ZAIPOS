@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "meaning": "Census fingerprint only; this is NOT an authorization approval or security test",
+  "kinds": {
+    "edge-function": {
+      "count": 8,
+      "sha256": "088a1f006c7069bc91cec1a3f26122032eae3543fb3a6f65a66480faa64ecf57"
+    },
+    "external-navigation": {
+      "count": 2,
+      "sha256": "7f1fc538fe64f1c6e0b5989666dfe19f0efd99be7fb2717fff35db2a6870ffaf"
+    },
+    "ipc-main": {
+      "count": 1,
+      "sha256": "d6ff98f941a6af8e28fd6b8d151e93e0b1d55aa8cf8c71017ff3c00fe8c41fd1"
+    },
+    "ipc-renderer": {
+      "count": 9,
+      "sha256": "bbaf622b59c8c6b7d84a6a020f5c95ff88cfcb2e80a9f5f77b9bf97e652a728a"
+    },
+    "rls-policy": {
+      "count": 173,
+      "sha256": "e634ba1cff9f08b31cfd9e6022d10678f94e88411fffa550d18fe16364c67b07"
+    },
+    "rpc-client": {
+      "count": 79,
+      "sha256": "c1579d748e0971bdfdde120357808fda14f852e9d28b3810ce6a66e2be3943e6"
+    },
+    "security-definer": {
+      "count": 209,
+      "sha256": "3b0bca129970e2c0694360e0dda31fefdae4eb75f8b25f96600229876514a960"
+    },
+    "sql-function": {
+      "count": 260,
+      "sha256": "04338dda76d01ae86c2a5776b3f374e56268711d04c45eb5cca53842d50028cc"
+    }
+  }
+}
