@@ -53,3 +53,22 @@ it('never discards a conflicted operation identity or starts a replacement witho
   expect(mocks.rpc.mock.calls[1][1]._request).toEqual(original);
   expect(readCashSession(actor)).toEqual(preserved);
 });
+
+it('rejects a shortened non-UUID before saving or submitting an intent', async () => {
+  await expect(startCashSessionOperation(actor, { ...original, tenant_id: 'a9000000-0000-0000-000000000001' }))
+    .rejects.toThrow('An identified tenant and branch are required');
+  expect(readCashSession(actor)).toBeNull();
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+
+it('allows acknowledgement only after recovery supplies the matching recorded receipt', async () => {
+  const conflict = await startCashSessionOperation(actor, original);
+  await expect(acknowledgeCashSession(actor)).rejects.toThrow(/reconcil/i);
+  mocks.rpc.mockResolvedValueOnce({data:{operation_id:conflict.operationId,state:'recorded',session_id:'e9000000-0000-0000-0000-000000000001'},error:null});
+  const resolved = await recoverCashSession(actor);
+  expect(resolved.operationId).toBe(conflict.operationId);
+  expect(resolved.request).toEqual(original);
+  expect(resolved.state).toBe('recorded');
+  await acknowledgeCashSession(actor);
+  expect(readCashSession(actor)).toBeNull();
+});

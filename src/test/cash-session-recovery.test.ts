@@ -72,7 +72,13 @@ it('retains pending data for denied access and rejects forged receipt identity',
  await expect(recoverCashSession('actor')).rejects.toThrow('Unrecognized');expect(readCashSession('actor')?.state).toBe('pending');
  expect(readCashSession('other')).toBeNull();await expect(recoverCashSession('other')).rejects.toThrow('No saved');
 });
-it('only a server-proven immutable identity conflict is terminal rejection',async()=>{
+it('retains a rejected identity until a matching terminal server receipt resolves it',async()=>{
  mocks.rpc.mockResolvedValueOnce({error:{code:'ZS001',message:'different actor or payload'},data:null});
- expect((await startCashSessionOperation('actor',request)).state).toBe('rejected');await acknowledgeCashSession('actor');expect(readCashSession('actor')).toBeNull();
+ expect((await startCashSessionOperation('actor',request)).state).toBe('rejected');
+ const saved=readCashSession('actor');
+ await expect(acknowledgeCashSession('actor')).rejects.toThrow(/reconcil/i);
+ expect(readCashSession('actor')).toEqual(saved);
+ await recoverCashSession('actor');
+ expect(mocks.rpc.mock.calls[1][1]._operation_id).toBe(saved?.operationId);
+ await acknowledgeCashSession('actor');expect(readCashSession('actor')).toBeNull();
 });

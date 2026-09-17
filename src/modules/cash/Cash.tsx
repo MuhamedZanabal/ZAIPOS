@@ -169,8 +169,9 @@ export default function Cash() {
       {sessionDraft && <section className="glass rounded-2xl p-4 space-y-3" aria-label="Session recovery">
         <p role="status">Saved {sessionDraft.request.kind} request: {sessionDraft.state}. Operation {sessionDraft.operationId}</p>
         <p>Original branch: {sessionDraft.request.branch_id}. {sessionDraft.request.kind === 'open' ? `Opening cash: ${sessionDraft.request.opening_amount} BHD` : `Session: ${sessionDraft.request.session_id}. Counts (BHD): cash ${sessionDraft.request.counted_cash}, card ${sessionDraft.request.counted_card}, bank transfer ${sessionDraft.request.counted_transfer}, BenefitPay ${sessionDraft.request.counted_qr}.`}</p>
+        {sessionDraft.state === 'rejected' && <p role="alert">The server reported a conflicting actor or payload. Preserve this request and ask a manager to reconcile the original operation. A conflict is not a recorded or cancelled receipt.</p>}
         {sessionDraft.sessionId && <p>Confirmed session: {sessionDraft.sessionId}. This receipt describes the original operation; check current register status before selling.</p>}
-        {sessionDraft.state === 'pending' ? <>
+        {(sessionDraft.state === 'pending' || sessionDraft.state === 'rejected') ? <>
           <button type="button" className="g-btn g-btn-primary" disabled={sessionSaving || !!sessionRecoveryError} onClick={() => submitSession()}>Retry saved session request</button>
           <button type="button" className="g-btn g-btn-ghost" disabled={sessionSaving || !!sessionRecoveryError} onClick={() => submitSession(undefined,true)}>Resolve session cancellation</button>
           <p>Cancellation only prevents an uncommitted request. A committed opening or closing is retained and confirmed.</p>

@@ -67,3 +67,16 @@ it('blocks corrupt persisted lifecycle data without sending a replacement reques
  expect(await screen.findByRole('alert')).toHaveTextContent('unreadable');
  expect(screen.getByRole('button',{name:/Open register now/})).toBeDisabled();expect(mocks.rpc).not.toHaveBeenCalled();
 });
+
+it('keeps a conflicted session request recoverable without offering acknowledgement',async()=>{
+ mocks.rpc.mockResolvedValueOnce({data:null,error:{code:'ZS001',message:'Conflicting actor or payload'}});
+ render(<Cash/>);fireEvent.change(screen.getByRole('spinbutton'),{target:{value:'1.001'}});
+ fireEvent.click(screen.getByRole('button',{name:/Open register now/}));
+ await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('conflicting actor or payload'));
+ expect(screen.queryByRole('button',{name:'Acknowledge session receipt'})).not.toBeInTheDocument();
+ expect(screen.getByRole('button',{name:/Open register now/})).toBeDisabled();
+ const original=mocks.rpc.mock.calls[0];
+ fireEvent.click(screen.getByRole('button',{name:/Retry saved session request/}));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Acknowledge session receipt'})).toBeInTheDocument());
+ expect(mocks.rpc.mock.calls[1]).toEqual(original);
+});
