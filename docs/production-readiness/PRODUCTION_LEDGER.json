@@ -1,6 +1,6 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "a9ac4e42213887213eb4cbb03c617b754587e2c7",
+  "observed_main_sha": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
   "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
   "items": [
     {
@@ -22,7 +22,8 @@
         "test-postgres-recovery-unit.mjs",
         "test-backup-restore-contract.mjs"
       ],
-      "next_action": "Periodic offsite operator rehearsal; separately restore managed Auth/Storage and offline queues"
+      "next_action": "Periodic offsite operator rehearsal; separately restore managed Auth/Storage and offline queues",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -43,7 +44,8 @@
       "tests": [
         "src/test/desktop/trust-boundary.test.ts"
       ],
-      "next_action": "Deployed desktop acceptance"
+      "next_action": "Deployed desktop acceptance",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -65,7 +67,8 @@
         "scripts/test-delivery-financial-authority-postgres.mjs",
         "src/test/delivery-collection-money.test.ts"
       ],
-      "next_action": "Perform deployed receiving-register acceptance; remaining fee accounting is DEL-002"
+      "next_action": "Perform deployed receiving-register acceptance; remaining fee accounting is DEL-002",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -81,7 +84,8 @@
         "Delivery fee is separate from sales.total_fils; PR55 preserves separate collection component"
       ],
       "tests": [],
-      "next_action": "Implement explicit fee tax/history and refund/report integration; do not rewrite historical sale VAT"
+      "next_action": "Implement explicit fee tax/history and refund/report integration; do not rewrite historical sale VAT",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -103,7 +107,8 @@
         "src/test/desktop/manager-authorization.test.ts",
         "scripts/test-device-registry.mjs"
       ],
-      "next_action": "Perform deployed manager/cashier acceptance; device enrollment remains SEC-004"
+      "next_action": "Perform deployed manager/cashier acceptance; device enrollment remains SEC-004",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -122,7 +127,8 @@
         "PR58 post-merge CI/Windows 34799003789 and catalogue 34799003786 passed"
       ],
       "tests": [],
-      "next_action": "Further export scope under EXP-001; physical count retry is addressed by PR59"
+      "next_action": "Further export scope under EXP-001; physical count retry is addressed by PR59",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -140,7 +146,8 @@
         "All 18 PR60 post-merge gates green; CI/Windows 34906747216, recovery 34906747297"
       ],
       "tests": [],
-      "next_action": "Audit statement/history exports and larger streaming separately"
+      "next_action": "Audit statement/history exports and larger streaming separately",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -156,7 +163,8 @@
         "Customer credit backend exists; initial UI search did not find full credit workflows"
       ],
       "tests": [],
-      "next_action": "Trace routes and implement missing credit workflow integration; verify against RPCs"
+      "next_action": "Trace routes and implement missing credit workflow integration; verify against RPCs",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -172,7 +180,8 @@
         "Supplier subledger backend exists; initial supplier UI inspection shows profile/procurement focus"
       ],
       "tests": [],
-      "next_action": "Finish route audit and missing ledger payment/statement UI"
+      "next_action": "Finish route audit and missing ledger payment/statement UI",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -188,7 +197,8 @@
         "Stocktake/lot contracts exist; full management UI not established by current audit"
       ],
       "tests": [],
-      "next_action": "Trace inventory routes and complete missing operational integrations"
+      "next_action": "Trace inventory routes and complete missing operational integrations",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -204,7 +214,8 @@
         "No GitHub release observed; package version 1.0.0; release workflow dispatch/tag checks need full review"
       ],
       "tests": [],
-      "next_action": "Complete candidate/version/artifact/signing/updater/rollback verification; manual non-tag dispatch only builds a candidate, so no tag-publish bypass is claimed"
+      "next_action": "Complete candidate/version/artifact/signing/updater/rollback verification; manual non-tag dispatch only builds a candidate, so no tag-publish bypass is claimed",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "BLOCKED \u2014 EXTERNAL",
@@ -220,7 +231,8 @@
         "Windows validation artifacts are explicitly unsigned"
       ],
       "tests": [],
-      "next_action": "Provide trusted signing credentials and execute signed release acceptance"
+      "next_action": "Provide trusted signing credentials and execute signed release acceptance",
+      "workflow_state": "BLOCKED_EXTERNAL"
     },
     {
       "status": "BLOCKED \u2014 EXTERNAL",
@@ -236,7 +248,8 @@
         "No scanner/printer/drawer/Windows target is connected in this environment"
       ],
       "tests": [],
-      "next_action": "Execute hardware and updater acceptance procedures"
+      "next_action": "Execute hardware and updater acceptance procedures",
+      "workflow_state": "BLOCKED_EXTERNAL"
     },
     {
       "status": "BLOCKED \u2014 EXTERNAL",
@@ -252,7 +265,8 @@
         "Main was observed unprotected; connector cannot administer branch protection"
       ],
       "tests": [],
-      "next_action": "Administrator configures required status checks and branch protections"
+      "next_action": "Administrator configures required status checks and branch protections",
+      "workflow_state": "BLOCKED_EXTERNAL"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -268,7 +282,8 @@
         "Current audit discovered collection and desktop defects despite old readiness claims"
       ],
       "tests": [],
-      "next_action": "Complete remaining domain, scale, offline, release, authorization and failure-mode audits after each merge"
+      "next_action": "Complete remaining domain, scale, offline, release, authorization and failure-mode audits after each merge",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "ID": "SEC-003",
@@ -290,7 +305,8 @@
       "commit": "a08acde08d066650513f6310c5cd248dbbbe525a",
       "merge_sha": "895e9b97c75f52fce1dd44c90914b1f0973e15c3",
       "external_dependency": null,
-      "next_action": "Validate supported transport on store hardware"
+      "next_action": "Validate supported transport on store hardware",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "SEC-004",
@@ -308,7 +324,8 @@
       "commit": null,
       "merge_sha": null,
       "external_dependency": null,
-      "next_action": "Audit actual checkout/native enforcement and define enrolled-device/offline revocation boundary; implement missing repository enforcement"
+      "next_action": "Audit actual checkout/native enforcement and define enrolled-device/offline revocation boundary; implement missing repository enforcement",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "ID": "INV-RETRY-001",
@@ -330,7 +347,8 @@
       "commit": "80029799eccd34ee74028a54759b44c59b5a6663",
       "merge_sha": "cfcd0228998c937f77e1afb13a931f51ce82e439",
       "external_dependency": null,
-      "next_action": "Reconcile ambiguous imports from older clients before retrying them; deployed operator acceptance"
+      "next_action": "Reconcile ambiguous imports from older clients before retrying them; deployed operator acceptance",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "CASH-001",
@@ -352,7 +370,8 @@
       "commit": "386edcfbcb6e608878d6531138996517a132f379",
       "merge_sha": "77e64793e473c769af988dcce15e91483c5fdbfa",
       "external_dependency": null,
-      "next_action": "Deployed cashier/manager acceptance; lifecycle replay tracked separately in CASH-002"
+      "next_action": "Deployed cashier/manager acceptance; lifecycle replay tracked separately in CASH-002",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "CASH-002",
@@ -364,7 +383,8 @@
         "Cash.tsx invokes legacy add_cash_movement without an operation ID; the server inserts a new movement on each call",
         "PostgreSQL RED 34908245777 reproduced one physical 1001-fils float recorded twice as 2002 fils",
         "PR62 all 18 exact-head workflows green; CI/Windows 35109570113, recovery 35109570209; local 236 tests; PR62 merged",
-        "Additional PostgreSQL RED 35109251053 proved cross-actor replay; actor binding and UI recovery hardening verified"
+        "Additional PostgreSQL RED 35109251053 proved cross-actor replay; actor binding and UI recovery hardening verified",
+        "PR62 post-merge all 18 workflows passed; CI/Windows 35110388715 and recovery 35110388832. Legacy-source observation above describes the reproduced baseline, not current main."
       ],
       "tests": [
         "scripts/test-cash-replay-postgres.mjs",
@@ -374,7 +394,8 @@
       "commit": "4d509d721061a56353ee873602ecff90b9148961",
       "merge_sha": "a9ac4e42213887213eb4cbb03c617b754587e2c7",
       "external_dependency": null,
-      "next_action": "Verify PR62 post-merge gates; implement opening/closing session operation identity and durable recovery; current input/account defects tracked in CASH-004"
+      "next_action": "Manual cash movements verified post-merge. Opening/closing lifecycle is CASH-002B; physical custody acceptance remains.",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "CASH-003",
@@ -390,27 +411,85 @@
       "commit": null,
       "merge_sha": null,
       "external_dependency": null,
-      "next_action": "Define and implement explicit receiving/paying-session settlement commands before enabling UI collection workflows"
+      "next_action": "Define and implement explicit receiving/paying-session settlement commands before enabling UI collection workflows",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "ID": "CASH-004",
       "domain": "Cash session input and active-account authorization",
       "severity": "P0",
-      "status": "PARTIALLY COMPLETE",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
       "invariant": "Opening and blind counts are explicit exact fils, with current active branch/account authority and atomic audit",
       "evidence": [
         "PostgreSQL RED 35110071684 reproduced sub-fils/negative/missing opening input, banned opening/closing, inactive branch opening and omitted close buckets",
-        "Three UI RED checks reproduced typed-input rounding and implicit zero counts"
+        "Three UI RED checks reproduced typed-input rounding and implicit zero counts",
+        "PR63 all 18 exact-head workflow families green; CI/Windows 35110609116. Post-merge CI/Windows 35158977078 and recovery 35158977547 passed."
       ],
       "tests": [
         "scripts/test-cash-session-boundaries-postgres.mjs",
         "src/test/cash-session-input-ui.test.tsx"
       ],
       "PR": 63,
-      "commit": null,
-      "merge_sha": null,
+      "commit": "602ab832d6148e9c4ec6519cba0d3a8189349e2e",
+      "merge_sha": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
       "external_dependency": null,
-      "next_action": "Verify exact-head authority/precision/concurrency/failure contracts and regression before merge; session replay identity remains CASH-002"
+      "next_action": "Deployed operator acceptance; lifecycle identity tracked separately in CASH-002B",
+      "workflow_state": "VERIFIED_POST_MERGE"
+    },
+    {
+      "ID": "DESKTOP-RECOVERY-001",
+      "domain": "Desktop recovery runtime",
+      "severity": "P1",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "workflow_state": "AWAITING_AUTHORIZATION",
+      "invariant": "Actual Electron file-origin windows share a persistent journal and exclusive Web Locks",
+      "PR": 64,
+      "commit": "8eabeda28ac6f8074a56edf8ef7d1adeb1623c54",
+      "merge_sha": null,
+      "evidence": [
+        "CI35159156896 passed; Windows job105006353517 logged PASS for cross-window exclusion, shared exact draft, renderer reload and destroyed-renderer lock release. Electron42.11.2 / Chromium148.0.7778.280. Tested merge9170a69434d30b7beceba3d30e9bf2c5d55af8aa tree equals PR head tree e1306fcf1936dbf4fcede8a9edcf8d0331b5f8cc."
+      ],
+      "tests": [
+        "scripts/test-desktop-cash-recovery.cjs"
+      ],
+      "artifacts": [
+        {
+          "id": 10472491339,
+          "name": "ZAIPOS-9170a69434d30b7beceba3d30e9bf2c5d55af8aa-windows-validation",
+          "sha256": "89ebac13511f495765309da5585d6af33856903dda9e5130859c9cc2b0586558",
+          "limitation": "Unsigned validation archive, not a signed production installer"
+        }
+      ],
+      "external_dependency": "Physical power-loss/device acceptance; explicit merge authorization",
+      "next_action": "Review and authorize PR64 merge; then verify post-merge gates"
+    },
+    {
+      "ID": "CASH-002B",
+      "domain": "Cash session lifecycle",
+      "severity": "P0",
+      "status": "PARTIALLY COMPLETE",
+      "workflow_state": "IMPLEMENTED_UNVERIFIED",
+      "invariant": "One persisted actor/payload-bound opening or closing identity converges across retries without creating another session or rewriting historical counts",
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "working_branch": "fix/cash-session-lifecycle",
+      "root_cause": "Legacy session calls have no operation identity; replay after intervening closure creates a second session. Client sends before persisting intent.",
+      "PR": 65,
+      "commit": "49546da716a6b81a7aa15d0c5e045fb15e8806f4",
+      "merge_sha": null,
+      "evidence": [
+        "PostgreSQL RED35187126061 at32c4d104cad08a9af7daebd86b37f6708bfa504b returned a different session after closing the original.",
+        "Focused local tests:26 passed across session UI/journal and existing cash movement recovery; SQL/CI pending."
+      ],
+      "tests": [
+        "scripts/test-cash-session-lifecycle-postgres.mjs",
+        "scripts/test-cash-session-boundaries-postgres.mjs",
+        "scripts/test-backup-restore-contract.mjs",
+        "src/test/cash-session-input-ui.test.tsx",
+        "src/test/cash-session-recovery.test.ts"
+      ],
+      "external_dependency": "Explicit merge authorization; deployed operator and physical power-loss acceptance",
+      "next_action": "Inspect real PostgreSQL, restore, regression and Windows CI; review exact diff and preserve evidence before requesting merge authorization"
     }
-  ]
+  ],
+  "workflow_state_note": "workflow_state tracks execution separately from status (production-readiness classification). Historical evidence is retained; later dated/head-specific entries supersede stale observations."
 }

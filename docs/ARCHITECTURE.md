@@ -90,3 +90,9 @@ Supabase Edge Functions handle operations that require server-side credentials o
 - RPC functions validate tenant/branch authorization for sensitive writes.
 - Checkout and synchronization paths preserve idempotency.
 - Production secrets and hard-coded demo passwords are prohibited.
+
+## Cash session operation authority
+
+Opening and closing use `apply_cash_session_v2` with an actor-bound UUID and explicit exact decimal inputs. The server stores canonical integer-fils request binding and an immutable receipt in `cash_session_operations`, atomically with the existing session mutation and audit. Replay returns the original session identity even after later activity. Execution/cancellation serialize on the same identity; cancellation never reverses a committed session operation. Legacy non-idempotent session RPCs are internal only, requiring coordinated client migration.
+
+The client persists session intent before sending and retains uncertain requests across restart. Web Locks coordinate journal access across windows in one profile. Session management requires an online server result; this journal is not an offline permission to open or close a register. Manual cash movements retain their separate immutable voucher-reference authority. See the cash lifecycle runbook for recovery, legacy-client and physical-storage boundaries.

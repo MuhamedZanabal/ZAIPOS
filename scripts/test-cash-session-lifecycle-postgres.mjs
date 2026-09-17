@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
-import {connection,query} from './postgres-recovery.mjs';
+import {connection} from './postgres-recovery.mjs';
+import {execFileSync} from 'node:child_process';
 if(!process.env.POSTGRES_ADMIN_URL)throw new Error('Disposable contract database required');
-const conn=connection(process.env.POSTGRES_ADMIN_URL),sql=s=>query(conn,s);
+const conn=connection(process.env.POSTGRES_ADMIN_URL);
+// This fixture contains only disposable test identities. Keep production backup
+// diagnostic redaction intact while checking the actual rejection reason here.
+const sql=s=>{
+ try {return execFileSync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',s],{env:conn.env,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
+ catch(error){throw new Error(String(error.stderr ?? 'PostgreSQL test command failed'));}
+};
 const tenant='a9000000-0000-0000-0000-000000000001',branch='b9000000-0000-0000-0000-000000000001',user='c9000000-0000-0000-0000-000000000001';
 const operation='d9000000-0000-0000-0000-000000000001';
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES('${user}','cash-lifecycle@zaipos.test','{}');
@@ -11,7 +18,7 @@ INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES('${user}'
 const auth=s=>sql(`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${user}';${s};COMMIT;`);
 const v2=sql("SELECT to_regprocedure('public.apply_cash_session_v2(uuid,jsonb,boolean)') IS NOT NULL")==='t';
 const request={kind:'open',tenant_id:tenant,branch_id:branch,register_id:null,opening_amount:'1.001'};
-const apply=(id,payload,cancel=false)=>`SELECT public.apply_cash_session_v2('${id}','${JSON.stringify(payload)}'::jsonb,${cancel})`;
+const apply=(id,payload,cancel=false)=>`SELECT public.apply_cash_session_v2('${id}','${JSON.stringify(payload).replaceAll("'","''")}'::jsonb,${cancel})`;
 const open=()=>v2?JSON.parse(auth(apply(operation,request))).session_id:auth(`SELECT (public.open_cash_session('${tenant}','${branch}',1.001,NULL)).id`);
 const first=open();
 // Model a committed opening whose reply was lost; another authorized actor can
