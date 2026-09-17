@@ -1,0 +1,30 @@
+name: Authorization Surface Census
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'electron/**'
+      - 'supabase/**'
+      - 'scripts/test-authorization-surface-census.mjs'
+      - '.github/workflows/authorization-surface-census.yml'
+  workflow_dispatch:
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Enumerate authorization-sensitive surfaces
+        run: node scripts/test-authorization-surface-census.mjs > authorization-surface-census.json
+      - name: Validate census JSON
+        run: node -e "const x=require('./authorization-surface-census.json'); if(!x.surfaces?.length) process.exit(1); console.log(x.counts)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: authorization-surface-census
+          path: authorization-surface-census.json
+          if-no-files-found: error
