@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/test-trusted-device-enforcement-postgres.mjs'
       - 'scripts/test-device-enrollment-approval-postgres.mjs'
+      - 'scripts/test-device-credential-activation-postgres.mjs'
       - '.github/workflows/trusted-device-enforcement.yml'
       - 'supabase/migrations/**'
   workflow_dispatch:
@@ -37,5 +38,7 @@ jobs:
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Verify manager-only enrollment approval
         run: node scripts/test-device-enrollment-approval-postgres.mjs
+      - name: Verify single-use credential activation
+        run: node scripts/test-device-credential-activation-postgres.mjs
       - name: Verify enrolled and revoked device authority
         run: node scripts/test-trusted-device-enforcement-postgres.mjs
