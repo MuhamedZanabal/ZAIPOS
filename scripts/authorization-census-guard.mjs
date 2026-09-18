@@ -8,10 +8,11 @@ export function summarize(surfaces) {
   if (!Array.isArray(surfaces) || surfaces.length === 0) throw new Error('Invalid census: surfaces must be nonempty');
   const grouped = new Map();
   for (const surface of surfaces) {
-    if (!surface || !['kind', 'path', 'text'].every(key =>
-      typeof surface[key] === 'string' && surface[key].trim() !== '' && !surface[key].includes('\n')))
-      throw new Error('Invalid census surface: expected nonempty single-line kind, path and text');
-    const signature = `${surface.path}\0${surface.text}`;
+    if (!surface || !['kind', 'scope', 'path', 'identifier', 'text'].every(key =>
+      typeof surface[key] === 'string' && surface[key].trim() !== '' && !surface[key].includes('\n')) ||
+      !['runtime', 'migration', 'verification', 'support'].includes(surface.scope))
+      throw new Error('Invalid census surface: expected a known scope and nonempty single-line fields');
+    const signature = `${surface.scope}\0${surface.path}\0${surface.identifier}\0${surface.text}`;
     if (!grouped.has(surface.kind)) grouped.set(surface.kind, []);
     grouped.get(surface.kind).push(signature);
   }
@@ -22,7 +23,7 @@ export function summarize(surfaces) {
 }
 
 export function validate(surfaces, baseline) {
-  if (baseline?.schema !== 1 || !baseline.kinds || typeof baseline.kinds !== 'object' ||
+  if (baseline?.schema !== 2 || !baseline.kinds || typeof baseline.kinds !== 'object' ||
       Array.isArray(baseline.kinds) || Object.keys(baseline.kinds).length === 0)
     throw new Error('Invalid authorization baseline schema');
   const actual = summarize(surfaces);
@@ -43,7 +44,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     const census = JSON.parse(readFileSync(process.argv[2] ?? 'authorization-surface-census.json', 'utf8'));
     const baseline = JSON.parse(readFileSync(process.argv[3] ?? 'scripts/authorization-surface-baseline.json', 'utf8'));
-    if (census.schema !== 1 || !Array.isArray(census.surfaces)) throw new Error('Invalid census JSON schema');
+    if (census.schema !== 2 || !Array.isArray(census.surfaces)) throw new Error('Invalid census JSON schema');
     const failures = validate(census.surfaces, baseline);
     if (failures.length) {
       console.error('Authorization census drift detected. Review changed surfaces and update baseline deliberately; fingerprints are NOT permission approvals.');

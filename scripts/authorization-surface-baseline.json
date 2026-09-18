@@ -1,38 +1,50 @@
 {
-  "schema": 1,
+  "schema": 2,
   "meaning": "Census fingerprint only; this is NOT an authorization approval or security test",
   "kinds": {
+    "application-route": {
+      "count": 36,
+      "sha256": "1c2b9ec0969793e877b571f8a5a1a3e3a1bfe780ec6a6869b67ebb2b381c518b"
+    },
+    "data-export": {
+      "count": 3,
+      "sha256": "b6df1c2c93c4721c82d6ae1b4b12cd100a8163544832b804a9711270a42e1ac3"
+    },
     "edge-function": {
       "count": 8,
-      "sha256": "088a1f006c7069bc91cec1a3f26122032eae3543fb3a6f65a66480faa64ecf57"
+      "sha256": "929647cba7b8586d094dc5d0193ae774188338a118aa58bd19468fb80e5a993d"
     },
     "external-navigation": {
-      "count": 2,
-      "sha256": "7f1fc538fe64f1c6e0b5989666dfe19f0efd99be7fb2717fff35db2a6870ffaf"
+      "count": 3,
+      "sha256": "241ed1c994c681774200d6791116173f546fae5c2afac1a7f9acc59edb5f8df3"
     },
     "ipc-main": {
-      "count": 1,
-      "sha256": "d6ff98f941a6af8e28fd6b8d151e93e0b1d55aa8cf8c71017ff3c00fe8c41fd1"
+      "count": 20,
+      "sha256": "1fa3ef230acdd6a42e3d71caa3d231c99d1b25e71f70bf28671872da47cd221f"
     },
     "ipc-renderer": {
-      "count": 9,
-      "sha256": "bbaf622b59c8c6b7d84a6a020f5c95ff88cfcb2e80a9f5f77b9bf97e652a728a"
+      "count": 14,
+      "sha256": "882d555b92d6dfce05c08b4052fe40f7b2a6939b0f01d0fa7583196d79f53ee3"
     },
     "rls-policy": {
-      "count": 173,
-      "sha256": "e634ba1cff9f08b31cfd9e6022d10678f94e88411fffa550d18fe16364c67b07"
+      "count": 174,
+      "sha256": "0f75fccd50d68d1569a4a1da2a1bb4351096582b483a9e1a75112c671a779803"
     },
     "rpc-client": {
-      "count": 79,
-      "sha256": "c1579d748e0971bdfdde120357808fda14f852e9d28b3810ce6a66e2be3943e6"
+      "count": 83,
+      "sha256": "b9ddf0ab0728abf9ee17905548b9590ed57120941b2e9863472e8f0690f74426"
+    },
+    "rpc-client-dynamic": {
+      "count": 7,
+      "sha256": "289f2d3867bd643515cdb87983ca34462f901442808b03ded3e0840e4b317db2"
     },
     "security-definer": {
-      "count": 209,
-      "sha256": "3b0bca129970e2c0694360e0dda31fefdae4eb75f8b25f96600229876514a960"
+      "count": 211,
+      "sha256": "5500d9629efd570301eb4d5f9de00261cdb93118ec1738a8fc97e3e556daf76b"
     },
     "sql-function": {
-      "count": 260,
-      "sha256": "04338dda76d01ae86c2a5776b3f374e56268711d04c45eb5cca53842d50028cc"
+      "count": 262,
+      "sha256": "16575122f4becd0319e1a8e21bb60799f0ccb4f35679f5ae86c2d5ff4e3ccc70"
     }
   }
 }
