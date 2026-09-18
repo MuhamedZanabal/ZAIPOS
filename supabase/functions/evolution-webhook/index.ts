@@ -38,19 +38,22 @@ Deno.serve(async (req) => {
   }
 
   const secret = Deno.env.get("EVOLUTION_WEBHOOK_SECRET");
+  if (!secret) {
+    logWebhook("error", "evolution_webhook_secret_missing", { request_id: requestId, ip });
+    return json({ error: "Webhook authentication unavailable", request_id: requestId }, 503);
+  }
+
   const timestamp = req.headers.get("x-webhook-timestamp") ?? req.headers.get("x-evolution-timestamp");
   if (!timestampIsFresh(timestamp)) {
     return json({ error: "Stale or invalid timestamp", request_id: requestId }, 401);
   }
 
   const rawBody = await req.text();
-  if (secret) {
-    const signature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-evolution-signature");
-    const validSignature = await verifyHmacSha256(secret, `${timestamp}.${rawBody}`, signature);
-    if (!validSignature) {
-      logWebhook("warn", "evolution_webhook_invalid_signature", { request_id: requestId, ip });
-      return json({ error: "Invalid webhook signature", request_id: requestId }, 401);
-    }
+  const signature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-evolution-signature");
+  const validSignature = await verifyHmacSha256(secret, `${timestamp}.${rawBody}`, signature);
+  if (!validSignature) {
+    logWebhook("warn", "evolution_webhook_invalid_signature", { request_id: requestId, ip });
+    return json({ error: "Invalid webhook signature", request_id: requestId }, 401);
   }
 
   let payload: Record<string, any>;
@@ -74,7 +77,6 @@ Deno.serve(async (req) => {
     let text = String(
       data.message?.conversation ??
         data.message?.extendedTextMessage?.text ??
-        // Replies to interactive button/list messages
         data.message?.buttonsResponseMessage?.selectedDisplayText ??
         data.message?.listResponseMessage?.singleSelectReply?.selectedRowId ??
         data.text ??
@@ -90,7 +92,6 @@ Deno.serve(async (req) => {
     };
     let mediaAttachment: MediaAttachment | null = null;
 
-    // Process media messages if no text was extracted
     if (!text) {
       const evoBase = Deno.env.get("EVOLUTION_API_URL") ?? "";
       const evoKey = Deno.env.get("EVOLUTION_API_KEY") ?? "";
@@ -119,7 +120,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Ignore outgoing messages, missing info, non-message events
     if (fromMe || !remoteJid || (!text && !mediaAttachment) || (event && !String(event).toLowerCase().includes("message"))) {
       return json({ ok: true, ignored: true, request_id: requestId });
     }
