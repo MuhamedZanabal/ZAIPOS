@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'scripts/test-device-branch-binding-postgres.mjs'
+      - 'scripts/test-device-branch-binding-race-postgres.mjs'
       - 'scripts/test-production-migration-chain*.mjs'
       - '.github/workflows/device-branch-binding.yml'
   workflow_dispatch:
@@ -38,3 +39,5 @@ jobs:
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Reject unauthorized branch rebinding
         run: node scripts/test-device-branch-binding-postgres.mjs
+      - name: Reject concurrent first-registration branch race
+        run: node scripts/test-device-branch-binding-race-postgres.mjs
