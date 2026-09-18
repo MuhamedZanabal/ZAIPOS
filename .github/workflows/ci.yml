@@ -104,6 +104,9 @@ jobs:
       - name: Test cash session authorization and input boundaries
         run: node scripts/test-cash-session-boundaries-postgres.mjs
 
+      - name: Test cash session lifecycle recovery
+        run: node scripts/test-cash-session-lifecycle-postgres.mjs
+
       - name: Test device registry authorization
         run: npm run test:migrations:devices
 
@@ -223,9 +226,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Test actual desktop cash recovery runtime
-        run: npx electron scripts/test-desktop-cash-recovery.cjs
 
       - name: Package unsigned Windows validation installer
         run: npm run package:windows

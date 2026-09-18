@@ -60,6 +60,9 @@ const criticalTables = [
   "sale_items",
   "payments",
   "checkout_operations",
+  "cash_sessions",
+  "cash_movement_operations",
+  "cash_session_operations",
   "sale_returns",
   "sale_return_items",
   "sale_voids",
@@ -192,11 +195,11 @@ try {
 
   // Populate real exact-fils ledger, payable, return/void and replay evidence
   // using the existing PostgreSQL runtime contracts against the source only.
-  for (const script of ["test-customer-credit-subledger-postgres.mjs", "test-supplier-subledger-postgres.mjs", "test-customer-loyalty-ledger-runtime-postgres.mjs", "test-delivery-financial-authority-postgres.mjs"]) {
+  for (const script of ["test-customer-credit-subledger-postgres.mjs", "test-supplier-subledger-postgres.mjs", "test-customer-loyalty-ledger-runtime-postgres.mjs", "test-delivery-financial-authority-postgres.mjs", "test-cash-replay-postgres.mjs", "test-cash-session-lifecycle-postgres.mjs"]) {
     execFileSync(process.execPath, [path.join(root, "scripts", script)], { env: { ...process.env, POSTGRES_ADMIN_URL: dbUrl }, stdio: "pipe" });
   }
   const before = captureManifest();
-  for (const table of ["sales", "sale_items", "payments", "supplier_ledger_entries", "customer_credit_entries", "customer_loyalty_ledger", "delivery_collections", "audit_logs"]) {
+  for (const table of ["sales", "sale_items", "payments", "supplier_ledger_entries", "customer_credit_entries", "customer_loyalty_ledger", "delivery_collections", "cash_sessions", "cash_movement_operations", "cash_session_operations", "audit_logs"]) {
     assertTruthy(`nonempty recovery fixture ${table}`, Number(scalar(`SELECT count(*) FROM public.${table};`)) > 0);
   }
   const sourceSchema = schemaDigest(sourceConnection);

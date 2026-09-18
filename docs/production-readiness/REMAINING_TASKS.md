@@ -1,16 +1,18 @@
 # Remaining production tasks
 
-Classification: **PARTIALLY COMPLETE**. Repository baseline: main `f7926fa2ddfe83b41a1549c6208b21e06495eba7` (PR63). PR62 passed all 18 post-merge workflows (CI/Windows 35110388715, recovery 35110388832). PR63 passed all 18 exact-head workflow families (CI/Windows 35110609116); its post-merge evidence is tracked separately. PR64 adds actual Electron recovery primitive verification. Version 1.0.0 does not establish an accepted release.
+Classification: **PARTIALLY COMPLETE**. Observed main `f7926fa2ddfe83b41a1549c6208b21e06495eba7` (PR63). PR62 and PR63 post-merge gates passed (CI/Windows 35110388715 and 35158977078). PR64 real Electron recovery verification passed CI35159156896 and awaits explicit merge authorization. PR65 CASH-002B passed all 18 workflow families at e97245ae94fca6019528940e220da3c959212c33 (CI/Windows35187830882, recovery35187830861); PR67 conflict recovery repair passed CI35237634656 at75b4ba32a72cb2f981888bc287d788ba8a8df775 and is integrated into this development source; combined-head verification is recorded in PR65 before main merge approval. Version 1.0.0 is not an accepted production release.
 
 This is the complete currently identified execution queue, including unfinished audits. Audit rows are obligations to inspect and prove scope, not assertions that every named feature is broken or absent. A final exhaustive defect list cannot truthfully precede those audits. Update this file and PRODUCTION_LEDGER.json as evidence changes. Do not redo named green contracts without a relevant change or contrary evidence.
 
 ## Confirmed implementation and integration work
 
+PR64: runtime verification is green; merge authorization and post-merge evidence remain. No merge, release or production deployment is authorized by the latest directive.
+
 | ID | Priority | Remaining task / completion evidence |
 |---|---|---|
-| DESKTOP-RECOVERY-001 | P1 | Verify actual Electron file-origin cross-window locks, persisted drafts and renderer destruction/reload recovery in Windows CI; preserve the separate physical power-loss boundary. |
-| CASH-002B | P0 | Add payload-bound operation identity and restart recovery for opening and closing cash sessions; reject sub-fils or omitted blind counts; verify duplicate/concurrent/lost-response/closed-session behavior. |
-| SEC-004 | P0 audit frontier | Establish actual enrolled-device and revocation enforcement for checkout/native/offline paths. Device UUID/heartbeat currently does not itself prove trusted enrollment. Reproduce any bypass before implementing controls; document offline revocation limits. |
+| CASH-004 | P0 | Finish PR63 verification/merge/post-merge gates for cash-session exact-input, explicit counts and active-account/branch authorization. Eight unsafe cases were reproduced by PostgreSQL RED 35110071684. |
+| CASH-002B | P0 | PR65: verify payload-bound opening/closing identity, durable recovery, cancellation, concurrency and rollback, then obtain merge authorization and verify post-merge. Exact-input/active-account checks are already merged in PR63; do not double-count them. |
+| SEC-004 | P0 reproduced | PR66 RED35188046578 proves replacement UID self-registration and checkout after revocation (one sale,1000 till fils, stock decremented). Review/authorize the proposed native-held credential boundary and offline policy, then implement and verify enrollment/revocation across financial, native and sync paths. |
 | CASH-003 | P1 | Integrate customer-credit cash repayments and supplier cash settlements with explicit receiving/paying tills atomically; prove ledger plus till plus audit replay and rollback. |
 | UI-001 | P1 | Complete customer credit limits, repayment, balance, statement/history and address workflows against authoritative RPCs; preserve exact fils and authorization. |
 | UI-002 | P1 | Complete supplier ledger payment/credit/statement/ageing and reconciliation workflows; review PO/receipt/return integration and historical liabilities. |

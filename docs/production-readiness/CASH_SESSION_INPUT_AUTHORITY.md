@@ -1,5 +1,7 @@
 # Cash session input and account authority
 
+Current continuation: PR63 is merged at `f7926fa2ddfe83b41a1549c6208b21e06495eba7`, with post-merge CI35158977078 passing. PR65 adds lifecycle identity and recovery on a development branch; see [CASH_SESSION_LIFECYCLE.md](CASH_SESSION_LIFECYCLE.md). The original PR63 limitation described below is historical for that baseline and remains on main until PR65 is approved and merged.
+
 PR63 addresses eight defects reproduced with the actual authenticated PostgreSQL role (RED run 35110071684): opening accepted sub-fils rounding, negative and missing floats, banned users, and inactive branches; closing accepted missing cash/card counts as zero and banned users. UI RED separately proved pre-server rounding and implicit-zero counts.
 
 Opening now requires an explicit non-negative exact-fils decimal, current branch role, active branch/account/employee and, when selected, an active register belonging to that branch and tenant. Its session and opening audit commit together. Existing partial unique indexes remain the concurrent single-open-session authority. Closing requires every payment-method count explicitly, including zero, and the same current account/branch checks. The existing integer-fils reconciliation algorithm and row lock are preserved. Historical sessions are not rewritten. Public anonymous execution is denied; authenticated role checks remain server-side. Service automation must use an explicitly reviewed identity instead of bypassing user checks.

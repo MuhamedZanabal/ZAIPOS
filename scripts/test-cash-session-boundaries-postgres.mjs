@@ -10,7 +10,7 @@ INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode) VALUES('${te
 INSERT INTO public.branches(id,tenant_id,name,status) VALUES('${branch}','${tenant}','Session Branch','active');
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES('${user}','${tenant}','${branch}','cashier');`);
 const auth=(s,commit=false)=>sql(`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${user}';${s};${commit?'COMMIT':'ROLLBACK'};`);
-const open=amount=>`SELECT (public.open_cash_session('${tenant}','${branch}',${amount},NULL)).id`;
+const open=amount=>`SELECT public.apply_cash_session_v2(gen_random_uuid(),jsonb_build_object('kind','open','tenant_id','${tenant}','branch_id','${branch}','register_id',NULL,'opening_amount',(${amount})::text))->>'session_id'`;
 const failures=[];
 function deny(label,s){try{auth(s);failures.push(label);console.log('UNSAFE: '+label);}catch{/* Statement must reject and roll back. */}}
 deny('opening silently rounds fractional fils',open('1.0001'));
@@ -23,7 +23,7 @@ sql(`UPDATE public.branches SET status='inactive' WHERE id='${branch}'`);
 deny('inactive branch accepts cash opening',open('1.000'));
 sql(`UPDATE public.branches SET status='active' WHERE id='${branch}'`);
 const session=auth(open('1.001'),true);assert.match(session,/^[a-f0-9-]{36}$/);
-const close=(cash='1.001',card='0.000')=>`SELECT (public.close_cash_session('${session}',${cash},'Verified close',${card},0.000,0.000)).id`;
+const close=(cash='1.001',card='0.000')=>`SELECT public.apply_cash_session_v2(gen_random_uuid(),jsonb_build_object('kind','close','tenant_id','${tenant}','branch_id','${branch}','session_id','${session}','counted_cash',(${cash})::text,'counted_card',(${card})::text,'counted_transfer','0.000','counted_qr','0.000','notes','Verified close'))->>'session_id'`;
 deny('closing silently treats missing cash count as zero',close('NULL'));
 deny('closing silently treats missing card count as zero',close('1.001','NULL'));
 sql(`UPDATE auth.users SET banned_until=now()+interval '1 day' WHERE id='${user}'`);

@@ -104,6 +104,7 @@ jobs:
           node scripts/test-cash-mutation-authority-postgres.mjs
           node scripts/test-cash-replay-postgres.mjs
           node scripts/test-cash-session-boundaries-postgres.mjs
+          node scripts/test-cash-session-lifecycle-postgres.mjs
           npm run test:migrations:devices
 
       - name: Test production release contract
@@ -154,9 +155,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Test actual desktop cash recovery runtime
-        run: npx electron scripts/test-desktop-cash-recovery.cjs
 
       - name: Require Windows signing credentials
         shell: pwsh

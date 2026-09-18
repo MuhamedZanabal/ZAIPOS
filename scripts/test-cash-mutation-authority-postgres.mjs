@@ -39,7 +39,7 @@ for(let attempt=0;attempt<40;attempt++){
  await new Promise(resolve=>setTimeout(resolve,25));
 }
 assert.ok(paused,'Movement must reach the controlled race boundary');
-asUser(I.cashier,`SELECT (public.close_cash_session('${I.session}',12.001,'Concurrent close',0,0,0)).id`,true);
+asUser(I.cashier,`SELECT public.apply_cash_session_v2(gen_random_uuid(),jsonb_build_object('kind','close','tenant_id',(SELECT tenant_id FROM public.cash_sessions WHERE id='${I.session}'),'branch_id',(SELECT branch_id FROM public.cash_sessions WHERE id='${I.session}'),'session_id','${I.session}','counted_cash','12.001','counted_card','0.000','counted_transfer','0.000','counted_qr','0.000','notes','Concurrent close'))->>'session_id'`,true);
 await pending;
 sql('DROP TRIGGER cash_contract_pause ON public.cash_movements; DROP FUNCTION public.cash_contract_pause()');
 assert.equal(sql(`SELECT difference_fils::text FROM public.cash_sessions WHERE id='${I.session}'`),'0');
