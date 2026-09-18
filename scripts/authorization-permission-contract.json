@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "status": "classification-in-progress",
+  "meaning": "Explicit authorization review contract. Presence is not proof of enforcement; every runtime authorization-sensitive surface must be classified before this contract can become an acceptance gate.",
+  "roles": ["super_admin", "owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"],
+  "dimensions": ["role", "tenant", "branch", "account_state", "session_state", "device_state", "operation_identity"],
+  "required_surface_kinds": ["application-route", "data-export", "edge-function", "ipc-main", "ipc-renderer", "rpc-client"],
+  "default": "deny-unclassified",
+  "surfaces": {}
+}
