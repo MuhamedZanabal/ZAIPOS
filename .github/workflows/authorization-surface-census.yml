@@ -10,6 +10,8 @@ on:
       - 'scripts/authorization-census-guard.mjs'
       - 'scripts/authorization-census-guard.test.mjs'
       - 'scripts/authorization-surface-baseline.json'
+      - 'scripts/authorization-permission-contract.json'
+      - 'scripts/authorization-permission-contract.test.mjs'
       - '.github/workflows/authorization-surface-census.yml'
   workflow_dispatch:
 jobs:
@@ -23,8 +25,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Test census drift guard
-        run: node --test scripts/authorization-census-guard.test.mjs scripts/authorization-surface-census.test.mjs
+      - name: Test census drift and permission-contract guards
+        run: node --test scripts/authorization-census-guard.test.mjs scripts/authorization-surface-census.test.mjs scripts/authorization-permission-contract.test.mjs
       - name: Enumerate authorization-sensitive surfaces
         run: node scripts/test-authorization-surface-census.mjs > authorization-surface-census.json
       - name: Validate census JSON
