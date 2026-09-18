@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { scanSource } from './test-authorization-surface-census.mjs';
 
@@ -112,4 +113,17 @@ test('does not misclassify trusted IPC wrapper definitions as registrations', ()
     scope: 'runtime',
     line: 2,
   }]);
+});
+
+test('production runtime RPC call sites expose concrete operation names', () => {
+  const productionFiles = [
+    'src/lib/cashMovementRecovery.ts',
+    'src/modules/pos/POS.tsx',
+  ];
+  const dynamic = productionFiles.flatMap((path) =>
+    scanSource(path, readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'))
+      .filter((surface) => surface.kind === 'rpc-client-dynamic'),
+  );
+
+  assert.deepEqual(dynamic, []);
 });

@@ -31,12 +31,12 @@
       "sha256": "0f75fccd50d68d1569a4a1da2a1bb4351096582b483a9e1a75112c671a779803"
     },
     "rpc-client": {
-      "count": 83,
-      "sha256": "b9ddf0ab0728abf9ee17905548b9590ed57120941b2e9863472e8f0690f74426"
+      "count": 86,
+      "sha256": "ef32cb4d3ae6a552039b889da5d1f457c9155335ee70131be77025f04fe263f2"
     },
     "rpc-client-dynamic": {
-      "count": 7,
-      "sha256": "289f2d3867bd643515cdb87983ca34462f901442808b03ded3e0840e4b317db2"
+      "count": 5,
+      "sha256": "3e4deb761f565670c15312066993c5029d85b424ad120cfff8fc767103c60d6a"
     },
     "security-definer": {
       "count": 211,
