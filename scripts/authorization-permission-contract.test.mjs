@@ -17,7 +17,7 @@ const routeSurfaces = scanSource('src/App.tsx', app).filter(surface => surface.k
 const routeKey = path => `application-route|src/App.tsx|${path}`;
 
 function expectedRolesForPath(path) {
-  const matching = rules.filter(rule => path === rule.prefix || (rule.prefix !== '/' && path.startsWith(rule.prefix)))
+  const matching = rules.filter(rule => path === rule.prefix || (rule.prefix !== '/' && path.startsWith(`${rule.prefix}/`)))
     .sort((a, b) => b.prefix.length - a.prefix.length);
   return matching[0]?.roles;
 }
@@ -32,6 +32,14 @@ test('permission contract remains explicitly unaccepted until all runtime permis
   assert.ok(contract.surfaces && typeof contract.surfaces === 'object' && !Array.isArray(contract.surfaces));
   assert.match(contract.meaning, /not proof of enforcement/i);
   assert.notEqual(contract.status, 'verified');
+});
+
+test('permission-contract role derivation respects route segment boundaries', () => {
+  const cashRoles = rules.find(rule => rule.prefix === '/cash')?.roles;
+  assert.ok(cashRoles?.length, 'expected /cash role policy');
+  assert.deepEqual(expectedRolesForPath('/cash'), cashRoles);
+  assert.deepEqual(expectedRolesForPath('/cash/history'), cashRoles);
+  assert.equal(expectedRolesForPath('/cashier'), undefined, '/cash must not authorize sibling /cashier');
 });
 
 test('every currently discovered application route has one explicit UI policy declaration', () => {
