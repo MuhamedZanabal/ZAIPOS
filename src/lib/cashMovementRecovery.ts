@@ -57,7 +57,9 @@ export async function executeCashMovement(actorId: string, request: CashMovement
     // The write and read-back must succeed before crossing the network boundary.
     localStorage.setItem(key(actorId), JSON.stringify(draft));
     if (localStorage.getItem(key(actorId)) !== JSON.stringify(draft)) throw new Error('Cash recovery data could not be saved');
-    const {data, error} = await supabase.rpc((cancel ? 'cancel_cash_movement_v2' : 'record_cash_movement_v2') as never, request as never);
+    const {data, error} = cancel
+      ? await supabase.rpc('cancel_cash_movement_v2' as never, request as never)
+      : await supabase.rpc('record_cash_movement_v2' as never, request as never);
     if (error) {
       // The server's immutable reference binding proves this different request
       // could not have committed. Preserve that outcome before allowing a new voucher.

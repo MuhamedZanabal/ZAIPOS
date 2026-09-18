@@ -1,0 +1,50 @@
+{
+  "schema": 2,
+  "meaning": "Census fingerprint only; this is NOT an authorization approval or security test. Updated for the reviewed PR65 merge: legacy open_cash_session/close_cash_session client calls replaced by apply_cash_session_v2; cash_session_operations_select RLS and operation SQL functions added; audit-failure test function is verification evidence.",
+  "kinds": {
+    "application-route": {
+      "count": 36,
+      "sha256": "1c2b9ec0969793e877b571f8a5a1a3e3a1bfe780ec6a6869b67ebb2b381c518b"
+    },
+    "data-export": {
+      "count": 3,
+      "sha256": "b6df1c2c93c4721c82d6ae1b4b12cd100a8163544832b804a9711270a42e1ac3"
+    },
+    "edge-function": {
+      "count": 8,
+      "sha256": "929647cba7b8586d094dc5d0193ae774188338a118aa58bd19468fb80e5a993d"
+    },
+    "external-navigation": {
+      "count": 3,
+      "sha256": "241ed1c994c681774200d6791116173f546fae5c2afac1a7f9acc59edb5f8df3"
+    },
+    "ipc-main": {
+      "count": 20,
+      "sha256": "1fa3ef230acdd6a42e3d71caa3d231c99d1b25e71f70bf28671872da47cd221f"
+    },
+    "ipc-renderer": {
+      "count": 15,
+      "sha256": "fe93f53c232bdd3d2e0be023b3aaafa677122165058e2176c8780c7a106ea720"
+    },
+    "rls-policy": {
+      "count": 175,
+      "sha256": "0551a4c53708745f63bbc96acced481d82e771722e6e5288ab205d0470e66cfc"
+    },
+    "rpc-client": {
+      "count": 86,
+      "sha256": "08862157623a5fcb7b839e0797606afa4a1c0f46ca5aba7a8e4a8f65c1ce18e9"
+    },
+    "rpc-client-dynamic": {
+      "count": 3,
+      "sha256": "e33b0f1fcbfafd6ebc167484f54a9da0d8a816f49a3127ca7f77f4d4e26e455b"
+    },
+    "security-definer": {
+      "count": 212,
+      "sha256": "41339328ef334d95af6e50e0abd77ff43fa3e92509732a87feed7a7a9f24d964"
+    },
+    "sql-function": {
+      "count": 265,
+      "sha256": "241adb5cab38c0617c5bb5974c6fccc4553288a69b238c26659585796dee5dc1"
+    }
+  }
+}
