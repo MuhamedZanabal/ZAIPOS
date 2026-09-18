@@ -74,3 +74,12 @@ export function rolesForPath(pathname: string): AppRole[] | undefined {
     .sort((a, b) => b.prefix.length - a.prefix.length)[0];
   return match?.roles;
 }
+
+/** Fail closed for an undeclared protected route, including for super administrators.
+ * The authenticated onboarding route is handled explicitly by ProtectedRoute.
+ * This UI gate is defense-in-depth, not a substitute for server-side authorization.
+ */
+export function canAccessProtectedPath(userRoles: string[], pathname: string): boolean {
+  const requiredRoles = rolesForPath(pathname);
+  return requiredRoles !== undefined && requiredRoles.length > 0 && canAccessRoles(userRoles, requiredRoles);
+}
