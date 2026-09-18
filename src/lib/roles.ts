@@ -54,6 +54,9 @@ export const ROUTE_ROLES: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/shifts",        roles: ["owner", "admin", "manager"] },
   { prefix: "/reports",       roles: ["owner", "admin", "manager"] },
   { prefix: "/settings",      roles: ["owner", "admin"] },
+  // Explicitly enumerate both landing routes; roleless accounts must not inherit an implicit allow.
+  { prefix: "/dashboard", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
+  { prefix: "/ai", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
   // Dashboard: todos los roles autenticados pueden aterrizar aquí
   { prefix: "/", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
 ];
