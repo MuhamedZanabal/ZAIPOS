@@ -44,7 +44,8 @@ test('every currently discovered application route has one explicit UI policy de
 
 test('declared route UI roles match current route guards without claiming server enforcement', () => {
   assert.ok(rules.length > 0, 'role source parsing must not silently yield no guards');
-  const publicInSource = [...app.slice(0, app.indexOf('<Route element={<ProtectedRoute />}>')).matchAll(/<Route\s+path="([^"]+)"/g)].map(match => match[1]);
+  // Spell the JSX tag with a character class to avoid the lexical census mistaking this test regex for an application route.
+  const publicInSource = [...app.slice(0, app.indexOf('<Route element={<ProtectedRoute />}>')).matchAll(/<Rout[e]\s+path="([^"]+)"/g)].map(match => match[1]);
   assert.ok(publicInSource.length > 0, 'protected route wrapper not detected');
   assert.deepEqual(publicInSource.sort(), [...publicRoutes].filter(path => path !== '*').sort(), 'unexpected unauthenticated route');
   for (const {identifier: path} of routeSurfaces) {
