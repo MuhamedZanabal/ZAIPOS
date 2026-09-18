@@ -12,12 +12,26 @@ on:
       - 'scripts/authorization-surface-baseline.json'
       - 'scripts/authorization-permission-contract.json'
       - 'scripts/authorization-permission-contract.test.mjs'
+      - 'scripts/test-business-export-authorization-postgres.mjs'
       - '.github/workflows/authorization-surface-census.yml'
   workflow_dispatch:
 jobs:
   census:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,6 +39,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply production PostgreSQL migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify business export authorization matrix
+        run: node scripts/test-business-export-authorization-postgres.mjs
       - name: Test route permission segment boundaries
         run: npx vitest run src/lib/roles-boundary.test.ts
       - name: Test census drift and permission-contract guards
