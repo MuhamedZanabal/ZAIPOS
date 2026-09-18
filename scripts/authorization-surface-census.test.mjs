@@ -127,3 +127,14 @@ test('production runtime RPC call sites expose concrete operation names', () => 
 
   assert.deepEqual(dynamic, []);
 });
+
+test('normalizes zero-argument IPC constants without call punctuation', () => {
+  const source = 'ipcRenderer.invoke(IPC_HANDLERS.GET_SETTINGS);';
+
+  assert.deepEqual(simplify(scanSource('electron/preload.ts', source)), [{
+    kind: 'ipc-renderer',
+    identifier: 'IPC_HANDLERS.GET_SETTINGS',
+    scope: 'runtime',
+    line: 1,
+  }]);
+});

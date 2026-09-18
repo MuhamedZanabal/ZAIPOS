@@ -39,20 +39,20 @@ export function scanSource(path, body) {
     for (const match of body.matchAll(regex)) visit(match);
   };
 
-  collect(/\.\s*rpc\s*\(\s*([^,\n]+)/g, (match) => {
+  collect(/\.\s*rpc\s*\(\s*([^,\n)]+)/g, (match) => {
     const expression = normalizeExpression(match[1]);
     const operation = staticString(expression);
     add(operation ? 'rpc-client' : 'rpc-client-dynamic', operation ?? expression, match.index);
   });
 
-  collect(/\bipcMain\s*\.\s*(handle|on)\s*\(\s*([^,\n]+)/g, (match) => {
+  collect(/\bipcMain\s*\.\s*(handle|on)\s*\(\s*([^,\n)]+)/g, (match) => {
     add('ipc-main', staticString(match[2]) ?? match[2], match.index);
   });
-  collect(/\b(handleTrustedIpc|handleManagerIpc)\s*\(\s*([^,\n]+)/g, (match) => {
+  collect(/\b(handleTrustedIpc|handleManagerIpc)\s*\(\s*([^,\n)]+)/g, (match) => {
     if (/\bfunction\s*$/.test(body.slice(Math.max(0, match.index - 40), match.index))) return;
     add('ipc-main', staticString(match[2]) ?? match[2], match.index);
   });
-  collect(/\bipcRenderer\s*\.\s*(invoke|send|on)\s*\(\s*([^,\n]+)/g, (match) => {
+  collect(/\bipcRenderer\s*\.\s*(invoke|send|on)\s*\(\s*([^,\n)]+)/g, (match) => {
     add('ipc-renderer', staticString(match[2]) ?? match[2], match.index);
   });
 

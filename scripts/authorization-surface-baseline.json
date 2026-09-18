@@ -23,20 +23,20 @@
       "sha256": "1fa3ef230acdd6a42e3d71caa3d231c99d1b25e71f70bf28671872da47cd221f"
     },
     "ipc-renderer": {
-      "count": 14,
-      "sha256": "882d555b92d6dfce05c08b4052fe40f7b2a6939b0f01d0fa7583196d79f53ee3"
+      "count": 15,
+      "sha256": "fe93f53c232bdd3d2e0be023b3aaafa677122165058e2176c8780c7a106ea720"
     },
     "rls-policy": {
       "count": 174,
       "sha256": "0f75fccd50d68d1569a4a1da2a1bb4351096582b483a9e1a75112c671a779803"
     },
     "rpc-client": {
-      "count": 86,
-      "sha256": "ef32cb4d3ae6a552039b889da5d1f457c9155335ee70131be77025f04fe263f2"
+      "count": 87,
+      "sha256": "b49c658888373f220ea734a1311ab31a52a6d753917b22c391c0c9e49dd8a8cf"
     },
     "rpc-client-dynamic": {
-      "count": 5,
-      "sha256": "3e4deb761f565670c15312066993c5029d85b424ad120cfff8fc767103c60d6a"
+      "count": 3,
+      "sha256": "e33b0f1fcbfafd6ebc167484f54a9da0d8a816f49a3127ca7f77f4d4e26e455b"
     },
     "security-definer": {
       "count": 211,
