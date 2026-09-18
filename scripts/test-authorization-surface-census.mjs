@@ -6,6 +6,11 @@ const textExtensions = /\.(?:ts|tsx|js|jsx|mjs|cjs|sql)$/;
 const candidates = tracked.filter(p => textExtensions.test(p) && !p.startsWith('node_modules/') && !p.includes('/dist/'));
 const read = p => execFileSync('git', ['show', `HEAD:${p}`], {encoding:'utf8', maxBuffer: 32 * 1024 * 1024});
 const surfaces = [];
+const classify = path => path.startsWith('src/') || path.startsWith('electron/') || path.startsWith('supabase/functions/')
+  ? 'runtime'
+  : path.startsWith('supabase/migrations/') ? 'migration'
+  : /(^|\/)(?:test|tests|__tests__|scripts)(\/|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path) ? 'verification'
+  : 'support';
 for (const path of candidates) {
   let body; try { body = read(path); } catch { continue; }
   const lines = body.split('\n');
@@ -19,9 +24,10 @@ for (const path of candidates) {
     if (/CREATE\s+POLICY\s+/i.test(line)) hits.push('rls-policy');
     if (/SECURITY\s+DEFINER/i.test(line)) hits.push('security-definer');
     if (/window\.open\s*\(|shell\.openExternal\s*\(/.test(line)) hits.push('external-navigation');
-    for (const kind of hits) surfaces.push({kind,path,line:index+1,text:line.trim().slice(0,240)});
+    for (const kind of hits) surfaces.push({kind,scope:classify(path),path,line:index+1,text:line.trim().slice(0,240)});
   });
 }
 assert.ok(surfaces.length > 0, 'authorization census unexpectedly found no security-sensitive surfaces');
 const counts = Object.fromEntries([...new Set(surfaces.map(s=>s.kind))].sort().map(k=>[k,surfaces.filter(s=>s.kind===k).length]));
-console.log(JSON.stringify({schema:1,head:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),counts,surfaces},null,2));
+const scopes = Object.fromEntries([...new Set(surfaces.map(s=>s.scope))].sort().map(k=>[k,surfaces.filter(s=>s.scope===k).length]));
+console.log(JSON.stringify({schema:1,head:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),counts,scopes,surfaces},null,2));
