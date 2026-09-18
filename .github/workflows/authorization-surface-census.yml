@@ -14,6 +14,7 @@ on:
       - 'scripts/authorization-permission-contract.test.mjs'
       - 'scripts/test-business-export-authorization-postgres.mjs'
       - 'scripts/test-create-user-branch-authorization.mjs'
+      - 'scripts/test-evolution-webhook-authentication.mjs'
       - '.github/workflows/authorization-surface-census.yml'
   workflow_dispatch:
 jobs:
@@ -48,6 +49,8 @@ jobs:
         run: node scripts/test-business-export-authorization-postgres.mjs
       - name: Verify create-user branch authorization
         run: node --test scripts/test-create-user-branch-authorization.mjs
+      - name: Verify Evolution webhook authentication
+        run: node --test scripts/test-evolution-webhook-authentication.mjs
       - name: Test route permission segment boundaries
         run: npx vitest run src/lib/roles-boundary.test.ts
       - name: Test census drift and permission-contract guards
