@@ -13,6 +13,7 @@ on:
       - 'scripts/authorization-permission-contract.json'
       - 'scripts/authorization-permission-contract.test.mjs'
       - 'scripts/test-business-export-authorization-postgres.mjs'
+      - 'scripts/test-create-user-branch-authorization.mjs'
       - '.github/workflows/authorization-surface-census.yml'
   workflow_dispatch:
 jobs:
@@ -45,6 +46,8 @@ jobs:
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Verify business export authorization matrix
         run: node scripts/test-business-export-authorization-postgres.mjs
+      - name: Verify create-user branch authorization
+        run: node --test scripts/test-create-user-branch-authorization.mjs
       - name: Test route permission segment boundaries
         run: npx vitest run src/lib/roles-boundary.test.ts
       - name: Test census drift and permission-contract guards
