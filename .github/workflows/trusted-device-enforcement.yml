@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/test-trusted-device-enforcement-postgres.mjs'
+      - 'scripts/test-device-enrollment-approval-postgres.mjs'
       - '.github/workflows/trusted-device-enforcement.yml'
       - 'supabase/migrations/**'
   workflow_dispatch:
@@ -34,5 +35,7 @@ jobs:
       - run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: Apply production migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify manager-only enrollment approval
+        run: node scripts/test-device-enrollment-approval-postgres.mjs
       - name: Verify enrolled and revoked device authority
         run: node scripts/test-trusted-device-enforcement-postgres.mjs
