@@ -104,6 +104,9 @@ jobs:
       - name: Test cash session authorization and input boundaries
         run: node scripts/test-cash-session-boundaries-postgres.mjs
 
+      - name: Test cash session lifecycle recovery
+        run: node scripts/test-cash-session-lifecycle-postgres.mjs
+
       - name: Test device registry authorization
         run: npm run test:migrations:devices
 

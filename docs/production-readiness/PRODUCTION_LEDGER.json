@@ -1,7 +1,7 @@
 {
   "classification": "PARTIALLY COMPLETE",
-  "observed_main_sha": "a9ac4e42213887213eb4cbb03c617b754587e2c7",
-  "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates.",
+  "observed_main_sha": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+  "scope_note": "Live continuation ledger. Known findings and audit frontiers; not an exhaustive final production certification. Prior no-P0/P1 claims are superseded. Evidence applies only to named heads and gates. AUDIT-ALL is a historical umbrella, not an additional task to count alongside the individual AUD-* rows. CASH-002 is the historical parent of manual-cash and session recovery; CASH-002B is its remaining session subtask.",
   "items": [
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -22,7 +22,8 @@
         "test-postgres-recovery-unit.mjs",
         "test-backup-restore-contract.mjs"
       ],
-      "next_action": "Periodic offsite operator rehearsal; separately restore managed Auth/Storage and offline queues"
+      "next_action": "Periodic offsite operator rehearsal; separately restore managed Auth/Storage and offline queues",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -43,7 +44,8 @@
       "tests": [
         "src/test/desktop/trust-boundary.test.ts"
       ],
-      "next_action": "Deployed desktop acceptance"
+      "next_action": "Deployed desktop acceptance",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -65,7 +67,8 @@
         "scripts/test-delivery-financial-authority-postgres.mjs",
         "src/test/delivery-collection-money.test.ts"
       ],
-      "next_action": "Perform deployed receiving-register acceptance; remaining fee accounting is DEL-002"
+      "next_action": "Perform deployed receiving-register acceptance; remaining fee accounting is DEL-002",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -81,7 +84,8 @@
         "Delivery fee is separate from sales.total_fils; PR55 preserves separate collection component"
       ],
       "tests": [],
-      "next_action": "Implement explicit fee tax/history and refund/report integration; do not rewrite historical sale VAT"
+      "next_action": "Implement explicit fee tax/history and refund/report integration; do not rewrite historical sale VAT",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -103,7 +107,8 @@
         "src/test/desktop/manager-authorization.test.ts",
         "scripts/test-device-registry.mjs"
       ],
-      "next_action": "Perform deployed manager/cashier acceptance; device enrollment remains SEC-004"
+      "next_action": "Perform deployed manager/cashier acceptance; device enrollment remains SEC-004",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
@@ -122,7 +127,8 @@
         "PR58 post-merge CI/Windows 34799003789 and catalogue 34799003786 passed"
       ],
       "tests": [],
-      "next_action": "Further export scope under EXP-001; physical count retry is addressed by PR59"
+      "next_action": "Further export scope under EXP-001; physical count retry is addressed by PR59",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -140,7 +146,8 @@
         "All 18 PR60 post-merge gates green; CI/Windows 34906747216, recovery 34906747297"
       ],
       "tests": [],
-      "next_action": "Audit statement/history exports and larger streaming separately"
+      "next_action": "Audit statement/history exports and larger streaming separately",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -156,7 +163,8 @@
         "Customer credit backend exists; initial UI search did not find full credit workflows"
       ],
       "tests": [],
-      "next_action": "Trace routes and implement missing credit workflow integration; verify against RPCs"
+      "next_action": "Trace routes and implement missing credit workflow integration; verify against RPCs",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -172,7 +180,8 @@
         "Supplier subledger backend exists; initial supplier UI inspection shows profile/procurement focus"
       ],
       "tests": [],
-      "next_action": "Finish route audit and missing ledger payment/statement UI"
+      "next_action": "Finish route audit and missing ledger payment/statement UI",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -188,7 +197,8 @@
         "Stocktake/lot contracts exist; full management UI not established by current audit"
       ],
       "tests": [],
-      "next_action": "Trace inventory routes and complete missing operational integrations"
+      "next_action": "Trace inventory routes and complete missing operational integrations",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -204,7 +214,8 @@
         "No GitHub release observed; package version 1.0.0; release workflow dispatch/tag checks need full review"
       ],
       "tests": [],
-      "next_action": "Complete candidate/version/artifact/signing/updater/rollback verification; manual non-tag dispatch only builds a candidate, so no tag-publish bypass is claimed"
+      "next_action": "Complete candidate/version/artifact/signing/updater/rollback verification; manual non-tag dispatch only builds a candidate, so no tag-publish bypass is claimed",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "status": "BLOCKED \u2014 EXTERNAL",
@@ -220,7 +231,8 @@
         "Windows validation artifacts are explicitly unsigned"
       ],
       "tests": [],
-      "next_action": "Provide trusted signing credentials and execute signed release acceptance"
+      "next_action": "Provide trusted signing credentials and execute signed release acceptance",
+      "workflow_state": "BLOCKED_EXTERNAL"
     },
     {
       "status": "BLOCKED \u2014 EXTERNAL",
@@ -236,7 +248,8 @@
         "No scanner/printer/drawer/Windows target is connected in this environment"
       ],
       "tests": [],
-      "next_action": "Execute hardware and updater acceptance procedures"
+      "next_action": "Execute hardware and updater acceptance procedures",
+      "workflow_state": "BLOCKED_EXTERNAL"
     },
     {
       "status": "BLOCKED \u2014 EXTERNAL",
@@ -252,7 +265,8 @@
         "Main was observed unprotected; connector cannot administer branch protection"
       ],
       "tests": [],
-      "next_action": "Administrator configures required status checks and branch protections"
+      "next_action": "Administrator configures required status checks and branch protections",
+      "workflow_state": "BLOCKED_EXTERNAL"
     },
     {
       "status": "PARTIALLY COMPLETE",
@@ -268,7 +282,8 @@
         "Current audit discovered collection and desktop defects despite old readiness claims"
       ],
       "tests": [],
-      "next_action": "Complete remaining domain, scale, offline, release, authorization and failure-mode audits after each merge"
+      "next_action": "Complete remaining domain, scale, offline, release, authorization and failure-mode audits after each merge",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "ID": "SEC-003",
@@ -290,7 +305,8 @@
       "commit": "a08acde08d066650513f6310c5cd248dbbbe525a",
       "merge_sha": "895e9b97c75f52fce1dd44c90914b1f0973e15c3",
       "external_dependency": null,
-      "next_action": "Validate supported transport on store hardware"
+      "next_action": "Validate supported transport on store hardware",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "SEC-004",
@@ -299,16 +315,22 @@
       "status": "PARTIALLY COMPLETE",
       "invariant": "Revoked/unauthorized terminals cannot bypass device policy using a renderer-controlled identity",
       "evidence": [
-        "Device heartbeat identity originates in renderer deviceIdentity; native manager verification proves operator role, not hardware enrollment"
+        "Device heartbeat identity originates in renderer deviceIdentity; native manager verification proves operator role, not hardware enrollment",
+        "RED35188046578 job105094272848 at54ba0b93f34efaa543ea26cdbcd791dc0b212653: old heartbeat revoked; replacement UID accepted; revoked-UID checkout committed one sale,1000 cash fils and stock2.000->1.000. Valid in-branch cashier, not anonymous or cross-tenant access."
       ],
       "tests": [
-        "scripts/test-device-registry.mjs"
+        "scripts/test-trusted-device-enforcement-postgres.mjs"
       ],
-      "PR": null,
-      "commit": null,
+      "PR": 66,
+      "commit": "955e1da34861118233be3241acbc6024bf450aec",
       "merge_sha": null,
       "external_dependency": null,
-      "next_action": "Audit actual checkout/native enforcement and define enrolled-device/offline revocation boundary; implement missing repository enforcement"
+      "next_action": "Review/authorize proposed native-held device credential and offline policy in PR66 TRUSTED_DEVICE_ENFORCEMENT.md before architectural implementation",
+      "workflow_state": "REPRODUCED",
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "working_branch": "test/trusted-device-enforcement",
+      "root_cause": "Renderer UID is a public mutable label; cashier heartbeat creates a replacement row and checkout requires no verified device credential.",
+      "authorization_requirements": "Explicit architecture approval under master directive step5; merge approval separately"
     },
     {
       "ID": "INV-RETRY-001",
@@ -330,7 +352,8 @@
       "commit": "80029799eccd34ee74028a54759b44c59b5a6663",
       "merge_sha": "cfcd0228998c937f77e1afb13a931f51ce82e439",
       "external_dependency": null,
-      "next_action": "Reconcile ambiguous imports from older clients before retrying them; deployed operator acceptance"
+      "next_action": "Reconcile ambiguous imports from older clients before retrying them; deployed operator acceptance",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "CASH-001",
@@ -352,7 +375,8 @@
       "commit": "386edcfbcb6e608878d6531138996517a132f379",
       "merge_sha": "77e64793e473c769af988dcce15e91483c5fdbfa",
       "external_dependency": null,
-      "next_action": "Deployed cashier/manager acceptance; lifecycle replay tracked separately in CASH-002"
+      "next_action": "Deployed cashier/manager acceptance; lifecycle replay tracked separately in CASH-002",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "CASH-002",
@@ -364,7 +388,8 @@
         "Cash.tsx invokes legacy add_cash_movement without an operation ID; the server inserts a new movement on each call",
         "PostgreSQL RED 34908245777 reproduced one physical 1001-fils float recorded twice as 2002 fils",
         "PR62 all 18 exact-head workflows green; CI/Windows 35109570113, recovery 35109570209; local 236 tests; PR62 merged",
-        "Additional PostgreSQL RED 35109251053 proved cross-actor replay; actor binding and UI recovery hardening verified"
+        "Additional PostgreSQL RED 35109251053 proved cross-actor replay; actor binding and UI recovery hardening verified",
+        "PR62 post-merge all 18 workflows passed; CI/Windows 35110388715 and recovery 35110388832. Legacy-source observation above describes the reproduced baseline, not current main."
       ],
       "tests": [
         "scripts/test-cash-replay-postgres.mjs",
@@ -374,7 +399,8 @@
       "commit": "4d509d721061a56353ee873602ecff90b9148961",
       "merge_sha": "a9ac4e42213887213eb4cbb03c617b754587e2c7",
       "external_dependency": null,
-      "next_action": "Verify PR62 post-merge gates; implement opening/closing session operation identity and durable recovery; current input/account defects tracked in CASH-004"
+      "next_action": "Manual cash movements verified post-merge. Opening/closing lifecycle is CASH-002B; physical custody acceptance remains.",
+      "workflow_state": "VERIFIED_POST_MERGE"
     },
     {
       "ID": "CASH-003",
@@ -390,27 +416,673 @@
       "commit": null,
       "merge_sha": null,
       "external_dependency": null,
-      "next_action": "Define and implement explicit receiving/paying-session settlement commands before enabling UI collection workflows"
+      "next_action": "Define and implement explicit receiving/paying-session settlement commands before enabling UI collection workflows",
+      "workflow_state": "INVESTIGATING"
     },
     {
       "ID": "CASH-004",
       "domain": "Cash session input and active-account authorization",
       "severity": "P0",
-      "status": "PARTIALLY COMPLETE",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
       "invariant": "Opening and blind counts are explicit exact fils, with current active branch/account authority and atomic audit",
       "evidence": [
         "PostgreSQL RED 35110071684 reproduced sub-fils/negative/missing opening input, banned opening/closing, inactive branch opening and omitted close buckets",
-        "Three UI RED checks reproduced typed-input rounding and implicit zero counts"
+        "Three UI RED checks reproduced typed-input rounding and implicit zero counts",
+        "PR63 all 18 exact-head workflow families green; CI/Windows 35110609116. Post-merge CI/Windows 35158977078 and recovery 35158977547 passed."
       ],
       "tests": [
         "scripts/test-cash-session-boundaries-postgres.mjs",
         "src/test/cash-session-input-ui.test.tsx"
       ],
       "PR": 63,
+      "commit": "602ab832d6148e9c4ec6519cba0d3a8189349e2e",
+      "merge_sha": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "external_dependency": null,
+      "next_action": "Deployed operator acceptance; lifecycle identity tracked separately in CASH-002B",
+      "workflow_state": "VERIFIED_POST_MERGE"
+    },
+    {
+      "ID": "DESKTOP-RECOVERY-001",
+      "domain": "Desktop recovery runtime",
+      "severity": "P1",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "workflow_state": "AWAITING_AUTHORIZATION",
+      "invariant": "Actual Electron file-origin windows share a persistent journal and exclusive Web Locks",
+      "PR": 64,
+      "commit": "8eabeda28ac6f8074a56edf8ef7d1adeb1623c54",
+      "merge_sha": null,
+      "evidence": [
+        "CI35159156896 passed; Windows job105006353517 logged PASS for cross-window exclusion, shared exact draft, renderer reload and destroyed-renderer lock release. Electron42.11.2 / Chromium148.0.7778.280. Tested merge9170a69434d30b7beceba3d30e9bf2c5d55af8aa tree equals PR head tree e1306fcf1936dbf4fcede8a9edcf8d0331b5f8cc."
+      ],
+      "tests": [
+        "scripts/test-desktop-cash-recovery.cjs"
+      ],
+      "artifacts": [
+        {
+          "id": 10472491339,
+          "name": "ZAIPOS-9170a69434d30b7beceba3d30e9bf2c5d55af8aa-windows-validation",
+          "sha256": "89ebac13511f495765309da5585d6af33856903dda9e5130859c9cc2b0586558",
+          "limitation": "Unsigned validation archive, not a signed production installer"
+        }
+      ],
+      "external_dependency": "Physical power-loss/device acceptance; explicit merge authorization",
+      "next_action": "Review and authorize PR64 merge; then verify post-merge gates"
+    },
+    {
+      "ID": "CASH-002B",
+      "domain": "Cash session lifecycle",
+      "severity": "P0",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "workflow_state": "VERIFIED_CI",
+      "invariant": "One persisted actor/payload-bound opening or closing identity converges across retries without creating another session or rewriting historical counts",
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "working_branch": "fix/cash-session-lifecycle",
+      "root_cause": "Legacy session calls have no operation identity; replay after intervening closure creates a second session. Client sends before persisting intent.",
+      "PR": 65,
+      "commit": "e97245ae94fca6019528940e220da3c959212c33",
+      "merge_sha": null,
+      "evidence": [
+        "PostgreSQL RED35187126061 at32c4d104cad08a9af7daebd86b37f6708bfa504b returned a different session after closing the original.",
+        "Focused local tests:26 passed across session UI/journal and existing cash movement recovery; SQL/CI pending.",
+        "All 18 workflows passed at e97245ae94fca6019528940e220da3c959212c33; CI/Windows35187830882, seeded backup/restore35187830861. Real lifecycle contract passed in job105093620854.",
+        "Local npm test:250 tests across52 files passed; npm run lint:zero errors (13 pre-existing warnings); production build passed. Additional close-remount/corrupt-UI checks:7 UI tests passed.",
+        "PR67 repaired UUID regression and preserved conflict recovery. CI35237634656 passed at75b4ba32a72cb2f981888bc287d788ba8a8df775. Integrated development source retains all PR65 migrations and server contracts."
+      ],
+      "tests": [
+        "scripts/test-cash-session-lifecycle-postgres.mjs",
+        "scripts/test-cash-session-boundaries-postgres.mjs",
+        "scripts/test-backup-restore-contract.mjs",
+        "src/test/cash-session-input-ui.test.tsx",
+        "src/test/cash-session-recovery.test.ts"
+      ],
+      "external_dependency": "Explicit merge authorization; deployed operator and physical power-loss acceptance",
+      "next_action": "Verify combined PR65 integration head before requesting main merge authorization; no production deployment acceptance claimed"
+    },
+    {
+      "ID": "AUD-DB",
+      "domain": "db",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Reconcile fresh and realistic upgrade migration coverage, drift, ownership/grants/RLS, hardened definers, FK integrity and recovery procedure. Extend tests only for uncovered paths.",
+      "invariant": "Reconcile fresh and realistic upgrade migration coverage, drift, ownership/grants/RLS, hardened definers, FK integrity and recovery procedure. Extend tests only for uncovered paths.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
       "commit": null,
       "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-TXN",
+      "domain": "txn",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Trace checkout, split payment, discounts/overrides, returns/refunds/voids and held carts through before-call, commit/response-loss, crash/retry and adversarial concurrency boundaries.",
+      "invariant": "Trace checkout, split payment, discounts/overrides, returns/refunds/voids and held carts through before-call, commit/response-loss, crash/retry and adversarial concurrency boundaries.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-OFFLINE",
+      "domain": "offline",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Prove queue persistence/restart, ordering, replay, partial sync, stale prices/stock, corruption and reconnection; simulate power loss where feasible and isolate physical acceptance.",
+      "invariant": "Prove queue persistence/restart, ordering, replay, partial sync, stale prices/stock, corruption and reconnection; simulate power loss where feasible and isolate physical acceptance.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-MULTI",
+      "domain": "multi",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Reconcile actual Electron/Dexie/Supabase multi-terminal architecture, default versus named register selection, terminal identity and CAP/double-sell boundaries. Do not invent a LAN hub requirement.",
+      "invariant": "Reconcile actual Electron/Dexie/Supabase multi-terminal architecture, default versus named register selection, terminal identity and CAP/double-sell boundaries. Do not invent a LAN hub requirement.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-INVENTORY",
+      "domain": "inventory",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Trace receiving, adjustments, transfers, negative-stock policy, lots/FEFO/expiry, damage/waste/shrinkage, stocktake, valuation/reconciliation and stock alerts end to end.",
+      "invariant": "Trace receiving, adjustments, transfers, negative-stock policy, lots/FEFO/expiry, damage/waste/shrinkage, stocktake, valuation/reconciliation and stock alerts end to end.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-SUPPLIER",
+      "domain": "supplier",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify partial/full/over receipt, PO cancellation, supplier invoice references, credit notes/returns, payment allocation, ageing, branch scope and immutable cost provenance.",
+      "invariant": "Verify partial/full/over receipt, PO cancellation, supplier invoice references, credit notes/returns, payment allocation, ageing, branch scope and immutable cost provenance.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-CUSTOMER",
+      "domain": "customer",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify contact/address/archive/privacy, phone/duplicate handling, sale/return/delivery history, loyalty reversal, credit limits and overpayment rejection.",
+      "invariant": "Verify contact/address/archive/privacy, phone/duplicate handling, sale/return/delivery history, loyalty reversal, credit limits and overpayment rejection.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-CATALOGUE",
+      "domain": "catalogue",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify barcode collisions/merges/source aliases, units/packaging, status/archive, exact costs/history, channel/branch prices and realistic search/import/export scale.",
+      "invariant": "Verify barcode collisions/merges/source aliases, units/packaging, status/archive, exact costs/history, channel/branch prices and realistic search/import/export scale.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-REPORTS",
+      "domain": "reports",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Map each displayed sales/payment/VAT/discount/COGS/margin/inventory/supplier/customer/till/channel figure to exact persisted evidence and drill-down; remove fabricated or unsupported values.",
+      "invariant": "Map each displayed sales/payment/VAT/discount/COGS/margin/inventory/supplier/customer/till/channel figure to exact persisted evidence and drill-down; remove fabricated or unsupported values.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-OWNER-AI",
+      "domain": "owner-ai",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify existing Owner Intelligence/ZanAI findings are read-only and trace to scope, time window, source IDs, calculation, confidence and BHD impact. Add only justified evidence-backed findings after reporting authority.",
+      "invariant": "Verify existing Owner Intelligence/ZanAI findings are read-only and trace to scope, time window, source IDs, calculation, confidence and BHD impact. Add only justified evidence-backed findings after reporting authority.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-CHANNELS",
+      "domain": "channels",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify physical POS/tables/Talabat/WhatsApp/delivery retained workflows and payment reconciliation; remove misleading dead UI where no backend exists. External provider automation is credential-dependent.",
+      "invariant": "Verify physical POS/tables/Talabat/WhatsApp/delivery retained workflows and payment reconciliation; remove misleading dead UI where no backend exists. External provider automation is credential-dependent.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-RECEIPT",
+      "domain": "receipt",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify historical receipt/reprint content, payment/refund breakdown, identity/reference, printer errors/retry/duplicate-print behavior; run physical acceptance separately.",
+      "invariant": "Verify historical receipt/reprint content, payment/refund breakdown, identity/reference, printer errors/retry/duplicate-print behavior; run physical acceptance separately.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-TILL",
+      "domain": "till",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Trace every cash-affecting sale/refund/delivery/repayment/withdrawal/correction path; prove immutable session reconstruction, counts, discrepancies, manager boundaries and forced/crash close.",
+      "invariant": "Trace every cash-affecting sale/refund/delivery/repayment/withdrawal/correction path; prove immutable session reconstruction, counts, discrepancies, manager boundaries and forced/crash close.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-AUTH",
+      "domain": "auth",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Complete privileged-action matrix for every role, tenant/branch, inactive/deleted/banned account, direct write, replay/payload substitution, stale role and missing session.",
+      "invariant": "Complete privileged-action matrix for every role, tenant/branch, inactive/deleted/banned account, direct write, replay/payload substitution, stale role and missing session.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-DEVICE",
+      "domain": "device",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Review PIN/session/idle lock, local secrets/data, debug surfaces, IPC exposure, CSP/navigation, settings/updater trust and revocation. Existing desktop/native hardening does not certify enrollment.",
+      "invariant": "Review PIN/session/idle lock, local secrets/data, debug surfaces, IPC exposure, CSP/navigation, settings/updater trust and revocation. Existing desktop/native hardening does not certify enrollment.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-DR",
+      "domain": "dr",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Extend beyond passing backup/restore contracts for remaining permission/tool/disk/operator/interruption cases; reconcile responsibilities and managed Auth/Storage/offline queue boundaries.",
+      "invariant": "Extend beyond passing backup/restore contracts for remaining permission/tool/disk/operator/interruption cases; reconcile responsibilities and managed Auth/Storage/offline queue boundaries.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-OBS",
+      "domain": "obs",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify useful non-secret structured diagnostics and correlation/operation IDs across client, DB, sync, native devices, updater and backup failures.",
+      "invariant": "Verify useful non-secret structured diagnostics and correlation/operation IDs across client, DB, sync, native devices, updater and backup failures.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-PERF",
+      "domain": "perf",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Measure representative barcode/search/checkout/report/stock/import/duplicate detection/customer/supplier statement workloads at realistic scale; fix demonstrated bottlenecks, document measured limits.",
+      "invariant": "Measure representative barcode/search/checkout/report/stock/import/duplicate detection/customer/supplier statement workloads at realistic scale; fix demonstrated bottlenecks, document measured limits.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-WINDOWS",
+      "domain": "windows",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Verify installer/update/downgrade/restart/crash/user-data preservation/channel trust and cleanup; distinguish unsigned CI packaging from signed and physical acceptance.",
+      "invariant": "Verify installer/update/downgrade/restart/crash/user-data preservation/channel trust and cleanup; distinguish unsigned CI packaging from signed and physical acceptance.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-SECURITY",
+      "domain": "security",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Finish adversarial SQL/XSS/path/IPC/RLS/definer/supply-chain/secrets/session/tampering review; reproduce and close repository-fixable critical/high findings.",
+      "invariant": "Finish adversarial SQL/XSS/path/IPC/RLS/definer/supply-chain/secrets/session/tampering review; reproduce and close repository-fixable critical/high findings.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-UX",
+      "domain": "ux",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Complete cashier keyboard/touch/barcode/loading/error/offline/retry/approval/accessibility/empty-state/long-name/three-decimal and supported-language acceptance.",
+      "invariant": "Complete cashier keyboard/touch/barcode/loading/error/offline/retry/approval/accessibility/empty-state/long-name/three-decimal and supported-language acceptance.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-IMPORT",
+      "domain": "import",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Finish malformed/duplicate/oversized/negative/Unicode/category/supplier/repeated-operation/payload-mutation import checks; preserve atomicity and formula-safe export boundaries.",
+      "invariant": "Finish malformed/duplicate/oversized/negative/Unicode/category/supplier/repeated-operation/payload-mutation import checks; preserve atomicity and formula-safe export boundaries.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-HISTORY",
+      "domain": "history",
+      "severity": "P0",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Add or reconcile consistency checks for sales/lines/payments/refunds, inventory/movements, supplier and credit/loyalty balances; investigate discrepancies without rewriting history.",
+      "invariant": "Add or reconcile consistency checks for sales/lines/payments/refunds, inventory/movements, supplier and credit/loyalty balances; investigate discrepancies without rewriting history.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-HYGIENE",
+      "domain": "hygiene",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Reconcile all active PRs/branches and prove unique work before closing/deleting obsolete branches; keep README/architecture/operator/release/DR docs and ledger current.",
+      "invariant": "Reconcile all active PRs/branches and prove unique work before closing/deleting obsolete branches; keep README/architecture/operator/release/DR docs and ledger current.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "AUD-FINAL",
+      "domain": "final",
+      "severity": "P1",
+      "status": "NOT STARTED",
+      "workflow_state": "NOT_STARTED",
+      "classification": "UNVERIFIED",
+      "objective": "Re-audit the full declared production scope after merges; require zero executable P0/P1 items, exact-head/post-merge gates, evidence package and deployment/rollback/smoke checklists before readiness classification.",
+      "invariant": "Re-audit the full declared production scope after merges; require zero executable P0/P1 items, exact-head/post-merge gates, evidence package and deployment/rollback/smoke checklists before readiness classification.",
+      "evidence": [
+        "Required audit in REMAINING_TASKS.md; existing domain contracts do not alone certify exhaustive audit completion."
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "baseline": "f7926fa2ddfe83b41a1549c6208b21e06495eba7",
+      "root_cause": "UNKNOWN \u2014 audit obligation is not a reproduced defect",
+      "external_dependency": "Domain-specific physical or credential acceptance where applicable",
+      "next_action": "Trace current source and existing evidence; identify missing acceptance coverage before changing implementation"
+    },
+    {
+      "ID": "EXT-PROD-DR",
+      "domain": "External acceptance",
+      "severity": "P1",
+      "status": "BLOCKED \u2014 EXTERNAL",
+      "workflow_state": "BLOCKED_EXTERNAL",
+      "invariant": "Production Supabase/Auth/Storage credentials and approved encrypted offsite restore rehearsal",
+      "evidence": [
+        "No live operational acceptance is established by repository CI"
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": "Production Supabase/Auth/Storage credentials and approved encrypted offsite restore rehearsal",
+      "next_action": "Provide the required resource; preserve repository-side test and runbook evidence"
+    },
+    {
+      "ID": "EXT-PROVIDERS",
+      "domain": "External acceptance",
+      "severity": "P1",
+      "status": "BLOCKED \u2014 EXTERNAL",
+      "workflow_state": "BLOCKED_EXTERNAL",
+      "invariant": "Credentials and live acceptance for retained provider integrations",
+      "evidence": [
+        "No live operational acceptance is established by repository CI"
+      ],
+      "tests": [],
+      "PR": null,
+      "commit": null,
+      "merge_sha": null,
+      "external_dependency": "Credentials and live acceptance for retained provider integrations",
+      "next_action": "Provide the required resource; preserve repository-side test and runbook evidence"
+    },
+    {
+      "ID": "CASH-002B-CONFLICT",
+      "domain": "Cash session conflict recovery",
+      "severity": "P0",
+      "status": "FUNCTIONALLY COMPLETE WITH LIMITATIONS",
+      "workflow_state": "VERIFIED_CI",
+      "baseline": "cc5b30a01803b51fa6eec9ba03ccf189fded340a",
+      "working_branch": "fix/cash-session-conflict-reconciliation",
+      "invariant": "Valid UUIDs reach recovery; unresolved conflicts retain their original identity until a matching server receipt is verified",
+      "root_cause": "PR67 accidentally removed a UUID group; its acknowledgement guard also contradicted an older rejection-clearing test and UI flow",
+      "evidence": [
+        "CI35211472796:14 tests failed; reproduced locally on exact repair baseline",
+        "Standard UUID validator restored without weakening malformed-input rejection;20 focused local tests passed",
+        "CI35237634656 passed quality and Windows packaging on repair75b4ba32a72cb2f981888bc287d788ba8a8df775;256 tests/53 files passed; tested merge276d6b9d665aa5b051656d251df6edb67da72274 has identical tree d1d1a6f1afa78ae429c091f4f9744cce25d58751."
+      ],
+      "tests": [
+        "src/test/cash-session-conflict-reconciliation.test.ts",
+        "src/test/cash-session-recovery.test.ts",
+        "src/test/cash-session-input-ui.test.tsx"
+      ],
+      "PR": 67,
+      "commit": "75b4ba32a72cb2f981888bc287d788ba8a8df775",
+      "merge_sha": null,
       "external_dependency": null,
-      "next_action": "Verify exact-head authority/precision/concurrency/failure contracts and regression before merge; session replay identity remains CASH-002"
+      "next_action": "Integrate the verified repair into PR65, verify combined CI, then obtain separate main merge authorization"
     }
-  ]
+  ],
+  "workflow_state_note": "workflow_state tracks execution separately from status (production-readiness classification). Historical evidence is retained; later dated/head-specific entries supersede stale observations."
 }
