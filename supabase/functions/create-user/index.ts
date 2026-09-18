@@ -53,6 +53,19 @@ Deno.serve(async (req) => {
     const isAdmin = (callerRoles ?? []).some((r: any) => ["owner", "admin", "super_admin"].includes(r.role));
     if (!isAdmin) return json({ error: "Forbidden: solo owner/admin pueden crear users" }, 403);
 
+    // Service-role writes bypass RLS. Verify the requested branch belongs to the
+    // authorized tenant before creating an auth user or assigning any role.
+    if (branch_id !== null && branch_id !== undefined) {
+      const { data: branch, error: branchError } = await admin
+        .from("branches")
+        .select("id")
+        .eq("id", branch_id)
+        .eq("tenant_id", tenant_id)
+        .maybeSingle();
+      if (branchError) return json({ error: "Unable to verify branch authorization" }, 500);
+      if (!branch) return json({ error: "Forbidden: branch does not belong to tenant" }, 403);
+    }
+
     // Check existing profile by email
     const { data: existingProfile } = await admin
       .from("profiles")
