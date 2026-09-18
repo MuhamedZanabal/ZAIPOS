@@ -1,4 +1,5 @@
 -- P0: a heartbeat may refresh runtime metadata, but must never move an existing device_uid to another branch.
+-- The conflict WHERE also protects the absent-row race between concurrent first heartbeats.
 BEGIN;
 CREATE OR REPLACE FUNCTION public.register_device_heartbeat(_tenant_id uuid,_branch_id uuid,_device_uid text,_app_version text,_os text,_update_channel text DEFAULT 'stable',_update_state text DEFAULT 'current',_capabilities jsonb DEFAULT '{}'::jsonb)
 RETURNS public.devices LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $function$
@@ -15,7 +16,9 @@ BEGIN
  INSERT INTO public.devices(tenant_id,branch_id,device_uid,app_version,os,update_channel,update_state,capabilities,last_seen_at,updated_at)
  VALUES(_tenant_id,_branch_id,_device_uid,_app_version,_os,_update_channel,_update_state,COALESCE(_capabilities,'{}'::jsonb),now(),now())
  ON CONFLICT(tenant_id,device_uid) DO UPDATE SET app_version=EXCLUDED.app_version,os=EXCLUDED.os,update_channel=EXCLUDED.update_channel,update_state=EXCLUDED.update_state,capabilities=EXCLUDED.capabilities,last_seen_at=now(),updated_at=now()
+ WHERE devices.branch_id = EXCLUDED.branch_id AND devices.revoked_at IS NULL
  RETURNING * INTO result;
+ IF result.id IS NULL THEN RAISE EXCEPTION 'Device branch binding or revocation conflict' USING ERRCODE='42501'; END IF;
  RETURN result;
 END $function$;
 REVOKE ALL ON FUNCTION public.register_device_heartbeat(uuid,uuid,text,text,text,text,text,jsonb) FROM PUBLIC,anon;
