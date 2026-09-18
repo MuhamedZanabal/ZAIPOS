@@ -5,6 +5,7 @@ import { scanSource } from './test-authorization-surface-census.mjs';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const contract = JSON.parse(read('./authorization-permission-contract.json'));
+const baseline = JSON.parse(read('./authorization-surface-baseline.json'));
 const expectedRoles = ['super_admin','owner','admin','manager','cashier','waiter','kitchen','inventory','courier','staff'];
 const expectedDimensions = ['role','tenant','branch','account_state','session_state','device_state','operation_identity'];
 const expectedKinds = ['application-route','data-export','edge-function','ipc-main','ipc-renderer','rpc-client'];
@@ -52,7 +53,6 @@ test('every currently discovered application route has one explicit UI policy de
 
 test('declared route UI roles match current route guards without claiming server enforcement', () => {
   assert.ok(rules.length > 0, 'role source parsing must not silently yield no guards');
-  // Spell the JSX tag with a character class to avoid the lexical census mistaking this test regex for an application route.
   const publicInSource = [...app.slice(0, app.indexOf('<Route element={<ProtectedRoute />}>')).matchAll(/<Rout[e]\s+path="([^"]+)"/g)].map(match => match[1]);
   assert.ok(publicInSource.length > 0, 'protected route wrapper not detected');
   assert.deepEqual(publicInSource.sort(), [...publicRoutes].filter(path => path !== '*').sort(), 'unexpected unauthenticated route');
@@ -71,4 +71,19 @@ test('declared route UI roles match current route guards without claiming server
       assert.equal(declared.super_admin_bypass, true, `${path}: super_admin UI override must be explicit`);
     }
   }
+});
+
+test('authorization certification cannot become verified while required census kinds remain unclassified', () => {
+  const declaredCounts = Object.keys(contract.surfaces).reduce((counts, key) => {
+    const kind = key.split('|', 1)[0];
+    counts[kind] = (counts[kind] ?? 0) + 1;
+    return counts;
+  }, {});
+  const incomplete = contract.required_surface_kinds.filter(kind => {
+    const expected = baseline.kinds?.[kind]?.count;
+    assert.ok(Number.isSafeInteger(expected) && expected > 0, `${kind}: missing census baseline`);
+    return (declaredCounts[kind] ?? 0) < expected;
+  });
+  assert.ok(incomplete.length > 0, 'this guard must be updated deliberately when classification reaches full census coverage');
+  assert.notEqual(contract.status, 'verified', `cannot certify authorization with unclassified required kinds: ${incomplete.join(', ')}`);
 });
