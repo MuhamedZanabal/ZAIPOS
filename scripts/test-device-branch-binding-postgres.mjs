@@ -44,4 +44,23 @@ const record = sql(`SELECT branch_id::text || '|' || app_version
  FROM public.devices WHERE id='${id}'::uuid`);
 assert.equal(rejected, true, 'A cashier assigned to two branches must not rebind an existing device UID by heartbeat');
 assert.equal(record, `${firstBranch}|1.0.0`, 'Rejected rebinding must preserve both original branch and heartbeat metadata');
-console.log('PASS: authenticated heartbeat cannot rebind an existing device across branches or mutate its metadata.');
+
+const sameBranchId = authenticated(heartbeat(firstBranch, '1.0.1'));
+assert.equal(sameBranchId, id, 'Same-branch heartbeat must retain device identity');
+assert.equal(sql(`SELECT branch_id::text || '|' || app_version FROM public.devices WHERE id='${id}'::uuid`),
+  `${firstBranch}|1.0.1`, 'Same-branch heartbeat must update metadata without changing branch');
+
+sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${id}'::uuid`);
+let revokedRejected = false;
+try {
+  authenticated(heartbeat(firstBranch, '9.9.9'));
+} catch (error) {
+  const text = String(error.stderr ?? error.message ?? error);
+  if (!/revok/i.test(text)) throw error;
+  revokedRejected = true;
+}
+assert.equal(revokedRejected, true, 'Revoked device must reject same-branch heartbeat');
+assert.equal(sql(`SELECT branch_id::text || '|' || app_version || '|' || (revoked_at IS NOT NULL)::text
+ FROM public.devices WHERE id='${id}'::uuid`), `${firstBranch}|1.0.1|true`,
+'Revoked heartbeat must preserve branch, metadata and revocation');
+console.log('PASS: branch rebinding denied; same-branch metadata refresh preserved; revoked heartbeat denied without mutation.');
