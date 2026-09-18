@@ -25,6 +25,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Test route permission segment boundaries
+        run: npx vitest run src/lib/roles-boundary.test.ts
       - name: Test census drift and permission-contract guards
         run: node --test scripts/authorization-census-guard.test.mjs scripts/authorization-surface-census.test.mjs scripts/authorization-permission-contract.test.mjs
       - name: Enumerate authorization-sensitive surfaces
