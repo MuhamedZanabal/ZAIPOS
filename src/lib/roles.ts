@@ -70,7 +70,7 @@ export function canAccessRoles(userRoles: string[], required?: AppRole[]) {
 export function rolesForPath(pathname: string): AppRole[] | undefined {
   if (pathname === "/onboarding") return undefined;
   const match = ROUTE_ROLES
-    .filter((rule) => pathname === rule.prefix || (rule.prefix !== "/" && pathname.startsWith(rule.prefix)))
+    .filter((rule) => pathname === rule.prefix || (rule.prefix !== "/" && pathname.startsWith(`${rule.prefix}/`)))
     .sort((a, b) => b.prefix.length - a.prefix.length)[0];
   return match?.roles;
 }
