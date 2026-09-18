@@ -63,4 +63,14 @@ assert.equal(revokedRejected, true, 'Revoked device must reject same-branch hear
 assert.equal(sql(`SELECT branch_id::text || '|' || app_version || '|' || (revoked_at IS NOT NULL)::text
  FROM public.devices WHERE id='${id}'::uuid`), `${firstBranch}|1.0.1|true`,
 'Revoked heartbeat must preserve branch, metadata and revocation');
-console.log('PASS: branch rebinding denied; same-branch metadata refresh preserved; revoked heartbeat denied without mutation.');
+
+// The pre-insert SELECT cannot lock an absent UID. A concurrent first registration
+// can win the unique-index race after that SELECT, so the conflict path itself
+// must recheck branch and revocation and turn a rejected conflict into an error.
+const definition = sql(`SELECT pg_get_functiondef('public.register_device_heartbeat(uuid,uuid,text,text,text,text,text,jsonb)'::regprocedure)`);
+assert.match(definition,
+  /ON CONFLICT\s*\(tenant_id,\s*device_uid\)\s*DO UPDATE SET[\s\S]*?\bWHERE\s+(?:public\.)?devices\.branch_id\s*=\s*EXCLUDED\.branch_id\s+AND\s+(?:public\.)?devices\.revoked_at\s+IS NULL/i,
+  'Concurrent first registration must enforce branch and revocation in the atomic conflict update');
+assert.match(definition, /IF result\.id IS NULL THEN\s*RAISE EXCEPTION/i,
+  'Rejected conflict must raise rather than return an empty successful heartbeat');
+console.log('PASS: branch rebinding denied; same-branch refresh preserved; revoked heartbeat denied; atomic conflict authorization guarded.');
