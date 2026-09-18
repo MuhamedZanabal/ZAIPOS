@@ -15,6 +15,7 @@ on:
       - 'scripts/test-business-export-authorization-postgres.mjs'
       - 'scripts/test-create-user-branch-authorization.mjs'
       - 'scripts/test-evolution-webhook-authentication.mjs'
+      - 'scripts/test-send-whatsapp-authorization.mjs'
       - '.github/workflows/authorization-surface-census.yml'
   workflow_dispatch:
 jobs:
@@ -51,6 +52,8 @@ jobs:
         run: node --test scripts/test-create-user-branch-authorization.mjs
       - name: Verify Evolution webhook authentication
         run: node --test scripts/test-evolution-webhook-authentication.mjs
+      - name: Verify WhatsApp authorization boundary
+        run: node scripts/test-send-whatsapp-authorization.mjs
       - name: Test route permission segment boundaries
         run: npx vitest run src/lib/roles-boundary.test.ts
       - name: Test census drift and permission-contract guards
