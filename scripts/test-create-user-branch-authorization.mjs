@@ -9,7 +9,7 @@ const compiled = ts.transpileModule(source.replace(/^import\s+\{\s*createClient\
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
 
-async function invoke({ branchId = 'branch-a', branchTenant = 'tenant-a', branchError = null, role = 'cashier' } = {}) {
+async function invoke({ branchId = 'branch-a', branchTenant = 'tenant-a', branchError = null, role = 'cashier', callerRole = 'owner', callerBranchId = null } = {}) {
   const calls = { branchLookup: 0, profileLookup: 0, created: 0, inserted: 0 };
   let handler;
   const admin = {
@@ -22,8 +22,8 @@ async function invoke({ branchId = 'branch-a', branchTenant = 'tenant-a', branch
         eq(key, value) { filters[key] = value; return this; },
         ilike() { return this; },
         then(resolve, reject) {
-          if (table !== 'user_roles' || selected !== 'role') throw new Error(`Unexpected awaited query: ${table}.${selected}`);
-          return Promise.resolve({ data: [{ role: 'owner' }], error: null }).then(resolve, reject);
+          if (table !== 'user_roles' || selected !== 'role,branch_id') throw new Error(`Unexpected awaited query: ${table}.${selected}`);
+          return Promise.resolve({ data: [{ role: callerRole, branch_id: callerBranchId }], error: null }).then(resolve, reject);
         },
         async maybeSingle() {
           if (table === 'branches') {
@@ -62,13 +62,35 @@ async function invoke({ branchId = 'branch-a', branchTenant = 'tenant-a', branch
   return { status: response.status, body: await response.json(), calls };
 }
 
-test('create-user permits an existing branch belonging to the requested tenant', async () => {
+test('create-user permits a tenant-wide owner for an existing tenant branch', async () => {
   const { status, calls } = await invoke();
   assert.equal(status, 200);
   assert.equal(calls.branchLookup, 1);
   assert.equal(calls.created, 1);
   assert.equal(calls.inserted, 1);
 });
+
+test('create-user permits a branch-scoped admin only in the same branch', async () => {
+  const { status, calls } = await invoke({ callerRole: 'admin', callerBranchId: 'branch-a' });
+  assert.equal(status, 200);
+  assert.equal(calls.created, 1);
+  assert.equal(calls.inserted, 1);
+});
+
+for (const [name, options] of [
+  ['branch-scoped owner targeting another branch', { callerBranchId: 'branch-b' }],
+  ['branch-scoped admin targeting another branch', { callerRole: 'admin', callerBranchId: 'branch-b' }],
+  ['manager caller', { callerRole: 'manager' }],
+]) {
+  test(`create-user rejects ${name} before branch lookup or mutation`, async () => {
+    const { status, calls } = await invoke(options);
+    assert.equal(status, 403);
+    assert.equal(calls.branchLookup, 0);
+    assert.equal(calls.profileLookup, 0);
+    assert.equal(calls.created, 0);
+    assert.equal(calls.inserted, 0);
+  });
+}
 
 for (const [name, options] of [
   ['foreign tenant branch', { branchTenant: 'tenant-b' }],
