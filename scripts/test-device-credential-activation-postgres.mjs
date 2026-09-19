@@ -41,4 +41,18 @@ assert.throws(() => sql(`SET ROLE service_role; SELECT * FROM public.activate_de
   'Consumed approval must be impossible to replay');
 assert.equal(sql(`SELECT count(*) FROM public.devices WHERE tenant_id='${tenant}' AND device_uid='${uid}'`), '1');
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${tenant}' AND action='device.enrollment_activated' AND metadata->>'device_id'='${deviceId}'`), '1');
-console.log('PASS: activation is privileged, single-use, server-generated, verifier-only at rest, and audited.');
+
+// A pending approval must cease to be authority if its approving manager loses
+// branch privileges before the privileged activation call. Denial is atomic.
+const staleUid = 'SEC004-stale-manager-approval';
+const staleApproval = asManager(`SELECT public.approve_device_enrollment('${tenant}','${branch}','${staleUid}')`);
+sql(`DELETE FROM public.user_roles WHERE user_id='${manager}' AND tenant_id='${tenant}' AND branch_id='${branch}'`);
+assert.throws(() => sql(`SET ROLE service_role; SELECT * FROM public.activate_device_enrollment('${staleApproval}','1.0.0','windows')`),
+  /authoriz|manager|approval|permission|denied/i, 'Revoked manager authority must invalidate pending activation');
+assert.equal(sql(`SELECT count(*) FROM public.devices WHERE tenant_id='${tenant}' AND device_uid='${staleUid}'`), '0',
+  'Rejected stale approval must not enroll a device');
+assert.equal(sql(`SELECT (consumed_at IS NULL)::text FROM public.device_enrollment_approvals WHERE id='${staleApproval}'`), 'true',
+  'Rejected stale approval must not be consumed');
+assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${tenant}' AND action='device.enrollment_activated' AND metadata->>'approval_id'='${staleApproval}'`), '0',
+  'Rejected stale approval must not emit a successful activation audit');
+console.log('PASS: activation is privileged, single-use, verifier-only at rest, audited, and revalidates manager authority.');
