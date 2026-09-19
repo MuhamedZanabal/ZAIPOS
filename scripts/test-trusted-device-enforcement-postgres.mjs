@@ -54,7 +54,7 @@ mark('credential-heartbeat');
 authAs(actor, heartbeat(original, credential), 'credential heartbeat');
 
 mark('revocation');
-sql(`UPDATE public.devices SET revoked_at=now(), is_active=false WHERE id='${device}'`, 'device revocation');
+sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${device}'`, 'device revocation');
 mark('revoked-heartbeat-rejection');
 assert.throws(() => authAs(actor, heartbeat(original, credential), 'revoked credential heartbeat'), /device credential rejected|revok|inactive/i,
   'A revoked credential must not refresh device authority');
