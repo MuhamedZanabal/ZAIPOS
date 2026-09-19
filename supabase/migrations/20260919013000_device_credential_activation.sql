@@ -59,15 +59,18 @@ BEGIN
       USING ERRCODE = '23505';
   END IF;
 
+  -- pgcrypto is installed by Supabase in the extensions schema. Qualify it
+  -- explicitly because this SECURITY DEFINER function intentionally uses a
+  -- restricted search_path and must not depend on caller-controlled resolution.
   -- 256 bits of server-generated entropy. Only its SHA-256 verifier is stored.
-  _credential := encode(gen_random_bytes(32), 'hex');
+  _credential := encode(extensions.gen_random_bytes(32), 'hex');
 
   INSERT INTO public.devices (
     tenant_id, branch_id, device_uid, app_version, os,
     credential_hash, credential_issued_at
   ) VALUES (
     _approval.tenant_id, _approval.branch_id, _approval.device_uid,
-    _app_version, _os, digest(_credential, 'sha256'), now()
+    _app_version, _os, extensions.digest(_credential, 'sha256'), now()
   ) RETURNING id INTO _device_id;
 
   UPDATE public.device_enrollment_approvals
