@@ -41,4 +41,20 @@ jobs:
       - name: Verify single-use credential activation
         run: node scripts/test-device-credential-activation-postgres.mjs
       - name: Verify enrolled and revoked device authority
-        run: node scripts/test-trusted-device-enforcement-postgres.mjs
+        id: enforcement
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-trusted-device-enforcement-postgres.mjs > trusted-device-enforcement.log 2>&1
+          status=$?
+          cat trusted-device-enforcement.log
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      - name: Preserve trusted-device enforcement diagnostics
+        if: failure() && steps.enforcement.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trusted-device-enforcement-failure-${{ github.sha }}
+          path: trusted-device-enforcement.log
+          if-no-files-found: error
+          retention-days: 2
