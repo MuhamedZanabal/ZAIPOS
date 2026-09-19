@@ -54,7 +54,7 @@ mark('credential-heartbeat');
 authAs(actor, heartbeat(original, credential), 'credential heartbeat');
 
 mark('revocation');
-sql(`UPDATE public.devices SET revoked_at=now(), is_active=false WHERE id='${device}'`, 'device revocation');
+sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${device}'`, 'device revocation');
 mark('revoked-heartbeat-rejection');
 assert.throws(() => authAs(actor, heartbeat(original, credential), 'revoked credential heartbeat'), /device credential rejected|revok|inactive/i,
   'A revoked credential must not refresh device authority');
@@ -64,14 +64,25 @@ assert.throws(() => authAs(actor, heartbeat(replacement, credential), 'copied cr
 
 const items = JSON.stringify([{ product_id: product, quantity: '1.000', discount_fils: 0 }]);
 const payments = JSON.stringify([{ method: 'cash', amount_fils: 1000, reference: null }]);
-let checkoutAccepted = false;
+const deviceCheckout = (uid, secret, mutationId) => `SELECT public.checkout_sale_v2_device('${tenant}','${branch}','${items}','${payments}',0,NULL,NULL,'pos',0,NULL,'${mutationId}','${session}','${uid}','${secret}')`;
 mark('checkout-after-revocation');
-try {
-  authAs(actor, `SELECT public.checkout_sale_v2('${tenant}','${branch}','${items}','${payments}',0,NULL,NULL,'pos',0,NULL,'${original}:checkout-after-revocation','${session}')`, 'checkout after revocation');
-  checkoutAccepted = true;
-} catch (error) {
-  if (!/device|enroll|revok|authoriz|permission/i.test(error.message)) throw error;
-}
+assert.throws(
+  () => authAs(actor, deviceCheckout(original, credential, `${original}:checkout-after-revocation`), 'checkout after revocation'),
+  /device credential rejected|device|revok|authoriz|permission/i,
+  'A revoked terminal must not submit checkout through the credential-bound RPC',
+);
+mark('copied-uid-checkout-rejection');
+assert.throws(
+  () => authAs(actor, deviceCheckout(replacement, credential, `${replacement}:copied-uid-checkout`), 'copied UID checkout'),
+  /device credential rejected|device|enroll|authoriz|permission/i,
+  'A copied UID must not submit checkout with another device credential',
+);
+mark('legacy-checkout-rejection');
+assert.throws(
+  () => authAs(actor, `SELECT public.checkout_sale_v2('${tenant}','${branch}','${items}','${payments}',0,NULL,NULL,'pos',0,NULL,'${original}:legacy-checkout','${session}')`, 'legacy checkout'),
+  /permission denied|not authorized|forbidden/i,
+  'Authenticated callers must not retain the credential-less checkout bypass',
+);
 
 mark('persistence-verification');
 const persisted = {
@@ -80,16 +91,9 @@ const persisted = {
   stock: sql(`SELECT quantity FROM public.inventory_stocks WHERE inventory_center_id='${center}' AND product_id='${product}'`, 'stock persistence check'),
   revoked: sql(`SELECT revoked_at IS NOT NULL FROM public.devices WHERE id='${device}'`, 'revocation persistence check'),
 };
-if (checkoutAccepted) {
-  assert.equal(persisted.sales, 1);
-  assert.equal(persisted.cash_fils, '1000');
-  assert.equal(persisted.stock, '1.000');
-} else {
-  assert.equal(persisted.sales, 0);
-  assert.equal(persisted.cash_fils, '0');
-  assert.equal(persisted.stock, '2.000');
-}
+assert.equal(persisted.sales, 0);
+assert.equal(persisted.cash_fils, '0');
+assert.equal(persisted.stock, '2.000');
 assert.equal(persisted.revoked, 't');
-console.log('SEC004_REPRODUCTION ' + JSON.stringify({ credentialHeartbeatAccepted: true, revokedHeartbeatRejected: true, replacementAccepted: false, checkoutAccepted, persisted }));
-assert.equal(checkoutAccepted, false, 'A revoked terminal must not submit a new checkout without valid device authority');
-console.log('PASS: credential lifecycle rejects copied/revoked heartbeat and revoked-terminal checkout.');
+console.log('SEC004_ENFORCEMENT ' + JSON.stringify({ credentialHeartbeatAccepted: true, revokedHeartbeatRejected: true, copiedUidRejected: true, revokedCheckoutRejected: true, legacyCheckoutRejected: true, persisted }));
+console.log('PASS: credential lifecycle rejects copied/revoked authority and legacy checkout bypass.');
