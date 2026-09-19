@@ -41,6 +41,27 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  -- Pending approval is not permanent authority: a removed/banned manager
+  -- must not be able to bootstrap a terminal via a privileged activation
+  -- service after losing the original tenant/branch entitlement.
+  IF NOT public.has_branch_role(
+    _approval.approved_by, _approval.tenant_id, _approval.branch_id,
+    ARRAY['owner', 'admin', 'manager']::public.app_role[]
+  ) OR NOT EXISTS (
+    SELECT 1 FROM auth.users u
+    WHERE u.id = _approval.approved_by AND u.deleted_at IS NULL
+      AND (u.banned_until IS NULL OR u.banned_until <= now())
+  ) OR EXISTS (
+    SELECT 1 FROM public.employees e
+    WHERE e.user_id = _approval.approved_by
+      AND e.tenant_id = _approval.tenant_id
+      AND (e.branch_id IS NULL OR e.branch_id = _approval.branch_id)
+      AND e.status = 'inactive'
+  ) THEN
+    RAISE EXCEPTION 'Approving manager is no longer authorized'
+      USING ERRCODE = '42501';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM public.branches b
     WHERE b.id = _approval.branch_id
