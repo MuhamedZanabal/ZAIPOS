@@ -28,8 +28,11 @@ const activated = scalar(`SET ROLE service_role; SELECT device_id::text || '|' |
 const [deviceId, activatedUid, credential] = activated.split('|');
 assertEqual('activation preserves device UID', activatedUid, uid);
 if (!/^[a-f\d]{64}$/i.test(credential)) throw new Error('activation did not return a 256-bit credential');
-const heartbeatSql = (branchId, deviceUid, secret = credential) => `SELECT (public.register_device_heartbeat('${deviceUid}','Device POS','${branchId}'::uuid,'${secret}')).id::text;`;
-assertEqual('credential heartbeat returns enrolled device', asAuthenticated(I.cashierA, heartbeatSql(I.branchA, uid)), deviceId);
+const heartbeatSql = (branchId, deviceUid, secret = credential) => `SELECT public.register_device_heartbeat('${deviceUid}','Device POS','${branchId}'::uuid,'${secret}');`;
+// Credential-bound heartbeat intentionally returns void, never a devices composite
+// containing credential_hash. Verify successful execution and persisted identity separately.
+asAuthenticated(I.cashierA, heartbeatSql(I.branchA, uid));
+assertEqual('credential heartbeat retains enrolled device', scalar(`SELECT count(*)::text FROM public.devices WHERE id='${deviceId}'::uuid AND device_uid='${uid}' AND last_seen_at IS NOT NULL;`), '1');
 expectReject('wrong-branch heartbeat', I.cashierA, heartbeatSql(I.branchAOther, uid));
 expectReject('copied UID with wrong credential', I.cashierA, heartbeatSql(I.branchA, uid, '0'.repeat(64)));
 
