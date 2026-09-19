@@ -4,9 +4,16 @@ import { connection } from './postgres-recovery.mjs';
 
 if (!process.env.POSTGRES_ADMIN_URL) throw new Error('Disposable PostgreSQL contract database required');
 const conn = connection(process.env.POSTGRES_ADMIN_URL);
-const sql = statement => execFileSync('psql', ['-X', '-Atq', '-v', 'ON_ERROR_STOP=1', '-c', statement], {
-  env: conn.env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-}).trim();
+const sql = statement => {
+  try {
+    return execFileSync('psql', ['-X', '-Atq', '-v', 'ON_ERROR_STOP=1', '-c', statement], {
+      env: conn.env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+  } catch (error) {
+    const stderr = String(error.stderr ?? '').trim();
+    throw new Error(stderr || 'PostgreSQL activation contract command failed');
+  }
+};
 const tenant = 'a0000000-0000-0000-0000-000000000721';
 const branch = 'b0000000-0000-0000-0000-000000000721';
 const manager = 'c0000000-0000-0000-0000-000000000721';
