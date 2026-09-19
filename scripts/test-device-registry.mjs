@@ -40,7 +40,9 @@ assertEqual('same-branch manager sees device', asAuthenticated(I.managerA, `SELE
 assertEqual('different-branch manager cannot see device', asAuthenticated(I.managerAOther, `SELECT count(*)::text FROM public.devices WHERE id='${deviceId}'::uuid;`), '0');
 assertEqual('cashier cannot enumerate fleet', asAuthenticated(I.cashierA, `SELECT count(*)::text FROM public.devices WHERE id='${deviceId}'::uuid;`), '0');
 expectReject('direct device mutation', I.cashierA, `UPDATE public.devices SET app_version='9.9.9' WHERE id='${deviceId}'::uuid;`);
-sql(`UPDATE public.devices SET revoked_at=now(), is_active=false WHERE id='${deviceId}'::uuid;`);
+// revoked_at is the canonical revocation state. Device authority functions reject a
+// revoked row directly; do not couple this contract to a non-existent is_active flag.
+sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${deviceId}'::uuid;`);
 expectReject('revoked device heartbeat', I.cashierA, heartbeatSql(I.branchA, uid));
 
 const signature='public.authorize_desktop_action(uuid,uuid,text,text,uuid)';
