@@ -25,11 +25,13 @@ const center = 'ee000000-0000-0000-0000-000000000601';
 const product = 'ff000000-0000-0000-0000-000000000601';
 const original = 'SEC004-original-terminal';
 const replacement = 'SEC004-copied-renderer-new-uid';
+const actorEmail = 'sec004-device-boundary@zaipos.test';
+const managerEmail = 'sec004-device-manager@zaipos.test';
 
 mark('fixture');
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
-  ('${actor}','device-boundary@zaipos.test','{}'),
-  ('${manager}','device-manager@zaipos.test','{}');
+  ('${actor}','${actorEmail}','{}'),
+  ('${manager}','${managerEmail}','{}');
 INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,allow_negative_stock) VALUES('${tenant}','Device Boundary','device-boundary-contract','BHD',10,false,false);
 INSERT INTO public.branches(id,tenant_id,name,status) VALUES('${branch}','${tenant}','Device Boundary','active');
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
