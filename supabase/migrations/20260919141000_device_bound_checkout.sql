@@ -44,7 +44,6 @@ BEGIN
   WHERE d.tenant_id = _tenant_id
     AND d.branch_id = _branch_id
     AND d.device_uid = btrim(_device_uid)
-    AND d.is_active = true
     AND d.revoked_at IS NULL
     AND d.credential_hash IS NOT NULL
     AND d.credential_hash = extensions.digest(convert_to(_device_credential, 'UTF8'), 'sha256')
