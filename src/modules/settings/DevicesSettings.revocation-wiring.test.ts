@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const source = readFileSync(fileURLToPath(new URL('./DevicesSettings.tsx', import.meta.url)), 'utf8');
+const source = readFileSync(resolve(process.cwd(), 'src/modules/settings/DevicesSettings.tsx'), 'utf8');
 
 describe('DevicesSettings revocation authority routing', () => {
   it('loads the native device identity before deciding how to revoke', () => {
