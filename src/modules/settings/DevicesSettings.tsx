@@ -27,6 +27,7 @@ export default function DevicesSettings() {
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable');
   const [saving, setSaving] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const canManage = hasRole('owner', 'admin', 'manager');
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function DevicesSettings() {
       .catch(() => undefined);
   }, []);
 
-  const { data: devices = [], isLoading } = useQuery({
+  const { data: devices = [], isLoading, refetch } = useQuery({
     queryKey: ['devices', tenantId],
     enabled: Boolean(tenantId && canManage),
     queryFn: async () => {
@@ -63,6 +64,27 @@ export default function DevicesSettings() {
       toast.error(error instanceof Error ? error.message : 'Could not save update channel.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const revokeDevice = async (device: DeviceRow) => {
+    if (!tenantId || device.revoked_at) return;
+    const confirmed = window.confirm(`Revoke terminal ${device.device_uid.slice(0, 12)}? It will immediately lose transaction authority.`);
+    if (!confirmed) return;
+    setRevokingId(device.id);
+    try {
+      const { data, error } = await (supabase as any).rpc('revoke_device_enrollment', {
+        _tenant_id: tenantId,
+        _device_id: device.id,
+        _reason: 'manager_console_revocation',
+      });
+      if (error) throw error;
+      toast.success(data ? 'Terminal revoked.' : 'Terminal was already revoked.');
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not revoke terminal.');
+    } finally {
+      setRevokingId(null);
     }
   };
 
@@ -122,6 +144,7 @@ export default function DevicesSettings() {
                     <th className="pb-2 pr-4">Channel</th>
                     <th className="pb-2 pr-4">Last seen</th>
                     <th className="pb-2">State</th>
+                    <th className="pb-2 pl-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,6 +164,17 @@ export default function DevicesSettings() {
                         <td className="py-3 pr-4">{new Date(device.last_seen_at).toLocaleString('en-BH')}</td>
                         <td className="py-3">
                           <Badge variant={state === 'current' ? 'secondary' : 'destructive'}>{state}</Badge>
+                        </td>
+                        <td className="py-3 pl-4 text-right">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            disabled={Boolean(device.revoked_at) || revokingId === device.id}
+                            onClick={() => revokeDevice(device)}
+                          >
+                            {device.revoked_at ? 'Revoked' : revokingId === device.id ? 'Revoking…' : 'Revoke'}
+                          </Button>
                         </td>
                       </tr>
                     );
