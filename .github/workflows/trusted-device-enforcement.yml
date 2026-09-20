@@ -8,11 +8,14 @@ on:
       - 'src/types/electron.d.ts'
       - 'scripts/test-device-credential-vault-contract.mjs'
       - 'scripts/test-device-activation-edge-contract.mjs'
+      - 'scripts/test-device-rotation-edge-contract.mjs'
       - 'scripts/test-trusted-device-enforcement-postgres.mjs'
       - 'scripts/test-device-enrollment-approval-postgres.mjs'
       - 'scripts/test-device-credential-activation-postgres.mjs'
       - 'scripts/test-device-credential-rotation-postgres.mjs'
       - '.github/workflows/trusted-device-enforcement.yml'
+      - 'supabase/functions/activate-device/**'
+      - 'supabase/functions/rotate-device-credential/**'
       - 'supabase/migrations/**'
   workflow_dispatch:
 jobs:
@@ -44,6 +47,8 @@ jobs:
         run: node scripts/test-device-credential-vault-contract.mjs
       - name: Verify activation Edge authority boundary
         run: node scripts/test-device-activation-edge-contract.mjs
+      - name: Verify rotation Edge authority boundary
+        run: node scripts/test-device-rotation-edge-contract.mjs
       - run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: Apply production migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
