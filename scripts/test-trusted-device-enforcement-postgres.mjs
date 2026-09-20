@@ -55,6 +55,31 @@ const heartbeat = (uid, secret) => `SELECT public.register_device_heartbeat('${u
 mark('credential-heartbeat');
 authAs(actor, heartbeat(original, credential), 'credential heartbeat');
 
+const items = JSON.stringify([{ product_id: product, quantity: '1.000', discount_fils: 0 }]);
+const payments = JSON.stringify([{ method: 'cash', amount_fils: 1000, reference: null }]);
+const deviceCheckout = (uid, secret, mutationId) => `SELECT public.checkout_sale_v2_device('${tenant}','${branch}','${items}','${payments}',0,NULL,NULL,'pos',0,NULL,'${mutationId}','${session}','${uid}','${secret}')`;
+const successfulMutation = `${original}:successful-checkout`;
+
+mark('credential-checkout');
+const saleId = authAs(actor, deviceCheckout(original, credential, successfulMutation), 'credential checkout');
+assert.match(saleId, /^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i);
+mark('credential-checkout-replay');
+assert.equal(
+  authAs(actor, deviceCheckout(original, credential, successfulMutation), 'credential checkout replay'),
+  saleId,
+  'A committed device checkout must return the same sale on response-loss replay',
+);
+
+const committed = {
+  sales: Number(sql(`SELECT count(*) FROM public.sales WHERE tenant_id='${tenant}'`, 'committed sales check')),
+  payments: Number(sql(`SELECT count(*) FROM public.payments WHERE tenant_id='${tenant}' AND sale_id='${saleId}'`, 'committed payments check')),
+  movements: Number(sql(`SELECT count(*) FROM public.inventory_movements WHERE tenant_id='${tenant}' AND reference_id='${saleId}'`, 'committed movements check')),
+  checkout_audits: Number(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${tenant}' AND action='sale.checkout_committed' AND entity_id='${saleId}'`, 'committed audit check')),
+  cash_fils: sql(`SELECT total_cash_fils FROM public.cash_sessions WHERE id='${session}'`, 'committed cash check'),
+  stock: sql(`SELECT quantity FROM public.inventory_stocks WHERE inventory_center_id='${center}' AND product_id='${product}'`, 'committed stock check'),
+};
+assert.deepEqual(committed, { sales: 1, payments: 1, movements: 1, checkout_audits: 1, cash_fils: '1000', stock: '1.000' });
+
 mark('revocation');
 sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${device}'`, 'device revocation');
 mark('revoked-heartbeat-rejection');
@@ -64,9 +89,12 @@ mark('copied-credential-rejection');
 assert.throws(() => authAs(actor, heartbeat(replacement, credential), 'copied credential heartbeat'), /device credential rejected|enroll|device|authoriz|forbidden|permission/i,
   'A copied credential on a replacement UID must not establish trusted enrollment');
 
-const items = JSON.stringify([{ product_id: product, quantity: '1.000', discount_fils: 0 }]);
-const payments = JSON.stringify([{ method: 'cash', amount_fils: 1000, reference: null }]);
-const deviceCheckout = (uid, secret, mutationId) => `SELECT public.checkout_sale_v2_device('${tenant}','${branch}','${items}','${payments}',0,NULL,NULL,'pos',0,NULL,'${mutationId}','${session}','${uid}','${secret}')`;
+mark('checkout-replay-after-revocation');
+assert.throws(
+  () => authAs(actor, deviceCheckout(original, credential, successfulMutation), 'checkout replay after revocation'),
+  /device credential rejected|device|revok|authoriz|permission/i,
+  'Revocation must be checked before an idempotent completed operation is returned',
+);
 mark('checkout-after-revocation');
 assert.throws(
   () => authAs(actor, deviceCheckout(original, credential, `${original}:checkout-after-revocation`), 'checkout after revocation'),
@@ -89,13 +117,14 @@ assert.throws(
 mark('persistence-verification');
 const persisted = {
   sales: Number(sql(`SELECT count(*) FROM public.sales WHERE tenant_id='${tenant}'`, 'sales persistence check')),
+  payments: Number(sql(`SELECT count(*) FROM public.payments WHERE tenant_id='${tenant}' AND sale_id='${saleId}'`, 'payments persistence check')),
+  movements: Number(sql(`SELECT count(*) FROM public.inventory_movements WHERE tenant_id='${tenant}' AND reference_id='${saleId}'`, 'movements persistence check')),
+  checkout_audits: Number(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${tenant}' AND action='sale.checkout_committed' AND entity_id='${saleId}'`, 'audit persistence check')),
   cash_fils: sql(`SELECT total_cash_fils FROM public.cash_sessions WHERE id='${session}'`, 'cash persistence check'),
   stock: sql(`SELECT quantity FROM public.inventory_stocks WHERE inventory_center_id='${center}' AND product_id='${product}'`, 'stock persistence check'),
   revoked: sql(`SELECT revoked_at IS NOT NULL FROM public.devices WHERE id='${device}'`, 'revocation persistence check'),
 };
-assert.equal(persisted.sales, 0);
-assert.equal(persisted.cash_fils, '0');
-assert.equal(persisted.stock, '2.000');
+assert.deepEqual(persisted, { ...committed, revoked: 't' }, 'Rejected post-revocation calls must add no financial, stock, or audit-authoritative effects');
 assert.equal(persisted.revoked, 't');
-console.log('SEC004_ENFORCEMENT ' + JSON.stringify({ credentialHeartbeatAccepted: true, revokedHeartbeatRejected: true, copiedUidRejected: true, revokedCheckoutRejected: true, legacyCheckoutRejected: true, persisted }));
-console.log('PASS: credential lifecycle rejects copied/revoked authority and legacy checkout bypass.');
+console.log('SEC004_ENFORCEMENT ' + JSON.stringify({ credentialHeartbeatAccepted: true, deviceCheckoutCommitted: true, checkoutReplayExactlyOnce: true, revokedHeartbeatRejected: true, copiedUidRejected: true, revokedCheckoutRejected: true, postRevocationEffectsUnchanged: true, legacyCheckoutRejected: true, persisted }));
+console.log('PASS: credential lifecycle commits exactly once and rejects copied/revoked authority and legacy checkout bypass without additional effects.');
