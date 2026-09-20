@@ -3,6 +3,7 @@ import { useNetworkStore } from '@/stores/network';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import {
+  assertCheckoutDeviceBoundaryReady,
   isActiveQueueStatus,
   isTransientNetworkFailure,
   OfflineOperationConflictError,
@@ -12,7 +13,7 @@ import {
 } from '@/lib/syncQueue';
 import { getDeviceId } from '@/lib/deviceIdentity';
 
-interface OfflineMutationConfig<TData, TError, TVariables, TContext> 
+interface OfflineMutationConfig<TData, TError, TVariables, TContext>
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
   type: string; // Identificador único para el sync_engine (e.g., 'CREATE_ORDER')
 }
@@ -31,6 +32,9 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
   return useMutation({
     ...config,
     mutationFn: async (variables: TVariables) => {
+      // Never claim checkout is queued or authorized while the only available
+      // client path is the credential-less RPC revoked by SEC-004.
+      assertCheckoutDeviceBoundaryReady(config.type);
       const queueMutation = async () => {
         await queueOfflineMutation(config.type, variables, setPendingSyncCount);
         toast.success('Saved locally. It will synchronize when the connection returns.');
@@ -60,6 +64,8 @@ export async function queueOfflineMutation<TVariables>(
   variables: TVariables,
   setPendingSyncCount: (count: number) => void,
 ): Promise<OfflineQueuedResult> {
+  // Guard the direct enqueue API too: a caller must not bypass the hook's check.
+  assertCheckoutDeviceBoundaryReady(type);
   const deviceId = getDeviceId();
   const payload = withClientMutationId(variables, deviceId);
   const clientMutationId = (payload as any)?._client_mutation_id as string | undefined;
