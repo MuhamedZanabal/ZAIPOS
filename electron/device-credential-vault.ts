@@ -5,6 +5,8 @@ const CREDENTIAL_KEY = 'trustedDevice.credentialCiphertext';
 const IDENTITY_KEY = 'trustedDevice.identity';
 const HEX_256 = /^[0-9a-fA-F]{64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const hasUnsafeControlCharacter = (value: string) =>
+  Array.from(value).some((char) => char.charCodeAt(0) <= 31 || char.charCodeAt(0) === 127);
 
 interface VaultStore {
   get(key: string): unknown;
@@ -17,7 +19,7 @@ function validateIdentity(identity: DeviceCredentialIdentity): DeviceCredentialI
     throw new Error('Trusted device tenant and branch must be UUIDs');
   }
   const deviceUid = identity.deviceUid.trim();
-  if (!deviceUid || deviceUid.length > 200 || /[\u0000-\u001f\u007f]/.test(deviceUid)) {
+  if (!deviceUid || deviceUid.length > 200 || hasUnsafeControlCharacter(deviceUid)) {
     throw new Error('Trusted device UID is invalid');
   }
   return { tenantId: identity.tenantId, branchId: identity.branchId, deviceUid };
