@@ -15,6 +15,7 @@ const I = {
   sessionA: "44000000-0000-0000-0000-000000000092",
   centerA: "44000000-0000-0000-0000-000000000093",
   productA: "54000000-0000-0000-0000-000000000091",
+  deviceUid: "price-override-terminal-91",
 };
 
 function psql(args, capture = true) {
@@ -80,6 +81,16 @@ sql(`
   ON CONFLICT (inventory_center_id,product_id) DO UPDATE SET quantity=EXCLUDED.quantity;
 `);
 
+// Price-override checkout must cross the same trusted-device boundary as production POS.
+const deviceApprovalId = asUser(
+  I.managerA,
+  `SELECT public.approve_device_enrollment('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.deviceUid}')::text;`,
+);
+const deviceCredential = scalar(
+  `SELECT credential FROM public.activate_device_enrollment('${deviceApprovalId}'::uuid,'price-override-contract','ci');`,
+);
+if (!/^[0-9a-f]{64}$/i.test(deviceCredential)) throw new Error("device activation did not return a 256-bit credential");
+
 assertEqual(
   "cashier request permission",
   asUser(I.cashierA, `SELECT public.current_user_has_branch_permission('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'pos.price_override.request')::text;`),
@@ -133,7 +144,7 @@ assertEqual("one rejection audit", scalar(`SELECT count(*)::text FROM public.aud
 
 const items = JSON.stringify([{ product_id: I.productA, quantity: "1.000", discount_fils: 0, price_override_request_id: requestId }]).replaceAll("'", "''");
 const payments = JSON.stringify([{ method: "cash", amount_fils: 1000, reference: null }]).replaceAll("'", "''");
-const checkout = (operationId) => `SELECT public.checkout_sale_v2('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${items}'::jsonb,'${payments}'::jsonb,0::bigint,NULL,NULL::uuid,'pos'::public.sales_channel,0::bigint,NULL,'${operationId}','${I.sessionA}'::uuid)::text;`;
+const checkout = (operationId, checkoutItems = items) => `SELECT public.checkout_sale_v2_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${checkoutItems}'::jsonb,'${payments}'::jsonb,0::bigint,NULL,NULL::uuid,'pos'::public.sales_channel,0::bigint,NULL,'${operationId}','${I.sessionA}'::uuid,'${I.deviceUid}','${deviceCredential}')::text;`;
 const saleId = asUser(I.cashierA, checkout("override-checkout-operation-91"));
 assertEqual("checkout replay", asUser(I.cashierA, checkout("override-checkout-operation-91")), saleId);
 assertEqual("override sale total", scalar(`SELECT total_fils::text FROM public.sales WHERE id='${saleId}'::uuid;`), "1000");
@@ -153,7 +164,7 @@ const staleItems = JSON.stringify([{ product_id: I.productA, quantity: "1.000", 
 expectReject(
   "changed authoritative price invalidates approval",
   I.cashierA,
-  `SELECT public.checkout_sale_v2('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${staleItems}'::jsonb,'${payments}'::jsonb,0::bigint,NULL,NULL::uuid,'pos'::public.sales_channel,0::bigint,NULL,'override-stale-checkout-91','${I.sessionA}'::uuid);`,
+  checkout("override-stale-checkout-91", staleItems),
 );
 
 for (const table of ["price_override_requests", "role_permissions"]) {
@@ -163,4 +174,4 @@ for (const table of ["price_override_requests", "role_permissions"]) {
 }
 assertEqual("arbitrary-user permission probe revoked", scalar("SELECT has_function_privilege('authenticated','public.has_branch_permission(uuid,uuid,uuid,text)','EXECUTE');"), "f");
 
-process.stdout.write("Price override PASS: explicit permissions, branch approval, exact fils, one-time checkout consumption, audit and mutation lockdown hold.\n");
+process.stdout.write("Price override PASS: explicit permissions, branch approval, trusted-device checkout, exact fils, one-time checkout consumption, audit and mutation lockdown hold.\n");
