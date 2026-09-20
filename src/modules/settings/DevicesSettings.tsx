@@ -28,14 +28,16 @@ export default function DevicesSettings() {
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable');
   const [saving, setSaving] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [currentDeviceUid, setCurrentDeviceUid] = useState<string | null>(null);
   const canManage = hasRole('owner', 'admin', 'manager');
 
   useEffect(() => {
     if (!hardware) return;
-    Promise.all([hardware.getAppVersion(), hardware.getSettings()])
-      .then(([version, settings]) => {
+    Promise.all([hardware.getAppVersion(), hardware.getSettings(), hardware.getDeviceIdentity()])
+      .then(([version, settings, identity]) => {
         setCurrentVersion(version);
         setChannel(settings.updateChannel);
+        setCurrentDeviceUid(identity.deviceUid);
       })
       .catch(() => undefined);
   }, []);
@@ -73,13 +75,20 @@ export default function DevicesSettings() {
     if (!confirmed) return;
     setRevokingId(device.id);
     try {
-      const { data, error } = await (supabase as any).rpc('revoke_device_enrollment', {
-        _tenant_id: tenantId,
-        _device_id: device.id,
-        _reason: 'manager_console_revocation',
-      });
-      if (error) throw error;
-      toast.success(data ? 'Terminal revoked.' : 'Terminal was already revoked.');
+      if (hardware && currentDeviceUid === device.device_uid) {
+        const result = await hardware.revokeDevice(device.id, await desktopAuthorization());
+        toast.success(result.revoked
+          ? 'This terminal was revoked and its local credential was erased.'
+          : 'This terminal was already revoked; stale local credential state was erased.');
+      } else {
+        const { data, error } = await (supabase as any).rpc('revoke_device_enrollment', {
+          _tenant_id: tenantId,
+          _device_id: device.id,
+          _reason: 'manager_console_revocation',
+        });
+        if (error) throw error;
+        toast.success(data ? 'Terminal revoked.' : 'Terminal was already revoked.');
+      }
       await refetch();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not revoke terminal.');
