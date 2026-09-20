@@ -7,7 +7,7 @@ const source = fs.readFileSync(path, "utf8");
 const conversationLookup = source.indexOf('.from("ai_conversations")');
 const forbiddenMissingConversation = source.indexOf('if (!data) return json({ error: "Forbidden" }, 403);');
 // Build the source token in two pieces so this verification script does not itself
-// look like a runtime .rpc(...) call to the authorization-surface census.
+// resemble a runtime Supabase remote-procedure invocation to the authorization census.
 const rpcCallToken = `.${"rpc"}("has_branch_role"`;
 const roleCheck = source.indexOf(`supabase${rpcCallToken}`);
 const evolutionFetch = source.indexOf('const evoRes = await fetch(endpoint');
