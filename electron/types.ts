@@ -29,8 +29,6 @@ export interface DeviceCredentialIdentity { tenantId: string; branchId: string; 
 export type DeviceCredentialStatus =
   | (DeviceCredentialIdentity & { configured: true; protectedByOs: boolean })
   | { configured: false; protectedByOs: boolean };
-/** Main-process-only provisioning input. The renderer must not persist or log this value. */
-export interface DeviceCredentialProvisioning extends DeviceCredentialIdentity { credential: string; }
 
 export const IPC_EVENTS = {
   BARCODE_SCANNED: 'barcode-scanned', UPDATE_AVAILABLE: 'update-available', UPDATE_DOWNLOADED: 'update-downloaded', DOWNLOAD_PROGRESS: 'download-progress',
@@ -38,7 +36,7 @@ export const IPC_EVENTS = {
 export const IPC_HANDLERS = {
   PRINT_TICKET: 'print-ticket', OPEN_DRAWER: 'open-drawer', GET_SETTINGS: 'get-settings', SAVE_SETTINGS: 'save-settings', SET_KIOSK: 'set-kiosk',
   DOWNLOAD_UPDATE: 'download-update', INSTALL_UPDATE: 'install-update', OPEN_EXTERNAL: 'open-external', GET_APP_VERSION: 'get-app-version',
-  GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status', PROVISION_DEVICE_CREDENTIAL: 'provision-device-credential', CLEAR_DEVICE_CREDENTIAL: 'clear-device-credential',
+  GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status',
 } as const;
 
 /** Short-lived session evidence is passed to main for online verification only. */
