@@ -40,6 +40,7 @@ export const IPC_HANDLERS = {
   GET_DEVICE_IDENTITY: 'get-device-identity',
   ACTIVATE_DEVICE: 'activate-device',
   ROTATE_DEVICE_CREDENTIAL: 'rotate-device-credential',
+  REVOKE_DEVICE: 'revoke-device',
   DEVICE_CHECKOUT: 'device-checkout',
 } as const;
 
