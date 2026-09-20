@@ -44,14 +44,14 @@ Deno.serve(async (request) => {
       return json({ error: "Activation approval rejected" }, 403);
     }
 
-    const { data: roleRows, error: roleError } = await admin.from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id)
-      .eq("tenant_id", approval.tenant_id)
-      .eq("branch_id", approval.branch_id)
-      .in("role", ["owner", "admin", "manager"]);
+    const { data: allowed, error: roleError } = await admin.rpc("has_branch_role", {
+      _user_id: userData.user.id,
+      _tenant_id: approval.tenant_id,
+      _branch_id: approval.branch_id,
+      _roles: ["owner", "admin", "manager"],
+    });
     if (roleError) return json({ error: "Activation authority unavailable" }, 500);
-    if (!roleRows?.length) return json({ error: "Activation approval rejected" }, 403);
+    if (!allowed) return json({ error: "Activation approval rejected" }, 403);
 
     const { data, error } = await admin.rpc("activate_device_enrollment", {
       _approval_id: approvalId,

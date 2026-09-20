@@ -7,6 +7,7 @@ on:
       - 'electron/types.ts'
       - 'src/types/electron.d.ts'
       - 'scripts/test-device-credential-vault-contract.mjs'
+      - 'scripts/test-device-activation-edge-contract.mjs'
       - 'scripts/test-trusted-device-enforcement-postgres.mjs'
       - 'scripts/test-device-enrollment-approval-postgres.mjs'
       - 'scripts/test-device-credential-activation-postgres.mjs'
@@ -40,6 +41,8 @@ jobs:
       - run: npm ci
       - name: Verify native credential custody boundary
         run: node scripts/test-device-credential-vault-contract.mjs
+      - name: Verify activation Edge authority boundary
+        run: node scripts/test-device-activation-edge-contract.mjs
       - run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: Apply production migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
