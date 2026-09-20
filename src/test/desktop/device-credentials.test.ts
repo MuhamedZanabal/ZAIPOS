@@ -43,9 +43,7 @@ describe('native device credential custody', () => {
 
   it('injects decrypted credential only inside native checkout and binds tenant/branch', async () => {
     values.set('enrollment', {
-      deviceUid: 'terminal-1',
-      tenantId,
-      branchId,
+      deviceUid: 'terminal-1', tenantId, branchId,
       encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
     });
     const fetchMock = vi.fn(async () => new Response(JSON.stringify('sale-id'), { status: 200 }));
@@ -84,25 +82,49 @@ describe('native device credential custody', () => {
     vi.stubGlobal('fetch', fetchMock);
     const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
 
-    values.set('enrollment', {
-      deviceUid: 'terminal-1',
-      tenantId: otherTenantId,
-      branchId,
-      encryptedCredential: Buffer.from(`protected:${'d'.repeat(64)}`).toString('base64'),
-    });
+    values.set('enrollment', { deviceUid: 'terminal-1', tenantId: otherTenantId, branchId, encryptedCredential: Buffer.from(`protected:${'d'.repeat(64)}`).toString('base64') });
     await expect(service.checkout({ _tenant_id: tenantId, _branch_id: branchId }, authorization)).rejects.toThrow(/stored device credential scope/i);
     expect(mocks.decryptString).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
 
-    values.set('enrollment', {
-      deviceUid: 'terminal-1',
-      tenantId,
-      branchId: otherBranchId,
-      encryptedCredential: Buffer.from(`protected:${'e'.repeat(64)}`).toString('base64'),
-    });
+    values.set('enrollment', { deviceUid: 'terminal-1', tenantId, branchId: otherBranchId, encryptedCredential: Buffer.from(`protected:${'e'.repeat(64)}`).toString('base64') });
     await expect(service.checkout({ _tenant_id: tenantId, _branch_id: branchId }, authorization)).rejects.toThrow(/stored device credential scope/i);
     expect(mocks.decryptString).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rotates through the authenticated edge boundary and atomically replaces only encrypted local custody', async () => {
+    const oldCredential = 'e'.repeat(64);
+    const newCredential = 'f'.repeat(64);
+    values.set('enrollment', { deviceUid: 'terminal-1', tenantId, branchId, encryptedCredential: Buffer.from(`protected:${oldCredential}`).toString('base64') });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ device_id: 'device-id', device_uid: 'terminal-1', credential: newCredential }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+
+    await expect(service.rotate('rotation-approval', authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/functions/v1/rotate-device-credential');
+    const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0][1];
+    expect(JSON.parse(String(request.body))).toEqual({ approval_id: 'rotation-approval', device_uid: 'terminal-1' });
+    expect(request.headers).toMatchObject({ authorization: 'Bearer operator-token' });
+    const persisted = JSON.stringify(values.get('enrollment'));
+    expect(persisted).not.toContain(oldCredential);
+    expect(persisted).not.toContain(newCredential);
+    expect(mocks.encryptString).toHaveBeenCalledWith(newCredential);
+  });
+
+  it('does not replace local custody when rotation fails or returns a mismatched device', async () => {
+    const original = { deviceUid: 'terminal-1', tenantId, branchId, encryptedCredential: Buffer.from(`protected:${'a'.repeat(64)}`).toString('base64') };
+    values.set('enrollment', original);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'denied' }), { status: 403 })));
+    await expect(service.rotate('rotation-approval', authorization)).rejects.toThrow(/failed/);
+    expect(values.get('enrollment')).toEqual(original);
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ device_uid: 'other-terminal', credential: 'b'.repeat(64) }), { status: 200 })));
+    await expect(service.rotate('rotation-approval', authorization)).rejects.toThrow(/identity mismatch/);
+    expect(values.get('enrollment')).toEqual(original);
   });
 
   it('fails closed when OS encryption or provisioning is unavailable', async () => {
@@ -111,5 +133,6 @@ describe('native device credential custody', () => {
     await expect(service.activate('approval-id', '1.0.0', 'win32', authorization)).rejects.toThrow(/encryption/);
     mocks.encryptionAvailable = true;
     await expect(service.checkout({ _tenant_id: tenantId, _branch_id: branchId }, authorization)).rejects.toThrow(/not provisioned/);
+    await expect(service.rotate('rotation-approval', authorization)).rejects.toThrow(/not provisioned/);
   });
 });
