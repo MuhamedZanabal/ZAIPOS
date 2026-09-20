@@ -18,6 +18,7 @@ const mark = stage => console.log(`SEC004_STAGE ${stage}`);
 
 const tenant = 'aa000000-0000-0000-0000-000000000601';
 const branch = 'bb000000-0000-0000-0000-000000000601';
+const otherBranch = 'bb000000-0000-0000-0000-000000000602';
 const actor = 'cc000000-0000-0000-0000-000000000601';
 const manager = 'cc000000-0000-0000-0000-000000000602';
 const session = 'dd000000-0000-0000-0000-000000000601';
@@ -33,9 +34,12 @@ sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
   ('${actor}','${actorEmail}','{}'),
   ('${manager}','${managerEmail}','{}');
 INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,allow_negative_stock) VALUES('${tenant}','Device Boundary','device-boundary-contract','BHD',10,false,false);
-INSERT INTO public.branches(id,tenant_id,name,status) VALUES('${branch}','${tenant}','Device Boundary','active');
+INSERT INTO public.branches(id,tenant_id,name,status) VALUES
+  ('${branch}','${tenant}','Device Boundary','active'),
+  ('${otherBranch}','${tenant}','Other Device Boundary','active');
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
   ('${actor}','${tenant}','${branch}','cashier'),
+  ('${actor}','${tenant}','${otherBranch}','cashier'),
   ('${manager}','${tenant}','${branch}','manager');
 INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id,status) VALUES('${session}','${tenant}','${branch}','${actor}','open');
 INSERT INTO public.inventory_centers(id,tenant_id,branch_id,name,type,status) VALUES('${center}','${tenant}','${branch}','Device POS','point_of_sale','active');
@@ -54,6 +58,18 @@ assert.match(credential, /^[a-f\d]{64}$/i);
 const heartbeat = (uid, secret) => `SELECT public.register_device_heartbeat('${uid}','Device POS','${branch}','${secret}')`;
 mark('credential-heartbeat');
 authAs(actor, heartbeat(original, credential), 'credential heartbeat');
+const acceptedHeartbeatAt = sql(`SELECT last_seen_at::text FROM public.devices WHERE id='${device}'`, 'accepted heartbeat timestamp');
+mark('cross-branch-heartbeat-rejection');
+assert.throws(
+  () => authAs(actor, heartbeat(original, credential).replace(`'${branch}'`, `'${otherBranch}'`), 'cross-branch credential heartbeat'),
+  /device credential rejected|branch|device|authoriz|permission/i,
+  'An operator assigned to both branches must not rebind an enrolled credential by heartbeat',
+);
+assert.equal(
+  sql(`SELECT branch_id::text || '|' || last_seen_at::text FROM public.devices WHERE id='${device}'`, 'cross-branch heartbeat persistence check'),
+  `${branch}|${acceptedHeartbeatAt}`,
+  'Rejected cross-branch heartbeat must preserve enrollment and heartbeat evidence',
+);
 
 const items = JSON.stringify([{ product_id: product, quantity: '1.000', discount_fils: 0 }]);
 const payments = JSON.stringify([{ method: 'cash', amount_fils: 1000, reference: null }]);
@@ -145,5 +161,5 @@ const persisted = {
 };
 assert.deepEqual(persisted, { ...committed, revoked: 't' }, 'Rejected post-revocation calls must add no financial, stock, or audit-authoritative effects');
 assert.equal(persisted.revoked, 't');
-console.log('SEC004_ENFORCEMENT ' + JSON.stringify({ credentialHeartbeatAccepted: true, deviceCheckoutCommitted: true, checkoutReplayExactlyOnce: true, revokedHeartbeatRejected: true, copiedUidRejected: true, revokedCheckoutRejected: true, postRevocationEffectsUnchanged: true, legacyCheckoutRejected: true, persisted }));
+console.log('SEC004_ENFORCEMENT ' + JSON.stringify({ credentialHeartbeatAccepted: true, crossBranchHeartbeatRejected: true, deviceCheckoutCommitted: true, checkoutReplayExactlyOnce: true, revokedHeartbeatRejected: true, copiedUidRejected: true, revokedCheckoutRejected: true, postRevocationEffectsUnchanged: true, legacyCheckoutRejected: true, persisted }));
 console.log('PASS: credential lifecycle commits exactly once and rejects copied/revoked authority and legacy checkout bypass without additional effects.');
