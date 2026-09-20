@@ -39,6 +39,7 @@ export const IPC_HANDLERS = {
   GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status',
   GET_DEVICE_IDENTITY: 'get-device-identity',
   ACTIVATE_DEVICE: 'activate-device',
+  ROTATE_DEVICE_CREDENTIAL: 'rotate-device-credential',
   DEVICE_CHECKOUT: 'device-checkout',
 } as const;
 
