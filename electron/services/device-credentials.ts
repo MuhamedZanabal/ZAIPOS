@@ -1,155 +1,35 @@
 import { safeStorage } from 'electron';
 
-type CredentialRecord = {
-  deviceUid: string;
-  encryptedCredential?: string;
-};
-
-type CredentialStore = {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-};
-
-export interface DeviceAuthorization {
-  accessToken: string;
-  tenantId: string;
-  branchId: string;
-}
-
-export type DeviceCheckoutPayload = Record<string, unknown> & {
-  _tenant_id: string;
-  _branch_id: string;
-};
-
+type CredentialRecord = { deviceUid: string; tenantId?: string; branchId?: string; encryptedCredential?: string };
+type CredentialStore = { get(key: string): unknown; set(key: string, value: unknown): void };
+export interface DeviceAuthorization { accessToken: string; tenantId: string; branchId: string }
+export type DeviceCheckoutPayload = Record<string, unknown> & { _tenant_id: string; _branch_id: string };
 const RECORD_KEY = 'enrollment';
-
-function requireString(value: unknown, label: string, max = 4096): string {
-  if (typeof value !== 'string' || !value.trim() || value.length > max) {
-    throw new Error(`Invalid ${label}`);
-  }
-  return value.trim();
-}
-
-function validateAuthorization(auth: DeviceAuthorization): DeviceAuthorization {
-  return {
-    accessToken: requireString(auth?.accessToken, 'access token', 16384),
-    tenantId: requireString(auth?.tenantId, 'tenant ID', 128),
-    branchId: requireString(auth?.branchId, 'branch ID', 128),
-  };
-}
-
-function rpcUrl(baseUrl: string, functionName: string): string {
-  const parsed = new URL(requireString(baseUrl, 'Supabase URL', 2048));
-  if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) {
-    throw new Error('Supabase URL must use HTTPS');
-  }
-  parsed.pathname = `/rest/v1/rpc/${functionName}`;
-  parsed.search = '';
-  parsed.hash = '';
-  return parsed.href;
-}
-
-async function callRpc(baseUrl: string, publishableKey: string, accessToken: string, name: string, body: unknown): Promise<unknown> {
-  const response = await fetch(rpcUrl(baseUrl, name), {
-    method: 'POST',
-    headers: {
-      apikey: requireString(publishableKey, 'Supabase publishable key', 8192),
-      authorization: `Bearer ${accessToken}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Device authority request failed (${response.status})`);
-  return text ? JSON.parse(text) : null;
-}
-
-async function callActivation(baseUrl: string, publishableKey: string, accessToken: string, body: unknown): Promise<unknown> {
-  const parsed = new URL(rpcUrl(baseUrl, 'placeholder'));
-  parsed.pathname = '/functions/v1/activate-device';
-  const response = await fetch(parsed.href, {
-    method: 'POST',
-    headers: { apikey: requireString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Device activation failed (${response.status})`);
-  return text ? JSON.parse(text) : null;
-}
-
-function extractCredential(value: unknown): string {
-  const row = Array.isArray(value) ? value[0] : value;
-  const credential = typeof row === 'object' && row !== null ? (row as Record<string, unknown>).credential : row;
-  if (typeof credential !== 'string' || !/^[0-9a-f]{64}$/i.test(credential)) {
-    throw new Error('Device activation returned an invalid credential');
-  }
-  return credential;
-}
-
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function requireString(value: unknown, label: string, max = 4096): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`); return value.trim(); }
+function requireUuid(value: unknown, label: string): string { const valueString = requireString(value, label, 128); if (!UUID.test(valueString)) throw new Error(`Invalid ${label}`); return valueString; }
+function validateAuthorization(auth: DeviceAuthorization): DeviceAuthorization { return { accessToken: requireString(auth?.accessToken, 'access token', 16384), tenantId: requireUuid(auth?.tenantId, 'tenant ID'), branchId: requireUuid(auth?.branchId, 'branch ID') }; }
+function rpcUrl(baseUrl: string, functionName: string): string { const parsed = new URL(requireString(baseUrl, 'Supabase URL', 2048)); if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Supabase URL must use HTTPS'); parsed.pathname = `/rest/v1/rpc/${functionName}`; parsed.search = ''; parsed.hash = ''; return parsed.href; }
+async function callRpc(baseUrl: string, publishableKey: string, accessToken: string, name: string, body: unknown): Promise<unknown> { const response = await fetch(rpcUrl(baseUrl, name), { method: 'POST', headers: { apikey: requireString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }); const text = await response.text(); if (!response.ok) throw new Error(`Device authority request failed (${response.status})`); return text ? JSON.parse(text) : null; }
+async function callActivation(baseUrl: string, publishableKey: string, accessToken: string, body: unknown): Promise<unknown> { const parsed = new URL(rpcUrl(baseUrl, 'placeholder')); parsed.pathname = '/functions/v1/activate-device'; const response = await fetch(parsed.href, { method: 'POST', headers: { apikey: requireString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }); const text = await response.text(); if (!response.ok) throw new Error(`Device activation failed (${response.status})`); return text ? JSON.parse(text) : null; }
+function extractCredential(value: unknown): string { const row = Array.isArray(value) ? value[0] : value; const credential = typeof row === 'object' && row !== null ? (row as Record<string, unknown>).credential : row; if (typeof credential !== 'string' || !/^[0-9a-f]{64}$/i.test(credential)) throw new Error('Device activation returned an invalid credential'); return credential; }
 export function createDeviceCredentialService(store: CredentialStore, baseUrl: string, publishableKey: string) {
-  const readRecord = (): CredentialRecord => {
-    const value = store.get(RECORD_KEY);
-    if (!value || typeof value !== 'object') return { deviceUid: crypto.randomUUID() };
-    const record = value as Partial<CredentialRecord>;
-    return { deviceUid: requireString(record.deviceUid, 'device UID', 128), encryptedCredential: record.encryptedCredential };
-  };
-
-  const ensureRecord = (): CredentialRecord => {
-    const existing = store.get(RECORD_KEY);
-    if (existing) return readRecord();
-    const record = { deviceUid: crypto.randomUUID() };
-    store.set(RECORD_KEY, record);
-    return record;
-  };
-
+  const readRecord = (): CredentialRecord => { const value = store.get(RECORD_KEY); if (!value || typeof value !== 'object') return { deviceUid: crypto.randomUUID() }; const record = value as Partial<CredentialRecord>; return { deviceUid: requireString(record.deviceUid, 'device UID', 128), tenantId: record.tenantId === undefined ? undefined : requireUuid(record.tenantId, 'stored tenant ID'), branchId: record.branchId === undefined ? undefined : requireUuid(record.branchId, 'stored branch ID'), encryptedCredential: record.encryptedCredential }; };
+  const ensureRecord = (): CredentialRecord => { const existing = store.get(RECORD_KEY); if (existing) return readRecord(); const record = { deviceUid: crypto.randomUUID() }; store.set(RECORD_KEY, record); return record; };
   return {
-    identity(): { deviceUid: string; provisioned: boolean } {
-      const record = ensureRecord();
-      return { deviceUid: record.deviceUid, provisioned: Boolean(record.encryptedCredential) };
-    },
-
+    identity(): { deviceUid: string; provisioned: boolean } { const record = ensureRecord(); return { deviceUid: record.deviceUid, provisioned: Boolean(record.encryptedCredential) }; },
     async activate(approvalId: string, appVersion: string, os: string, authorization: DeviceAuthorization): Promise<{ deviceUid: string; provisioned: true }> {
-      const auth = validateAuthorization(authorization);
-      if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable');
-      const record = ensureRecord();
-      const result = await callActivation(baseUrl, publishableKey, auth.accessToken, {
-        approval_id: requireString(approvalId, 'approval ID', 128),
-        device_uid: record.deviceUid,
-        app_version: requireString(appVersion, 'app version', 64),
-        os: requireString(os, 'operating system', 64),
-      });
-      const credential = extractCredential(result);
-      const resultRow = Array.isArray(result) ? result[0] : result;
-      if (typeof resultRow !== 'object' || resultRow === null || (resultRow as Record<string, unknown>).device_uid !== record.deviceUid) {
-        throw new Error('Device activation identity mismatch');
-      }
-      const encryptedCredential = safeStorage.encryptString(credential).toString('base64');
-      store.set(RECORD_KEY, { deviceUid: record.deviceUid, encryptedCredential });
-      return { deviceUid: record.deviceUid, provisioned: true };
+      const auth = validateAuthorization(authorization); if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable'); const record = ensureRecord();
+      if (record.encryptedCredential && (record.tenantId !== auth.tenantId || record.branchId !== auth.branchId)) throw new Error('This terminal is already provisioned for a different tenant or branch');
+      const result = await callActivation(baseUrl, publishableKey, auth.accessToken, { approval_id: requireString(approvalId, 'approval ID', 128), device_uid: record.deviceUid, app_version: requireString(appVersion, 'app version', 64), os: requireString(os, 'operating system', 64) });
+      const credential = extractCredential(result); const resultRow = Array.isArray(result) ? result[0] : result; if (typeof resultRow !== 'object' || resultRow === null || (resultRow as Record<string, unknown>).device_uid !== record.deviceUid) throw new Error('Device activation identity mismatch');
+      const encryptedCredential = safeStorage.encryptString(credential).toString('base64'); store.set(RECORD_KEY, { deviceUid: record.deviceUid, tenantId: auth.tenantId, branchId: auth.branchId, encryptedCredential }); return { deviceUid: record.deviceUid, provisioned: true };
     },
-
     async checkout(payload: DeviceCheckoutPayload, authorization: DeviceAuthorization): Promise<string> {
-      const auth = validateAuthorization(authorization);
-      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) {
-        throw new Error('Checkout scope does not match authorization scope');
-      }
-      if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable');
-      const record = readRecord();
-      if (!record.encryptedCredential) throw new Error('This terminal is not provisioned');
-      let credential: string;
-      try {
-        credential = safeStorage.decryptString(Buffer.from(record.encryptedCredential, 'base64'));
-      } catch {
-        throw new Error('Stored device credential cannot be decrypted');
-      }
-      if (!/^[0-9a-f]{64}$/i.test(credential)) throw new Error('Stored device credential is invalid');
-      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'checkout_sale_v2_device', {
-        ...payload,
-        _device_uid: record.deviceUid,
-        _device_credential: credential,
-      });
-      if (typeof result !== 'string') throw new Error('Checkout returned an invalid sale identifier');
-      return result;
+      const auth = validateAuthorization(authorization); if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Checkout scope does not match authorization scope'); if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable'); const record = readRecord();
+      if (!record.encryptedCredential || !record.tenantId || !record.branchId) throw new Error('This terminal is not provisioned'); if (record.tenantId !== auth.tenantId || record.branchId !== auth.branchId) throw new Error('Stored device credential scope does not match authorization scope');
+      let credential: string; try { credential = safeStorage.decryptString(Buffer.from(record.encryptedCredential, 'base64')); } catch { throw new Error('Stored device credential cannot be decrypted'); } if (!/^[0-9a-f]{64}$/i.test(credential)) throw new Error('Stored device credential is invalid');
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'checkout_sale_v2_device', { ...payload, _device_uid: record.deviceUid, _device_credential: credential }); if (typeof result !== 'string') throw new Error('Checkout returned an invalid sale identifier'); return result;
     },
   };
 }
