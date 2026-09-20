@@ -56,6 +56,21 @@ export class OfflineOperationConflictError extends Error {
   }
 }
 
+/** Checkout must remain unavailable until a native credential broker and bounded offline lease are verified. */
+export class CheckoutDeviceCutoverError extends Error {
+  constructor() {
+    super("Checkout requires an enrolled device credential and secure native authorization. This client cannot submit or queue a sale; preserve the cart and request terminal provisioning.");
+    this.name = "CheckoutDeviceCutoverError";
+  }
+}
+
+/** Reject the old RPC queue types before a network call or a misleading successful offline enqueue. */
+export function assertCheckoutDeviceBoundaryReady(type: string): void {
+  if (type === "CHECKOUT_SALE_V2" || type === "CHECKOUT_SALE") {
+    throw new CheckoutDeviceCutoverError();
+  }
+}
+
 export function syncQueuePayloadsEqual(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
   if (left === null || right === null) return false;
@@ -131,6 +146,11 @@ export function classifySyncFailure(
 ): SyncFailureClassification {
   const retryCount = previousRetryCount + 1;
   const message = syncErrorMessage(error);
+
+  // A revoked legacy checkout cannot become retryable merely because the browser is offline.
+  if (error instanceof CheckoutDeviceCutoverError) {
+    return { status: "requires_review", failureCode: "authorization", retryCount, message };
+  }
 
   if (isTransientNetworkFailure(error)) {
     return retryCount >= MAX_SYNC_RETRIES
