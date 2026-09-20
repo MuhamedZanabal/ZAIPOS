@@ -26,7 +26,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 /** Non-secret identity bound to the encrypted terminal credential. */
 export interface DeviceCredentialIdentity { tenantId: string; branchId: string; deviceUid: string; }
-export interface DeviceCredentialStatus extends DeviceCredentialIdentity { configured: true; protectedByOs: boolean; } | { configured: false; protectedByOs: boolean; }
+export type DeviceCredentialStatus =
+  | (DeviceCredentialIdentity & { configured: true; protectedByOs: boolean })
+  | { configured: false; protectedByOs: boolean };
 /** Main-process-only provisioning input. The renderer must not persist or log this value. */
 export interface DeviceCredentialProvisioning extends DeviceCredentialIdentity { credential: string; }
 
