@@ -18,7 +18,6 @@ import { PriceOverrideApprovalsDialog, PriceOverrideDialog } from "./PriceOverri
 import type { PaymentAllocation } from "./paymentAllocations";
 import {
   POS_CHECKOUT_QUEUE_TYPE,
-  POS_CHECKOUT_RPC,
   buildPosCheckoutCommand,
 } from "./posCheckout";
 import { useOfflineMutation } from "@/hooks/useOfflineMutation";
@@ -365,7 +364,7 @@ export default function POS() {
   const checkoutMutation = useOfflineMutation({
     type: POS_CHECKOUT_QUEUE_TYPE,
     mutationFn: async (payload: any) => {
-      const { data, error } = await supabase.rpc(POS_CHECKOUT_RPC, payload);
+      const { data, error } = await supabase.rpc("checkout_sale_v2", payload);
       if (error) throw error;
       return data as string;
     }
