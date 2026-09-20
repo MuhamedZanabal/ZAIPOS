@@ -37,7 +37,16 @@ export const IPC_HANDLERS = {
   PRINT_TICKET: 'print-ticket', OPEN_DRAWER: 'open-drawer', GET_SETTINGS: 'get-settings', SAVE_SETTINGS: 'save-settings', SET_KIOSK: 'set-kiosk',
   DOWNLOAD_UPDATE: 'download-update', INSTALL_UPDATE: 'install-update', OPEN_EXTERNAL: 'open-external', GET_APP_VERSION: 'get-app-version',
   GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status',
+  GET_DEVICE_IDENTITY: 'get-device-identity',
+  ACTIVATE_DEVICE: 'activate-device',
+  DEVICE_CHECKOUT: 'device-checkout',
 } as const;
 
 /** Short-lived session evidence is passed to main for online verification only. */
-export interface ManagerAuthorization { accessToken: string; tenantId: string; branchId: string; }
+export interface ManagerAuthorization {
+  accessToken: string;
+  tenantId: string;
+  branchId: string;
+}
+
+export interface DeviceAuthorization extends ManagerAuthorization {}

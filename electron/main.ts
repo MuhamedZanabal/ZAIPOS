@@ -22,6 +22,7 @@ import { setupUpdater } from './services/updater.js';
 import { validateSettings, validateSettingsPatch } from './hardware-security.js';
 import { handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
+import { createDeviceCredentialService } from './services/device-credentials.js';
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ const __dirname = path.dirname(__filename);
 
 // Keep the existing store name for backward compatibility with installed devices.
 let store: any = null;
+let credentialStore: any = null;
 
 async function initStore(): Promise<void> {
   const { default: ElectronStore } = await import('electron-store');
@@ -39,6 +41,7 @@ async function initStore(): Promise<void> {
     name: 'pos-settings',
     defaults: DEFAULT_SETTINGS,
   });
+  credentialStore = new ElectronStore({ name: 'device-credentials' });
 }
 
 function getSettings(): AppSettings {
@@ -101,6 +104,16 @@ function createWindow(settings: AppSettings): BrowserWindow {
 // ─── Global IPC Handlers ──────────────────────────────────────────────────────
 
 function setupGlobalHandlers(): void {
+  const deviceCredentials = createDeviceCredentialService(
+    credentialStore,
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  );
+  handleTrustedIpc(IPC_HANDLERS.GET_DEVICE_IDENTITY, () => deviceCredentials.identity());
+  handleTrustedIpc(IPC_HANDLERS.ACTIVATE_DEVICE, (_event, approvalId, authorization) =>
+    deviceCredentials.activate(approvalId, app.getVersion(), process.platform, authorization));
+  handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, (_event, payload, authorization) =>
+    deviceCredentials.checkout(payload, authorization));
   handleTrustedIpc(IPC_HANDLERS.GET_SETTINGS, async () => {
     return getSettings();
   });

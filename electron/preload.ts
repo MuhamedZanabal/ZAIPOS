@@ -114,6 +114,15 @@ const electronAPI = {
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke(IPC_HANDLERS.GET_APP_VERSION),
 
+  getDeviceIdentity: (): Promise<{ deviceUid: string; provisioned: boolean }> =>
+    ipcRenderer.invoke(IPC_HANDLERS.GET_DEVICE_IDENTITY),
+
+  activateDevice: (approvalId: string, authorization: ManagerAuthorization) =>
+    ipcRenderer.invoke(IPC_HANDLERS.ACTIVATE_DEVICE, approvalId, authorization),
+
+  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> =>
+    ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CHECKOUT, payload, authorization),
+
   /** Marketplace del SO: 'linux' | 'darwin' | 'win32' */
   platform: process.platform as NodeJS.Platform,
 };

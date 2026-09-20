@@ -58,6 +58,10 @@ export interface ElectronBridge {
   /** Versión de la app desde package.json */
   getAppVersion: () => Promise<string>;
 
+  getDeviceIdentity: () => Promise<{ deviceUid: string; provisioned: boolean }>;
+  activateDevice: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;
+  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
+
   /** 'linux' | 'darwin' | 'win32' */
   platform: NodeJS.Platform;
 }

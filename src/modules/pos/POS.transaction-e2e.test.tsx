@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   openDrawer: vi.fn().mockResolvedValue({ ok: true }),
   printTicket: vi.fn().mockResolvedValue({ ok: true }),
   rpc: vi.fn(),
+  checkoutSale: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -139,7 +140,7 @@ vi.mock("@/integrations/supabase/client", () => {
 
   return {
     supabase: {
-      auth: { getUser: vi.fn() },
+      auth: { getUser: vi.fn(), getSession: vi.fn(async () => ({ data: { session: { access_token: "test-token" } } })) },
       from: vi.fn(tableQuery),
       rpc: state.rpc,
     },
@@ -184,13 +185,15 @@ describe("POS scan → pay → commit → receipt → stock refresh", () => {
       if (name !== "checkout_sale_v2") throw new Error(`Unexpected RPC: ${name}`);
       return { data: "60000000-0000-0000-0000-000000000077", error: null };
     });
+    state.checkoutSale.mockResolvedValue("60000000-0000-0000-0000-000000000077");
+    Object.defineProperty(window, "electron", { configurable: true, value: { checkoutSale: state.checkoutSale } });
   });
 
   it("scans into the real cart, commits once, prints once, opens cash drawer, clears cart, and refreshes stock", async () => {
     await scanAndPay();
 
     await waitFor(() => expect(state.printTicket).toHaveBeenCalledTimes(1));
-    expect(state.rpc).toHaveBeenCalledTimes(1);
+    expect(state.checkoutSale).toHaveBeenCalledTimes(1);
     expect(state.openDrawer).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(useCart.getState().lines).toHaveLength(0));
     expect(state.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["pos-stocks"] });
@@ -207,7 +210,7 @@ describe("POS scan → pay → commit → receipt → stock refresh", () => {
     await scanAndPay();
 
     await waitFor(() => expect(useCart.getState().lines).toHaveLength(0));
-    expect(state.rpc).toHaveBeenCalledTimes(1);
+    expect(state.checkoutSale).toHaveBeenCalledTimes(1);
     expect(state.printTicket).toHaveBeenCalledTimes(1);
     expect(state.openDrawer).not.toHaveBeenCalled();
     expect(state.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["pos-stocks"] });
@@ -218,7 +221,7 @@ describe("POS scan → pay → commit → receipt → stock refresh", () => {
     await scanAndPay();
 
     await waitFor(() => expect(useCart.getState().lines).toHaveLength(0));
-    expect(state.rpc).toHaveBeenCalledTimes(1);
+    expect(state.checkoutSale).toHaveBeenCalledTimes(1);
     expect(state.printTicket).toHaveBeenCalledTimes(1);
     expect(state.openDrawer).toHaveBeenCalledTimes(1);
     expect(state.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["pos-stocks"] });
