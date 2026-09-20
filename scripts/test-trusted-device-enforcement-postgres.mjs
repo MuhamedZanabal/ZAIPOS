@@ -81,7 +81,26 @@ const committed = {
 assert.deepEqual(committed, { sales: 1, payments: 1, movements: 1, checkout_audits: 1, cash_fils: '1000', stock: '1.000' });
 
 mark('revocation');
-sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${device}'`, 'device revocation');
+assert.throws(
+  () => authAs(actor, `SELECT public.revoke_device_enrollment('${tenant}','${device}','security incident')`, 'cashier device revocation'),
+  /authoriz|permission|forbidden/i,
+  'A cashier must not revoke an enrolled terminal',
+);
+assert.equal(
+  authAs(manager, `SELECT public.revoke_device_enrollment('${tenant}','${device}','security incident')`, 'manager device revocation'),
+  't',
+  'An authorized manager must revoke an active terminal',
+);
+assert.equal(
+  authAs(manager, `SELECT public.revoke_device_enrollment('${tenant}','${device}','security incident')`, 'manager device revocation replay'),
+  'f',
+  'Revocation replay must be a no-op',
+);
+assert.equal(
+  sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${tenant}' AND action='device.enrollment_revoked' AND entity_id='${device}'`, 'revocation audit check'),
+  '1',
+  'Revocation and its replay must produce one immutable audit event',
+);
 mark('revoked-heartbeat-rejection');
 assert.throws(() => authAs(actor, heartbeat(original, credential), 'revoked credential heartbeat'), /device credential rejected|revok|inactive/i,
   'A revoked credential must not refresh device authority');
