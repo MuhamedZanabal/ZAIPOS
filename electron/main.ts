@@ -17,6 +17,7 @@ import { log } from './logger.js';
 import { createDeviceCredentialService } from './services/device-credentials.js';
 import { createDeviceOfflineAuthority } from './services/device-offline-authority.js';
 import { createDeviceOfflineQueue } from './services/device-offline-queue.js';
+import { createDeviceOfflineOrchestrator } from './services/device-offline-orchestrator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,8 +46,9 @@ function setupGlobalHandlers(): void {
   // Recovery runs in Electron main before any renderer can request financial work.
   // No queue or lease-capability IPC exists while offline checkout remains gated.
   const offlineQueue = createDeviceOfflineQueue(credentialStore, offlineAuthority, supabaseUrl, publishableKey);
+  const offlineOrchestrator = createDeviceOfflineOrchestrator(offlineQueue, { enabled: false });
   const recoveredOfflineQueue = offlineQueue.recover();
-  log('info', 'device_offline_queue_recovered', { pendingCount: recoveredOfflineQueue.records.length, quarantinedCount: offlineQueue.quarantined().length });
+  log('info', 'device_offline_queue_recovered', { pendingCount: recoveredOfflineQueue.records.length, quarantinedCount: offlineQueue.quarantined().length, checkoutEnabled: offlineOrchestrator.enabled });
   const refreshOfflineAuthority = async (authorization: any): Promise<void> => {
     try {
       const lease = await offlineAuthority.refresh(authorization);
