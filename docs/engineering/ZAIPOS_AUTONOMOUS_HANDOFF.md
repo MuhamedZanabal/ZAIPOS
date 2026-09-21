@@ -4,12 +4,12 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-21 22:50:28 +03.
+- Bahrain timestamp: 2026-09-21 22:57:53 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef`.
 - Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
-- Current code head: `66cb8e225c585565c3073c99b28842bc9c137e1b`.
-- Exact-head CI: run #662 / `35646817224`; quality job `106489178274` and unsigned Windows-package job `106489850575` succeeded. All twenty exact-head workflow runs completed successfully, including production PostgreSQL migrations, concurrent offline reconciliation, Catalogue Import, lint, the 282-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
+- Current code head: `acca898794e23146473d4b1353c60eec4a449c38`.
+- Exact-head CI for `acca8987` is running and is not yet evidence. Its parent code head `66cb8e225c585565c3073c99b28842bc9c137e1b` had run #662 / `35646817224`: quality job `106489178274`, unsigned Windows-package job `106489850575`, and all twenty exact-head workflow runs completed successfully, including production PostgreSQL migrations, concurrent offline reconciliation, Catalogue Import, lint, the then-282-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
 - Previous repair: `3ed651cd5f7dae9abbe186a051b360e8ca66c16d` fixed psql scalar parsing. Exact-head CI #659 quality and all parallel contracts passed; its Windows package result is historical, not proof for the current head.
 
 ## Work completed in the latest run
@@ -23,14 +23,15 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
   - no renderer/preload queue or capability IPC; offline checkout remains disabled.
 - `cb2ff72a2444d1a48cb84233c215470c1324c550` — extended the real PostgreSQL contract so two simultaneous submissions of one mutation converge on one sale, one payment/till effect and one stock decrement.
 - `66cb8e225c585565c3073c99b28842bc9c137e1b` — canonicalized protected JSON independent of object-key order; rejected cyclic, non-finite, non-JSON and over-1 MiB envelopes before persistence.
+- `acca898794e23146473d4b1353c60eec4a449c38` — quarantines malformed HTTP-success reconciliation JSON rather than escaping an exception; proves journal recovery both before the primary state write and before journal deletion.
 
 ## Local verification
 
-- `npm test`: 58 files, 282 tests passed.
+- `npm test`: 58 files, 285 tests passed on an isolated rerun. An earlier concurrent build/test run had one Argon2 timeout; the focused Argon2 rerun passed 2/2 in 2.89 seconds and the isolated full suite passed.
 - `npm run lint`: zero errors; 13 pre-existing warnings.
 - `npm run build`: success; 2,768 modules transformed.
 - `node scripts/test-device-credential-vault-contract.mjs`: passed.
-- Focused offline/device suite: 40 tests passed after the canonicalization hardening.
+- Focused native queue suite: 10 tests passed, including both simulated power-loss boundaries and malformed-success quarantine.
 - Standalone `tsc -p tsconfig.electron.json --noEmit` remains blocked by pre-existing `import.meta.env` and `manager-authorization.ts` typing errors; CI build and lint are green.
 
 ## Hazards and boundaries
@@ -50,4 +51,4 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Recovery instruction
 
-Fetch live main, PRs #68/#72/#74/#75 and the current PR #75 head. Compare them with this file. Treat CI #662 as proof only for code head `66cb8e2`, inspect exact-head CI for later documentation or code commits, execute the highest-priority reproducible P0 task, test it, publish a coherent fast-forward commit, update this checkpoint and continue. Pending or historical workflows are never exact-head proof.
+Fetch live main, PRs #68/#72/#74/#75 and the current PR #75 head. Compare them with this file. Inspect exact-head CI for `acca8987` and diagnose the first genuine failing log if any; CI #662 remains proof only for parent `66cb8e2`. Then execute the highest-priority reproducible P0 task, test it, publish a coherent fast-forward commit, update this checkpoint and continue. Pending or historical workflows are never exact-head proof.
