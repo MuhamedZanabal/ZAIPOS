@@ -59,6 +59,19 @@ describe("sync queue state policy", () => {
     });
   });
 
+  it.each([
+    "Device enrollment has been revoked",
+    "Device is inactive or revoked",
+    "Credential was revoked for this device",
+    "Revoked device cannot submit financial mutations",
+  ])("quarantines revoked-device replay without automatic retry: %s", (message) => {
+    expect(classifySyncFailure({ message }, 0)).toMatchObject({
+      status: "requires_review",
+      failureCode: "device_revoked",
+      retryCount: 1,
+    });
+  });
+
   it("retries transient transport failures and fails only after the retry ceiling", () => {
     expect(classifySyncFailure(new TypeError("Failed to fetch"), 0)).toMatchObject({
       status: "retrying",
