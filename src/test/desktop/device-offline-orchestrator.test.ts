@@ -30,6 +30,22 @@ describe('native offline checkout orchestration gate', () => {
     expect(queue.reconcileNext).not.toHaveBeenCalled();
   });
 
+  it('snapshots the disabled release gate so later option mutation cannot enable financial work', () => {
+    const queue = {
+      enqueue: vi.fn(() => capture.mutationId),
+      pending: vi.fn(() => []),
+      reconcileNext: vi.fn(),
+    };
+    const gate = { enabled: false };
+    const orchestrator = createDeviceOfflineOrchestrator(queue, gate);
+
+    gate.enabled = true;
+
+    expect(() => orchestrator.capture(capture)).toThrow(/offline checkout is disabled/i);
+    expect(orchestrator.enabled).toBe(false);
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  });
+
   it('delegates capture to the native queue only after the explicit release gate is enabled', () => {
     const queue = {
       enqueue: vi.fn(() => capture.mutationId),

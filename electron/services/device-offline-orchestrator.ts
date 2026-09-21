@@ -29,9 +29,10 @@ export type OfflineDrainSummary = Readonly<{
 }>;
 
 export function createDeviceOfflineOrchestrator(queue: OfflineQueue, options: { enabled: boolean }) {
+  const enabled = options.enabled === true;
   let activeDrain: Promise<OfflineDrainSummary> | null = null;
   const requireEnabled = (): void => {
-    if (!options.enabled) throw new Error('Offline checkout is disabled pending production acceptance');
+    if (!enabled) throw new Error('Offline checkout is disabled pending production acceptance');
   };
   const drainOnce = async (authorization: DeviceAuthorization): Promise<OfflineDrainSummary> => {
     const startingCount = queue.pending().length;
@@ -50,7 +51,7 @@ export function createDeviceOfflineOrchestrator(queue: OfflineQueue, options: { 
     return Object.freeze({ attempted, committed, quarantined, retained, remaining: queue.pending().length });
   };
   return {
-    enabled: options.enabled,
+    enabled,
     capture(input: CaptureInput): string {
       requireEnabled();
       return queue.enqueue(input);
