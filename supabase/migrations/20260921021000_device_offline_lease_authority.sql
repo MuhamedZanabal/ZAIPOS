@@ -16,6 +16,7 @@ CREATE TABLE public.device_offline_leases (
   revoked_at timestamptz,
   revoke_reason text,
   created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT device_offline_leases_tenant_branch_fkey FOREIGN KEY (tenant_id, branch_id) REFERENCES public.branches(tenant_id, id) ON DELETE RESTRICT,
   CONSTRAINT device_offline_leases_expiry CHECK (expires_at > issued_at AND expires_at <= issued_at + interval '15 minutes'),
   CONSTRAINT device_offline_leases_revocation CHECK ((revoked_at IS NULL AND revoke_reason IS NULL) OR (revoked_at IS NOT NULL AND revoke_reason IS NOT NULL)),
   CONSTRAINT device_offline_leases_hash_length CHECK (octet_length(lease_hash) = 32)
