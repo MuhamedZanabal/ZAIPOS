@@ -29,7 +29,7 @@ describe('authoritative device revocation custody', () => {
     vi.stubGlobal('fetch', fetchMock);
     const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
 
-    await expect(service.revoke(deviceId, 'terminal-1', authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: false, newlyRevoked: true });
+    await expect(service.revoke(deviceId, authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: false, revoked: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toContain('/rest/v1/rpc/revoke_device_enrollment');
     const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0][1];
@@ -45,7 +45,7 @@ describe('authoritative device revocation custody', () => {
   it('also erases stale local custody when server confirms the terminal was already revoked', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(false), { status: 200 })));
     const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
-    await expect(service.revoke(deviceId, 'terminal-1', authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: false, newlyRevoked: false });
+    await expect(service.revoke(deviceId, authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: false, revoked: false });
     expect(values.get('enrollment')).toEqual({ deviceUid: 'terminal-1' });
   });
 
@@ -53,20 +53,21 @@ describe('authoritative device revocation custody', () => {
     const original = provisioned();
     const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'denied' }), { status: 403 })));
-    await expect(service.revoke(deviceId, 'terminal-1', authorization)).rejects.toThrow(/failed/);
+    await expect(service.revoke(deviceId, authorization)).rejects.toThrow(/failed/);
     expect(values.get('enrollment')).toEqual(original);
 
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ unexpected: true }), { status: 200 })));
-    await expect(service.revoke(deviceId, 'terminal-1', authorization)).rejects.toThrow(/invalid result/);
+    await expect(service.revoke(deviceId, authorization)).rejects.toThrow(/invalid result/);
     expect(values.get('enrollment')).toEqual(original);
   });
 
-  it('refuses to erase a different terminal before issuing any authority request', async () => {
-    const fetchMock = vi.fn();
+  it('derives terminal identity from protected local custody instead of renderer input', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(true), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
-    await expect(service.revoke(deviceId, 'remote-terminal', authorization)).rejects.toThrow(/only be erased for this terminal/);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(values.get('enrollment')).toEqual(provisioned());
+
+    await expect(service.revoke(deviceId, authorization)).resolves.toMatchObject({ deviceUid: 'terminal-1', provisioned: false });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(service.identity()).toEqual({ deviceUid: 'terminal-1', provisioned: false });
   });
 });
