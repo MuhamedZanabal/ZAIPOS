@@ -8,13 +8,16 @@ type OfflineAuthority = { readActive(authorization: DeviceAuthorization): Device
 type StoredMutation = Readonly<{ mutationId: string; digest: string; ciphertext: string; createdAt: string }>;
 type QueueState = Readonly<{ version: 1; records: readonly StoredMutation[] }>;
 type QuarantineEntry = Readonly<{ mutationId: string; reason: string; quarantinedAt: string }>;
+export type ConfirmedMutation = Readonly<{ mutationId: string; saleId: string; confirmedAt: string; payloadDigest?: string }>;
 
 const QUEUE_KEY = 'offline-mutation-queue-v1';
 const JOURNAL_KEY = 'offline-mutation-queue-journal-v1';
 const QUARANTINE_KEY = 'offline-mutation-quarantine-v1';
+const CONFIRMED_KEY = 'offline-mutation-confirmed-v1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_ENVELOPE_BYTES = 1024 * 1024;
+const SECRET_PAYLOAD_KEYS = new Set(['_lease_token', '_device_credential', 'token', 'credential', 'encryptedCredential', 'leaseToken', 'deviceCredential']);
 
 function clear(store: QueueStore, key: string): void { if (store.delete) store.delete(key); else store.set(key, undefined); }
 function requireProtection(): void { if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system offline queue encryption is unavailable'); }
@@ -35,6 +38,25 @@ function stateFrom(value: unknown): QueueState {
   if (new Set(records.map((record) => record.mutationId)).size !== records.length) throw new Error('Offline queue contains duplicate mutation IDs');
   return Object.freeze({ version: 1, records: Object.freeze(records) });
 }
+function confirmedFrom(value: unknown): readonly ConfirmedMutation[] {
+  if (value === undefined || value === null) return Object.freeze([]);
+  if (!Array.isArray(value)) throw new Error('Offline confirmed history is corrupt');
+  const records = value.map((record) => {
+    if (!record || typeof record !== 'object') throw new Error('Offline confirmed record is corrupt');
+    const row = record as Partial<ConfirmedMutation>;
+    if (typeof row.mutationId !== 'string' || !UUID.test(row.mutationId) || typeof row.saleId !== 'string' || !UUID.test(row.saleId)
+      || typeof row.confirmedAt !== 'string' || !Number.isFinite(Date.parse(row.confirmedAt))) {
+      throw new Error('Offline confirmed record is corrupt');
+    }
+    return Object.freeze({
+      mutationId: row.mutationId,
+      saleId: row.saleId,
+      confirmedAt: row.confirmedAt,
+      ...(typeof row.payloadDigest === 'string' && SHA256.test(row.payloadDigest) ? { payloadDigest: row.payloadDigest } : {}),
+    });
+  });
+  return Object.freeze(records);
+}
 function digest(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
 function canonicalJson(value: unknown, seen = new Set<object>()): string {
   if (value === null) return 'null';
@@ -51,6 +73,14 @@ function canonicalJson(value: unknown, seen = new Set<object>()): string {
   }
   seen.delete(value);
   return result;
+}
+function sanitizePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (SECRET_PAYLOAD_KEYS.has(key)) continue;
+    sanitized[key] = value;
+  }
+  return sanitized;
 }
 function encode(envelope: OfflineMutationEnvelope<Record<string, unknown>>): StoredMutation {
   requireProtection();
@@ -84,6 +114,25 @@ function quarantine(store: QueueStore, mutationId: string, reason: string, now: 
   const entries = Array.isArray(current) ? current.filter((entry) => entry && typeof entry === 'object') as QuarantineEntry[] : [];
   entries.push(Object.freeze({ mutationId, reason: reason.slice(0, 240), quarantinedAt: now.toISOString() }));
   store.set(QUARANTINE_KEY, Object.freeze(entries));
+}
+function readConfirmed(store: QueueStore): readonly ConfirmedMutation[] {
+  try { return confirmedFrom(store.get(CONFIRMED_KEY)); }
+  catch {
+    quarantine(store, 'unknown', 'corrupt confirmed history', new Date());
+    clear(store, CONFIRMED_KEY);
+    return Object.freeze([]);
+  }
+}
+function recordConfirmed(store: QueueStore, entry: ConfirmedMutation): void {
+  const current = readConfirmed(store);
+  if (current.some((item) => item.mutationId === entry.mutationId)) return;
+  store.set(CONFIRMED_KEY, Object.freeze([...current, entry]));
+}
+function authorityFailureReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/revok/i.test(message)) return 'revoked device';
+  if (/expir/i.test(message)) return 'expired authority';
+  return 'offline authority unavailable or expired';
 }
 function rpcUrl(baseUrl: string): string {
   const parsed = new URL(baseUrl);
@@ -125,38 +174,53 @@ export function createDeviceOfflineQueue(store: QueueStore, authority: OfflineAu
     quarantined(): readonly QuarantineEntry[] {
       const value = store.get(QUARANTINE_KEY); return Array.isArray(value) ? value as QuarantineEntry[] : [];
     },
+    confirmed(): readonly ConfirmedMutation[] {
+      return readConfirmed(store);
+    },
     enqueue(input: { authorization: DeviceAuthorization; kind: 'checkout.sale'; payload: Record<string, unknown>; mutationId?: string; now?: Date }): string {
       const lease = authority.readActive(input.authorization);
       const enrollment = store.get('enrollment') as { deviceUid?: unknown } | undefined;
       if (typeof enrollment?.deviceUid !== 'string' || !enrollment.deviceUid.trim()) throw new Error('Trusted device identity is unavailable');
+      const payload = sanitizePayload(input.payload);
       const current = recover();
       if (input.mutationId) {
         const existing = current.records.find((item) => item.mutationId === input.mutationId);
         if (existing) {
           const previous = decode(existing);
           if (previous.leaseId !== lease.leaseId || previous.tenantId !== input.authorization.tenantId || previous.branchId !== input.authorization.branchId
-            || previous.deviceUid !== enrollment.deviceUid || previous.kind !== input.kind || canonicalJson(previous.payload) !== canonicalJson(input.payload)) {
+            || previous.deviceUid !== enrollment.deviceUid || previous.kind !== input.kind || canonicalJson(previous.payload) !== canonicalJson(payload)) {
+            quarantine(store, existing.mutationId, 'mutation identity conflict', input.now ?? new Date());
             throw new Error('Offline mutation ID was reused with a different payload');
           }
           return existing.mutationId;
         }
+        const alreadyConfirmed = readConfirmed(store).find((item) => item.mutationId === input.mutationId);
+        if (alreadyConfirmed) {
+          if (alreadyConfirmed.payloadDigest && alreadyConfirmed.payloadDigest !== digest(canonicalJson(payload))) {
+            quarantine(store, alreadyConfirmed.mutationId, 'mutation identity conflict', input.now ?? new Date());
+            throw new Error('Offline mutation ID was reused with a different payload');
+          }
+          return alreadyConfirmed.mutationId;
+        }
       }
       const envelope = createOfflineMutationEnvelope({ lease, tenantId: input.authorization.tenantId, branchId: input.authorization.branchId,
-        deviceUid: enrollment.deviceUid, kind: input.kind, payload: input.payload, mutationId: input.mutationId, now: input.now });
+        deviceUid: enrollment.deviceUid, kind: input.kind, payload, mutationId: input.mutationId, now: input.now });
       const record = encode(envelope);
       persist(store, { version: 1, records: [...current.records, record] });
       return record.mutationId;
     },
     async reconcileNext(authorization: DeviceAuthorization): Promise<{ status: 'empty' | 'committed' | 'retained' | 'quarantined'; mutationId?: string; saleId?: string }> {
       const current = recover(); const record = current.records[0]; if (!record) return { status: 'empty' };
+      const alreadyConfirmed = readConfirmed(store).find((item) => item.mutationId === record.mutationId);
+      if (alreadyConfirmed) { remove(record.mutationId); return { status: 'committed', mutationId: record.mutationId, saleId: alreadyConfirmed.saleId }; }
       let envelope: OfflineMutationEnvelope<Record<string, unknown>>;
-      try { envelope = decode(record); } catch (error: any) { quarantine(store, record.mutationId, error?.message ?? 'corrupt record', new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
+      try { envelope = decode(record); } catch (error: any) { quarantine(store, record.mutationId, `corrupt record: ${error?.message ?? 'corrupt record'}`, new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
       if (envelope.tenantId !== authorization.tenantId || envelope.branchId !== authorization.branchId) {
         quarantine(store, record.mutationId, 'authorization scope mismatch', new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId };
       }
       let lease: DeviceOfflineLease;
       try { lease = authority.readActive(authorization); }
-      catch { quarantine(store, record.mutationId, 'offline authority unavailable or expired', new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
+      catch (error) { quarantine(store, record.mutationId, authorityFailureReason(error), new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
       if (lease.leaseId !== envelope.leaseId) { quarantine(store, record.mutationId, 'offline lease identity mismatch', new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
       let response: Response;
       try {
@@ -182,6 +246,7 @@ export function createDeviceOfflineQueue(store: QueueStore, authority: OfflineAu
       }
       const saleId = Array.isArray(decoded) ? decoded[0] : decoded;
       if (typeof saleId !== 'string' || !UUID.test(saleId)) { quarantine(store, record.mutationId, 'server returned an invalid sale identifier', new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
+      recordConfirmed(store, Object.freeze({ mutationId: record.mutationId, saleId, confirmedAt: new Date().toISOString(), payloadDigest: digest(canonicalJson(envelope.payload)) }));
       remove(record.mutationId); return { status: 'committed', mutationId: record.mutationId, saleId };
     },
   };

@@ -49,7 +49,14 @@ function setupGlobalHandlers(): void {
   const offlineQueue = createDeviceOfflineQueue(credentialStore, offlineAuthority, supabaseUrl, publishableKey);
   const offlineOrchestrator = createDeviceOfflineOrchestrator(offlineQueue, { enabled: false });
   const recoveredOfflineQueue = offlineQueue.recover();
-  log('info', 'device_offline_queue_recovered', { pendingCount: recoveredOfflineQueue.records.length, quarantinedCount: offlineQueue.quarantined().length, checkoutEnabled: offlineOrchestrator.enabled });
+  const recoverySnapshot = offlineOrchestrator.recovery().map(({ mutationId, state }) => ({ mutationId, state }));
+  log('info', 'device_offline_queue_recovered', {
+    pendingCount: recoveredOfflineQueue.records.length,
+    quarantinedCount: offlineQueue.quarantined().length,
+    confirmedCount: offlineQueue.confirmed().length,
+    checkoutEnabled: offlineOrchestrator.enabled,
+    recovery: recoverySnapshot,
+  });
   const refreshOfflineAuthority = async (authorization: any): Promise<void> => {
     try {
       const lease = await offlineAuthority.refresh(authorization);

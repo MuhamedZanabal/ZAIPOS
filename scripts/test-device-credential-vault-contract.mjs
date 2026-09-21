@@ -16,9 +16,12 @@ assert.match(vault, /clearOfflineLease\(\)/, 'invalid or expired offline authori
 assert.match(vault, /\^\[0-9a-fA-F\]\{64\}\$/, 'vault must require 256-bit hexadecimal secrets');
 assert.match(offlineQueue, /safeStorage\.encryptString\(plaintext\)/, 'native offline mutations must be encrypted at rest');
 assert.match(offlineQueue, /offline-mutation-queue-journal-v1/, 'native offline queue must retain a crash-recovery journal');
-assert.match(offlineQueue, /offline-mutation-quarantine-v1/, 'native offline queue must quarantine rejected or corrupt mutations');
+assert.match(offlineQueue, /offline-mutation-confirmed-v1/, 'native offline queue must retain confirmed sale evidence');
+assert.match(offlineQueue, /mutation identity conflict/, 'native offline queue must surface payload substitution as an operator conflict');
 assert.match(offlineQueue, /_lease_token: lease\.token/, 'only Electron main reconciliation may attach lease capability material');
 assert.match(main, /createDeviceOfflineQueue/, 'Electron startup must recover the native offline queue');
+assert.match(main, /offlineOrchestrator\.recovery\(\)/, 'Electron startup must project operator-visible recovery state');
+assert.match(main, /enabled: false/, 'native offline checkout must remain disabled until acceptance');
 for (const [name, source] of [['preload', preload], ['renderer types', rendererTypes]]) {
   assert.doesNotMatch(source, /getDeviceCredential/i, `${name} must not expose a credential getter`);
   assert.doesNotMatch(source, /readForAuthority/i, `${name} must not expose the main-process credential reader`);

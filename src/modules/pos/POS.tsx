@@ -53,6 +53,7 @@ export default function POS() {
   const [priceOverrideLine, setPriceOverrideLine] = useState<CartLine | null>(null);
   const [priceApprovalsOpen, setPriceApprovalsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const checkoutMutationIdRef = useRef<string | null>(null);
   const [channel, setChannel] = useState<SalesChannel>("pos");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -377,9 +378,11 @@ export default function POS() {
     if (!tenantId || !branchId) return;
     if (lines.length === 0) return toast.error("Add products to the ticket");
     if (isPos && !openSession) return toast.error("You must open the register before making in-person sales");
+    if (submitting) return;
 
     setSubmitting(true);
     try {
+      if (!checkoutMutationIdRef.current) checkoutMutationIdRef.current = crypto.randomUUID();
       const command = buildPosCheckoutCommand({
         tenantId,
         branchId,
@@ -391,7 +394,7 @@ export default function POS() {
         discountAmountBhd: discountAmount,
         tipAmountBhd: tipAmount,
         couponCode: couponCode ?? null,
-        clientMutationId: crypto.randomUUID(),
+        clientMutationId: checkoutMutationIdRef.current,
       });
       const payableTotal = command.receiptPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
@@ -444,6 +447,7 @@ export default function POS() {
       setPaymentOpen(false);
       setCustomerId(null);
       setCustomerSearch("");
+      checkoutMutationIdRef.current = null;
       qc.invalidateQueries({ queryKey: ["open-session"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
       qc.invalidateQueries({ queryKey: ["sales"] });

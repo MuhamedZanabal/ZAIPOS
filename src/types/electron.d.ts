@@ -19,7 +19,7 @@ export interface ElectronBridge {
   activateDevice: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;
   rotateDeviceCredential: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;
   revokeDevice: (deviceId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: false; revoked: boolean }>;
-  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
+  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string | { status: 'pending'; mutationId: string }>;
   platform: NodeJS.Platform;
 }
 

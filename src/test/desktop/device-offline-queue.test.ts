@@ -194,4 +194,46 @@ describe('native durable offline mutation queue', () => {
     const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
     expect(() => queue.enqueue(input)).toThrow(/encryption is unavailable/);
   });
+
+  it('records confirmed sale evidence before dropping the queued mutation and never stores capability material', async () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    queue.enqueue(input);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(saleId), { status: 200 })));
+    await expect(queue.reconcileNext(authorization)).resolves.toEqual({ status: 'committed', mutationId, saleId });
+    expect(queue.pending()).toHaveLength(0);
+    expect(queue.confirmed()).toEqual([expect.objectContaining({ mutationId, saleId })]);
+    const persisted = JSON.stringify(values.get('offline-mutation-confirmed-v1'));
+    expect(persisted).not.toContain(token);
+    expect(persisted).not.toContain('_payments');
+    expect(queue.enqueue(input)).toBe(mutationId);
+    expect(queue.pending()).toHaveLength(0);
+    expect(() => queue.enqueue({ ...input, payload: { _items: [{ quantity: '2.000' }], _payments: [] } })).toThrow(/different payload/);
+    expect(queue.quarantined()).toEqual([expect.objectContaining({ mutationId, reason: 'mutation identity conflict' })]);
+  });
+
+  it('strips lease and credential secrets from captured payloads and keeps the original mutation after a conflict', () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    expect(queue.enqueue({ ...input, payload: { ...input.payload, _lease_token: token, _device_credential: 'b'.repeat(64) } })).toBe(mutationId);
+    const persisted = JSON.stringify(values.get('offline-mutation-queue-v1'));
+    expect(persisted).not.toContain(token);
+    expect(persisted).not.toContain('b'.repeat(64));
+    expect(() => queue.enqueue({ ...input, payload: { _items: [{ quantity: '9.000' }], _payments: [] } })).toThrow(/different payload/);
+    expect(queue.pending()).toEqual([{ mutationId, createdAt: '2026-09-21T12:01:00.000Z' }]);
+    expect(queue.quarantined()).toEqual([expect.objectContaining({ mutationId, reason: 'mutation identity conflict' })]);
+  });
+
+  it('classifies expired authority and revoked device quarantine without dropping unrelated work', async () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    queue.enqueue(input);
+    authority.readActive.mockImplementationOnce(() => { throw new Error('lease expired'); });
+    await expect(queue.reconcileNext(authorization)).resolves.toMatchObject({ status: 'quarantined', mutationId });
+    expect(queue.quarantined()).toEqual([expect.objectContaining({ mutationId, reason: 'expired authority' })]);
+
+    const revokedId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    queue.enqueue({ ...input, mutationId: revokedId });
+    authority.readActive.mockImplementationOnce(() => { throw new Error('device revoked'); });
+    await expect(queue.reconcileNext(authorization)).resolves.toMatchObject({ status: 'quarantined', mutationId: revokedId });
+    expect(queue.quarantined().map((entry) => entry.reason)).toEqual(['expired authority', 'revoked device']);
+  });
 });
+

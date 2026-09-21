@@ -1,4 +1,5 @@
 import type { DeviceAuthorization } from '../types.js';
+import { projectOperatorRecovery, type OperatorRecoveryRecord } from './device-offline-recovery.js';
 
 type CaptureInput = {
   authorization: DeviceAuthorization;
@@ -17,6 +18,8 @@ type ReconciliationResult = {
 type OfflineQueue = {
   enqueue(input: CaptureInput): string;
   pending(): ReadonlyArray<{ mutationId: string; createdAt: string }>;
+  quarantined(): ReadonlyArray<{ mutationId: string; reason: string; quarantinedAt: string }>;
+  confirmed(): ReadonlyArray<{ mutationId: string; saleId: string; confirmedAt: string }>;
   reconcileNext(authorization: DeviceAuthorization): Promise<ReconciliationResult>;
 };
 
@@ -31,6 +34,7 @@ export type OfflineDrainSummary = Readonly<{
 export function createDeviceOfflineOrchestrator(queue: OfflineQueue, options: { enabled: boolean }) {
   const enabled = options.enabled === true;
   let activeDrain: Promise<OfflineDrainSummary> | null = null;
+  let replayingMutationId: string | null = null;
   const requireEnabled = (): void => {
     if (!enabled) throw new Error('Offline checkout is disabled pending production acceptance');
   };
@@ -41,12 +45,17 @@ export function createDeviceOfflineOrchestrator(queue: OfflineQueue, options: { 
     let quarantined = 0;
     let retained = 0;
     for (let index = 0; index < startingCount; index += 1) {
-      const result = await queue.reconcileNext(authorization);
-      if (result.status === 'empty') break;
-      attempted += 1;
-      if (result.status === 'committed') committed += 1;
-      if (result.status === 'quarantined') quarantined += 1;
-      if (result.status === 'retained') { retained += 1; break; }
+      replayingMutationId = queue.pending()[0]?.mutationId ?? null;
+      try {
+        const result = await queue.reconcileNext(authorization);
+        if (result.status === 'empty') break;
+        attempted += 1;
+        if (result.status === 'committed') committed += 1;
+        if (result.status === 'quarantined') quarantined += 1;
+        if (result.status === 'retained') { retained += 1; break; }
+      } finally {
+        replayingMutationId = null;
+      }
     }
     return Object.freeze({ attempted, committed, quarantined, retained, remaining: queue.pending().length });
   };
@@ -54,7 +63,19 @@ export function createDeviceOfflineOrchestrator(queue: OfflineQueue, options: { 
     enabled,
     capture(input: CaptureInput): string {
       requireEnabled();
-      return queue.enqueue(input);
+      const mutationId = queue.enqueue(input);
+      if (!queue.pending().some((item) => item.mutationId === mutationId) && !queue.confirmed().some((item) => item.mutationId === mutationId)) {
+        throw new Error('Offline mutation capture was not persisted');
+      }
+      return mutationId;
+    },
+    recovery(): readonly OperatorRecoveryRecord[] {
+      return projectOperatorRecovery({
+        pending: queue.pending(),
+        quarantined: queue.quarantined(),
+        confirmed: queue.confirmed(),
+        replayingMutationId,
+      });
     },
     async drain(authorization: DeviceAuthorization): Promise<OfflineDrainSummary> {
       requireEnabled();

@@ -20,6 +20,8 @@ describe('native offline checkout orchestration gate', () => {
     const queue = {
       enqueue: vi.fn(() => capture.mutationId),
       pending: vi.fn(() => [{ mutationId: capture.mutationId, createdAt: '2026-09-21T12:00:00.000Z' }]),
+      quarantined: vi.fn(() => []),
+      confirmed: vi.fn(() => []),
       reconcileNext: vi.fn(async () => ({ status: 'committed' as const, mutationId: capture.mutationId })),
     };
     const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: false });
@@ -28,12 +30,17 @@ describe('native offline checkout orchestration gate', () => {
     await expect(orchestrator.drain(authorization)).rejects.toThrow(/offline checkout is disabled/i);
     expect(queue.enqueue).not.toHaveBeenCalled();
     expect(queue.reconcileNext).not.toHaveBeenCalled();
+    expect(orchestrator.recovery()).toEqual([
+      { mutationId: capture.mutationId, state: 'pending', createdAt: '2026-09-21T12:00:00.000Z' },
+    ]);
   });
 
   it('snapshots the disabled release gate so later option mutation cannot enable financial work', () => {
     const queue = {
       enqueue: vi.fn(() => capture.mutationId),
       pending: vi.fn(() => []),
+      quarantined: vi.fn(() => []),
+      confirmed: vi.fn(() => []),
       reconcileNext: vi.fn(),
     };
     const gate = { enabled: false };
@@ -46,16 +53,31 @@ describe('native offline checkout orchestration gate', () => {
     expect(queue.enqueue).not.toHaveBeenCalled();
   });
 
-  it('delegates capture to the native queue only after the explicit release gate is enabled', () => {
+  it('acknowledges capture only after the native queue has persisted the mutation', () => {
     const queue = {
       enqueue: vi.fn(() => capture.mutationId),
-      pending: vi.fn(() => []),
+      pending: vi.fn(() => [{ mutationId: capture.mutationId, createdAt: '2026-09-21T12:00:00.000Z' }]),
+      quarantined: vi.fn(() => []),
+      confirmed: vi.fn(() => []),
       reconcileNext: vi.fn(),
     };
     const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
 
     expect(orchestrator.capture(capture)).toBe(capture.mutationId);
     expect(queue.enqueue).toHaveBeenCalledWith(capture);
+    expect(queue.pending).toHaveBeenCalled();
+  });
+
+  it('refuses to acknowledge capture when persistence cannot be observed', () => {
+    const queue = {
+      enqueue: vi.fn(() => capture.mutationId),
+      pending: vi.fn(() => []),
+      quarantined: vi.fn(() => []),
+      confirmed: vi.fn(() => []),
+      reconcileNext: vi.fn(),
+    };
+    const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
+    expect(() => orchestrator.capture(capture)).toThrow(/was not persisted/i);
   });
 
   it('serializes concurrent drains so one queued mutation is never submitted twice locally', async () => {
@@ -66,6 +88,8 @@ describe('native offline checkout orchestration gate', () => {
     const queue = {
       enqueue: vi.fn(),
       pending: () => pending,
+      quarantined: () => [],
+      confirmed: () => [],
       reconcileNext: async () => {
         reconciliations += 1;
         await blocked;
@@ -94,6 +118,8 @@ describe('native offline checkout orchestration gate', () => {
     const queue = {
       enqueue: vi.fn(),
       pending: () => Array.from({ length: remaining }, (_, index) => ({ mutationId: `${index}`, createdAt: '2026-09-21T12:00:00.000Z' })),
+      quarantined: () => [],
+      confirmed: () => [],
       reconcileNext: async () => {
         const result = results.shift()!;
         if (result.status !== 'retained') remaining -= 1;
@@ -104,5 +130,19 @@ describe('native offline checkout orchestration gate', () => {
 
     await expect(orchestrator.drain(authorization)).resolves.toEqual({ attempted: 3, committed: 1, quarantined: 1, retained: 1, remaining: 1 });
     expect(results).toHaveLength(0);
+  });
+
+  it('exposes operator recovery states without lease capability or payload material', () => {
+    const queue = {
+      enqueue: vi.fn(),
+      pending: () => [{ mutationId: capture.mutationId, createdAt: '2026-09-21T12:00:00.000Z' }],
+      quarantined: () => [{ mutationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', reason: 'revoked device', quarantinedAt: '2026-09-21T12:01:00.000Z' }],
+      confirmed: () => [{ mutationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', saleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', confirmedAt: '2026-09-21T12:02:00.000Z' }],
+      reconcileNext: vi.fn(),
+    };
+    const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: false });
+    const snapshot = orchestrator.recovery();
+    expect(snapshot.map((item) => item.state)).toEqual(['pending', 'revoked_device', 'confirmed']);
+    expect(JSON.stringify(snapshot)).not.toMatch(/lease|token|credential|ciphertext|_payments/i);
   });
 });
