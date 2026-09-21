@@ -16,6 +16,7 @@ import { handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
 import { createDeviceCredentialService } from './services/device-credentials.js';
 import { createDeviceOfflineAuthority } from './services/device-offline-authority.js';
+import { createDeviceOfflineQueue } from './services/device-offline-queue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +42,11 @@ function setupGlobalHandlers(): void {
   const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const deviceCredentials = createDeviceCredentialService(credentialStore, supabaseUrl, publishableKey);
   const offlineAuthority = createDeviceOfflineAuthority(credentialStore, supabaseUrl, publishableKey);
+  // Recovery runs in Electron main before any renderer can request financial work.
+  // No queue or lease-capability IPC exists while offline checkout remains gated.
+  const offlineQueue = createDeviceOfflineQueue(credentialStore, offlineAuthority, supabaseUrl, publishableKey);
+  const recoveredOfflineQueue = offlineQueue.recover();
+  log('info', 'device_offline_queue_recovered', { pendingCount: recoveredOfflineQueue.records.length, quarantinedCount: offlineQueue.quarantined().length });
   const refreshOfflineAuthority = async (authorization: any): Promise<void> => {
     try {
       const lease = await offlineAuthority.refresh(authorization);
