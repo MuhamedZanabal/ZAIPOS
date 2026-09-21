@@ -12,6 +12,7 @@ vi.mock('electron', () => ({ safeStorage: {
 } }));
 
 import { createDeviceOfflineQueue } from '../../../electron/services/device-offline-queue';
+import { createDeviceOfflineOrchestrator } from '../../../electron/services/device-offline-orchestrator';
 
 describe('native durable offline mutation queue', () => {
   const values = new Map<string, unknown>();
@@ -130,6 +131,39 @@ describe('native durable offline mutation queue', () => {
     queue.enqueue({ ...input, mutationId: '99999999-9999-4999-8999-999999999999' }); vi.stubGlobal('fetch', vi.fn(async () => new Response('denied', { status: 403 })));
     await expect(queue.reconcileNext(authorization)).resolves.toMatchObject({ status: 'quarantined' });
     expect(queue.quarantined()).toHaveLength(4);
+  });
+
+  it('quarantines a stale-lease mutation and commits replacement-lease work through the orchestrator', async () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    queue.enqueue(input);
+    const replacementLease = { leaseId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', token: 'b'.repeat(64), issuedAt: '2026-09-21T12:02:00.000Z', expiresAt: '2026-09-21T12:12:00.000Z' };
+    authority.readActive
+      .mockImplementationOnce(() => replacementLease)
+      .mockImplementationOnce(() => replacementLease)
+      .mockImplementationOnce(() => replacementLease);
+    const replacementMutationId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    queue.enqueue({ ...input, mutationId: replacementMutationId, now: new Date('2026-09-21T12:03:00.000Z') });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(saleId), { status: 200 })));
+    const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
+
+    await expect(orchestrator.drain(authorization)).resolves.toEqual({ attempted: 2, committed: 1, quarantined: 1, retained: 0, remaining: 0 });
+    expect(queue.quarantined()).toEqual([expect.objectContaining({ mutationId, reason: 'offline lease identity mismatch' })]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('quarantines all queued mutations after native authority revocation without network effects', async () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    queue.enqueue(input);
+    queue.enqueue({ ...input, mutationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' });
+    authority.readActive
+      .mockImplementationOnce(() => { throw new Error('revoked'); })
+      .mockImplementationOnce(() => { throw new Error('revoked'); });
+    const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
+    const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
+
+    await expect(orchestrator.drain(authorization)).resolves.toEqual({ attempted: 2, committed: 0, quarantined: 2, retained: 0, remaining: 0 });
+    expect(queue.quarantined()).toHaveLength(2);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('fails closed when OS encryption is unavailable', () => {
