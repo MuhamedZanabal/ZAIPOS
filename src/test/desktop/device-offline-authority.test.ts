@@ -40,6 +40,7 @@ describe('native bounded offline authority', () => {
     const persisted = String(values.get('offline-lease'));
     expect(persisted).not.toContain(leaseToken);
     expect(mocks.encryptString).toHaveBeenCalledWith(expect.stringContaining(leaseToken));
+    expect(authority.readActive(authorization)).toMatchObject({ leaseId: '33333333-3333-4333-8333-333333333333', token: leaseToken, expiresAt });
   });
 
   it('fails closed and clears stale custody when issuance is denied or lifetime is invalid', async () => {
@@ -60,5 +61,27 @@ describe('native bounded offline authority', () => {
     const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
     await expect(authority.refresh({ ...authorization, branchId: '44444444-4444-4444-8444-444444444444' })).rejects.toThrow(/scope/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('destroys expired, tampered, or cross-scope authority before offline use', () => {
+    const authority = createDeviceOfflineAuthority(store, 'https://project.supabase.co', 'publishable-key');
+    const putLease = (overrides: Record<string, unknown> = {}) => {
+      const payload = { tenantId, branchId, deviceUid: 'terminal-1', lease: { leaseId: '33333333-3333-4333-8333-333333333333', token: 'b'.repeat(64), issuedAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() }, ...overrides };
+      values.set('offline-lease', Buffer.from(`protected:${JSON.stringify(payload)}`).toString('base64'));
+    };
+    putLease();
+    expect(authority.readActive(authorization).leaseId).toBe('33333333-3333-4333-8333-333333333333');
+
+    putLease({ branchId: '44444444-4444-4444-8444-444444444444' });
+    expect(() => authority.readActive(authorization)).toThrow(/scope/);
+    expect(values.has('offline-lease')).toBe(false);
+
+    putLease({ lease: { leaseId: '33333333-3333-4333-8333-333333333333', token: 'b'.repeat(64), issuedAt: new Date(Date.now() - 120_000).toISOString(), expiresAt: new Date(Date.now() - 60_000).toISOString() } });
+    expect(() => authority.readActive(authorization)).toThrow(/expired/);
+    expect(values.has('offline-lease')).toBe(false);
+
+    values.set('offline-lease', Buffer.from('not-protected-json').toString('base64'));
+    expect(() => authority.readActive(authorization)).toThrow(/cannot be decrypted/);
+    expect(values.has('offline-lease')).toBe(false);
   });
 });
