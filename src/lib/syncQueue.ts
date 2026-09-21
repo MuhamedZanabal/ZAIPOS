@@ -14,8 +14,6 @@ const REPLAYABLE_SYNC_QUEUE_STATUSES = new Set<string>([
   "queued",
   "sending",
   "retrying",
-  // Defensive compatibility if a v3 row is read before the Dexie upgrade
-  // transaction finishes.
   "pending",
 ]);
 
@@ -32,6 +30,7 @@ export type SyncFailureCode =
   | "payment_mismatch"
   | "stock_conflict"
   | "price_override_changed"
+  | "device_revoked"
   | "authorization"
   | "validation";
 
@@ -147,7 +146,6 @@ export function classifySyncFailure(
   const retryCount = previousRetryCount + 1;
   const message = syncErrorMessage(error);
 
-  // A revoked legacy checkout cannot become retryable merely because the browser is offline.
   if (error instanceof CheckoutDeviceCutoverError) {
     return { status: "requires_review", failureCode: "authorization", retryCount, message };
   }
@@ -178,6 +176,10 @@ export function classifySyncFailure(
   else if (/insufficient stock|stock insuficiente|stock conflict|negative stock/.test(normalized)) failureCode = "stock_conflict";
   else if (/client mutation id.*different checkout|operation.*already processing/.test(normalized)) failureCode = "operation_conflict";
   else if (/price override.*(?:stale|expired|not approved|consumed|does not match)/.test(normalized)) failureCode = "price_override_changed";
+  // Revocation must never enter the automatic retry path. A queued mutation from a
+  // terminal whose enrollment/credential was revoked is quarantined for operator
+  // reconciliation so reconnect cannot silently replay it under stale authority.
+  else if (/device.*revoked|revoked.*device|credential.*revoked|enrollment.*revoked|device.*inactive/.test(normalized)) failureCode = "device_revoked";
   else if (/not authenticated|forbidden|permission|not authorized|authorization/.test(normalized)) failureCode = "authorization";
 
   return { status: "requires_review", failureCode, retryCount, message };
