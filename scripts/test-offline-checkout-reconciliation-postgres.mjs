@@ -1,4 +1,7 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const dbUrl = process.env.POSTGRES_ADMIN_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
 const IDS = {
@@ -31,8 +34,13 @@ function psql(args, capture = true) {
 function sql(statement) { return psql(["-c", statement], false); }
 function scalar(statement) { return psql(["-qAt", "-c", statement]).trim(); }
 function q(value) { return String(value).replaceAll("'", "''"); }
-function reconcile({ mutation = IDS.mutation, token = TOKEN, tenant = IDS.tenant, branch = IDS.branch, lease = IDS.lease, uid = "terminal-offline-01", requestItems = items } = {}) {
-  return scalar(`SET request.jwt.claim.sub='${IDS.cashier}'; SELECT public.reconcile_offline_checkout('${tenant}'::uuid,'${branch}'::uuid,'${lease}'::uuid,'${token}','${uid}','${mutation}'::uuid,'${q(JSON.stringify(requestItems))}'::jsonb,'${q(JSON.stringify(payments))}'::jsonb,0,NULL,NULL::uuid,'pos'::public.sales_channel,0,NULL,'${IDS.session}'::uuid);`);
+function reconcileStatement({ mutation = IDS.mutation, token = TOKEN, tenant = IDS.tenant, branch = IDS.branch, lease = IDS.lease, uid = "terminal-offline-01", requestItems = items } = {}) {
+  return `SET request.jwt.claim.sub='${IDS.cashier}'; SELECT public.reconcile_offline_checkout('${tenant}'::uuid,'${branch}'::uuid,'${lease}'::uuid,'${token}','${uid}','${mutation}'::uuid,'${q(JSON.stringify(requestItems))}'::jsonb,'${q(JSON.stringify(payments))}'::jsonb,0,NULL,NULL::uuid,'pos'::public.sales_channel,0,NULL,'${IDS.session}'::uuid);`;
+}
+function reconcile(options = {}) { return scalar(reconcileStatement(options)); }
+async function reconcileAsync(options = {}) {
+  const { stdout } = await execFileAsync("psql", [dbUrl, "-X", "-v", "ON_ERROR_STOP=1", "-qAt", "-c", reconcileStatement(options)], { encoding: "utf8" });
+  return stdout.trim();
 }
 function expectFailure(label, fn, pattern) {
   try { fn(); } catch (error) {
@@ -108,11 +116,23 @@ expectFailure("cross-branch", () => reconcile({ mutation: "81000000-0000-0000-00
 assertEqual("cross-branch zero side effects", snapshot(), afterValid);
 expectFailure("cross-tenant", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000095", tenant: IDS.tenant2, branch: IDS.tenant2Branch, uid: "terminal-offline-03" }), /lease rejected/i);
 assertEqual("cross-tenant zero side effects", snapshot(), afterValid);
+
+const concurrentMutation = "81000000-0000-0000-0000-000000000090";
+const concurrentSales = await Promise.all([
+  reconcileAsync({ mutation: concurrentMutation }),
+  reconcileAsync({ mutation: concurrentMutation }),
+]);
+assertEqual("concurrent replay converges", concurrentSales[0], concurrentSales[1]);
+if (!/^[0-9a-f-]{36}$/i.test(concurrentSales[0])) throw new Error(`concurrent reconciliation did not return sale UUID: ${concurrentSales[0]}`);
+assertEqual("concurrent replay creates one sale", scalar(`SELECT count(*)::text FROM public.sales WHERE tenant_id='${IDS.tenant}' AND client_mutation_id='${concurrentMutation}';`), "1");
+assertEqual("concurrent replay cash once", scalar(`SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${IDS.session}';`), "2000");
+assertEqual("concurrent replay stock once", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${IDS.center}' AND product_id='${IDS.product}';`), "8.000");
+const afterConcurrency = snapshot();
 sql(`UPDATE public.device_offline_leases SET revoked_at=clock_timestamp(), revoke_reason='adversarial-test' WHERE id='${IDS.lease}';`);
 expectFailure("revoked lease", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000094" }), /offline lease rejected/i);
-assertEqual("revoked lease zero side effects", snapshot(), afterValid);
+assertEqual("revoked lease zero side effects", snapshot(), afterConcurrency);
 sql(`INSERT INTO public.device_offline_leases(id,tenant_id,branch_id,device_id,lease_hash,issued_to,issued_at,expires_at) VALUES ('${IDS.expiredLease}','${IDS.tenant}','${IDS.branch}','${IDS.device}',extensions.digest(convert_to('${TOKEN}','UTF8'),'sha256'),'${IDS.cashier}',clock_timestamp()-interval '10 minutes',clock_timestamp()-interval '1 minute');`);
 expectFailure("expired lease", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000093", lease: IDS.expiredLease }), /offline lease rejected/i);
-assertEqual("expired lease zero side effects", snapshot(), afterValid);
+assertEqual("expired lease zero side effects", snapshot(), afterConcurrency);
 
-process.stdout.write("Offline checkout reconciliation PostgreSQL PASS: exact replay converges and altered payload, wrong capability, revoked/expired lease, cross-device, cross-branch and cross-tenant attempts are fail-closed with zero financial side effects.\n");
+process.stdout.write("Offline checkout reconciliation PostgreSQL PASS: sequential/lost-response and concurrent replay converge exactly once; altered payload, wrong capability, revoked/expired lease, cross-device, cross-branch and cross-tenant attempts are fail-closed with zero financial side effects.\n");
