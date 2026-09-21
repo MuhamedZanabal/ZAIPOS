@@ -4,12 +4,12 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-21 23:10:33 +03.
+- Bahrain timestamp: 2026-09-21 23:17:36 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef`.
 - Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
-- Current code head: `e2b827d5085496a0f5c98aedf7d56fabdcaec069`.
-- Exact-head CI for `e2b827d` is running and is not yet evidence. Earlier head `2c4cd7786cfeb7f16b7cf15330e949dd692a9264` had CI #666 / `35648191322`: quality job `106493738094`, unsigned Windows-package job `106494792604`, and all twenty exact-head workflows succeeded. This included production PostgreSQL migrations, concurrent offline reconciliation, Catalogue Import, lint, the then-285-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
+- Current code head: `0d0edbe357b5aebbb32d72576577bdcabf496852`.
+- Exact-head CI for `0d0edbe` is running and is not yet evidence. Its parent head `6281656a4f37e97ac678d44c7621fabf95ebc910` had CI #669 / `35649548369`; all twenty exact-head workflows succeeded. Code head `e2b827d5085496a0f5c98aedf7d56fabdcaec069` separately had all twenty workflows green in CI #668. These runs included production PostgreSQL migrations, concurrent offline reconciliation, Catalogue Import, lint, the then-290-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
 - Previous repair: `3ed651cd5f7dae9abbe186a051b360e8ca66c16d` fixed psql scalar parsing. Exact-head CI #659 quality and all parallel contracts passed; its Windows package result is historical, not proof for the current head.
 
 ## Work completed in the latest run
@@ -26,14 +26,15 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 - `acca898794e23146473d4b1353c60eec4a449c38` — quarantines malformed HTTP-success reconciliation JSON rather than escaping an exception; proves journal recovery both before the primary state write and before journal deletion.
 - `f4118527bcd3069f81a4762728b0d041868e178d` — adds a main-process-only offline checkout orchestrator with an explicit disabled release gate, serialized bounded drains, quarantine continuation and network-retention stop behavior. No IPC or preload surface was added.
 - `e2b827d5085496a0f5c98aedf7d56fabdcaec069` — snapshots the release gate at construction so later mutation of the caller's options object cannot enable financial work.
+- `0d0edbe357b5aebbb32d72576577bdcabf496852` — adds a dormant authenticated-reconnect coordinator after successful native online checkout. It reuses or refreshes main-process lease authority and initiates a serialized drain only when the immutable release gate is enabled; background failure is logged without converting a committed online sale into an apparent failure.
 
 ## Local verification
 
-- `npm test`: 59 files, 290 tests passed.
+- `npm test`: 60 files, 295 tests passed.
 - `npm run lint`: zero errors; 13 pre-existing warnings.
 - `npm run build`: success; 2,768 modules transformed.
 - `node scripts/test-device-credential-vault-contract.mjs`: passed.
-- Focused native queue/orchestrator suites: 15 tests passed. The orchestrator tests were observed red before implementation and before immutable-gate hardening.
+- Focused native queue/orchestrator/coordinator suites: 20 tests passed. New modules and immutable-gate hardening were observed red before implementation.
 - Standalone `tsc -p tsconfig.electron.json --noEmit` remains blocked by pre-existing `import.meta.env` and `manager-authorization.ts` typing errors; CI build and lint are green.
 
 ## Hazards and boundaries
@@ -46,12 +47,12 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Remaining priority
 
-1. Inspect exact-head CI for `e2b827d`; diagnose the first genuine failing step if any.
-2. Add a tested dormant authenticated-reconnect hook that refreshes native lease authority and drains only when the immutable release gate is enabled; keep capture and the hook unreachable from renderer while the gate is false.
-3. Prove lease rotation/revocation quarantine, restart/lost-response replay against the real server RPC and multi-terminal contention end to end.
+1. Inspect exact-head CI for `0d0edbe`; diagnose the first genuine failing step if any.
+2. Prove lease rotation/revocation quarantine across the real queue/orchestrator boundary, restart/lost-response replay against the real server RPC and multi-terminal contention end to end.
+3. Design the native capture trigger and operator recovery surface without exposing lease capability or enabling offline checkout; retain the hard-disabled release gate until end-to-end acceptance exists.
 4. Complete trusted-device enforcement for every retained financial mutation and finish PR #68's exhaustive authorization matrix without duplicating stacked work.
 5. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
 
 ## Recovery instruction
 
-Fetch live main, PRs #68/#72/#74/#75 and the current PR #75 head. Compare them with this file. Inspect exact-head CI for `e2b827d` and diagnose the first genuine failing log if any; CI #666 remains proof only for earlier head `2c4cd77`. Then implement the dormant authenticated-reconnect hook or the next higher-priority reproducible P0 task, test it, publish a coherent fast-forward commit, update this checkpoint and continue. Pending or historical workflows are never exact-head proof.
+Fetch live main, PRs #68/#72/#74/#75 and the current PR #75 head. Compare them with this file. Inspect exact-head CI for `0d0edbe` and diagnose the first genuine failing log if any; CI #669 remains proof only for parent `6281656`. Then prove rotation/revocation behavior across the native queue/orchestrator boundary or execute the next higher-priority reproducible P0 task, test it, publish a coherent fast-forward commit, update this checkpoint and continue. Pending or historical workflows are never exact-head proof.
