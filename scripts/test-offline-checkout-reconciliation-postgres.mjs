@@ -29,7 +29,7 @@ function psql(args, capture = true) {
   });
 }
 function sql(statement) { return psql(["-c", statement], false); }
-function scalar(statement) { return psql(["-At", "-c", statement]).trim(); }
+function scalar(statement) { return psql(["-qAt", "-c", statement]).trim(); }
 function q(value) { return String(value).replaceAll("'", "''"); }
 function reconcile({ mutation = IDS.mutation, token = TOKEN, tenant = IDS.tenant, branch = IDS.branch, lease = IDS.lease, uid = "terminal-offline-01", requestItems = items } = {}) {
   return scalar(`SET request.jwt.claim.sub='${IDS.cashier}'; SELECT public.reconcile_offline_checkout('${tenant}'::uuid,'${branch}'::uuid,'${lease}'::uuid,'${token}','${uid}','${mutation}'::uuid,'${q(JSON.stringify(requestItems))}'::jsonb,'${q(JSON.stringify(payments))}'::jsonb,0,NULL,NULL::uuid,'pos'::public.sales_channel,0,NULL,'${IDS.session}'::uuid);`);
