@@ -14,6 +14,7 @@ const JOURNAL_KEY = 'offline-mutation-queue-journal-v1';
 const QUARANTINE_KEY = 'offline-mutation-quarantine-v1';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
+const MAX_ENVELOPE_BYTES = 1024 * 1024;
 
 function clear(store: QueueStore, key: string): void { if (store.delete) store.delete(key); else store.set(key, undefined); }
 function requireProtection(): void { if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system offline queue encryption is unavailable'); }
@@ -35,9 +36,26 @@ function stateFrom(value: unknown): QueueState {
   return Object.freeze({ version: 1, records: Object.freeze(records) });
 }
 function digest(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
+function canonicalJson(value: unknown, seen = new Set<object>()): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') { if (!Number.isFinite(value)) throw new Error('Offline mutation payload contains a non-finite number'); return JSON.stringify(value); }
+  if (typeof value !== 'object') throw new Error('Offline mutation payload is not canonical JSON');
+  if (seen.has(value)) throw new Error('Offline mutation payload is cyclic');
+  seen.add(value);
+  let result: string;
+  if (Array.isArray(value)) result = `[${value.map((item) => canonicalJson(item, seen)).join(',')}]`;
+  else {
+    const object = value as Record<string, unknown>;
+    result = `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(object[key], seen)}`).join(',')}}`;
+  }
+  seen.delete(value);
+  return result;
+}
 function encode(envelope: OfflineMutationEnvelope<Record<string, unknown>>): StoredMutation {
   requireProtection();
-  const plaintext = JSON.stringify(envelope);
+  const plaintext = canonicalJson(envelope);
+  if (Buffer.byteLength(plaintext, 'utf8') > MAX_ENVELOPE_BYTES) throw new Error('Offline mutation payload exceeds the protected queue limit');
   return Object.freeze({ mutationId: envelope.mutationId, digest: digest(plaintext), ciphertext: safeStorage.encryptString(plaintext).toString('base64'), createdAt: envelope.createdAt });
 }
 function decode(record: StoredMutation): OfflineMutationEnvelope<Record<string, unknown>> {
@@ -117,7 +135,7 @@ export function createDeviceOfflineQueue(store: QueueStore, authority: OfflineAu
         if (existing) {
           const previous = decode(existing);
           if (previous.leaseId !== lease.leaseId || previous.tenantId !== input.authorization.tenantId || previous.branchId !== input.authorization.branchId
-            || previous.deviceUid !== enrollment.deviceUid || previous.kind !== input.kind || JSON.stringify(previous.payload) !== JSON.stringify(input.payload)) {
+            || previous.deviceUid !== enrollment.deviceUid || previous.kind !== input.kind || canonicalJson(previous.payload) !== canonicalJson(input.payload)) {
             throw new Error('Offline mutation ID was reused with a different payload');
           }
           return existing.mutationId;

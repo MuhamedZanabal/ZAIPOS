@@ -49,6 +49,15 @@ describe('native durable offline mutation queue', () => {
     expect(() => queue.enqueue({ ...input, payload: { _items: [{ quantity: '2.000' }], _payments: [] } })).toThrow(/different payload/);
   });
 
+  it('canonicalizes reordered JSON and rejects non-JSON or oversized payloads before persistence', () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    queue.enqueue({ ...input, payload: { _payments: [], nested: { b: 2, a: 1 }, _items: [] } });
+    expect(queue.enqueue({ ...input, now: new Date('2026-09-21T12:02:00.000Z'), payload: { _items: [], nested: { a: 1, b: 2 }, _payments: [] } })).toBe(mutationId);
+    expect(() => queue.enqueue({ ...input, mutationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', payload: { invalid: undefined } })).toThrow(/canonical JSON/);
+    expect(() => queue.enqueue({ ...input, mutationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', payload: { huge: 'x'.repeat(1024 * 1024) } })).toThrow(/queue limit/);
+    expect(queue.pending()).toHaveLength(1);
+  });
+
   it('quarantines corrupt journal and queue state instead of blocking startup recovery', () => {
     const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
     values.set('offline-mutation-queue-v1', 'corrupt-primary');
