@@ -164,13 +164,15 @@ export function createDeviceOfflineQueue(store: QueueStore, authority: OfflineAu
           body: JSON.stringify({ ...envelope.payload, _tenant_id: envelope.tenantId, _branch_id: envelope.branchId, _lease_id: envelope.leaseId,
             _lease_token: lease.token, _device_uid: envelope.deviceUid, _mutation_id: envelope.mutationId }) });
       } catch { return { status: 'retained', mutationId: record.mutationId }; }
-      const text = await response.text();
       if (!response.ok) {
         if (response.status === 401 || response.status === 403 || response.status === 409 || response.status === 422) {
           quarantine(store, record.mutationId, `server rejected reconciliation (${response.status})`, new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId };
         }
         return { status: 'retained', mutationId: record.mutationId };
       }
+      let text: string;
+      try { text = await response.text(); }
+      catch { return { status: 'retained', mutationId: record.mutationId }; }
       let decoded: unknown;
       try { decoded = text ? JSON.parse(text) : null; }
       catch {

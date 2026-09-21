@@ -107,6 +107,29 @@ describe('native durable offline mutation queue', () => {
     expect(body).toMatchObject({ _tenant_id: tenantId, _branch_id: branchId, _lease_id: leaseId, _lease_token: token, _device_uid: 'terminal-1', _mutation_id: mutationId });
   });
 
+  it('retains a lost response body and replays the identical mutation after restart', async () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    queue.enqueue(input);
+    const requests: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      requests.push(String(init.body));
+      return { ok: true, status: 200, text: async () => { throw new Error('response stream reset'); } } as Response;
+    }));
+
+    await expect(queue.reconcileNext(authorization)).resolves.toEqual({ status: 'retained', mutationId });
+    expect(queue.pending()).toHaveLength(1);
+
+    const restartedQueue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      requests.push(String(init.body));
+      return new Response(JSON.stringify(saleId), { status: 200 });
+    }));
+    await expect(restartedQueue.reconcileNext(authorization)).resolves.toEqual({ status: 'committed', mutationId, saleId });
+    expect(restartedQueue.pending()).toHaveLength(0);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toBe(requests[0]);
+  });
+
   it('quarantines malformed successful responses instead of throwing or retrying them', async () => {
     const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key'); queue.enqueue(input);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{not-json', { status: 200 })));
