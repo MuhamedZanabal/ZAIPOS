@@ -33,13 +33,12 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const credential = extractCredential(result); const resultRow = Array.isArray(result) ? result[0] : result; if (typeof resultRow !== 'object' || resultRow === null || (resultRow as Record<string, unknown>).device_uid !== record.deviceUid) throw new Error('Device rotation identity mismatch');
       const encryptedCredential = safeStorage.encryptString(credential).toString('base64'); store.set(RECORD_KEY, { deviceUid: record.deviceUid, tenantId: auth.tenantId, branchId: auth.branchId, encryptedCredential }); return { deviceUid: record.deviceUid, provisioned: true };
     },
-    async revoke(deviceId: string, expectedDeviceUid: string, authorization: DeviceAuthorization): Promise<{ deviceUid: string; provisioned: false; newlyRevoked: boolean }> {
-      const auth = validateAuthorization(authorization); const record = requireProvisionedScope(auth); const targetUid = requireString(expectedDeviceUid, 'device UID', 128);
-      if (record.deviceUid !== targetUid) throw new Error('Local credential can only be erased for this terminal');
+    async revoke(deviceId: string, authorization: DeviceAuthorization): Promise<{ deviceUid: string; provisioned: false; revoked: boolean }> {
+      const auth = validateAuthorization(authorization); const record = requireProvisionedScope(auth);
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'revoke_device_enrollment', { _tenant_id: auth.tenantId, _device_id: requireUuid(deviceId, 'device ID'), _reason: 'manager_console_revocation' });
       if (typeof result !== 'boolean') throw new Error('Device revocation returned an invalid result');
       store.set(RECORD_KEY, { deviceUid: record.deviceUid });
-      return { deviceUid: record.deviceUid, provisioned: false, newlyRevoked: result };
+      return { deviceUid: record.deviceUid, provisioned: false, revoked: result };
     },
     async checkout(payload: DeviceCheckoutPayload, authorization: DeviceAuthorization): Promise<string> {
       const auth = validateAuthorization(authorization); if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Checkout scope does not match authorization scope'); if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable'); const record = requireProvisionedScope(auth);
