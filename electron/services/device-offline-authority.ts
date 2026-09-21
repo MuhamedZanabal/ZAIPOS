@@ -3,10 +3,13 @@ import type { DeviceAuthorization, DeviceOfflineLease } from '../types.js';
 
 type CredentialRecord = { deviceUid: string; tenantId?: string; branchId?: string; encryptedCredential?: string };
 type CredentialStore = { get(key: string): unknown; set(key: string, value: unknown): void; delete?(key: string): void };
+type ProtectedLeaseRecord = { tenantId: string; branchId: string; deviceUid: string; lease: DeviceOfflineLease };
 const ENROLLMENT_KEY = 'enrollment';
 const LEASE_KEY = 'offline-lease';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HEX_256 = /^[0-9a-f]{64}$/i;
+const MAX_LEASE_MS = 15 * 60_000;
+const CLOCK_SKEW_MS = 60_000;
 
 function requiredString(value: unknown, label: string, max = 4096): string {
   if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`);
@@ -43,8 +46,32 @@ export function createDeviceOfflineAuthority(store: CredentialStore, baseUrl: st
     if (!HEX_256.test(credential)) throw new Error('Stored device credential is invalid');
     return { deviceUid, credential };
   };
+  const readActive = (authorization: DeviceAuthorization): DeviceOfflineLease => {
+    const tenantId = requiredUuid(authorization?.tenantId, 'tenant ID');
+    const branchId = requiredUuid(authorization?.branchId, 'branch ID');
+    if (!safeStorage.isEncryptionAvailable()) { clear(); throw new Error('Operating-system credential encryption is unavailable'); }
+    const enrollment = store.get(ENROLLMENT_KEY) as Partial<CredentialRecord> | undefined;
+    const encrypted = store.get(LEASE_KEY);
+    if (!enrollment || typeof enrollment !== 'object' || typeof encrypted !== 'string' || !encrypted) throw new Error('No offline authority is available');
+    let parsed: ProtectedLeaseRecord;
+    try { parsed = JSON.parse(safeStorage.decryptString(Buffer.from(encrypted, 'base64'))) as ProtectedLeaseRecord; }
+    catch { clear(); throw new Error('Protected offline authority cannot be decrypted'); }
+    try {
+      const deviceUid = requiredString(parsed?.deviceUid, 'offline lease device UID', 128);
+      if (parsed?.tenantId !== tenantId || parsed?.branchId !== branchId || deviceUid !== enrollment.deviceUid || enrollment.tenantId !== tenantId || enrollment.branchId !== branchId) throw new Error('Offline authority scope does not match this terminal');
+      const leaseId = requiredUuid(parsed?.lease?.leaseId, 'offline lease ID');
+      const token = requiredString(parsed?.lease?.token, 'offline lease token', 128);
+      if (!HEX_256.test(token)) throw new Error('Offline authority token is invalid');
+      const issuedMs = Date.parse(requiredString(parsed?.lease?.issuedAt, 'offline lease issue time', 128));
+      const expiresMs = Date.parse(requiredString(parsed?.lease?.expiresAt, 'offline lease expiry', 128));
+      const now = Date.now();
+      if (!Number.isFinite(issuedMs) || !Number.isFinite(expiresMs) || expiresMs <= now || issuedMs > now + CLOCK_SKEW_MS || expiresMs <= issuedMs || expiresMs - issuedMs > MAX_LEASE_MS + CLOCK_SKEW_MS) throw new Error('Offline authority is expired or has an invalid lifetime');
+      return { leaseId, token, issuedAt: parsed.lease.issuedAt, expiresAt: parsed.lease.expiresAt };
+    } catch (error) { clear(); throw error; }
+  };
   return {
     clear,
+    readActive,
     async refresh(authorization: DeviceAuthorization): Promise<{ leaseId: string; issuedAt: string; expiresAt: string }> {
       const accessToken = requiredString(authorization?.accessToken, 'access token', 16384);
       const tenantId = requiredUuid(authorization?.tenantId, 'tenant ID');
@@ -67,7 +94,7 @@ export function createDeviceOfflineAuthority(store: CredentialStore, baseUrl: st
       const expiresMs = Date.parse(expiresAt);
       const issuedAt = new Date().toISOString();
       const now = Date.now();
-      if (!Number.isFinite(expiresMs) || expiresMs <= now || expiresMs - now > 15 * 60_000 + 60_000) { clear(); throw new Error('Offline authority returned an invalid lifetime'); }
+      if (!Number.isFinite(expiresMs) || expiresMs <= now || expiresMs - now > MAX_LEASE_MS + CLOCK_SKEW_MS) { clear(); throw new Error('Offline authority returned an invalid lifetime'); }
       const lease: DeviceOfflineLease = { leaseId, token, issuedAt, expiresAt };
       const protectedPayload = JSON.stringify({ tenantId, branchId, deviceUid, lease });
       store.set(LEASE_KEY, safeStorage.encryptString(protectedPayload).toString('base64'));
