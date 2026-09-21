@@ -171,7 +171,14 @@ export function createDeviceOfflineQueue(store: QueueStore, authority: OfflineAu
         }
         return { status: 'retained', mutationId: record.mutationId };
       }
-      const decoded = text ? JSON.parse(text) : null; const saleId = Array.isArray(decoded) ? decoded[0] : decoded;
+      let decoded: unknown;
+      try { decoded = text ? JSON.parse(text) : null; }
+      catch {
+        quarantine(store, record.mutationId, 'server returned malformed reconciliation JSON', new Date());
+        remove(record.mutationId);
+        return { status: 'quarantined', mutationId: record.mutationId };
+      }
+      const saleId = Array.isArray(decoded) ? decoded[0] : decoded;
       if (typeof saleId !== 'string' || !UUID.test(saleId)) { quarantine(store, record.mutationId, 'server returned an invalid sale identifier', new Date()); remove(record.mutationId); return { status: 'quarantined', mutationId: record.mutationId }; }
       remove(record.mutationId); return { status: 'committed', mutationId: record.mutationId, saleId };
     },

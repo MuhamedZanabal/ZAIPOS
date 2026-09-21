@@ -49,6 +49,31 @@ describe('native durable offline mutation queue', () => {
     expect(() => queue.enqueue({ ...input, payload: { _items: [{ quantity: '2.000' }], _payments: [] } })).toThrow(/different payload/);
   });
 
+  it.each([
+    ['before the primary state write', 'offline-mutation-queue-v1', 'set'],
+    ['before the journal clear', 'offline-mutation-queue-journal-v1', 'delete'],
+  ] as const)('recovers an enqueue interrupted %s', (_label, failureKey, failureOperation) => {
+    let failOnce = true;
+    const interruptedStore = {
+      get: store.get,
+      set: (key: string, value: unknown) => {
+        if (failOnce && failureOperation === 'set' && key === failureKey) { failOnce = false; throw new Error('simulated power loss'); }
+        values.set(key, value);
+      },
+      delete: (key: string) => {
+        if (failOnce && failureOperation === 'delete' && key === failureKey) { failOnce = false; throw new Error('simulated power loss'); }
+        values.delete(key);
+      },
+    };
+    const interruptedQueue = createDeviceOfflineQueue(interruptedStore, authority, 'https://project.supabase.co', 'publishable-key');
+    expect(() => interruptedQueue.enqueue(input)).toThrow(/simulated power loss/);
+    expect(values.has('offline-mutation-queue-journal-v1')).toBe(true);
+
+    const recoveredQueue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
+    expect(recoveredQueue.pending()).toEqual([{ mutationId, createdAt: '2026-09-21T12:01:00.000Z' }]);
+    expect(values.has('offline-mutation-queue-journal-v1')).toBe(false);
+  });
+
   it('canonicalizes reordered JSON and rejects non-JSON or oversized payloads before persistence', () => {
     const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key');
     queue.enqueue({ ...input, payload: { _payments: [], nested: { b: 2, a: 1 }, _items: [] } });
@@ -79,6 +104,14 @@ describe('native durable offline mutation queue', () => {
     const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
     const body = JSON.parse(String(request[1].body));
     expect(body).toMatchObject({ _tenant_id: tenantId, _branch_id: branchId, _lease_id: leaseId, _lease_token: token, _device_uid: 'terminal-1', _mutation_id: mutationId });
+  });
+
+  it('quarantines malformed successful responses instead of throwing or retrying them', async () => {
+    const queue = createDeviceOfflineQueue(store, authority, 'https://project.supabase.co', 'publishable-key'); queue.enqueue(input);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{not-json', { status: 200 })));
+    await expect(queue.reconcileNext(authorization)).resolves.toEqual({ status: 'quarantined', mutationId });
+    expect(queue.pending()).toHaveLength(0);
+    expect(queue.quarantined()).toEqual([expect.objectContaining({ mutationId, reason: 'server returned malformed reconciliation JSON' })]);
   });
 
   it('quarantines corrupt, cross-scope, expired-authority, and server-rejected records without retrying them', async () => {
