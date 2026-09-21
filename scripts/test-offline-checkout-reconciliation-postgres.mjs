@@ -85,7 +85,7 @@ sql(`
     ('${IDS.device2}','${IDS.tenant}','${IDS.branch2}','terminal-offline-02','1.0.0','windows'),
     ('${IDS.tenant2Device}','${IDS.tenant2}','${IDS.tenant2Branch}','terminal-offline-03','1.0.0','windows');
   INSERT INTO public.device_offline_leases(id,tenant_id,branch_id,device_id,lease_hash,issued_to,issued_at,expires_at)
-  VALUES ('${IDS.lease}','${IDS.tenant}','${IDS.branch}','${IDS.device}',extensions.digest(convert_to('${TOKEN}','UTF8'),'sha256'),'${IDS.cashier}',clock_timestamp(),clock_timestamp()+interval '15 minutes');
+  VALUES ('${IDS.lease}','${IDS.tenant}','${IDS.branch}','${IDS.device}',extensions.digest(convert_to('${TOKEN}','UTF8'),'sha256'),'${IDS.cashier}',statement_timestamp(),statement_timestamp()+interval '14 minutes');
 `);
 
 const saleId = reconcile();
@@ -95,16 +95,11 @@ assertEqual("valid exact BHD cash fils", scalar(`SELECT total_cash_fils::text FR
 assertEqual("valid stock", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${IDS.center}' AND product_id='${IDS.product}';`), "9.000");
 assertEqual("valid reconciliation completed", scalar(`SELECT status||':'||(sale_id='${saleId}'::uuid)::text FROM public.offline_checkout_reconciliations WHERE mutation_id='${IDS.mutation}';`), "completed:true");
 
-// Lost-response replay: same immutable mutation returns the original result with zero new side effects.
 const afterValid = snapshot();
 assertEqual("exact replay sale", reconcile(), saleId);
 assertEqual("exact replay side effects", snapshot(), afterValid);
-
-// Mutation UUID cannot be rebound to altered financial content.
 expectFailure("altered payload replay", () => reconcile({ requestItems: [{ product_id: IDS.product, quantity: "2.000", discount_fils: 0 }] }), /different authority or payload/i);
 assertEqual("altered payload zero side effects", snapshot(), afterValid);
-
-// Capability possession and immutable scope are independently enforced.
 expectFailure("wrong capability", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000098", token: BAD_TOKEN }), /offline lease rejected/i);
 assertEqual("wrong capability zero side effects", snapshot(), afterValid);
 expectFailure("cross-device", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000097", uid: "terminal-offline-02" }), /device rejected|lease rejected/i);
@@ -113,13 +108,9 @@ expectFailure("cross-branch", () => reconcile({ mutation: "81000000-0000-0000-00
 assertEqual("cross-branch zero side effects", snapshot(), afterValid);
 expectFailure("cross-tenant", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000095", tenant: IDS.tenant2, branch: IDS.tenant2Branch, uid: "terminal-offline-03" }), /lease rejected/i);
 assertEqual("cross-tenant zero side effects", snapshot(), afterValid);
-
-// Revocation invalidates the previously valid plaintext capability immediately.
 sql(`UPDATE public.device_offline_leases SET revoked_at=clock_timestamp(), revoke_reason='adversarial-test' WHERE id='${IDS.lease}';`);
 expectFailure("revoked lease", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000094" }), /offline lease rejected/i);
 assertEqual("revoked lease zero side effects", snapshot(), afterValid);
-
-// An otherwise well-formed capability is unusable after its bounded authority expires.
 sql(`INSERT INTO public.device_offline_leases(id,tenant_id,branch_id,device_id,lease_hash,issued_to,issued_at,expires_at) VALUES ('${IDS.expiredLease}','${IDS.tenant}','${IDS.branch}','${IDS.device}',extensions.digest(convert_to('${TOKEN}','UTF8'),'sha256'),'${IDS.cashier}',clock_timestamp()-interval '10 minutes',clock_timestamp()-interval '1 minute');`);
 expectFailure("expired lease", () => reconcile({ mutation: "81000000-0000-0000-0000-000000000093", lease: IDS.expiredLease }), /offline lease rejected/i);
 assertEqual("expired lease zero side effects", snapshot(), afterValid);
