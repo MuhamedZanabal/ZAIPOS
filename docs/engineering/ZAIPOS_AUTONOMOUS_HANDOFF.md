@@ -4,12 +4,12 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-21 23:25:56 +03.
+- Bahrain timestamp: 2026-09-21 23:27:31 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef`.
 - Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
 - Current code head: `9f8208574a62e23aceb09a41237d2ba5dc66f073`.
-- Exact-head CI #672 / `35650600431` for `9f82085`: quality job `106501788786` and all nineteen parallel contract workflows succeeded; unsigned Windows-package job `106502644817` is still running and is not evidence yet. Earlier code head `0d0edbe357b5aebbb32d72576577bdcabf496852` had all twenty workflows green in CI #670. These runs included production PostgreSQL migrations, concurrent offline reconciliation, Catalogue Import, lint, tests, build and unsigned Windows packaging where terminal. This is not signing or installation acceptance.
+- Exact-head CI #672 / `35650600431` for `9f82085`: quality job `106501788786`, unsigned Windows-package job `106502644817`, and all twenty exact-head workflows succeeded. This included production PostgreSQL migrations, concurrent offline reconciliation, Catalogue Import, lint, the 297-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
 - Previous repair: `3ed651cd5f7dae9abbe186a051b360e8ca66c16d` fixed psql scalar parsing. Exact-head CI #659 quality and all parallel contracts passed; its Windows package result is historical, not proof for the current head.
 
 ## Work completed in the latest run
@@ -48,12 +48,11 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Remaining priority
 
-1. Verify the terminal unsigned Windows-package result for exact code head `9f82085`; diagnose its first genuine failure if it does not pass.
-2. Prove restart/lost-response replay through the native queue against the real server RPC and multi-terminal contention end to end.
-3. Design the native capture trigger and operator recovery surface without exposing lease capability or enabling offline checkout; retain the hard-disabled release gate until end-to-end acceptance exists.
-4. Complete trusted-device enforcement for every retained financial mutation and finish PR #68's exhaustive authorization matrix without duplicating stacked work.
-5. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
+1. Prove restart/lost-response replay through the native queue against the real server RPC and multi-terminal contention end to end.
+2. Design the native capture trigger and operator recovery surface without exposing lease capability or enabling offline checkout; retain the hard-disabled release gate until end-to-end acceptance exists.
+3. Complete trusted-device enforcement for every retained financial mutation and finish PR #68's exhaustive authorization matrix without duplicating stacked work.
+4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
 
 ## Recovery instruction
 
-Fetch live main, PRs #68/#72/#74/#75 and the current PR #75 head. Compare them with this file. Inspect CI #672 for `9f82085`, especially Windows job `106502644817`; diagnose the first genuine failing log if any. Then prove native lost-response replay against the real RPC or execute the next higher-priority reproducible P0 task, test it, publish a coherent fast-forward commit, update this checkpoint and continue. Pending or historical workflows are never exact-head proof.
+Fetch live main, PRs #68/#72/#74/#75 and the current PR #75 head. Compare them with this file; CI #672 is proof only for code head `9f82085`. Then prove native lost-response replay against the real RPC or execute the next higher-priority reproducible P0 task, test it, publish a coherent fast-forward commit, update this checkpoint and continue. Pending or historical workflows are never exact-head proof.
