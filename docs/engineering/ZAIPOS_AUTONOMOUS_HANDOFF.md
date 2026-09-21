@@ -4,14 +4,15 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-22 00:55 +03.
+- Bahrain timestamp: 2026-09-22 01:03 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef` (unchanged).
 - Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
 - Open PRs remain nine: #64, #66, #68, #69, #70, #71, #72, #74, #75. All draft. No merge is authorized.
+- Current code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d` (`feat(device): persist offline capture before operator recovery`).
+- Exact-head CI for `0ad6454`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #677 / `35660056645` (quality job `106532899263`, windows-package job `106533702220`). This included production PostgreSQL migrations, adversarial offline reconciliation, lint, the 309-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
 - Previous published head: `4567fd93fbf8b7459fc91b3cc34d48240058b464` (`docs: record lost-response replay hardening`).
-- Exact-head CI for `4567fd93`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #676 / `35654352642`. This is not signing, installation, hardware or production-DR acceptance.
-- This run adds native capture acknowledgement and operator recovery on the same PR #75 branch. The new head SHA is the commit that lands this checkpoint; inspect exact-head CI for that SHA before treating it as verified.
+- Exact-head CI for `4567fd93`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #676 / `35654352642`. Historical proof only for that SHA.
 
 ## Work completed in this run
 
@@ -60,9 +61,9 @@ Native capture and operator recovery, with the release gate still disabled:
 
 ## Remaining priority
 
-1. Inspect exact-head CI for this run's published SHA, especially quality/PostgreSQL reconciliation and unsigned Windows packaging. Diagnose any non-green job before further implementation.
-2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven.
-3. Complete trusted-device enforcement for every retained financial mutation (refund, return, void, cash, customer credit, supplier payments, delivery finance) and finish PR #68's exhaustive authorization matrix without duplicating stacked work.
+1. Continue trusted-device enforcement for every retained financial mutation (refund, return, void, cash, customer credit, supplier payments, delivery finance) without duplicating stacked PR #72/#74/#75 work.
+2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
+3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
 
 ## Historical checkpoint (2026-09-21 23:56 +03)
@@ -86,6 +87,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #676 is proof only for `4567fd93`. Inspect exact-head workflows for the SHA that published this capture/recovery work; if green, continue trusted-device financial-boundary enforcement or PR #68 authorization certification. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #677 is proof only for `0ad6454`. If a later documentation SHA exists, inspect its exact-head workflows before attributing #677 to it. Continue trusted-device financial-boundary enforcement or PR #68 authorization certification. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
