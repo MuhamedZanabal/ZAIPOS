@@ -41,10 +41,7 @@ INSERT INTO public.branches(id,tenant_id,name,status) VALUES
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
   ('${manager}','${tenant}','${branch}','manager'),
   ('${cashier}','${tenant}','${branch}','cashier');
-INSERT INTO public.suppliers(id,tenant_id,name,status) VALUES('${supplier}','${tenant}','Supplier Device Vendor','active');
-INSERT INTO public.supplier_subledger_cutovers(tenant_id,branch_id,activated_at) VALUES
-  ('${tenant}','${branch}',now() - interval '1 day'),
-  ('${tenant}','${otherBranch}',now() - interval '1 day');`, 'fixture');
+INSERT INTO public.suppliers(id,tenant_id,name,status) VALUES('${supplier}','${tenant}','Supplier Device Vendor','active');`, 'fixture');
 
 authAs(manager, `SELECT public.set_supplier_opening_balance_v1('${tenant}','${branch}','${supplier}',2000,'Verified opening','supplier-opening-device-001')`, 'opening balance');
 
