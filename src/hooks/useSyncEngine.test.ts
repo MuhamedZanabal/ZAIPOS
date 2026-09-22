@@ -196,7 +196,7 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "queued", retryCount: 0 });
   });
 
-  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE"])(
+  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE", "CHECKOUT_TABLE_ORDER"])(
     "quarantines already persisted %s without RPC, deleting or altering payload", async (type) => {
       const { supabase } = await import("@/integrations/supabase/client");
       const payload = { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] };

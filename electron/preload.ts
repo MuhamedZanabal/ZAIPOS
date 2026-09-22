@@ -26,6 +26,7 @@ const electronAPI = {
   returnSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_SALE_RETURN, payload, authorization),
   voidSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_SALE_VOID, payload, authorization),
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_DELIVERY_COLLECTION, payload, authorization),
+  checkoutTableOrder: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_TABLE_CHECKOUT, payload, authorization),
   platform: process.platform as NodeJS.Platform,
 };
 contextBridge.exposeInMainWorld('electron', electronAPI);

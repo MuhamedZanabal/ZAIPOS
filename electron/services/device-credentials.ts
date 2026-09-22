@@ -36,6 +36,12 @@ export type DeviceDeliveryCollectionPayload = {
   _method: 'cash' | 'card' | 'transfer' | 'qr'; _session_id: string;
   _client_mutation_id: string; _reference: string | null;
 };
+export type DeviceTableCheckoutPayload = {
+  _tenant_id: string; _branch_id: string; _order_id: string;
+  _payments: Array<{ method: 'cash' | 'card' | 'transfer' | 'qr'; amount: string; reference: string | null }>;
+  _tip_amount: string; _discount_total: string; _coupon_code: string | null;
+  _client_mutation_id: string;
+};
 const RECORD_KEY = 'enrollment';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function requireString(value: unknown, label: string, max = 4096): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`); return value.trim(); }
@@ -43,6 +49,7 @@ function requireCanonicalString(value: unknown, label: string, min: number, max:
 function requireUuid(value: unknown, label: string): string { const valueString = requireString(value, label, 128); if (!UUID.test(valueString)) throw new Error(`Invalid ${label}`); return valueString; }
 function requireExactBhd(value: unknown): string { const amount = requireString(value, 'cash amount', 32); const match = /^(0|[1-9]\d*)(?:\.(\d{1,3}))?$/.exec(amount); if (!match) throw new Error('Invalid exact cash amount'); const fils = BigInt(match[1]) * 1000n + BigInt((match[2] ?? '').padEnd(3, '0')); if (fils <= 0n) throw new Error('Invalid exact cash amount'); return amount; }
 function requirePositiveFils(value: unknown): string { const fils = requireCanonicalString(value, 'exact fils amount', 1, 19); if (!/^[1-9]\d*$/.test(fils) || BigInt(fils) > 9223372036854775807n) throw new Error('Invalid exact fils amount'); return fils; }
+function requireExactBhdText(value: unknown, label: string, positive = false): string { const amount = requireCanonicalString(value, label, 1, 32); const match = /^(0|[1-9]\d*)\.(\d{3})$/.exec(amount); if (!match) throw new Error(`Invalid ${label}`); const fils = BigInt(match[1]) * 1000n + BigInt(match[2]); if ((positive && fils <= 0n) || fils > 9223372036854775807n) throw new Error(`Invalid ${label}`); return amount; }
 function optionalUuid(value: unknown, label: string): string | null { return value === null || value === undefined ? null : requireUuid(value, label); }
 function optionalCanonicalString(value: unknown, label: string, max: number): string | null { if (value === null || value === undefined) return null; return requireCanonicalString(value, label, 1, max); }
 function validateAuthorization(auth: DeviceAuthorization): DeviceAuthorization { return { accessToken: requireString(auth?.accessToken, 'access token', 16384), tenantId: requireUuid(auth?.tenantId, 'tenant ID'), branchId: requireUuid(auth?.branchId, 'branch ID') }; }
@@ -152,6 +159,27 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'collect_delivery_payment_v3_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
       if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Delivery collection returned an invalid identifier');
+      return result;
+    },
+    async checkoutTableOrder(payload: DeviceTableCheckoutPayload, authorization: DeviceAuthorization): Promise<string> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Table checkout scope does not match authorization scope');
+      if (!Array.isArray(payload._payments) || payload._payments.length < 1 || payload._payments.length > 20) throw new Error('Invalid table checkout payments');
+      const payments = payload._payments.map((payment) => {
+        if (!payment || typeof payment !== 'object' || !['cash', 'card', 'transfer', 'qr'].includes(payment.method)) throw new Error('Invalid table checkout payment method');
+        return { method: payment.method, amount: requireExactBhdText(payment.amount, 'table checkout payment amount', true), reference: optionalCanonicalString(payment.reference, 'table checkout payment reference', 256) };
+      });
+      const request = {
+        _tenant_id: requireUuid(payload._tenant_id, 'tenant ID'), _branch_id: requireUuid(payload._branch_id, 'branch ID'),
+        _order_id: requireUuid(payload._order_id, 'table order ID'), _payments: payments,
+        _tip_amount: requireExactBhdText(payload._tip_amount, 'table checkout tip'),
+        _discount_total: requireExactBhdText(payload._discount_total, 'table checkout discount'),
+        _coupon_code: optionalCanonicalString(payload._coupon_code, 'table checkout coupon', 128),
+        _client_mutation_id: requireCanonicalString(payload._client_mutation_id, 'table checkout operation ID', 8, 200),
+      };
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'checkout_table_order_v2_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
+      if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Table checkout returned an invalid sale identifier');
       return result;
     },
     async returnSale(payload: DeviceSaleReturnPayload, authorization: DeviceAuthorization): Promise<string> {
