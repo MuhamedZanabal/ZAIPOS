@@ -40,7 +40,8 @@ assertMatch("generated DB contract exposes v2 delivery command", types, /registe
 assertMatch("v2 command accepts exact delivery-fee fils", types, /_delivery_fee_fils:\s*number/);
 assertMatch("courier collection uses native credential custody", courier, /window\.electron\.collectDeliveryPayment/);
 assertNoMatch("courier collection cannot bypass native custody", courier, /rpc\(["']collect_delivery_payment_v2["']/);
-assertMatch("device wrapper verifies terminal authority", deviceMigration, /require_financial_device_v1/);
+assertMatch("device wrapper verifies terminal authority", deviceMigration, /require_delivery_collection_device_v1/);
+assertMatch("delivery device authority preserves assigned courier access", deviceMigration, /'courier'[\s\S]*public\.app_role/);
 assertMatch("legacy collection execute is revoked", deviceMigration, /REVOKE ALL ON FUNCTION public\.collect_delivery_payment_v2[\s\S]*authenticated/);
 
 console.log("Delivery financial-authority static contract: PASS");
