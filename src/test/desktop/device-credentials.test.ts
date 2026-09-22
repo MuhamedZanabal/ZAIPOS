@@ -134,6 +134,37 @@ describe('native device credential custody', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('brokers supplier payments through native custody and rejects scope substitution', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const entryId = '55555555-5555-4555-8555-555555555555';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(entryId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const payload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _supplier_id: '66666666-6666-4666-8666-666666666666',
+      _amount_fils: '800', _payment_method: 'bank_transfer',
+      _payment_reference: 'BANK-REF-111', _note: 'Part payment',
+      _operation_id: 'supplier-payment-001',
+    };
+
+    await expect(service.supplierPayment(payload, authorization)).resolves.toBe(entryId);
+    const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toContain('/rest/v1/rpc/record_supplier_payment_v2_device');
+    expect(JSON.parse(String(request.body))).toEqual({
+      ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+
+    await expect(service.supplierPayment({ ...payload, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.supplierPayment({ ...payload, _amount_fils: '1.5' }, authorization)).rejects.toThrow(/exact fils/i);
+    await expect(service.supplierPayment({ ...payload, _operation_id: ' short-id' }, authorization)).rejects.toThrow(/operation ID/i);
+    await expect(service.supplierPayment({ ...payload, _payment_method: 'crypto' as 'cash' }, authorization)).rejects.toThrow(/payment method/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('brokers returns and voids through native custody without exposing the credential', async () => {
     values.set('enrollment', {
       deviceUid: 'terminal-1', tenantId, branchId,
@@ -279,6 +310,13 @@ describe('native device credential custody', () => {
       _tenant_id: tenantId, _branch_id: branchId,
       _session_id: '66666666-6666-4666-8666-666666666666',
       _type: 'in', _amount: '1.001', _reason: 'Verified float', _reference: 'FLOAT-DEVICE-001',
+    }, authorization)).rejects.toThrow(/not provisioned/);
+    await expect(service.supplierPayment({
+      _tenant_id: tenantId, _branch_id: branchId,
+      _supplier_id: '66666666-6666-4666-8666-666666666666',
+      _amount_fils: '800', _payment_method: 'bank_transfer',
+      _payment_reference: 'BANK-REF-111', _note: null,
+      _operation_id: 'supplier-payment-unprovisioned',
     }, authorization)).rejects.toThrow(/not provisioned/);
   });
 });
