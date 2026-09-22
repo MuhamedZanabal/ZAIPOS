@@ -14,6 +14,7 @@ on:
       - 'scripts/test-device-enrollment-approval-postgres.mjs'
       - 'scripts/test-device-credential-activation-postgres.mjs'
       - 'scripts/test-device-credential-rotation-postgres.mjs'
+      - 'scripts/test-delivery-financial-authority-postgres.mjs'
       - '.github/workflows/trusted-device-enforcement.yml'
       - 'supabase/functions/activate-device/**'
       - 'supabase/functions/rotate-device-credential/**'
@@ -77,6 +78,8 @@ jobs:
         run: node scripts/test-device-bound-customer-credit-postgres.mjs
       - name: Verify device-bound supplier payment authority
         run: node scripts/test-device-bound-supplier-payment-postgres.mjs
+      - name: Verify device-bound delivery collection authority
+        run: node scripts/test-delivery-financial-authority-postgres.mjs
       - name: Preserve trusted-device enforcement diagnostics
         if: failure() && steps.enforcement.outcome == 'failure'
         uses: actions/upload-artifact@v4

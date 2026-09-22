@@ -31,6 +31,11 @@ export type DeviceSupplierPaymentPayload = {
   _payment_method: 'cash' | 'card' | 'benefitpay' | 'bank_transfer' | 'cheque' | 'other';
   _payment_reference: string | null; _note: string | null; _operation_id: string;
 };
+export type DeviceDeliveryCollectionPayload = {
+  _tenant_id: string; _branch_id: string; _order_id: string;
+  _method: 'cash' | 'card' | 'transfer' | 'qr'; _session_id: string;
+  _client_mutation_id: string; _reference: string | null;
+};
 const RECORD_KEY = 'enrollment';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function requireString(value: unknown, label: string, max = 4096): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`); return value.trim(); }
@@ -130,6 +135,23 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'record_supplier_payment_v2_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
       if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Supplier payment returned an invalid identifier');
+      return result;
+    },
+    async collectDeliveryPayment(payload: DeviceDeliveryCollectionPayload, authorization: DeviceAuthorization): Promise<string> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Delivery collection scope does not match authorization scope');
+      const method = requireCanonicalString(payload._method, 'delivery collection method', 2, 32);
+      if (!['cash', 'card', 'transfer', 'qr'].includes(method)) throw new Error('Invalid delivery collection method');
+      const request = {
+        _tenant_id: requireUuid(payload._tenant_id, 'tenant ID'), _branch_id: requireUuid(payload._branch_id, 'branch ID'),
+        _order_id: requireUuid(payload._order_id, 'delivery order ID'), _method: method,
+        _session_id: requireUuid(payload._session_id, 'cash session ID'),
+        _client_mutation_id: requireCanonicalString(payload._client_mutation_id, 'delivery collection operation ID', 8, 200),
+        _reference: optionalCanonicalString(payload._reference, 'delivery collection reference', 200),
+      };
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'collect_delivery_payment_v3_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
+      if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Delivery collection returned an invalid identifier');
       return result;
     },
     async returnSale(payload: DeviceSaleReturnPayload, authorization: DeviceAuthorization): Promise<string> {

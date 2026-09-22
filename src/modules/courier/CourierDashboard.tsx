@@ -103,14 +103,18 @@ export default function CourierDashboard() {
     if (!sessionId) return toast.error("Select the receiving register.");
     setSubmitting(true);
     try {
-      const { error } = await supabase.rpc("collect_delivery_payment_v2", {
+      if (!window.electron?.collectDeliveryPayment) throw new Error("Delivery collection requires a provisioned desktop terminal.");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) throw new Error("Authenticated desktop session required.");
+      await window.electron.collectDeliveryPayment({
+        _tenant_id: tenantId,
+        _branch_id: branchId,
         _order_id: payOrder.id,
         _method: method,
         _session_id: sessionId,
         _client_mutation_id: `delivery-collect:${payOrder.id}`,
         _reference: null,
-      });
-      if (error) throw error;
+      }, { accessToken: session.access_token, tenantId, branchId });
       toast.success(`Collection recorded · ${formatCollectionFils(amount)}`);
       setPayOrder(null);
       qc.invalidateQueries({ queryKey: ["courier-orders"] });

@@ -165,6 +165,37 @@ describe('native device credential custody', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('brokers delivery collection through native custody and rejects scope substitution', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const collectionId = '77777777-7777-4777-8777-777777777777';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(collectionId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const payload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _order_id: '55555555-5555-4555-8555-555555555555',
+      _method: 'cash' as const,
+      _session_id: '66666666-6666-4666-8666-666666666666',
+      _client_mutation_id: 'delivery-collect:55555555-5555-4555-8555-555555555555',
+      _reference: null,
+    };
+
+    await expect(service.collectDeliveryPayment(payload, authorization)).resolves.toBe(collectionId);
+    const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toContain('/rest/v1/rpc/collect_delivery_payment_v3_device');
+    expect(JSON.parse(String(request.body))).toEqual({
+      ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+
+    await expect(service.collectDeliveryPayment({ ...payload, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.collectDeliveryPayment({ ...payload, _method: 'cheque' as 'cash' }, authorization)).rejects.toThrow(/method/i);
+    await expect(service.collectDeliveryPayment({ ...payload, _client_mutation_id: ' padded-id' }, authorization)).rejects.toThrow(/operation ID/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('brokers returns and voids through native custody without exposing the credential', async () => {
     values.set('enrollment', {
       deviceUid: 'terminal-1', tenantId, branchId,

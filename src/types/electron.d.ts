@@ -23,6 +23,7 @@ export interface ElectronBridge {
   cashMovement: (payload: Record<string, unknown>, authorization: ManagerAuthorization, cancel?: boolean) => Promise<string | null>;
   returnSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   voidSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
+  collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   platform: NodeJS.Platform;
 }
 
