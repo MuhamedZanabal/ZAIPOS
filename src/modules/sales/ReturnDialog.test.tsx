@@ -5,6 +5,8 @@ import { ReturnDialog } from "./ReturnDialog";
 
 const state = vi.hoisted(() => ({
   rpc: vi.fn(),
+  returnSale: vi.fn(),
+  getSession: vi.fn(),
   invalidateQueries: vi.fn(),
   saleReturns: [] as Array<{ amount_fils: number }>,
   returnItems: [] as Array<{ sale_item_id: string; quantity: number; amount_fils: number }>,
@@ -26,6 +28,7 @@ vi.mock("@/hooks/useOpenSession", () => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: state.rpc,
+    auth: { getSession: state.getSession },
     from: vi.fn((table: string) => {
       const builder: any = {
         select: () => builder,
@@ -84,7 +87,9 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     vi.clearAllMocks();
     state.saleReturns = [];
     state.returnItems = [];
-    state.rpc.mockResolvedValue({ data: "90000000-0000-0000-0000-000000000001", error: null });
+    state.getSession.mockResolvedValue({ data: { session: { access_token: "operator-token" } }, error: null });
+    state.returnSale.mockResolvedValue("90000000-0000-0000-0000-000000000001");
+    window.electron = { returnSale: state.returnSale } as any;
   });
 
   it("does not expose the removed supervisor PIN path", () => {
@@ -93,17 +98,18 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     expect(screen.queryByPlaceholderText(/Required depending on amount/i)).not.toBeInTheDocument();
   });
 
-  it("submits the selected sale items through process_sale_return_v2 with the open cash session", async () => {
+  it("submits the selected sale items through native credential custody", async () => {
     renderDialog();
 
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: /Process return/i }));
 
-    await waitFor(() => expect(state.rpc).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(state.returnSale).toHaveBeenCalledTimes(1));
 
-    const [rpcName, payload] = state.rpc.mock.calls[0];
-    expect(rpcName).toBe("process_sale_return_v2");
+    const [payload, authorization] = state.returnSale.mock.calls[0];
     expect(payload).toMatchObject({
+      _tenant_id: "10000000-0000-0000-0000-000000000001",
+      _branch_id: "20000000-0000-0000-0000-000000000001",
       _sale_id: sale.id,
       _items: [{ sale_item_id: sale.sale_items[0].id, quantity: 2 }],
       _reason_code: "customer_request",
@@ -115,6 +121,12 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     expect(payload._client_mutation_id.length).toBeGreaterThanOrEqual(8);
     expect(payload).not.toHaveProperty("_supervisor_pin");
     expect(payload).not.toHaveProperty("_refund_method");
+    expect(authorization).toEqual({
+      accessToken: "operator-token",
+      tenantId: "10000000-0000-0000-0000-000000000001",
+      branchId: "20000000-0000-0000-0000-000000000001",
+    });
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 
   it("uses authoritative return ledgers to cap a subsequent partial return", async () => {
@@ -135,9 +147,9 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     expect(quantityInput).toHaveValue(1);
 
     fireEvent.click(screen.getByRole("button", { name: /Process return/i }));
-    await waitFor(() => expect(state.rpc).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(state.returnSale).toHaveBeenCalledTimes(1));
 
-    const [, payload] = state.rpc.mock.calls[0];
+    const [payload] = state.returnSale.mock.calls[0];
     expect(payload._items).toEqual([{ sale_item_id: sale.sale_items[0].id, quantity: 1 }]);
   });
 

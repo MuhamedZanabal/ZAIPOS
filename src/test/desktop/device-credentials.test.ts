@@ -105,6 +105,71 @@ describe('native device credential custody', () => {
     expect(error).toMatchObject({ code: 'ZC001', message: 'Cash movement reference conflict' });
   });
 
+  it('brokers returns and voids through native custody without exposing the credential', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const returnId = '77777777-7777-4777-8777-777777777777';
+    const voidId = '88888888-8888-4888-8888-888888888888';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(returnId), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(voidId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const returnPayload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _sale_id: '55555555-5555-4555-8555-555555555555',
+      _items: [{ sale_item_id: '66666666-6666-4666-8666-666666666666', quantity: 1 }],
+      _reason_code: 'customer_request', _client_mutation_id: 'return-operation-001',
+      _cash_session_id: '99999999-9999-4999-8999-999999999999',
+      _reason: null, _evidence_url: null,
+    };
+    const voidPayload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _sale_id: '55555555-5555-4555-8555-555555555555',
+      _client_mutation_id: 'void-operation-001',
+      _cash_session_id: '99999999-9999-4999-8999-999999999999',
+      _reason: 'Duplicate transaction',
+    };
+
+    await expect(service.returnSale(returnPayload, authorization)).resolves.toBe(returnId);
+    await expect(service.voidSale(voidPayload, authorization)).resolves.toBe(voidId);
+
+    const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
+    expect(calls[0][0]).toContain('/rest/v1/rpc/process_sale_return_v3_device');
+    expect(calls[1][0]).toContain('/rest/v1/rpc/process_sale_void_v3_device');
+    expect(JSON.parse(String(calls[0][1].body))).toMatchObject({
+      ...returnPayload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+    expect(JSON.parse(String(calls[1][1].body))).toMatchObject({
+      ...voidPayload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+    expect(JSON.stringify(await Promise.all(calls.map(async ([, request]) => request.body)))).not.toContain('protected:');
+  });
+
+  it('rejects return and void scope substitution before decrypting or requesting', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const common = {
+      _tenant_id: tenantId, _branch_id: otherBranchId,
+      _sale_id: '55555555-5555-4555-8555-555555555555',
+      _client_mutation_id: 'operation-001',
+      _cash_session_id: '99999999-9999-4999-8999-999999999999',
+      _reason: 'Verified reason',
+    };
+
+    await expect(service.returnSale({ ...common, _items: [{ sale_item_id: '66666666-6666-4666-8666-666666666666', quantity: 1 }], _reason_code: 'customer_request', _evidence_url: null }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.voidSale(common, authorization)).rejects.toThrow(/scope/i);
+    expect(mocks.decryptString).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('preserves scoped custody across service restart without exposing plaintext', async () => {
     const firstService = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
     const identity = firstService.identity();
