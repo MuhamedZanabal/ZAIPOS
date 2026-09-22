@@ -41,9 +41,6 @@ INSERT INTO public.branches(id,tenant_id,name,status) VALUES
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
   ('${manager}','${tenant}','${branch}','manager'),
   ('${cashier}','${tenant}','${branch}','cashier');
-INSERT INTO public.profiles(id,email,default_tenant_id) VALUES
-  ('${manager}','sec004-credit-manager@zaipos.test','${tenant}'),
-  ('${cashier}','sec004-credit-cashier@zaipos.test','${tenant}');
 INSERT INTO public.customers(id,tenant_id,name,status) VALUES('${customer}','${tenant}','Credit Device Customer','active');`, 'fixture');
 
 authAs(manager, `SELECT public.set_customer_credit_limit_v1('${customer}',5000,'Approved limit','credit-limit-device-001')`, 'credit limit');
