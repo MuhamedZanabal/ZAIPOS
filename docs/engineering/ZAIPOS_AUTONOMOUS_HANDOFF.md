@@ -4,6 +4,33 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
+- Bahrain timestamp: 2026-09-22 15:48 +03.
+- Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
+- Active stack: draft PR #78 `fix/device-bound-customer-credit-20260922` → PR #77 → PR #76 → PR #75 → PR #74 → PR #72. No merge is authorized.
+- PR #78 code head: `aa6f0a2056ca6f100d17b3263fd5900bd3a3d9be`, base PR #77 head `244f253b1d2456b7efa8158a6a72715221087726`.
+- Exact-head CI for `aa6f0a20`: all 20 workflows succeeded. CI #687 / `35728723827` passed quality job `106748684627` and unsigned Windows packaging job `106749690956`; trusted-device run `35728724028` / job `106748686143` passed the real-PostgreSQL device-bound customer-credit contract. This is not signing or installation acceptance.
+- Initial PR #78 code head `62ea66dd3f6de7306b3146e347cf7adf3776c5fe` failed trusted-device run `35728431022` because the test duplicated profiles already created by the canonical auth trigger. Repair `aa6f0a20` removed only the redundant fixture insert; that failed SHA is not proof.
+- Local source-equivalent verification: focused native custody 12 tests; full 61 files / 318 tests; `npx tsc --noEmit`; migration validation (116); native credential/offline-lease vault contract; ESLint zero errors / 13 pre-existing warnings; production build (2,768 modules); PostgreSQL script syntax and `git diff --check` all passed.
+
+## Work completed in the customer-credit run
+
+- Authenticated execution of credential-less `record_customer_credit_payment_v1` is revoked.
+- `record_customer_credit_payment_v2_device` verifies enrolled credential, tenant, branch, customer, user and role scope before replay or financial effect, then delegates to the existing exact-fils/idempotency primitive.
+- Native credential custody validates canonical positive bigint fils, method, reference and operation identity and injects the credential only for the RPC request. No renderer IPC was added because no customer-credit payment renderer workflow exists on this branch.
+- Real-PostgreSQL coverage proves legacy bypass, missing/copied/wrong-branch credential denial, exactly-once replay, modified-payload rejection, revocation-before-replay and zero balance/entry/operation/audit effects for rejected calls.
+- Existing customer-credit subledger coverage now uses an enrolled terminal for its authorized payment path. Offline checkout remains disabled.
+
+## Customer-credit run files
+
+- `supabase/migrations/20260922123201_device_bound_customer_credit_payment.sql`
+- `scripts/test-device-bound-customer-credit-postgres.mjs`
+- `scripts/test-customer-credit-subledger-postgres.mjs`
+- `.github/workflows/trusted-device-enforcement.yml`
+- `electron/services/device-credentials.ts`
+- `src/test/desktop/device-credentials.test.ts`
+
+## Previous verified checkpoint (return and void)
+
 - Bahrain timestamp: 2026-09-22 15:14 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
 - Active stack: draft PR #77 `fix/device-bound-return-void-20260922` → PR #76 `fix/device-bound-cash-movement-20260922` → PR #75 → PR #74 → PR #72. No merge is authorized.
@@ -95,7 +122,7 @@ Published on PR #76 as `9415da3` then repaired by `f75983a`:
 
 ## Remaining priority
 
-1. Continue trusted-device enforcement for customer credit, supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76/#77 work. Next scoped child: customer-credit financial mutation RPCs, starting with `record_customer_credit_payment_v1` and its renderer caller.
+1. Continue trusted-device enforcement for supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76/#77/#78 work. Next scoped child: `record_supplier_payment_v1` and its actual callers.
 2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
 3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
@@ -123,6 +150,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77 and the current PR #77 head. Compare them with this file. CI #684 and trusted-device run `35725327471` are proof only for code head `4b0773ac`. Begin the next scoped child workstream by inventorying customer-credit mutation callers and reproducing credential-less `record_customer_credit_payment_v1` access; bind financial mutations to native custody without weakening manager/cashier authorization. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77/#78 and the current PR #78 head. Compare them with this file. CI #687 and trusted-device run `35728724028` are proof only for `aa6f0a20`. Begin the next scoped child workstream by inventorying supplier-payment mutation callers and reproducing credential-less `record_supplier_payment_v1` access; bind the mutation to native custody without weakening role, tenant, branch, idempotency or exact-fils guarantees. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
