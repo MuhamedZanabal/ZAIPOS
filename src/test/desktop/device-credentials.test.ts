@@ -181,5 +181,10 @@ describe('native device credential custody', () => {
     mocks.encryptionAvailable = true;
     await expect(service.checkout({ _tenant_id: tenantId, _branch_id: branchId }, authorization)).rejects.toThrow(/not provisioned/);
     await expect(service.rotate('rotation-approval', authorization)).rejects.toThrow(/not provisioned/);
+    await expect(service.cashMovement({
+      _tenant_id: tenantId, _branch_id: branchId,
+      _session_id: '66666666-6666-4666-8666-666666666666',
+      _type: 'in', _amount: '1.001', _reason: 'Verified float', _reference: 'FLOAT-DEVICE-001',
+    }, authorization)).rejects.toThrow(/not provisioned/);
   });
 });

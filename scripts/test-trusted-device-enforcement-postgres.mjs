@@ -98,7 +98,14 @@ assert.deepEqual(committed, { sales: 1, payments: 1, movements: 1, checkout_audi
 
 const deviceCash = (method, uid, secret, reference, tenantId = tenant, branchId = branch, sessionId = session) =>
   `SELECT public.${method}('${tenantId}','${branchId}','${sessionId}','in',1.001,'Verified device float','${reference}','${uid}','${secret}')`;
-const cashBefore = sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`, 'cash baseline');
+const cashSnapshot = (stage) => sql(
+  `SELECT (SELECT count(*)::text FROM public.cash_sessions WHERE id='${session}')
+    || '|' || (SELECT count(*)::text FROM public.cash_movement_operations)
+    || '|' || (SELECT total_in_fils::text FROM public.cash_sessions WHERE id='${session}')
+    || '|' || (SELECT total_out_fils::text FROM public.cash_sessions WHERE id='${session}')`,
+  stage,
+);
+const cashBefore = cashSnapshot('cash baseline');
 mark('legacy-cash-movement-rejection');
 assert.throws(
   () => authAs(actor, `SELECT public.record_cash_movement_v2('${session}','in',1.001,'Verified device float','DEVICE-CASH-LEGACY')`, 'legacy cash movement'),
@@ -121,7 +128,7 @@ assert.throws(
   /device credential|authoriz|permission/i,
 );
 assert.equal(
-  sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`, 'rejected cash zero-effect check'),
+  cashSnapshot('rejected cash zero-effect check'),
   cashBefore,
   'Rejected cash device requests must have zero financial and operation effects',
 );
@@ -190,7 +197,7 @@ assert.throws(
   'A revoked terminal must not submit checkout through the credential-bound RPC',
 );
 mark('cash-after-revocation');
-const cashAfterRevocation = sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`);
+const cashAfterRevocation = cashSnapshot('cash after revocation baseline');
 assert.throws(
   () => authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-AFTER-REVOKE'), 'cash after revocation'),
   /device credential|revok|authoriz|permission/i,
@@ -202,7 +209,7 @@ assert.throws(
   'Revocation must be checked before a completed cash movement is replayed',
 );
 assert.equal(
-  sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`),
+  cashSnapshot('rejected revoked-device cash zero-effect check'),
   cashAfterRevocation,
   'Rejected revoked-device cash requests must have zero effects',
 );

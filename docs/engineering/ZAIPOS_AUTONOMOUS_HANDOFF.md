@@ -4,75 +4,59 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-22 05:07 +03.
+- Bahrain timestamp: 2026-09-22 13:46 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef` (unchanged).
-- Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
-- Open PRs remain nine: #64, #66, #68, #69, #70, #71, #72, #74, #75. All draft. No merge is authorized.
-- Current published documentation head: `85a9383f80abaa6e8c3fa195f5e2ab1a8c4bde96` (`docs: record published operation identity hardening`).
-- Current published code head: `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`).
-- Exact-head CI for `85a9383f`: all 20 workflows succeeded, including CI #679 / `35677864681`; quality job `106588072786` and unsigned Windows packaging job `106588656308` both succeeded. This included the production PostgreSQL migration chain, trusted-device and offline-reconciliation contracts, 313 Vitest tests, lint and production build. The Windows artifact remains unsigned validation evidence only.
-- Previous native-recovery code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d` (`feat(device): persist offline capture before operator recovery`).
-- Exact-head CI for `a6b28b8`: all 20 workflows succeeded, including CI #678 / `35660831665`. This independently proves the documentation head retains the green code state.
-- Exact-head CI for `0ad6454`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #677 / `35660056645` (quality job `106532899263`, windows-package job `106533702220`). This included production PostgreSQL migrations, adversarial offline reconciliation, lint, the 309-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
-- Previous published head: `4567fd93fbf8b7459fc91b3cc34d48240058b464` (`docs: record lost-response replay hardening`).
-- Exact-head CI for `4567fd93`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #676 / `35654352642`. Historical proof only for that SHA.
+- Active stack: draft PR #76 `fix/device-bound-cash-movement-20260922` → PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
+- Open PRs are now ten: #64, #66, #68, #69, #70, #71, #72, #74, #75, #76. All draft. No merge is authorized.
+- Parent published documentation head (PR #75): `23f36446b92ed7c47311e33a9e3348786550ea3e` (`docs: record green operation identity CI`).
+- Parent published code head (PR #75): `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`).
+- Exact-head CI for `85a9383f` (then-current PR #75 docs head): all 20 workflows succeeded, including CI #679 / `35677864681`. Historical proof only for that SHA.
+- Previous native-recovery code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d`. Exact-head CI #677 / `35660056645` succeeded. Historical proof only for that SHA.
+- PR #76 initial code head `9415da370efe4a4312117481dfef6e9091a0029c` (`fix(device): bind manual cash movements`) is **not** exact-head green. Quality job `106602351809` (CI run `35682532338`) failed `test-cash-mutation-authority-postgres.mjs` because authenticated callers were revoked from `record_cash_movement_v2` while the existing happy-path still invoked it. Trusted-device job `106602351554` (run `35682532347`) failed a `cash_sessions` snapshot that mixed `count(*)` with non-aggregated `total_in_fils` / `total_out_fils`.
 
 ## Work completed in this run
 
-Operation-identity and indeterminate-response hardening is published as `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`) on top of verified prior head `a6b28b8`:
+PR #76 already bound manual cash movements. This run repairs the exact-head contracts without enabling offline checkout:
 
-- Native capture now derives its queue mutation ID from the checkout payload's UUID `_client_mutation_id` and rejects missing, malformed or conflicting operation identities before enqueue.
-- Native-checkout transient failures no longer fall through to the legacy renderer/Dexie queue. They fail with an explicit indeterminate-result error while preserving the cart so retry uses the same operation.
-- POS regression evidence proves a lost-response retry submits the byte-identical checkout payload and the same `_client_mutation_id`, clearing the cart only after a committed response.
-- The GitHub write connector recovered and created this commit as a non-force fast-forward. Exact-head CI #679 then passed all 20 workflows on documentation head `85a9383f`.
+- Cash mutation authority and cash replay PostgreSQL contracts now enroll a manager-approved terminal, activate the credential through `service_role`, and exercise `record_cash_movement_v3_device` / `cancel_cash_movement_v3_device` for every authorized effect, replay, cancellation, concurrent close, and closed-session case.
+- Authenticated `record_cash_movement_v2` remains an explicit deny. Wrong-branch, sub-fils, peer-actor and payload-substitution cases still fail closed on the production device path.
+- Trusted-device cash snapshots use scalar subqueries so session totals are not aggregated with `count(*)`.
+- Native custody now also fails closed for unprovisioned cash movement.
 
-Native capture and operator recovery, with the release gate still disabled:
-
-- Main-process capture persists the immutable encrypted mutation before acknowledging the mutation ID. Acknowledgement is refused if persistence cannot be observed.
-- Authenticated checkout coordinator captures only on transient transport failure, and only when the immutable release gate is enabled. Business rejections still fail closed. Disabled-gate transport failures never enqueue.
-- Capture uses `_client_mutation_id` as the durable mutation UUID, strips lease/credential secrets from the stored payload, and returns `{ status: 'pending', mutationId }` rather than a sale UUID.
-- Duplicate operator retries reuse the same checkout mutation ID in POS; native enqueue of the same ID and payload is idempotent. Altered payload reuse is quarantined as `conflict` without dropping the original mutation.
-- Operator recovery projects `pending`, `replaying`, `confirmed`, `quarantined`, `expired_authority`, `revoked_device`, `corrupt_record` and `conflict`. Confirmed sale evidence is written before the queued ciphertext is removed. Recovery remains available while checkout is disabled.
-- Electron startup logs operator-safe recovery identities and states only. No lease token, credential, payload, ciphertext or queue IPC was added. `enabled: false` remains the production wiring.
+Local verification cannot prove the PostgreSQL contracts; exact-head CI quality and trusted-device for the new SHA are required before attributing green evidence to this repair.
 
 ## Local verification
 
-- `npm test`: 61 files, 313 tests passed on the exact content published as `b4cae4e`.
-- `npm run lint`: zero errors; 13 pre-existing warnings.
-- `npm run build`: passed; 2,768 modules transformed.
-- Focused native recovery/orchestrator/coordinator/queue/authority/mutation suites: 41 tests passed.
-- `node scripts/test-device-credential-vault-contract.mjs`: passed.
-- ESLint on the touched Electron/POS/test files: zero errors.
-- A local PostgreSQL client/server is unavailable in this runtime; the real reconciliation contract must be re-proven by exact-head CI quality for the new SHA.
+- `npx vitest run`: 61 files, 315 tests passed.
+- Focused native cash/device suites: 6 files, 34 tests passed.
+- ESLint on the touched Electron/cash/test files: zero errors.
+- `git diff --check`: passed.
+- A local PostgreSQL client/server is unavailable in this runtime; the repaired cash and trusted-device contracts must be re-proven by exact-head CI.
 - Standalone `tsc -p tsconfig.electron.json --noEmit` remains blocked by pre-existing `import.meta.env` and `manager-authorization.ts` typing errors.
 
 ## Files modified in this run
 
-Published code commit `b4cae4e`:
+- `scripts/test-cash-mutation-authority-postgres.mjs`
+- `scripts/test-cash-replay-postgres.mjs`
+- `scripts/test-trusted-device-enforcement-postgres.mjs`
+- `src/test/desktop/device-credentials.test.ts`
+- `docs/engineering/ZAIPOS_AUTONOMOUS_HANDOFF.md`
 
-- `electron/services/device-offline-orchestrator.ts`
-- `src/test/desktop/device-offline-orchestrator.test.ts`
-- `src/hooks/useOfflineMutation.ts`
-- `src/hooks/useOfflineMutation.test.ts`
-- `src/modules/pos/POS.checkout-wiring.test.tsx`
+PR #76 already contained:
 
-Previously published native recovery work:
-
-- `electron/services/device-offline-recovery.ts` (new)
-- `electron/services/device-offline-queue.ts`
-- `electron/services/device-offline-orchestrator.ts`
-- `electron/services/device-checkout-coordinator.ts`
+- `supabase/migrations/20260922030000_device_bound_cash_movement.sql`
+- `electron/services/device-credentials.ts`
 - `electron/main.ts`
 - `electron/preload.ts`
+- `electron/types.ts`
 - `src/types/electron.d.ts`
-- `src/modules/pos/POS.tsx`
-- `scripts/test-device-credential-vault-contract.mjs`
-- `src/test/desktop/device-offline-recovery.test.ts` (new)
-- `src/test/desktop/device-offline-queue.test.ts`
-- `src/test/desktop/device-offline-orchestrator.test.ts`
-- `src/test/desktop/device-checkout-coordinator.test.ts`
-- `docs/engineering/ZAIPOS_AUTONOMOUS_HANDOFF.md`
+- `src/lib/cashMovementRecovery.ts`
+- `src/modules/cash/Cash.tsx`
+- `src/test/cash-movement-ui.test.tsx`
+- `src/test/cash-recovery-journal.test.ts`
+- `src/test/cash-retry-ui.test.tsx`
+- `src/test/desktop/device-credentials.test.ts`
 
 ## Hazards and boundaries
 
@@ -80,20 +64,21 @@ Previously published native recovery work:
 - Never expose lease token, credential, encrypted records or native queue custody to renderer JavaScript.
 - Do not merge, force-push, deploy, release, touch production data, or claim signing/hardware/provider acceptance.
 - `docs/production-readiness/REMAINING_TASKS.md` has stale opening status and must not be treated as current authority without reconciliation.
-- Renderer checkout return type now includes `{ status: 'pending'; mutationId }` so a captured mutation cannot be mistaken for a committed sale. The pending path is dormant while the gate is disabled.
+- `record_cash_movement_v2` / `cancel_cash_movement_v2` remain the exact-fils primitives but are no longer executable by authenticated clients. Browser cash UI fails closed unless native `window.electron.cashMovement` is present.
+- `9415da3` is not proof for this repair SHA. Pending or historical workflows are never exact-head proof.
 
 ## Remaining priority
 
-1. Continue trusted-device enforcement for every retained financial mutation (beginning with `record_cash_movement_v2` / `cancel_cash_movement_v2`, then refund, return, void, customer credit, supplier payments and delivery finance) without duplicating stacked PR #72/#74/#75 work.
+1. Wait for exact-head CI of this PR #76 repair. If quality/trusted-device are green, continue trusted-device enforcement for refund, return, void, customer credit, supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76 work.
 2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
 3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
 
-## Historical checkpoint (2026-09-21 23:56 +03)
+## Historical checkpoint (2026-09-22 05:07 +03)
 
-Previous published head `4567fd93` / code `d7c399c`. Exact-head CI #676 for `4567fd93` later passed all twenty workflows; that evidence supersedes the then-pending note for `d7c399c`.
+Previous published PR #75 documentation head `85a9383f` / code `b4cae4e`. Exact-head CI #679 for `85a9383f` passed all twenty workflows; later PR #75 documentation head `23f3644` must be verified independently before attributing #679 to it.
 
-Work already on this branch before this run:
+Work already on the parent branch before this run:
 
 - `099af57174164f0f00e593f7cf5d7bfe7f846e8f` — native encrypted offline mutation custody, WAL, quarantine; no renderer/preload queue IPC; checkout disabled.
 - `cb2ff72a2444d1a48cb84233c215470c1324c550` — real PostgreSQL concurrent reconciliation: one mutation, one sale/payment/till/stock effect.
@@ -105,11 +90,13 @@ Work already on this branch before this run:
 - `9f8208574a62e23aceb09a41237d2ba5dc66f073` — lease rotation and revocation quarantine proof.
 - `d7c399ce72f033d1f9df322a893cb91eb683fc19` — body-stream lost-response retention and byte-identical replay.
 - `4567fd93fbf8b7459fc91b3cc34d48240058b464` — documentation checkpoint for lost-response replay. Exact-head CI #676 succeeded.
+- `0ad6454dc14c3f3d6b2712344bb4740afc58c88d` — persist offline capture before operator recovery. Exact-head CI #677 succeeded.
+- `b4cae4eceea460d41e0e21284b63d0285a81ec6c` — bind capture and retry identity.
 
 Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentation head `55030e4`; psql scalar parsing repair `3ed651c` / CI #659. Those SHAs are not proof for later heads.
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #679 is proof only for `85a9383f`. Begin the next scoped child workstream by reproducing the credential-less `record_cash_movement_v2` / `cancel_cash_movement_v2` bypass, then add a native-only credential-bound boundary and zero-effect negative PostgreSQL tests. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76 and the current PR #76 head. Compare them with this file. CI #679 is proof only for `85a9383f`. `9415da3` is not proof for later PR #76 SHAs. If this repair's exact-head quality and trusted-device jobs are green, continue the next financial-mutation device boundary (return/void). Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
