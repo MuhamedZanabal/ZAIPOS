@@ -63,9 +63,9 @@ export class CheckoutDeviceCutoverError extends Error {
   }
 }
 
-/** Reject the old RPC queue types before a network call or a misleading successful offline enqueue. */
+/** Reject legacy financial checkout types before a network call or successful renderer enqueue. */
 export function assertCheckoutDeviceBoundaryReady(type: string): void {
-  if (type === "CHECKOUT_SALE_V2" || type === "CHECKOUT_SALE") {
+  if (type === "CHECKOUT_SALE_V2" || type === "CHECKOUT_SALE" || type === "CHECKOUT_TABLE_ORDER") {
     throw new CheckoutDeviceCutoverError();
   }
 }
