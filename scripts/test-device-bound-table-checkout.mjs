@@ -11,7 +11,8 @@ const requireMatch = (label, text, pattern) => { if (!pattern.test(text)) throw 
 const forbid = (label, text, pattern) => { if (pattern.test(text)) throw new Error(`${label}: forbidden ${pattern}`); };
 
 requireMatch('table wrapper requires native device authority', migration, /require_table_checkout_device_v1/);
-requireMatch('waiter role remains explicitly classified', migration, /'waiter'[\s\S]*public\.app_role/);
+requireMatch('settlement roles remain explicitly classified', migration, /ARRAY\['owner','admin','manager','cashier'\]::public\.app_role\[\]/);
+forbid('waiter cannot settle a financial table checkout', migration, /ARRAY\[[^\]]*'waiter'[^\]]*\]::public\.app_role\[\]/);
 requireMatch('legacy authenticated execution is revoked', migration, /REVOKE ALL ON FUNCTION public\.checkout_table_order[\s\S]*authenticated/);
 requireMatch('cashier table checkout uses native bridge', pending, /checkoutTableOrderOnDevice/);
 requireMatch('table detail checkout uses native bridge', table, /checkoutTableOrderOnDevice/);

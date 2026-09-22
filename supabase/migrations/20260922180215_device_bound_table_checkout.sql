@@ -35,7 +35,7 @@ BEGIN
   END IF;
   IF NOT public.has_branch_role(
     _user_id, _tenant_id, _branch_id,
-    ARRAY['owner','admin','manager','cashier','waiter']::public.app_role[]
+    ARRAY['owner','admin','manager','cashier']::public.app_role[]
   ) THEN
     RAISE EXCEPTION 'Table checkout operator not authorized' USING ERRCODE = '42501';
   END IF;

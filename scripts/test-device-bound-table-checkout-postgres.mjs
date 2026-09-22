@@ -32,7 +32,7 @@ INSERT INTO public.tables(id,tenant_id,branch_id,name,status) VALUES('${I.table}
 INSERT INTO public.table_orders(id,tenant_id,branch_id,table_id,waiter_id,status) VALUES('${I.order}','${I.tenant}','${I.branch}','${I.table}','${I.waiter}','sent_to_cashier');
 INSERT INTO public.table_order_items(id,tenant_id,order_id,product_id,product_name,product_type,quantity,unit_price,tax_rate,discount,line_total,status)
  VALUES('${I.item}','${I.tenant}','${I.order}','${I.product}','Table Item','simple',1.000,1.000,0,0,1.000,'dispatched');
-INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id) VALUES('${I.session}','${I.tenant}','${I.branch}','${I.waiter}');`);
+INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id) VALUES('${I.session}','${I.tenant}','${I.branch}','${I.manager}');`);
 
 const approval=authAs(I.manager,`SELECT public.approve_device_enrollment('${I.tenant}','${I.branch}','${deviceUid}')`,'device approval');
 const [deviceId,credential]=sql(`SET ROLE service_role; SELECT device_id::text||'|'||credential FROM public.activate_device_enrollment('${approval}','1.0.0','windows'); RESET ROLE;`,'device activation').split('|');
@@ -48,19 +48,20 @@ assert.equal(sql(`SELECT has_function_privilege('authenticated','public.require_
 assert.throws(()=>authAs(I.waiter,`SELECT public.checkout_table_order('${I.order}','[]'::jsonb,0,0,NULL,'legacy-table-checkout')`,'legacy bypass'),/permission denied/i);
 for (const [name,statement] of [
  ['missing credential',call({secret:''})],['copied credential',call({uid:copiedUid})],['wrong branch',call({branch:I.otherBranch})],
-]) assert.throws(()=>authAs(I.waiter,statement,name),/device credential|scope|authoriz|permission/i,name);
+]) assert.throws(()=>authAs(I.manager,statement,name),/device credential|scope|authoriz|permission/i,name);
+assert.throws(()=>authAs(I.waiter,call(),'waiter settlement denial'),/not authorized|forbidden|permission/i);
 assert.equal(snapshot(),deniedBaseline,'denied table checkouts must have zero financial effect');
 
-const sale=authAs(I.waiter,call(),'valid checkout');
+const sale=authAs(I.manager,call(),'valid checkout');
 assert.match(sale,/^[a-f\d-]{36}$/i);
-assert.equal(authAs(I.waiter,call(),'lost-response replay'),sale);
+assert.equal(authAs(I.manager,call(),'lost-response replay'),sale);
 assert.equal(snapshot(),'1|1|1000|2.000');
 assert.equal(sql(`SELECT status::text||'|'||sale_id::text FROM public.table_orders WHERE id='${I.order}'`),`closed|${sale}`);
-assert.throws(()=>authAs(I.waiter,call({payments:`[{"method":"card","amount":"1.000","reference":null}]` }),'payload substitution'),/different checkout request|mutation ID/i);
+assert.throws(()=>authAs(I.manager,call({payments:`[{"method":"card","amount":"1.000","reference":null}]` }),'payload substitution'),/different checkout request|mutation ID/i);
 assert.equal(snapshot(),'1|1|1000|2.000');
 
 assert.equal(authAs(I.manager,`SELECT public.revoke_device_enrollment('${I.tenant}','${deviceId}','table checkout regression')`,'device revocation'),'t');
-assert.throws(()=>authAs(I.waiter,call(),'revoked replay'),/device credential|revok|authoriz/i);
+assert.throws(()=>authAs(I.manager,call(),'revoked replay'),/device credential|revok|authoriz/i);
 assert.equal(snapshot(),'1|1|1000|2.000');
 
 console.log('PASS: table checkout requires native device authority, converges after lost responses, and rejects credential or payload substitution with zero extra effects.');
