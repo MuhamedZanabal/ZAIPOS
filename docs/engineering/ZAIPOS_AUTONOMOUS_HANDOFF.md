@@ -4,6 +4,36 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
+- Bahrain timestamp: 2026-09-22 20:48:47 +03.
+- Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
+- Active stack: draft PR #80 `fix/device-bound-delivery-collection-20260922` → PR #79 → PR #78 → PR #77 → PR #76 → PR #75 → PR #74 → PR #72. No merge is authorized.
+- PR #80 code head: `04f167ec70f6ad06e174f8058a88e58b9b54437e`, base PR #79 documentation head `e47ea2aba84bf867b01df999fa9d496897e35b77`.
+- Exact-head CI for `04f167ec`: all 20 workflows succeeded. CI #693 / `35762405187` passed quality job `106863432654` and unsigned Windows packaging job `106864433541`; trusted-device run `35762405109` / job `106863430066` and delivery-financial-authority run `35762405333` / job `106863431116` passed the production migration chain and device-bound delivery contract on real PostgreSQL. This is not signing, installation, hardware or production-recovery acceptance.
+- The initial PR #80 head `d796e53bad90b3618ca6c48af25fa524c766e946` was superseded before terminal CI evidence after review found that the shared financial-device helper intentionally excludes couriers. Repair `04f167ec` uses a delivery-specific private credential verifier that includes the courier role while leaving assigned/active courier enforcement to the existing atomic collection primitive. The superseded SHA is not proof.
+- Local source-equivalent verification: TDD red reproduced missing native brokerage and renderer fallback; focused 2 files / 17 tests; full 61 files / 321 tests; `npx tsc --noEmit`; migration validation (118); native credential/offline-lease vault and delivery static contracts; ESLint zero errors / 13 pre-existing warnings; production build (2,768 modules); PostgreSQL script syntax and `git diff --check` all passed.
+
+## Work completed in the delivery-collection run
+
+- Authenticated execution of credential-less `collect_delivery_payment_v2` is revoked; it remains the internal exact-fils, atomic and idempotent implementation primitive.
+- `collect_delivery_payment_v3_device` verifies enrolled credential, tenant, branch, order and permitted operator role before delegation. The private device verifier admits owner/admin/manager/cashier/courier, while the existing v2 contract still requires active assignment for courier users.
+- The courier renderer now fails closed outside a provisioned desktop, obtains the current authenticated token, and calls a narrow Electron IPC. Credential plaintext remains native-only.
+- Real-PostgreSQL coverage proves legacy bypass, missing/copied/wrong-branch/revoked credentials, inactive/unassigned courier denial, lost-response replay, concurrent convergence, modified-payload rejection, exact one-fils handling and zero financial effects for rejected calls.
+- Offline checkout remains disabled.
+
+## Delivery-collection run files
+
+- `supabase/migrations/20260922173250_device_bound_delivery_collection.sql`
+- `scripts/test-delivery-financial-authority-postgres.mjs`
+- `scripts/test-delivery-financial-authority.mjs`
+- `.github/workflows/trusted-device-enforcement.yml`
+- `electron/services/device-credentials.ts`, `electron/main.ts`, `electron/preload.ts`, `electron/types.ts`
+- `src/types/electron.d.ts`
+- `src/modules/courier/CourierDashboard.tsx`
+- `src/test/delivery-collection-ui.test.tsx`
+- `src/test/desktop/device-credentials.test.ts`
+
+## Previous verified checkpoint (supplier payment)
+
 - Bahrain timestamp: 2026-09-22 20:16 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
 - Active stack: draft PR #79 `fix/device-bound-supplier-payment-20260922` → PR #78 → PR #77 → PR #76 → PR #75 → PR #74 → PR #72. No merge is authorized.
@@ -150,7 +180,7 @@ Published on PR #76 as `9415da3` then repaired by `f75983a`:
 
 ## Remaining priority
 
-1. Continue trusted-device enforcement for delivery finance without duplicating stacked PR #72/#74/#75/#76/#77/#78/#79 work. Inventory the authoritative delivery collection RPC and actual renderer/native callers first; preserve existing atomic/idempotent exact-fils behavior.
+1. Audit the remaining financial RPC inventory after checkout, cash movement, return/void, customer credit, supplier payment and delivery collection have been bound. Select the highest-risk still credential-less mutation and add positive/negative device evidence without duplicating stacked PR #72/#74/#75/#76/#77/#78/#79/#80 work.
 2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
 3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
@@ -178,6 +208,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77/#78/#79 and the current PR #79 head. Compare them with this file. CI #690, trusted-device run `35758780011`, supplier-subledger run `35758780093`, and backup/restore run `35758779922` are proof only for `b6f724f1`. Begin the next scoped child by inventorying delivery financial mutations and callers, then reproduce credential-less access before binding the highest-risk operation to native custody. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77/#78/#79/#80 and the current PR #80 head. Compare them with this file. CI #693, trusted-device run `35762405109`, and delivery-financial-authority run `35762405333` are proof only for `04f167ec`. Inventory the remaining financial RPC/caller matrix, reproduce the highest-risk credential-less mutation, and continue from PR #80 without widening unrelated roles. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
