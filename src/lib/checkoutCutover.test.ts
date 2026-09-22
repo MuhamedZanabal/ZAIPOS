@@ -7,12 +7,13 @@ const checkoutGuard = () => (
 ).assertCheckoutDeviceBoundaryReady;
 
 describe("credential-less checkout cutover", () => {
-  it("refuses both credential-less checkout operation types before submission or queueing", () => {
+  it("refuses all credential-less sale and restaurant checkout operation types before submission or queueing", () => {
     const guard = checkoutGuard();
     expect(guard).toBeTypeOf("function");
     if (!guard) return;
     expect(() => guard("CHECKOUT_SALE_V2")).toThrow(/device credential/i);
     expect(() => guard("CHECKOUT_SALE")).toThrow(/device credential/i);
+    expect(() => guard("CHECKOUT_TABLE_ORDER")).toThrow(/device credential/i);
   });
 
   it("preserves unrelated offline operation types", () => {
