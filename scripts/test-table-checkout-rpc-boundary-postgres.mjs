@@ -16,10 +16,14 @@ const signatures = [
 ];
 for (const signature of signatures) {
   assert.equal(sql(`SELECT to_regprocedure('${signature}') IS NOT NULL`), 't', `${signature} must be explicitly accounted for`);
-  for (const role of ['PUBLIC', 'anon', 'authenticated']) {
-    const privilege = role === 'PUBLIC' ? 'public' : role;
+  assert.equal(
+    sql(`SELECT EXISTS (SELECT 1 FROM pg_proc p CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl WHERE p.oid='${signature}'::regprocedure AND acl.grantee=0 AND acl.privilege_type='EXECUTE')`),
+    'f',
+    `${signature} must not grant execute to PUBLIC`,
+  );
+  for (const role of ['anon', 'authenticated']) {
     assert.equal(
-      sql(`SELECT has_function_privilege('${privilege}', '${signature}', 'EXECUTE')`),
+      sql(`SELECT has_function_privilege('${role}', '${signature}', 'EXECUTE')`),
       'f',
       `${signature} must not be callable directly by ${role}`,
     );
