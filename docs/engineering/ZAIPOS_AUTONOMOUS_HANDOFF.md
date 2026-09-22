@@ -4,12 +4,14 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-22 05:01 +03.
+- Bahrain timestamp: 2026-09-22 05:07 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef` (unchanged).
 - Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
 - Open PRs remain nine: #64, #66, #68, #69, #70, #71, #72, #74, #75. All draft. No merge is authorized.
+- Current published documentation head: `85a9383f80abaa6e8c3fa195f5e2ab1a8c4bde96` (`docs: record published operation identity hardening`).
 - Current published code head: `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`).
+- Exact-head CI for `85a9383f`: all 20 workflows succeeded, including CI #679 / `35677864681`; quality job `106588072786` and unsigned Windows packaging job `106588656308` both succeeded. This included the production PostgreSQL migration chain, trusted-device and offline-reconciliation contracts, 313 Vitest tests, lint and production build. The Windows artifact remains unsigned validation evidence only.
 - Previous native-recovery code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d` (`feat(device): persist offline capture before operator recovery`).
 - Exact-head CI for `a6b28b8`: all 20 workflows succeeded, including CI #678 / `35660831665`. This independently proves the documentation head retains the green code state.
 - Exact-head CI for `0ad6454`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #677 / `35660056645` (quality job `106532899263`, windows-package job `106533702220`). This included production PostgreSQL migrations, adversarial offline reconciliation, lint, the 309-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
@@ -23,7 +25,7 @@ Operation-identity and indeterminate-response hardening is published as `b4cae4e
 - Native capture now derives its queue mutation ID from the checkout payload's UUID `_client_mutation_id` and rejects missing, malformed or conflicting operation identities before enqueue.
 - Native-checkout transient failures no longer fall through to the legacy renderer/Dexie queue. They fail with an explicit indeterminate-result error while preserving the cart so retry uses the same operation.
 - POS regression evidence proves a lost-response retry submits the byte-identical checkout payload and the same `_client_mutation_id`, clearing the cart only after a committed response.
-- The GitHub write connector recovered and created this commit as a non-force fast-forward. Exact-head workflows were pending when this checkpoint was written; do not attribute historical CI #678 to the new code head.
+- The GitHub write connector recovered and created this commit as a non-force fast-forward. Exact-head CI #679 then passed all 20 workflows on documentation head `85a9383f`.
 
 Native capture and operator recovery, with the release gate still disabled:
 
@@ -82,11 +84,10 @@ Previously published native recovery work:
 
 ## Remaining priority
 
-1. Inspect every exact-head workflow for `b4cae4e`; repair any failure without weakening controls.
-2. Continue trusted-device enforcement for every retained financial mutation (refund, return, void, cash, customer credit, supplier payments, delivery finance) without duplicating stacked PR #72/#74/#75 work.
-3. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
-4. Finish PR #68's exhaustive authorization matrix without duplicating the census.
-5. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
+1. Continue trusted-device enforcement for every retained financial mutation (beginning with `record_cash_movement_v2` / `cancel_cash_movement_v2`, then refund, return, void, customer credit, supplier payments and delivery finance) without duplicating stacked PR #72/#74/#75 work.
+2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
+3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
+4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
 
 ## Historical checkpoint (2026-09-21 23:56 +03)
 
@@ -109,6 +110,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #678 is proof only for `a6b28b8`; `b4cae4e` requires its own completed exact-head workflows. Inspect and repair those workflows before continuing trusted-device financial-boundary enforcement. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #679 is proof only for `85a9383f`. Begin the next scoped child workstream by reproducing the credential-less `record_cash_movement_v2` / `cancel_cash_movement_v2` bypass, then add a native-only credential-bound boundary and zero-effect negative PostgreSQL tests. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
