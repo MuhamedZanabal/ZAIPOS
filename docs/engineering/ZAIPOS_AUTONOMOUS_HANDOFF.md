@@ -4,6 +4,34 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
+- Bahrain timestamp: 2026-09-22 20:16 +03.
+- Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
+- Active stack: draft PR #79 `fix/device-bound-supplier-payment-20260922` → PR #78 → PR #77 → PR #76 → PR #75 → PR #74 → PR #72. No merge is authorized.
+- PR #79 code head: `b6f724f1de51bff3a657d7344cfce93d25011446`, base PR #78 head `ac1ea4167abd646da5ce14046cda2faf04f4381c`.
+- Exact-head CI for `b6f724f1`: all 20 workflows succeeded. CI #690 / `35758779913` passed quality job `106851215457` and unsigned Windows packaging job `106852379222`; trusted-device run `35758780011` / job `106851214164`, supplier-subledger run `35758780093`, and backup/restore run `35758779922` / job `106851216206` passed against real PostgreSQL. This is not signing, installation, hardware or production-recovery acceptance.
+- Initial PR #79 code head `6f514ccdecfaace19eef223f837aa4d8387bcfc9` failed trusted-device run `35737085903` because its fixture duplicated trigger-created branch cutovers, and backup/restore run `35737085849` because supplier and customer-credit fixtures reused the same unique credential hash. Repair `b6f724f1` removed the redundant insert and isolated the credential secret; the failed SHA is not proof.
+- Local source-equivalent verification: TDD red reproduced the absent native broker; focused native custody 13 tests; full 61 files / 319 tests; `npx tsc --noEmit`; migration validation (117); native credential/offline-lease vault and supplier static contracts; ESLint zero errors / 13 pre-existing warnings; production build (2,768 modules); PostgreSQL script syntax and `git diff --check` all passed.
+
+## Work completed in the supplier-payment run
+
+- Authenticated execution of credential-less `record_supplier_payment_v1` is revoked.
+- `record_supplier_payment_v2_device` verifies enrolled credential, tenant, branch, supplier, user and manager/owner/admin role before replay or financial effect, then delegates to the existing exact-fils/idempotency primitive.
+- Native custody validates canonical positive bigint fils, supported payment method, optional canonical reference/note and stable operation identity. No renderer IPC was added because no supplier-payment renderer workflow exists on this branch.
+- Real-PostgreSQL coverage proves legacy bypass, missing/copied/wrong-branch credential and cashier-role denial, exactly-once replay, modified-payload rejection, revocation-before-replay and zero ledger/operation/audit effects for rejected calls.
+- The supplier-subledger and backup/restore contracts now use distinct enrolled-terminal credentials; trigger-owned future-branch cutover creation is not duplicated. Offline checkout remains disabled.
+
+## Supplier-payment run files
+
+- `supabase/migrations/20260922165100_device_bound_supplier_payment.sql`
+- `scripts/test-device-bound-supplier-payment-postgres.mjs`
+- `scripts/test-supplier-subledger-postgres.mjs`
+- `scripts/test-supplier-subledger.mjs`
+- `.github/workflows/trusted-device-enforcement.yml`
+- `electron/services/device-credentials.ts`
+- `src/test/desktop/device-credentials.test.ts`
+
+## Previous verified checkpoint (customer credit)
+
 - Bahrain timestamp: 2026-09-22 15:48 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
 - Active stack: draft PR #78 `fix/device-bound-customer-credit-20260922` → PR #77 → PR #76 → PR #75 → PR #74 → PR #72. No merge is authorized.
@@ -122,7 +150,7 @@ Published on PR #76 as `9415da3` then repaired by `f75983a`:
 
 ## Remaining priority
 
-1. Continue trusted-device enforcement for supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76/#77/#78 work. Next scoped child: `record_supplier_payment_v1` and its actual callers.
+1. Continue trusted-device enforcement for delivery finance without duplicating stacked PR #72/#74/#75/#76/#77/#78/#79 work. Inventory the authoritative delivery collection RPC and actual renderer/native callers first; preserve existing atomic/idempotent exact-fils behavior.
 2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
 3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
@@ -150,6 +178,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77/#78 and the current PR #78 head. Compare them with this file. CI #687 and trusted-device run `35728724028` are proof only for `aa6f0a20`. Begin the next scoped child workstream by inventorying supplier-payment mutation callers and reproducing credential-less `record_supplier_payment_v1` access; bind the mutation to native custody without weakening role, tenant, branch, idempotency or exact-fils guarantees. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77/#78/#79 and the current PR #79 head. Compare them with this file. CI #690, trusted-device run `35758780011`, supplier-subledger run `35758780093`, and backup/restore run `35758779922` are proof only for `b6f724f1`. Begin the next scoped child by inventorying delivery financial mutations and callers, then reproduce credential-less access before binding the highest-risk operation to native custody. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
