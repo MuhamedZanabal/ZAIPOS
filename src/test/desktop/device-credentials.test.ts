@@ -58,6 +58,53 @@ describe('native device credential custody', () => {
     await expect(service.checkout({ _tenant_id: otherTenantId, _branch_id: branchId }, authorization)).rejects.toThrow(/scope/);
   });
 
+  it('brokers cash movement through native custody and rejects renderer scope substitution', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const movementId = '55555555-5555-4555-8555-555555555555';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(movementId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const payload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _session_id: '66666666-6666-4666-8666-666666666666',
+      _type: 'in' as const, _amount: '1.001', _reason: 'Verified float', _reference: 'FLOAT-DEVICE-001',
+    };
+
+    await expect(service.cashMovement(payload, authorization)).resolves.toBe(movementId);
+    const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toContain('/rest/v1/rpc/record_cash_movement_v3_device');
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+    expect(request.headers).toMatchObject({ authorization: 'Bearer operator-token' });
+
+    await expect(service.cashMovement({ ...payload, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await expect(service.cashMovement({ ...payload, _amount: '1.0001' }, authorization)).rejects.toThrow(/exact cash amount/i);
+    await expect(service.cashMovement({ ...payload, _reference: ' FLOAT-DEVICE-001' }, authorization)).rejects.toThrow(/reference/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves immutable-reference conflict codes across the native RPC boundary', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 'ZC001', message: 'Cash movement reference conflict' }), { status: 409 })));
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const payload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _session_id: '66666666-6666-4666-8666-666666666666',
+      _type: 'in' as const, _amount: '1.001', _reason: 'Verified float', _reference: 'FLOAT-DEVICE-001',
+    };
+    const error = await service.cashMovement(payload, authorization).catch((cause) => cause);
+    expect(error).toMatchObject({ code: 'ZC001', message: 'Cash movement reference conflict' });
+  });
+
   it('preserves scoped custody across service restart without exposing plaintext', async () => {
     const firstService = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
     const identity = firstService.identity();

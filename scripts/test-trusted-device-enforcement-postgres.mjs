@@ -96,6 +96,59 @@ const committed = {
 };
 assert.deepEqual(committed, { sales: 1, payments: 1, movements: 1, checkout_audits: 1, cash_fils: '1000', stock: '1.000' });
 
+const deviceCash = (method, uid, secret, reference, tenantId = tenant, branchId = branch, sessionId = session) =>
+  `SELECT public.${method}('${tenantId}','${branchId}','${sessionId}','in',1.001,'Verified device float','${reference}','${uid}','${secret}')`;
+const cashBefore = sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`, 'cash baseline');
+mark('legacy-cash-movement-rejection');
+assert.throws(
+  () => authAs(actor, `SELECT public.record_cash_movement_v2('${session}','in',1.001,'Verified device float','DEVICE-CASH-LEGACY')`, 'legacy cash movement'),
+  /permission denied|not authorized|forbidden/i,
+  'Authenticated callers must not retain the credential-less cash movement bypass',
+);
+mark('cash-missing-credential-rejection');
+assert.throws(
+  () => authAs(actor, deviceCash('record_cash_movement_v3_device', original, '', 'DEVICE-CASH-MISSING'), 'missing cash device credential'),
+  /device credential|required|authoriz|permission/i,
+);
+mark('cash-wrong-branch-rejection');
+assert.throws(
+  () => authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-BRANCH', tenant, otherBranch), 'wrong-branch cash device credential'),
+  /device credential|scope|authoriz|permission/i,
+);
+mark('cash-copied-uid-rejection');
+assert.throws(
+  () => authAs(actor, deviceCash('record_cash_movement_v3_device', replacement, credential, 'DEVICE-CASH-COPIED'), 'copied-uid cash device credential'),
+  /device credential|authoriz|permission/i,
+);
+assert.equal(
+  sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`, 'rejected cash zero-effect check'),
+  cashBefore,
+  'Rejected cash device requests must have zero financial and operation effects',
+);
+mark('credential-cash-movement');
+const cashMovementId = authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-RECORDED'), 'credential cash movement');
+assert.match(cashMovementId, /^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i);
+mark('credential-cash-movement-replay');
+assert.equal(
+  authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-RECORDED'), 'credential cash movement replay'),
+  cashMovementId,
+  'Credential-bound lost-response replay must return the original movement',
+);
+mark('credential-cash-cancellation');
+assert.equal(
+  authAs(actor, deviceCash('cancel_cash_movement_v3_device', original, credential, 'DEVICE-CASH-CANCELLED'), 'credential cash cancellation'),
+  '',
+  'A device-authorized pre-effect cancellation returns null',
+);
+assert.throws(
+  () => authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-CANCELLED'), 'record cancelled cash identity'),
+  /cancelled/i,
+  'A cancelled immutable cash identity must not later create money',
+);
+assert.equal(sql(`SELECT count(*) FROM public.cash_movements WHERE id='${cashMovementId}'`), '1');
+assert.equal(sql(`SELECT total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`), '1001|0');
+assert.equal(sql(`SELECT count(*) FROM public.cash_movement_operations WHERE tenant_id='${tenant}'`), '2');
+
 mark('revocation');
 assert.throws(
   () => authAs(actor, `SELECT public.revoke_device_enrollment('${tenant}','${device}','security incident')`, 'cashier device revocation'),
@@ -135,6 +188,23 @@ assert.throws(
   () => authAs(actor, deviceCheckout(original, credential, `${original}:checkout-after-revocation`), 'checkout after revocation'),
   /device credential rejected|device|revok|authoriz|permission/i,
   'A revoked terminal must not submit checkout through the credential-bound RPC',
+);
+mark('cash-after-revocation');
+const cashAfterRevocation = sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`);
+assert.throws(
+  () => authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-AFTER-REVOKE'), 'cash after revocation'),
+  /device credential|revok|authoriz|permission/i,
+  'A revoked terminal must not create a manual cash movement',
+);
+assert.throws(
+  () => authAs(actor, deviceCash('record_cash_movement_v3_device', original, credential, 'DEVICE-CASH-RECORDED'), 'cash replay after revocation'),
+  /device credential|revok|authoriz|permission/i,
+  'Revocation must be checked before a completed cash movement is replayed',
+);
+assert.equal(
+  sql(`SELECT count(*)::text || '|' || (SELECT count(*) FROM public.cash_movement_operations)::text || '|' || total_in_fils::text || '|' || total_out_fils::text FROM public.cash_sessions WHERE id='${session}'`),
+  cashAfterRevocation,
+  'Rejected revoked-device cash requests must have zero effects',
 );
 mark('copied-uid-checkout-rejection');
 assert.throws(

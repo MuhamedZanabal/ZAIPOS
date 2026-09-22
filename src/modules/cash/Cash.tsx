@@ -357,6 +357,8 @@ export default function Cash() {
 
       <CashMovementDialog
         actorId={user?.id ?? null}
+        tenantId={tenantId}
+        branchId={branchId}
         open={moveDialog !== null}
         type={moveDialog ?? "in"}
         sessionId={session?.id ?? null}
@@ -398,12 +400,14 @@ function CountField({
 }
 
 export function CashMovementDialog({
-  open, type, sessionId, actorId, onClose,
+  open, type, sessionId, actorId, tenantId, branchId, onClose,
 }: {
   open: boolean;
   type: "in" | "out";
   sessionId: string | null;
   actorId: string | null;
+  tenantId: string | null;
+  branchId: string | null;
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
@@ -428,7 +432,7 @@ export function CashMovementDialog({
     setSaving(true);
     try {
       const request = draft?.request ?? {
-        _session_id: sessionId ?? "", _type: type,
+        _tenant_id: tenantId ?? "", _branch_id: branchId ?? "", _session_id: sessionId ?? "", _type: type,
         _amount: filsToBhd(bhdToFils(amount)), _reason: reason.trim(), _reference: reference.trim(),
       };
       const completed = await executeCashMovement(actorId, request, cancel);
