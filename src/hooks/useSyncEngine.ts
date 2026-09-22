@@ -15,16 +15,11 @@ import {
 } from '@/lib/syncQueue';
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
-  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE') {
-    // Legacy sale records are retained in the queue for operator reconciliation.
-    // Do NOT send them through a credential-less RPC or silently convert their
-    // immutable payload/operation ID to an unapproved device checkout request.
+  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER') {
+    // Retain legacy financial checkout records for operator reconciliation.
+    // Never replay a renderer-held payload through a credential-less financial RPC
+    // or silently convert it into a privileged device-bound checkout request.
     throw new CheckoutDeviceCutoverError();
-  }
-  if (item.type === 'CHECKOUT_TABLE_ORDER') {
-    const { data, error } = await supabase.rpc('checkout_table_order', item.payload);
-    if (error) throw error;
-    return data;
   }
   if (item.type === 'SEND_TO_KITCHEN') {
     const { data, error } = await supabase.rpc('send_table_order_to_kitchen', item.payload);
