@@ -8,9 +8,6 @@
 -- or merge this partial security stack as a complete feature.
 BEGIN;
 
-REVOKE ALL ON FUNCTION public.checkout_table_order(uuid, jsonb)
-  FROM PUBLIC, anon, authenticated;
-
 REVOKE ALL ON FUNCTION public.checkout_table_order(uuid, jsonb, numeric, numeric, text, text)
   FROM PUBLIC, anon, authenticated;
 

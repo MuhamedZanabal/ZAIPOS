@@ -11,9 +11,13 @@ function sql(statement) {
 }
 
 const signatures = [
-  'public.checkout_table_order(uuid,jsonb)',
   'public.checkout_table_order(uuid,jsonb,numeric,numeric,text,text)',
 ];
+assert.equal(
+  sql(`SELECT to_regprocedure('public.checkout_table_order(uuid,jsonb)') IS NULL`),
+  't',
+  'The retired two-argument restaurant checkout overload must remain absent',
+);
 for (const signature of signatures) {
   assert.equal(sql(`SELECT to_regprocedure('${signature}') IS NOT NULL`), 't', `${signature} must be explicitly accounted for`);
   assert.equal(
@@ -31,7 +35,7 @@ for (const signature of signatures) {
 }
 
 const overloads = sql(`SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='checkout_table_order'`);
-assert.equal(overloads, String(signatures.length), 'All restaurant checkout overloads must be inventoried before grant closure');
+assert.equal(overloads, String(signatures.length), 'Every live restaurant checkout overload must be inventoried before grant closure');
 assert.equal(
   sql(`SELECT to_regprocedure('public.checkout_table_order_v2_device(uuid,uuid,uuid,jsonb,numeric,numeric,text,text,text,text)') IS NOT NULL`),
   't',
@@ -42,4 +46,4 @@ assert.equal(
   't',
   'Authenticated application clients may execute only the device-bound restaurant checkout entrypoint',
 );
-console.log('TABLE_CHECKOUT_RPC_BOUNDARY PASS: both legacy overloads revoked, device-only endpoint exposed.');
+console.log('TABLE_CHECKOUT_RPC_BOUNDARY PASS: retired overload absent, live legacy overload revoked, device-only endpoint exposed.');
