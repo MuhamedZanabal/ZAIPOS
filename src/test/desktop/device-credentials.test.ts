@@ -105,6 +105,35 @@ describe('native device credential custody', () => {
     expect(error).toMatchObject({ code: 'ZC001', message: 'Cash movement reference conflict' });
   });
 
+  it('brokers customer credit payments through native custody and rejects scope substitution', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const entryId = '55555555-5555-4555-8555-555555555555';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(entryId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const payload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _customer_id: '66666666-6666-4666-8666-666666666666',
+      _amount_fils: '1250', _payment_method: 'cash',
+      _payment_reference: 'CREDIT-RECEIPT-001', _operation_id: 'credit-payment-001',
+    };
+
+    await expect(service.customerCreditPayment(payload, authorization)).resolves.toBe(entryId);
+    const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toContain('/rest/v1/rpc/record_customer_credit_payment_v2_device');
+    expect(JSON.parse(String(request.body))).toEqual({
+      ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+
+    await expect(service.customerCreditPayment({ ...payload, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.customerCreditPayment({ ...payload, _amount_fils: '1.5' }, authorization)).rejects.toThrow(/exact fils/i);
+    await expect(service.customerCreditPayment({ ...payload, _operation_id: ' short-id' }, authorization)).rejects.toThrow(/operation ID/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('brokers returns and voids through native custody without exposing the credential', async () => {
     values.set('enrollment', {
       deviceUid: 'terminal-1', tenantId, branchId,

@@ -19,12 +19,19 @@ export type DeviceSaleVoidPayload = {
   _tenant_id: string; _branch_id: string; _sale_id: string;
   _client_mutation_id: string; _cash_session_id: string | null; _reason: string | null;
 };
+export type DeviceCustomerCreditPaymentPayload = {
+  _tenant_id: string; _branch_id: string; _customer_id: string;
+  _amount_fils: string;
+  _payment_method: 'cash' | 'card' | 'benefitpay' | 'bank_transfer' | 'cheque' | 'other';
+  _payment_reference: string; _operation_id: string;
+};
 const RECORD_KEY = 'enrollment';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function requireString(value: unknown, label: string, max = 4096): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`); return value.trim(); }
 function requireCanonicalString(value: unknown, label: string, min: number, max: number): string { if (typeof value !== 'string' || value.length < min || value.length > max || value !== value.trim()) throw new Error(`Invalid ${label}`); return value; }
 function requireUuid(value: unknown, label: string): string { const valueString = requireString(value, label, 128); if (!UUID.test(valueString)) throw new Error(`Invalid ${label}`); return valueString; }
 function requireExactBhd(value: unknown): string { const amount = requireString(value, 'cash amount', 32); const match = /^(0|[1-9]\d*)(?:\.(\d{1,3}))?$/.exec(amount); if (!match) throw new Error('Invalid exact cash amount'); const fils = BigInt(match[1]) * 1000n + BigInt((match[2] ?? '').padEnd(3, '0')); if (fils <= 0n) throw new Error('Invalid exact cash amount'); return amount; }
+function requirePositiveFils(value: unknown): string { const fils = requireCanonicalString(value, 'exact fils amount', 1, 19); if (!/^[1-9]\d*$/.test(fils) || BigInt(fils) > 9223372036854775807n) throw new Error('Invalid exact fils amount'); return fils; }
 function optionalUuid(value: unknown, label: string): string | null { return value === null || value === undefined ? null : requireUuid(value, label); }
 function optionalCanonicalString(value: unknown, label: string, max: number): string | null { if (value === null || value === undefined) return null; return requireCanonicalString(value, label, 1, max); }
 function validateAuthorization(auth: DeviceAuthorization): DeviceAuthorization { return { accessToken: requireString(auth?.accessToken, 'access token', 16384), tenantId: requireUuid(auth?.tenantId, 'tenant ID'), branchId: requireUuid(auth?.branchId, 'branch ID') }; }
@@ -80,6 +87,24 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, cancel ? 'cancel_cash_movement_v3_device' : 'record_cash_movement_v3_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
       if (result !== null && (typeof result !== 'string' || !UUID.test(result))) throw new Error('Cash movement returned an invalid receipt');
       if (!cancel && result === null) throw new Error('Cash movement returned no receipt');
+      return result;
+    },
+    async customerCreditPayment(payload: DeviceCustomerCreditPaymentPayload, authorization: DeviceAuthorization): Promise<string> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Customer credit payment scope does not match authorization scope');
+      const paymentMethod = requireCanonicalString(payload._payment_method, 'customer credit payment method', 2, 32);
+      if (!['cash', 'card', 'benefitpay', 'bank_transfer', 'cheque', 'other'].includes(paymentMethod)) throw new Error('Invalid customer credit payment method');
+      const request = {
+        _tenant_id: requireUuid(payload._tenant_id, 'tenant ID'), _branch_id: requireUuid(payload._branch_id, 'branch ID'),
+        _customer_id: requireUuid(payload._customer_id, 'customer ID'),
+        _amount_fils: requirePositiveFils(payload._amount_fils),
+        _payment_method: paymentMethod,
+        _payment_reference: requireCanonicalString(payload._payment_reference, 'customer credit payment reference', 2, 256),
+        _operation_id: requireCanonicalString(payload._operation_id, 'customer credit operation ID', 8, 128),
+      };
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'record_customer_credit_payment_v2_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
+      if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Customer credit payment returned an invalid identifier');
       return result;
     },
     async returnSale(payload: DeviceSaleReturnPayload, authorization: DeviceAuthorization): Promise<string> {
