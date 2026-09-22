@@ -4,46 +4,39 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-22 13:46 +03.
+- Bahrain timestamp: 2026-09-22 13:54 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef` (unchanged).
 - Active stack: draft PR #76 `fix/device-bound-cash-movement-20260922` → PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
-- Open PRs are now ten: #64, #66, #68, #69, #70, #71, #72, #74, #75, #76. All draft. No merge is authorized.
-- Parent published documentation head (PR #75): `23f36446b92ed7c47311e33a9e3348786550ea3e` (`docs: record green operation identity CI`).
-- Parent published code head (PR #75): `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`).
-- Exact-head CI for `85a9383f` (then-current PR #75 docs head): all 20 workflows succeeded, including CI #679 / `35677864681`. Historical proof only for that SHA.
-- Previous native-recovery code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d`. Exact-head CI #677 / `35660056645` succeeded. Historical proof only for that SHA.
-- PR #76 initial code head `9415da370efe4a4312117481dfef6e9091a0029c` (`fix(device): bind manual cash movements`) is **not** exact-head green. Quality job `106602351809` (CI run `35682532338`) failed `test-cash-mutation-authority-postgres.mjs` because authenticated callers were revoked from `record_cash_movement_v2` while the existing happy-path still invoked it. Trusted-device job `106602351554` (run `35682532347`) failed a `cash_sessions` snapshot that mixed `count(*)` with non-aggregated `total_in_fils` / `total_out_fils`.
+- Open PRs are ten: #64, #66, #68, #69, #70, #71, #72, #74, #75, #76. All draft. No merge is authorized.
+- Current published code head: `f75983a02d084f1b97b04023bac3c3f6f81fbfc5` (`test(device): route cash contracts through enrolled terminals`).
+- Exact-head CI for `f75983a`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #682 / `35717821492` (quality job `106713369307`, windows-package job `106714198852`) and trusted-device run `35717821506` / job `106713369481`. This included the production PostgreSQL migration chain, cash-mutation authority, cash replay, trusted-device cash/checkout denial matrix, 315 Vitest tests, lint, production build and unsigned Windows packaging. This is not signing or installation acceptance.
+- PR #76 initial code head `9415da370efe4a4312117481dfef6e9091a0029c` failed quality job `106602351809` and trusted-device job `106602351554`. That SHA is not proof for later heads.
+- Parent published documentation head (PR #75): `23f36446b92ed7c47311e33a9e3348786550ea3e`.
+- Parent published code head (PR #75): `b4cae4eceea460d41e0e21284b63d0285a81ec6c`.
+- Exact-head CI for `85a9383f` (then-current PR #75 docs head): CI #679 / `35677864681`. Historical proof only for that SHA.
 
 ## Work completed in this run
 
-PR #76 already bound manual cash movements. This run repairs the exact-head contracts without enabling offline checkout:
+PR #76 binds manual cash movements and its exact-head contracts are now green:
 
-- Cash mutation authority and cash replay PostgreSQL contracts now enroll a manager-approved terminal, activate the credential through `service_role`, and exercise `record_cash_movement_v3_device` / `cancel_cash_movement_v3_device` for every authorized effect, replay, cancellation, concurrent close, and closed-session case.
-- Authenticated `record_cash_movement_v2` remains an explicit deny. Wrong-branch, sub-fils, peer-actor and payload-substitution cases still fail closed on the production device path.
-- Trusted-device cash snapshots use scalar subqueries so session totals are not aggregated with `count(*)`.
-- Native custody now also fails closed for unprovisioned cash movement.
-
-Local verification cannot prove the PostgreSQL contracts; exact-head CI quality and trusted-device for the new SHA are required before attributing green evidence to this repair.
+- Authenticated execution of credential-less `record_cash_movement_v2` / `cancel_cash_movement_v2` is revoked.
+- Device-bound v3 wrappers verify user, tenant, branch, session, enrolled device, credential hash and revocation before replay or effect.
+- Electron main brokers cash movement with OS-protected credential custody and narrow IPC. Browser cash UI fails closed without native `window.electron.cashMovement`.
+- Exact BHD decimal text, immutable reference recovery and `ZC001` conflict semantics are preserved.
+- `f75983a` repaired the `9415da3` CI defects: cash-authority/replay contracts now enroll a manager-approved terminal before any authorized effect; trusted-device till snapshots use scalar subqueries instead of mixing `count(*)` with session totals.
 
 ## Local verification
 
 - `npx vitest run`: 61 files, 315 tests passed.
 - Focused native cash/device suites: 6 files, 34 tests passed.
 - ESLint on the touched Electron/cash/test files: zero errors.
-- `git diff --check`: passed.
-- A local PostgreSQL client/server is unavailable in this runtime; the repaired cash and trusted-device contracts must be re-proven by exact-head CI.
+- Exact-head CI #682 quality, trusted-device and unsigned Windows packaging succeeded for `f75983a`.
 - Standalone `tsc -p tsconfig.electron.json --noEmit` remains blocked by pre-existing `import.meta.env` and `manager-authorization.ts` typing errors.
 
 ## Files modified in this run
 
-- `scripts/test-cash-mutation-authority-postgres.mjs`
-- `scripts/test-cash-replay-postgres.mjs`
-- `scripts/test-trusted-device-enforcement-postgres.mjs`
-- `src/test/desktop/device-credentials.test.ts`
-- `docs/engineering/ZAIPOS_AUTONOMOUS_HANDOFF.md`
-
-PR #76 already contained:
+Published on PR #76 as `9415da3` then repaired by `f75983a`:
 
 - `supabase/migrations/20260922030000_device_bound_cash_movement.sql`
 - `electron/services/device-credentials.ts`
@@ -57,6 +50,10 @@ PR #76 already contained:
 - `src/test/cash-recovery-journal.test.ts`
 - `src/test/cash-retry-ui.test.tsx`
 - `src/test/desktop/device-credentials.test.ts`
+- `scripts/test-trusted-device-enforcement-postgres.mjs`
+- `scripts/test-cash-mutation-authority-postgres.mjs`
+- `scripts/test-cash-replay-postgres.mjs`
+- `docs/engineering/ZAIPOS_AUTONOMOUS_HANDOFF.md`
 
 ## Hazards and boundaries
 
@@ -64,12 +61,12 @@ PR #76 already contained:
 - Never expose lease token, credential, encrypted records or native queue custody to renderer JavaScript.
 - Do not merge, force-push, deploy, release, touch production data, or claim signing/hardware/provider acceptance.
 - `docs/production-readiness/REMAINING_TASKS.md` has stale opening status and must not be treated as current authority without reconciliation.
-- `record_cash_movement_v2` / `cancel_cash_movement_v2` remain the exact-fils primitives but are no longer executable by authenticated clients. Browser cash UI fails closed unless native `window.electron.cashMovement` is present.
-- `9415da3` is not proof for this repair SHA. Pending or historical workflows are never exact-head proof.
+- `record_cash_movement_v2` / `cancel_cash_movement_v2` remain the exact-fils primitives but are no longer executable by authenticated clients.
+- `9415da3` is not proof for `f75983a`. Pending or historical workflows are never exact-head proof.
 
 ## Remaining priority
 
-1. Wait for exact-head CI of this PR #76 repair. If quality/trusted-device are green, continue trusted-device enforcement for refund, return, void, customer credit, supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76 work.
+1. Continue trusted-device enforcement for refund, return, void, customer credit, supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76 work. Next scoped child: `process_sale_return_v2` / `process_sale_void_v2`.
 2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
 3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
@@ -97,6 +94,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76 and the current PR #76 head. Compare them with this file. CI #679 is proof only for `85a9383f`. `9415da3` is not proof for later PR #76 SHAs. If this repair's exact-head quality and trusted-device jobs are green, continue the next financial-mutation device boundary (return/void). Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76 and the current PR #76 head. Compare them with this file. CI #682 is proof only for `f75983a`. Begin the next scoped child workstream by reproducing the credential-less `process_sale_return_v2` / `process_sale_void_v2` bypass, then add a native-only credential-bound boundary and zero-effect negative PostgreSQL tests. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
