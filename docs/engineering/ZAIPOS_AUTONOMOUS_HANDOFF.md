@@ -2,24 +2,23 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #81 (2026-09-23 02:21:04 +03)
+## Current checkpoint — PR #81 (2026-09-23 02:35:15 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #81 branch `fix/device-bound-table-checkout-20260922` is stacked on draft PR #80 head `ba236f9ef4d05357bcacad968ea023feadd319b9`.
-- Current code head: `782a886c57c982fbf1eab695e27ef31c5bec0b21`. All 21 exact-head workflows completed successfully. CI #701 run `35796636091` passed quality job `106977324302` (real PostgreSQL migration/concurrency/adversarial suite, 326-test suite, lint and build) and unsigned Windows packaging job `106978056516`.
-- Table Checkout Security run `35796636151` and Trusted Device Enforcement run `35796636034` both passed on the exact code head. Backup Restore run `35796636325` also passed. Unsigned packaging is not signing or installation acceptance.
+- Current code head: `896c0783767b49c13403f8330095b1875f3b16ea`. All 21 exact-head workflows completed successfully. CI #704 run `35797498899` passed quality job `106980070008` (real PostgreSQL migration/concurrency/adversarial suite, 326-test suite, lint and build) and unsigned Windows packaging job `106980812353`.
+- Table Checkout Security run `35797498959` and Trusted Device Enforcement run `35797498964` both passed on the exact code head. Backup Restore run `35797498912` also passed. Unsigned packaging is not signing or installation acceptance.
 - Restaurant checkout now uses main-process credential custody through narrow IPC. Both cashier pending-order and table-detail paths fail closed without an authenticated provisioned desktop terminal. The renderer queue rejects new `CHECKOUT_TABLE_ORDER` entries and quarantines legacy records without replaying them.
 - `checkout_table_order_v2_device` checks tenant, branch, enrolled/non-revoked device credential and settlement role before delegating to the existing atomic checkout. Owner/admin/manager/cashier may settle; waiter is explicitly denied because the authoritative inventory movement policy excludes waiter from financial stock effects. The legacy six-argument RPC is revoked from PUBLIC/anon/authenticated and the retired two-argument overload is asserted absent.
-- Exact BHD inputs are canonical three-decimal strings. The stable per-order operation ID supports lost-response replay; payload substitution, wrong-device, wrong-branch, missing credential, revoked device and waiter settlement are rejected with zero extra financial effects in the disposable PostgreSQL contract.
+- Exact BHD inputs are canonical three-decimal strings. The stable per-order operation ID supports lost-response replay. Two independent PostgreSQL sessions using the same operation ID converge on one sale/payment/stock effect; competing operation IDs for one order yield exactly one success and one rejection. Payload substitution, wrong-device, wrong-branch, missing credential, revoked device and waiter settlement are rejected with zero extra financial effects.
 - CI-discovered repairs during this run: initial head `7e7d01f` failed because PR #81 tried to revoke an overload already dropped by the production chain; `c9a66ef` corrected the live/retired signature inventory. That head then exposed waiter rejection inside `apply_inventory_movement`; `782a886` aligned the public settlement classification with the authoritative inventory policy and added a negative waiter test. Do not cite the failed heads as passing evidence.
 - Files added/changed for the completed cutover include `supabase/migrations/20260922180215_device_bound_table_checkout.sql`, Electron credential/IPC files, `src/lib/deviceTableCheckout.ts`, both restaurant checkout UIs, queue tests, and the static/real-PostgreSQL device-bound table checkout contracts. No merge, deployment, release, force push or production-data operation occurred. Offline checkout remains disabled.
 
 ### Immediate next executable actions
 
-1. Re-fetch PR #81 and verify its documentation head and the code evidence at `782a886`; never attribute documentation-only workflow runs to the code commit.
-2. Add concurrency acceptance for two simultaneous table-checkout calls using the same and different operation IDs; require one sale/payment/stock effect and deterministic rejection of the competing identity.
-3. Continue the financial RPC/authorization census for any renderer-callable mutation not yet device-bound; select the highest-risk live entrypoint and add positive/negative PostgreSQL proof before implementation.
-4. Complete offline recovery/contention/corruption acceptance while keeping the immutable offline checkout gate disabled; then review the complete stacked security PR chain.
-5. Preserve external signing, physical hardware, production DR, provider authorization and regulatory gates as unresolved until independently exercised.
+1. Re-fetch PR #81 and verify its documentation head and the code evidence at `896c078`; never attribute documentation-only workflow runs to the code commit.
+2. Continue the financial RPC/authorization census for any renderer-callable mutation not yet device-bound; select the highest-risk live entrypoint and add positive/negative PostgreSQL proof before implementation.
+3. Complete offline recovery/contention/corruption acceptance while keeping the immutable offline checkout gate disabled; then review the complete stacked security PR chain.
+4. Preserve external signing, physical hardware, production DR, provider authorization and regulatory gates as unresolved until independently exercised.
 
 ## Previous checkpoint — PR #80 delivery collection (2026-09-22 20:48:47 +03)
 
