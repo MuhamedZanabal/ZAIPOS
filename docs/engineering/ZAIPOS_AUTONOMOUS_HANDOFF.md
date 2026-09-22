@@ -4,17 +4,26 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
-- Bahrain timestamp: 2026-09-22 01:03 +03.
+- Bahrain timestamp: 2026-09-22 05:01 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef` (unchanged).
 - Active stack: draft PR #75 `fix/offline-mutation-reconciliation-20260921` → PR #74 `fix/device-offline-runtime-custody-20260921` → PR #72 `fix/device-bound-checkout-20260919`.
 - Open PRs remain nine: #64, #66, #68, #69, #70, #71, #72, #74, #75. All draft. No merge is authorized.
-- Current code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d` (`feat(device): persist offline capture before operator recovery`).
+- Current published code head: `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`).
+- Previous native-recovery code head: `0ad6454dc14c3f3d6b2712344bb4740afc58c88d` (`feat(device): persist offline capture before operator recovery`).
+- Exact-head CI for `a6b28b8`: all 20 workflows succeeded, including CI #678 / `35660831665`. This independently proves the documentation head retains the green code state.
 - Exact-head CI for `0ad6454`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #677 / `35660056645` (quality job `106532899263`, windows-package job `106533702220`). This included production PostgreSQL migrations, adversarial offline reconciliation, lint, the 309-test suite, build and unsigned Windows packaging. This is not signing or installation acceptance.
 - Previous published head: `4567fd93fbf8b7459fc91b3cc34d48240058b464` (`docs: record lost-response replay hardening`).
 - Exact-head CI for `4567fd93`: all 20 workflows plus unsigned Windows packaging succeeded, including CI #676 / `35654352642`. Historical proof only for that SHA.
 
 ## Work completed in this run
+
+Operation-identity and indeterminate-response hardening is published as `b4cae4eceea460d41e0e21284b63d0285a81ec6c` (`fix(device): bind capture and retry identity`) on top of verified prior head `a6b28b8`:
+
+- Native capture now derives its queue mutation ID from the checkout payload's UUID `_client_mutation_id` and rejects missing, malformed or conflicting operation identities before enqueue.
+- Native-checkout transient failures no longer fall through to the legacy renderer/Dexie queue. They fail with an explicit indeterminate-result error while preserving the cart so retry uses the same operation.
+- POS regression evidence proves a lost-response retry submits the byte-identical checkout payload and the same `_client_mutation_id`, clearing the cart only after a committed response.
+- The GitHub write connector recovered and created this commit as a non-force fast-forward. Exact-head workflows were pending when this checkpoint was written; do not attribute historical CI #678 to the new code head.
 
 Native capture and operator recovery, with the release gate still disabled:
 
@@ -27,7 +36,9 @@ Native capture and operator recovery, with the release gate still disabled:
 
 ## Local verification
 
-- `npx vitest run`: 61 files, 309 tests passed.
+- `npm test`: 61 files, 313 tests passed on the exact content published as `b4cae4e`.
+- `npm run lint`: zero errors; 13 pre-existing warnings.
+- `npm run build`: passed; 2,768 modules transformed.
 - Focused native recovery/orchestrator/coordinator/queue/authority/mutation suites: 41 tests passed.
 - `node scripts/test-device-credential-vault-contract.mjs`: passed.
 - ESLint on the touched Electron/POS/test files: zero errors.
@@ -35,6 +46,16 @@ Native capture and operator recovery, with the release gate still disabled:
 - Standalone `tsc -p tsconfig.electron.json --noEmit` remains blocked by pre-existing `import.meta.env` and `manager-authorization.ts` typing errors.
 
 ## Files modified in this run
+
+Published code commit `b4cae4e`:
+
+- `electron/services/device-offline-orchestrator.ts`
+- `src/test/desktop/device-offline-orchestrator.test.ts`
+- `src/hooks/useOfflineMutation.ts`
+- `src/hooks/useOfflineMutation.test.ts`
+- `src/modules/pos/POS.checkout-wiring.test.tsx`
+
+Previously published native recovery work:
 
 - `electron/services/device-offline-recovery.ts` (new)
 - `electron/services/device-offline-queue.ts`
@@ -61,10 +82,11 @@ Native capture and operator recovery, with the release gate still disabled:
 
 ## Remaining priority
 
-1. Continue trusted-device enforcement for every retained financial mutation (refund, return, void, cash, customer credit, supplier payments, delivery finance) without duplicating stacked PR #72/#74/#75 work.
-2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
-3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
-4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
+1. Inspect every exact-head workflow for `b4cae4e`; repair any failure without weakening controls.
+2. Continue trusted-device enforcement for every retained financial mutation (refund, return, void, cash, customer credit, supplier payments, delivery finance) without duplicating stacked PR #72/#74/#75 work.
+3. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
+4. Finish PR #68's exhaustive authorization matrix without duplicating the census.
+5. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
 
 ## Historical checkpoint (2026-09-21 23:56 +03)
 
@@ -87,6 +109,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #677 is proof only for `0ad6454`. If a later documentation SHA exists, inspect its exact-head workflows before attributing #677 to it. Continue trusted-device financial-boundary enforcement or PR #68 authorization certification. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75 and the current PR #75 head. Compare them with this file. CI #678 is proof only for `a6b28b8`; `b4cae4e` requires its own completed exact-head workflows. Inspect and repair those workflows before continuing trusted-device financial-boundary enforcement. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
