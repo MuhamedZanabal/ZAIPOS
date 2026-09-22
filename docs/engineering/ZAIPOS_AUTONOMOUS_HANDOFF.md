@@ -4,6 +4,35 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ## Current verified checkpoint
 
+- Bahrain timestamp: 2026-09-22 15:14 +03.
+- Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`; main `44dd533251acde0de35fe31a8286532857d268ef`.
+- Active stack: draft PR #77 `fix/device-bound-return-void-20260922` → PR #76 `fix/device-bound-cash-movement-20260922` → PR #75 → PR #74 → PR #72. No merge is authorized.
+- PR #77 code head: `4b0773ac37257b8e4c20231169d9b164ff3b5ed9` (`fix(device): bind returns and voids to trusted terminals`), base PR #76 head `c9d8c0246e8cb635a2ae290b05156bc565f8ea7c`; draft and mergeable.
+- Exact-head CI for `4b0773ac`: all 20 workflows succeeded. CI #684 / `35725327419` passed quality job `106737485630` and unsigned Windows packaging job `106738400071`; trusted-device run `35725327471` / job `106737485879` passed the new real-PostgreSQL device-bound return/void contract. This is not signing or installation acceptance.
+- Local source-equivalent verification: focused 3 files / 18 tests; full 61 files / 317 tests; `npx tsc --noEmit`; migration validation (115); native credential/offline-lease vault contract; ESLint zero errors / 13 pre-existing warnings; production build (2,768 modules); `git diff --check` all passed.
+
+## Work completed in the current run
+
+- Authenticated execution of credential-less `process_sale_return_v2` / `process_sale_void_v2` is revoked by the new terminal migration.
+- Device-bound v3 wrappers verify the enrolled credential and tenant/branch/sale scope before replay, sale lookup or any financial effect.
+- Return and void dialogs now fail closed without the supported desktop bridge and use native OS-protected credential custody through narrow IPC.
+- Native validation rejects scope substitution, malformed identities, quantities and reason data before credential decryption or network access.
+- New real-PostgreSQL contract covers legacy bypass, missing/copied/wrong-branch credentials, exactly-once return/void replay, revocation-before-replay, and zero money/stock/audit effects for rejected requests.
+- Offline checkout remains disabled.
+
+## Current-run files
+
+- `supabase/migrations/20260922115649_device_bound_return_void.sql`
+- `scripts/test-device-bound-return-void-postgres.mjs`
+- `.github/workflows/trusted-device-enforcement.yml`
+- `electron/services/device-credentials.ts`, `electron/main.ts`, `electron/preload.ts`, `electron/types.ts`
+- `src/types/electron.d.ts`
+- `src/modules/sales/ReturnDialog.tsx` and test
+- `src/modules/sales/VoidSaleDialog.tsx` and test
+- `src/test/desktop/device-credentials.test.ts`
+
+## Previous verified checkpoint
+
 - Bahrain timestamp: 2026-09-22 13:54 +03.
 - Repository: `MuhamedZanabal/ZAIPOS`; default branch `main`.
 - Main: `44dd533251acde0de35fe31a8286532857d268ef` (unchanged).
@@ -66,7 +95,7 @@ Published on PR #76 as `9415da3` then repaired by `f75983a`:
 
 ## Remaining priority
 
-1. Continue trusted-device enforcement for refund, return, void, customer credit, supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76 work. Next scoped child: `process_sale_return_v2` / `process_sale_void_v2`.
+1. Continue trusted-device enforcement for customer credit, supplier payments and delivery finance without duplicating stacked PR #72/#74/#75/#76/#77 work. Next scoped child: customer-credit financial mutation RPCs, starting with `record_customer_credit_payment_v1` and its renderer caller.
 2. Keep the hard-disabled release gate until the complete offline checkout acceptance matrix is independently proven, including an operator-visible recovery UI that does not expose capability material.
 3. Finish PR #68's exhaustive authorization matrix without duplicating the census.
 4. Keep Release A blocked until integrated offline/device/authorization proof is green. Signing, physical hardware, production DR and provider integrations remain external gates.
@@ -94,6 +123,6 @@ Earlier historical CI: #672 / `35650600431` for `9f82085`; #674 for documentatio
 
 ## Recovery instruction
 
-Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76 and the current PR #76 head. Compare them with this file. CI #682 is proof only for `f75983a`. Begin the next scoped child workstream by reproducing the credential-less `process_sale_return_v2` / `process_sale_void_v2` bypass, then add a native-only credential-bound boundary and zero-effect negative PostgreSQL tests. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
+Fetch live main, open PRs #64/#66/#68/#69/#70/#71/#72/#74/#75/#76/#77 and the current PR #77 head. Compare them with this file. CI #684 and trusted-device run `35725327471` are proof only for code head `4b0773ac`. Begin the next scoped child workstream by inventorying customer-credit mutation callers and reproducing credential-less `record_customer_credit_payment_v1` access; bind financial mutations to native custody without weakening manager/cashier authorization. Do not enable offline checkout. Pending or historical workflows are never exact-head proof.
 
 Scheduled hourly automation title: `ZAIPOS Autonomous Engineering` (task `01a0c5ed-9990-7530-adea-231f31a9ee61`, every 1 hour). Scheduled invocations reconstruct continuity from this file and live GitHub state; they do not continue between invocations and may not append to the originating chat.
