@@ -12,7 +12,7 @@ const capture = {
   authorization,
   kind: 'checkout.sale' as const,
   mutationId: '33333333-3333-4333-8333-333333333333',
-  payload: { _items: [], _payments: [] },
+  payload: { _items: [], _payments: [], _client_mutation_id: '33333333-3333-4333-8333-333333333333' },
 };
 
 describe('native offline checkout orchestration gate', () => {
@@ -78,6 +78,40 @@ describe('native offline checkout orchestration gate', () => {
     };
     const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
     expect(() => orchestrator.capture(capture)).toThrow(/was not persisted/i);
+  });
+
+  it('requires one UUID operation identity across uncertain online and offline execution', () => {
+    const queue = {
+      enqueue: vi.fn(() => capture.mutationId),
+      pending: vi.fn(() => []),
+      quarantined: vi.fn(() => []),
+      confirmed: vi.fn(() => []),
+      reconcileNext: vi.fn(),
+    };
+    const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
+
+    expect(() => orchestrator.capture({ ...capture, mutationId: undefined, payload: { _items: [], _payments: [] } }))
+      .toThrow(/client mutation id/i);
+    expect(() => orchestrator.capture({ ...capture, mutationId: undefined, payload: { ...capture.payload, _client_mutation_id: 'not-a-uuid' } }))
+      .toThrow(/client mutation id/i);
+    expect(() => orchestrator.capture({ ...capture, mutationId: '44444444-4444-4444-8444-444444444444' }))
+      .toThrow(/same operation/i);
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('derives the durable offline identity from the online checkout operation identity', () => {
+    const queue = {
+      enqueue: vi.fn(() => capture.mutationId),
+      pending: vi.fn(() => [{ mutationId: capture.mutationId, createdAt: '2026-09-21T12:00:00.000Z' }]),
+      quarantined: vi.fn(() => []),
+      confirmed: vi.fn(() => []),
+      reconcileNext: vi.fn(),
+    };
+    const orchestrator = createDeviceOfflineOrchestrator(queue, { enabled: true });
+    const withoutExplicitMutation = { ...capture, mutationId: undefined };
+
+    expect(orchestrator.capture(withoutExplicitMutation)).toBe(capture.mutationId);
+    expect(queue.enqueue).toHaveBeenCalledWith({ ...withoutExplicitMutation, mutationId: capture.mutationId });
   });
 
   it('serializes concurrent drains so one queued mutation is never submitted twice locally', async () => {

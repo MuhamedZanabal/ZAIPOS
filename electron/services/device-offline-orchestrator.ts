@@ -23,6 +23,8 @@ type OfflineQueue = {
   reconcileNext(authorization: DeviceAuthorization): Promise<ReconciliationResult>;
 };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export type OfflineDrainSummary = Readonly<{
   attempted: number;
   committed: number;
@@ -63,7 +65,14 @@ export function createDeviceOfflineOrchestrator(queue: OfflineQueue, options: { 
     enabled,
     capture(input: CaptureInput): string {
       requireEnabled();
-      const mutationId = queue.enqueue(input);
+      const checkoutOperationId = input.payload._client_mutation_id;
+      if (typeof checkoutOperationId !== 'string' || !UUID.test(checkoutOperationId)) {
+        throw new Error('Offline capture requires a UUID client mutation ID');
+      }
+      if (input.mutationId !== undefined && input.mutationId !== checkoutOperationId) {
+        throw new Error('Online and offline checkout must use the same operation identity');
+      }
+      const mutationId = queue.enqueue({ ...input, mutationId: checkoutOperationId });
       if (!queue.pending().some((item) => item.mutationId === mutationId) && !queue.confirmed().some((item) => item.mutationId === mutationId)) {
         throw new Error('Offline mutation capture was not persisted');
       }

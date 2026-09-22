@@ -56,6 +56,9 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
           return await config.mutationFn(variables, undefined as never);
         } catch (error) {
           if (isTransientNetworkError(error)) {
+            if (config.nativeDeviceCheckout) {
+              throw new Error('Checkout result is unknown because the connection was lost; the cart was preserved. Retry the same sale to recover its original result.');
+            }
             return queueMutation();
           }
           throw error;

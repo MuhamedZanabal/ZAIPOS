@@ -197,6 +197,28 @@ describe("offline mutation helpers", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
+  it("never falls back to renderer storage when a native checkout response is indeterminate", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const mutationFn = vi.fn(async () => { throw new TypeError("Failed to fetch"); });
+    const { result } = renderHook(() => useOfflineMutation({
+      type: "CHECKOUT_SALE_V2",
+      nativeDeviceCheckout: true,
+      mutationFn,
+    }), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({
+        _client_mutation_id: "ca5d25bb-9eee-48d0-a233-3ef1ce806bca",
+      })).rejects.toThrow(/result is unknown.*cart was preserved.*same sale/i);
+    });
+    expect(mutationFn).toHaveBeenCalledTimes(1);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
   it("persists tenant and branch scope for permitted operations", async () => {
     const setPendingSyncCount = vi.fn();
     await queueOfflineMutation(supportedType, {

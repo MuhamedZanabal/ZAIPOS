@@ -206,6 +206,28 @@ describe("POS native split checkout wiring", () => {
     expect(state.openDrawer).not.toHaveBeenCalled();
   });
 
+  it("reuses the same checkout operation ID after an indeterminate network response", async () => {
+    state.allocations = [
+      { method: "cash", amountFils: 8_500, tenderedFils: 8_500, changeFils: 0, reference: null },
+    ];
+    state.checkoutSale
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce("60000000-0000-0000-0000-000000000001");
+
+    render(<POS />);
+    const complete = screen.getByRole("button", { name: "Complete mixed sale" });
+    fireEvent.click(complete);
+    await waitFor(() => expect(state.checkoutSale).toHaveBeenCalledTimes(1));
+    fireEvent.click(complete);
+    await waitFor(() => expect(state.checkoutSale).toHaveBeenCalledTimes(2));
+
+    const firstPayload = state.checkoutSale.mock.calls[0][0];
+    const retryPayload = state.checkoutSale.mock.calls[1][0];
+    expect(firstPayload._client_mutation_id).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(retryPayload).toEqual(firstPayload);
+    expect(state.clear).toHaveBeenCalledTimes(1);
+  });
+
   it("carries manager approval identity through checkout and prints the approved price", async () => {
     state.priceOverride = {
       requestId: "90000000-0000-0000-0000-000000000001",
