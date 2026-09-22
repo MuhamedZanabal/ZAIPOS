@@ -5,7 +5,7 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 ## Current checkpoint — PR #81 (2026-09-23 02:21:04 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #81 branch `fix/device-bound-table-checkout-20260922` is stacked on draft PR #80 head `ba236f9ef4d05357bcacad968ea023feadd319b9`.
-- Current code head: `782a886c57c982fbf1eab695e27ef31c5bec0b21`. Exact-head workflows: 20/21 completed successfully; CI #701 run `35796636091` quality job `106977324302` passed its real PostgreSQL migration/concurrency/adversarial suite, 326-test suite, lint and build. Its unsigned Windows packaging job was still running when this checkpoint was written and is not claimed successful.
+- Current code head: `782a886c57c982fbf1eab695e27ef31c5bec0b21`. All 21 exact-head workflows completed successfully. CI #701 run `35796636091` passed quality job `106977324302` (real PostgreSQL migration/concurrency/adversarial suite, 326-test suite, lint and build) and unsigned Windows packaging job `106978056516`.
 - Table Checkout Security run `35796636151` and Trusted Device Enforcement run `35796636034` both passed on the exact code head. Backup Restore run `35796636325` also passed. Unsigned packaging is not signing or installation acceptance.
 - Restaurant checkout now uses main-process credential custody through narrow IPC. Both cashier pending-order and table-detail paths fail closed without an authenticated provisioned desktop terminal. The renderer queue rejects new `CHECKOUT_TABLE_ORDER` entries and quarantines legacy records without replaying them.
 - `checkout_table_order_v2_device` checks tenant, branch, enrolled/non-revoked device credential and settlement role before delegating to the existing atomic checkout. Owner/admin/manager/cashier may settle; waiter is explicitly denied because the authoritative inventory movement policy excludes waiter from financial stock effects. The legacy six-argument RPC is revoked from PUBLIC/anon/authenticated and the retired two-argument overload is asserted absent.
@@ -15,7 +15,7 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 
 ### Immediate next executable actions
 
-1. Re-fetch PR #81 and confirm `782a886` remains its head; record terminal CI #701/Windows packaging only after it actually completes.
+1. Re-fetch PR #81 and verify its documentation head and the code evidence at `782a886`; never attribute documentation-only workflow runs to the code commit.
 2. Add concurrency acceptance for two simultaneous table-checkout calls using the same and different operation IDs; require one sale/payment/stock effect and deterministic rejection of the competing identity.
 3. Continue the financial RPC/authorization census for any renderer-callable mutation not yet device-bound; select the highest-risk live entrypoint and add positive/negative PostgreSQL proof before implementation.
 4. Complete offline recovery/contention/corruption acceptance while keeping the immutable offline checkout gate disabled; then review the complete stacked security PR chain.
