@@ -4,20 +4,27 @@ type CredentialRecord = { deviceUid: string; tenantId?: string; branchId?: strin
 type CredentialStore = { get(key: string): unknown; set(key: string, value: unknown): void };
 export interface DeviceAuthorization { accessToken: string; tenantId: string; branchId: string }
 export type DeviceCheckoutPayload = Record<string, unknown> & { _tenant_id: string; _branch_id: string };
+export type DeviceCashMovementPayload = {
+  _tenant_id: string; _branch_id: string; _session_id: string; _type: 'in' | 'out';
+  _amount: string; _reason: string; _reference: string;
+};
 const RECORD_KEY = 'enrollment';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function requireString(value: unknown, label: string, max = 4096): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`); return value.trim(); }
+function requireCanonicalString(value: unknown, label: string, min: number, max: number): string { if (typeof value !== 'string' || value.length < min || value.length > max || value !== value.trim()) throw new Error(`Invalid ${label}`); return value; }
 function requireUuid(value: unknown, label: string): string { const valueString = requireString(value, label, 128); if (!UUID.test(valueString)) throw new Error(`Invalid ${label}`); return valueString; }
+function requireExactBhd(value: unknown): string { const amount = requireString(value, 'cash amount', 32); const match = /^(0|[1-9]\d*)(?:\.(\d{1,3}))?$/.exec(amount); if (!match) throw new Error('Invalid exact cash amount'); const fils = BigInt(match[1]) * 1000n + BigInt((match[2] ?? '').padEnd(3, '0')); if (fils <= 0n) throw new Error('Invalid exact cash amount'); return amount; }
 function validateAuthorization(auth: DeviceAuthorization): DeviceAuthorization { return { accessToken: requireString(auth?.accessToken, 'access token', 16384), tenantId: requireUuid(auth?.tenantId, 'tenant ID'), branchId: requireUuid(auth?.branchId, 'branch ID') }; }
 function rpcUrl(baseUrl: string, functionName: string): string { const parsed = new URL(requireString(baseUrl, 'Supabase URL', 2048)); if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Supabase URL must use HTTPS'); parsed.pathname = `/rest/v1/rpc/${functionName}`; parsed.search = ''; parsed.hash = ''; return parsed.href; }
 function edgeUrl(baseUrl: string, functionName: string): string { const parsed = new URL(rpcUrl(baseUrl, 'placeholder')); parsed.pathname = `/functions/v1/${functionName}`; return parsed.href; }
-async function callRpc(baseUrl: string, publishableKey: string, accessToken: string, name: string, body: unknown): Promise<unknown> { const response = await fetch(rpcUrl(baseUrl, name), { method: 'POST', headers: { apikey: requireString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }); const text = await response.text(); if (!response.ok) throw new Error(`Device authority request failed (${response.status})`); return text ? JSON.parse(text) : null; }
+async function callRpc(baseUrl: string, publishableKey: string, accessToken: string, name: string, body: unknown): Promise<unknown> { const response = await fetch(rpcUrl(baseUrl, name), { method: 'POST', headers: { apikey: requireString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }); const text = await response.text(); let parsed: unknown = null; try { parsed = text ? JSON.parse(text) : null; } catch { if (response.ok) throw new Error('Device authority returned malformed JSON'); } if (!response.ok) { const detail = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {}; const error = new Error(typeof detail.message === 'string' ? detail.message : `Device authority request failed (${response.status})`) as Error & { code?: string }; if (typeof detail.code === 'string') error.code = detail.code; throw error; } return parsed; }
 async function callEdge(baseUrl: string, publishableKey: string, accessToken: string, name: string, body: unknown): Promise<unknown> { const response = await fetch(edgeUrl(baseUrl, name), { method: 'POST', headers: { apikey: requireString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }); const text = await response.text(); if (!response.ok) throw new Error(`Device ${name} failed (${response.status})`); return text ? JSON.parse(text) : null; }
 function extractCredential(value: unknown): string { const row = Array.isArray(value) ? value[0] : value; const credential = typeof row === 'object' && row !== null ? (row as Record<string, unknown>).credential : row; if (typeof credential !== 'string' || !/^[0-9a-f]{64}$/i.test(credential)) throw new Error('Device authority returned an invalid credential'); return credential; }
 export function createDeviceCredentialService(store: CredentialStore, baseUrl: string, publishableKey: string) {
   const readRecord = (): CredentialRecord => { const value = store.get(RECORD_KEY); if (!value || typeof value !== 'object') return { deviceUid: crypto.randomUUID() }; const record = value as Partial<CredentialRecord>; return { deviceUid: requireString(record.deviceUid, 'device UID', 128), tenantId: record.tenantId === undefined ? undefined : requireUuid(record.tenantId, 'stored tenant ID'), branchId: record.branchId === undefined ? undefined : requireUuid(record.branchId, 'stored branch ID'), encryptedCredential: record.encryptedCredential }; };
   const ensureRecord = (): CredentialRecord => { const existing = store.get(RECORD_KEY); if (existing) return readRecord(); const record = { deviceUid: crypto.randomUUID() }; store.set(RECORD_KEY, record); return record; };
   const requireProvisionedScope = (auth: DeviceAuthorization): CredentialRecord => { const record = readRecord(); if (!record.encryptedCredential || !record.tenantId || !record.branchId) throw new Error('This terminal is not provisioned'); if (record.tenantId !== auth.tenantId || record.branchId !== auth.branchId) throw new Error('Stored device credential scope does not match authorization scope'); return record; };
+  const decryptCredential = (record: CredentialRecord): string => { if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable'); let credential: string; try { credential = safeStorage.decryptString(Buffer.from(record.encryptedCredential!, 'base64')); } catch { throw new Error('Stored device credential cannot be decrypted'); } if (!/^[0-9a-f]{64}$/i.test(credential)) throw new Error('Stored device credential is invalid'); return credential; };
   return {
     identity(): { deviceUid: string; provisioned: boolean } { const record = ensureRecord(); return { deviceUid: record.deviceUid, provisioned: Boolean(record.encryptedCredential) }; },
     async activate(approvalId: string, appVersion: string, os: string, authorization: DeviceAuthorization): Promise<{ deviceUid: string; provisioned: true }> {
@@ -42,8 +49,25 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
     },
     async checkout(payload: DeviceCheckoutPayload, authorization: DeviceAuthorization): Promise<string> {
       const auth = validateAuthorization(authorization); if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Checkout scope does not match authorization scope'); if (!safeStorage.isEncryptionAvailable()) throw new Error('Operating-system credential encryption is unavailable'); const record = requireProvisionedScope(auth);
-      let credential: string; try { credential = safeStorage.decryptString(Buffer.from(record.encryptedCredential!, 'base64')); } catch { throw new Error('Stored device credential cannot be decrypted'); } if (!/^[0-9a-f]{64}$/i.test(credential)) throw new Error('Stored device credential is invalid');
+      const credential = decryptCredential(record);
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'checkout_sale_v2_device', { ...payload, _device_uid: record.deviceUid, _device_credential: credential }); if (typeof result !== 'string') throw new Error('Checkout returned an invalid sale identifier'); return result;
+    },
+    async cashMovement(payload: DeviceCashMovementPayload, authorization: DeviceAuthorization, cancel = false): Promise<string | null> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Cash movement scope does not match authorization scope');
+      const request = {
+        _tenant_id: requireUuid(payload._tenant_id, 'tenant ID'), _branch_id: requireUuid(payload._branch_id, 'branch ID'),
+        _session_id: requireUuid(payload._session_id, 'cash session ID'),
+        _type: payload._type, _amount: requireExactBhd(payload._amount),
+        _reason: requireCanonicalString(payload._reason, 'cash movement reason', 2, 500),
+        _reference: requireCanonicalString(payload._reference, 'cash movement reference', 8, 128),
+      };
+      if (!['in', 'out'].includes(request._type)) throw new Error('Invalid cash movement request');
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, cancel ? 'cancel_cash_movement_v3_device' : 'record_cash_movement_v3_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
+      if (result !== null && (typeof result !== 'string' || !UUID.test(result))) throw new Error('Cash movement returned an invalid receipt');
+      if (!cancel && result === null) throw new Error('Cash movement returned no receipt');
+      return result;
     },
   };
 }
