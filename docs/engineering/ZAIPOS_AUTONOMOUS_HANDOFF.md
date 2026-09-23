@@ -2,7 +2,22 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #83 (2026-09-23 15:37:54 +03)
+## Current local checkpoint — post-merge recovery semantics (2026-09-23 20:00:52 +03)
+
+- Independently fetched main `31c81f69bac26690cb12bc897759db056dbc6642`, the PR #85 security-stack merge. New scoped branch `fix/offline-reconciliation-dispositions-20260923` is based directly on main at local code head `9f61bae`.
+- `requires_review` records can no longer be retried into a predictable quarantine loop or discarded. Operators must choose `confirmed_not_applied` or `reconciled_externally` and enter a reconciliation note; the original payload, mutation identity, failure evidence and timestamps remain stored with a durable `resolved` status.
+- Retry remains available only for exhausted transient failures. Delete remains unavailable for review and resolved evidence. Tenant isolation is checked before disposition changes, and resolved records leave active/attention counts without being erased.
+- Local evidence: focused reconciliation/queue suite 3 files / 43 tests; full Vitest 67 files / 363 tests; TypeScript; production build (2,772 modules); `git diff --check`; and ESLint zero errors passed. The new contract proves retry and discard are no-ops for review evidence and explicit reconciliation preserves the original payload.
+- Separate local branch `fix/retire-legacy-table-upsert-20260923` contains code `b6b591b` and handoff `712cade` for the restaurant bypass cutover, with 67 files / 362 tests, build, TypeScript, 127 migrations and static contracts green. Neither branch is published because push still fails with missing GitHub credentials. No merge, deployment, release, force push or production-data operation occurred; offline checkout remains disabled.
+
+### Immediate next executable actions
+
+1. Restore GitHub write credentials; push both scoped branches separately, open draft PRs against main, and require exact-head CI. The restaurant cutover additionally requires disposable PostgreSQL migration/grant-denial evidence.
+2. Harden reconciliation further with packaged-desktop acceptance, role-bound disposition authority and an exportable evidence receipt; do not permit resolved evidence deletion through routine UI.
+3. Implement the authoritative restaurant cart replacement, then continue device-bound inventory commands and the authorization census against current main.
+4. Keep RETAIL/RESTAURANT enforcement as P1 and signing/hardware/DR/provider/regulatory work external.
+
+## Previous checkpoint — PR #83 (2026-09-23 15:37:54 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `af277e1ad6198b39d46ca3b052fae063c60319dc` is mergeable with no submitted reviews or inline threads. No merge is authorized and offline checkout remains disabled.
 - Authenticated direct INSERT on `table_orders` and the broad insert policy are removed. `open_table_order_v2` locks the authoritative table, validates tenant, active branch, eligible branch role and assigned-waiter ownership, rejects unavailable/pending-payment tables, journals a canonical stable identity and audits the resolved order.
