@@ -2,6 +2,19 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — draft PR #87 (2026-09-23 21:31 +03)
+
+- Draft PR #87 targets main `31c81f69bac26690cb12bc897759db056dbc6642`. Verified implementation/documentation head `6ff2c747e0202aa6025c860fdd3b419bec5733a2` is clean/mergeable with no submitted reviews or inline threads.
+- Exact-head workflows: 21/21 succeeded. CI run `35902033720` passed quality job `107320369037` and unsigned Windows package job `107321554649`; Table Checkout Security run `35902033597`, job `107320368201`, passed the production migration chain and real PostgreSQL legacy-grant denial contract.
+- Local evidence remains focused 3 files / 46 tests, full Vitest 67 files / 362 tests, TypeScript, build (2,772 modules), 127 migration validations, renderer cutover, ESLint zero errors and `git diff --check`.
+- PR checkpoint comment `5800591222` records the evidence. Offline checkout remains disabled. No merge, deployment, release, force push or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Review PR #87 normally; do not merge through this automation.
+2. Implement the authoritative general restaurant cart command using server-derived product/modifier identity, branch/table pricing, tax, governed discounts, exact fils, scoped authority, replay/conflict and contention proof.
+3. Continue device-bound inventory mutations and the rebuilt authorization census against current main.
+
 ## Current local checkpoint — post-merge main (2026-09-23 19:38:43 +03)
 
 - Independently fetched `origin/main` at `31c81f69bac26690cb12bc897759db056dbc6642` (`Merge pull request #85 from MuhamedZanabal/integrate/security-financial-authority-20260923`). The integrated trusted-device/financial-security stack is now the base. Reported post-merge verification is 19/19 green; this runtime confirmed the SHA but could not query workflow metadata because `gh` is unavailable.
