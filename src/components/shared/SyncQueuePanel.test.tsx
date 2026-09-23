@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/hooks/useSyncEngine", () => ({
   useSyncEngine: () => mocks,
 }));
+vi.mock("@/lib/syncReconciliation", () => ({
+  downloadReconciliationReceipt: vi.fn(async () => undefined),
+}));
 
 describe("SyncQueuePanel", () => {
   beforeEach(() => {

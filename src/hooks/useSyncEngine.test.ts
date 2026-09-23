@@ -5,14 +5,20 @@ import { db } from "@/lib/db";
 import { useNetworkStore } from "@/stores/network";
 import { useTenantStore } from "@/stores/tenant";
 
+const authState = vi.hoisted(() => ({ roles: [{ role: 'manager', branch_id: 'b1' }] }));
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: vi.fn().mockResolvedValue({ data: "operation-id", error: null }),
-    from: vi.fn(() => ({
-      insert: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: {}, error: null }),
-    })),
+    auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'manager-1' } }, error: null })) },
+    from: vi.fn(() => {
+      const chain: any = {
+        insert: vi.fn(() => chain), select: vi.fn(() => chain), eq: vi.fn(() => chain),
+        single: vi.fn(async () => ({ data: {}, error: null })),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: authState.roles, error: null }),
+      };
+      return chain;
+    }),
   },
 }));
 
@@ -78,6 +84,7 @@ describe("useSyncEngine", () => {
     useTenantStore.setState({ tenantId: "t1", branchId: "b1" });
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any).mockReset().mockResolvedValue({ data: "operation-id", error: null });
+    authState.roles = [{ role: 'manager', branch_id: 'b1' }];
   });
 
   it("exposes queue inspection, retry, discard, and reconciliation controls", () => {
@@ -226,7 +233,20 @@ describe("useSyncEngine", () => {
       reconciliationDisposition: "reconciled_externally",
       reconciliationNote: "Matched external reference Z-1042",
       resolvedAt: expect.any(String),
+      resolvedBy: "manager-1",
     });
+  });
+
+  it("denies reconciliation to a non-manager without altering evidence", async () => {
+    authState.roles = [{ role: 'cashier', branch_id: 'b1' }];
+    const id = await enqueue({ type: "UNKNOWN_OPERATION" });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    await expect(act(async () => result.current.resolveReviewItem(
+      id, "confirmed_not_applied", "Checked server journal"
+    ))).rejects.toThrow(/owner, admin, or manager/i);
+    expect(mockDbStore[0]).toMatchObject({ status: "requires_review" });
+    expect(mockDbStore[0].reconciliationDisposition).toBeUndefined();
   });
 
   it("marks exhausted network retries failed and permits an explicit retry", async () => {

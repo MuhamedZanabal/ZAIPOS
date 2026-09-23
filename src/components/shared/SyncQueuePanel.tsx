@@ -14,11 +14,13 @@ import {
   Send,
   RotateCcw,
   FileCheck2,
+  Download,
 } from "lucide-react";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import type { SyncQueueItem, SyncQueueStatus } from "@/lib/db";
 import { isReplayableQueueStatus } from "@/lib/syncQueue";
 import { formatDistanceToNow } from "date-fns";
+import { downloadReconciliationReceipt } from "@/lib/syncReconciliation";
 
 const TYPE_LABELS: Record<string, string> = {
   CHECKOUT_SALE_V2: "POS Sale",
@@ -266,6 +268,13 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
                         {resolving === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck2 className="h-3.5 w-3.5" />}
                       </Button>
                     </>
+                  )}
+                  {item.status === "resolved" && (
+                    <Button size="icon" variant="outline" className="h-7 w-7"
+                      aria-label={`Export reconciliation ${TYPE_LABELS[item.type] ?? item.type}`}
+                      onClick={() => void downloadReconciliationReceipt(item)}>
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
                   )}
                   {item.status !== "sending" && item.status !== "committed"
                     && item.status !== "requires_review" && item.status !== "resolved" && (

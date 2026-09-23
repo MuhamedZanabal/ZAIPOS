@@ -21,6 +21,7 @@ export interface SyncQueueItem {
   reconciliationDisposition?: 'confirmed_not_applied' | 'reconciled_externally';
   reconciliationNote?: string;
   resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 export type SyncQueueStatus =

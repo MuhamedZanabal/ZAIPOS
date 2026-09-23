@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenantStore } from '@/stores/tenant';
+import { assertReconciliationAuthority } from '@/lib/syncReconciliation';
 import {
   CheckoutDeviceCutoverError,
   classifySyncFailure,
@@ -282,12 +283,14 @@ export function useSyncEngine() {
     const item = await db.sync_queue.get(id);
     if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)
       || item.status !== 'requires_review') return;
+    const resolvedBy = await assertReconciliationAuthority(tenantId, item.branchId);
     const now = new Date().toISOString();
     await db.sync_queue.update(id, {
       status: 'resolved',
       reconciliationDisposition: disposition,
       reconciliationNote: normalizedNote,
       resolvedAt: now,
+      resolvedBy,
       updatedAt: now,
     });
     logger.info('sync_queue_item_reconciled', {
