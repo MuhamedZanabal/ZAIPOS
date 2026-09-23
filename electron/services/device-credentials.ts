@@ -8,6 +8,13 @@ export type DeviceCashMovementPayload = {
   _tenant_id: string; _branch_id: string; _session_id: string; _type: 'in' | 'out';
   _amount: string; _reason: string; _reference: string;
 };
+export type DeviceCashSessionPayload = {
+  _tenant_id: string; _branch_id: string; _operation_id: string;
+  _session_id: string | null; _register_id: string | null;
+  _opening_amount: string | null; _counted_amount: string | null;
+  _counted_card: string | null; _counted_transfer: string | null;
+  _counted_qr: string | null; _notes: string | null;
+};
 export type DeviceSaleReturnPayload = {
   _tenant_id: string; _branch_id: string; _sale_id: string;
   _items: Array<{ sale_item_id: string; quantity: number }>;
@@ -105,6 +112,29 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, cancel ? 'cancel_cash_movement_v3_device' : 'record_cash_movement_v3_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
       if (result !== null && (typeof result !== 'string' || !UUID.test(result))) throw new Error('Cash movement returned an invalid receipt');
       if (!cancel && result === null) throw new Error('Cash movement returned no receipt');
+      return result;
+    },
+    async cashSession(payload: DeviceCashSessionPayload, authorization: DeviceAuthorization, close = false): Promise<string> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Cash session scope does not match authorization scope');
+      const common = {
+        _tenant_id: requireUuid(payload._tenant_id, 'tenant ID'), _branch_id: requireUuid(payload._branch_id, 'branch ID'),
+        _operation_id: requireCanonicalString(payload._operation_id, 'cash session operation ID', 8, 200),
+      };
+      const request = close ? {
+        ...common, _session_id: requireUuid(payload._session_id, 'cash session ID'),
+        _counted_amount: requireExactBhdText(payload._counted_amount, 'counted cash'),
+        _counted_card: requireExactBhdText(payload._counted_card, 'counted card'),
+        _counted_transfer: requireExactBhdText(payload._counted_transfer, 'counted transfer'),
+        _counted_qr: requireExactBhdText(payload._counted_qr, 'counted BenefitPay'),
+        _notes: optionalCanonicalString(payload._notes, 'cash session notes', 2000),
+      } : {
+        ...common, _opening_amount: requireExactBhdText(payload._opening_amount, 'opening cash'),
+        _register_id: optionalUuid(payload._register_id, 'cash register ID'),
+      };
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, close ? 'close_cash_session_v2_device' : 'open_cash_session_v2_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
+      if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Cash session returned an invalid identifier');
       return result;
     },
     async customerCreditPayment(payload: DeviceCustomerCreditPaymentPayload, authorization: DeviceAuthorization): Promise<string> {

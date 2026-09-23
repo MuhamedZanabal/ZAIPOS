@@ -30,7 +30,7 @@ assert.match(movement,/^[a-f0-9-]{36}$/);assert.equal(sql(`SELECT total_in_fils:
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE entity_id='${movement}' AND action='cash.movement_recorded'`),'1');
 deny('cashier can alter historical cash movement evidence',I.cashier,`UPDATE public.cash_movements SET amount=9 WHERE id='${movement}' RETURNING id`);
 deny('cashier can delete historical cash movement evidence',I.cashier,`DELETE FROM public.cash_movements WHERE id='${movement}' RETURNING id`);
-// Pause insertion after the v2 command reaches the primitive and acquires its
+// Pause insertion after the device-bound command reaches the primitive and acquires its
 // session lock; a concurrent close must wait and include the movement in its
 // immutable reconciliation.
 sql(`CREATE FUNCTION public.cash_contract_pause() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.reason='Concurrent verified float' THEN PERFORM pg_sleep(2); END IF; RETURN NEW; END; $$;
@@ -43,7 +43,7 @@ for(let attempt=0;attempt<40;attempt++){
  await new Promise(resolve=>setTimeout(resolve,25));
 }
 assert.ok(paused,'Movement must reach the controlled race boundary');
-asUser(I.cashier,`SELECT (public.close_cash_session('${I.session}',12.001,'Concurrent close',0,0,0)).id`,true);
+asUser(I.cashier,`SELECT public.close_cash_session_v2_device('${I.tenant}','${I.branch}','${I.session}',12.001,'Concurrent close',0,0,0,'AUTH-CLOSE-001','${I.deviceUid}','${credential}')::text`,true);
 await pending;
 sql('DROP TRIGGER cash_contract_pause ON public.cash_movements; DROP FUNCTION public.cash_contract_pause()');
 assert.equal(sql(`SELECT difference_fils::text FROM public.cash_sessions WHERE id='${I.session}'`),'0');

@@ -80,6 +80,7 @@ function setupGlobalHandlers(): void {
   handleTrustedIpc(IPC_HANDLERS.REVOKE_DEVICE, async (_event, deviceId, authorization) => { const result = await deviceCredentials.revoke(deviceId, authorization); offlineAuthority.clear(); return result; });
   handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, (_event, payload, authorization) => checkoutCoordinator.checkout(payload, authorization));
   handleTrustedIpc(IPC_HANDLERS.DEVICE_CASH_MOVEMENT, (_event, payload, authorization, cancel) => deviceCredentials.cashMovement(payload, authorization, cancel));
+  handleTrustedIpc(IPC_HANDLERS.DEVICE_CASH_SESSION, (_event, payload, authorization, close) => deviceCredentials.cashSession(payload, authorization, close));
   handleTrustedIpc(IPC_HANDLERS.DEVICE_SALE_RETURN, (_event, payload, authorization) => deviceCredentials.returnSale(payload, authorization));
   handleTrustedIpc(IPC_HANDLERS.DEVICE_SALE_VOID, (_event, payload, authorization) => deviceCredentials.voidSale(payload, authorization));
   handleTrustedIpc(IPC_HANDLERS.DEVICE_DELIVERY_COLLECTION, (_event, payload, authorization) => deviceCredentials.collectDeliveryPayment(payload, authorization));

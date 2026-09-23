@@ -9,6 +9,8 @@ const files = {
   suppliers: "src/modules/suppliers/Suppliers.tsx",
   production: "src/modules/production/Production.tsx",
   dataManagement: "src/modules/settings/DataManagement.tsx",
+  syncEngine: "src/hooks/useSyncEngine.ts",
+  syncQueue: "src/lib/syncQueue.ts",
 };
 
 const source = {};
@@ -56,6 +58,10 @@ const allClientSource = Object.values(source).join("\n");
 if (allClientSource.includes('"apply_inventory_movement"')) {
   failures.push("client inventory surfaces still reference the revoked apply_inventory_movement RPC");
 }
+
+forbidText("syncEngine", "from('table_order_items').insert", "non-atomic queued table-item insert");
+forbidText("syncEngine", "if (item.type === 'ADD_TABLE_ORDER_ITEMS')", "legacy table-item replay branch");
+requireText("syncQueue", 'type === "ADD_TABLE_ORDER_ITEMS"', "legacy table-item quarantine guard");
 
 if (failures.length) {
   throw new Error(`Inventory client cutover incomplete:\n- ${failures.join("\n- ")}`);

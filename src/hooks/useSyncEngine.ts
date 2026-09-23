@@ -16,11 +16,11 @@ import {
 } from '@/lib/syncQueue';
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
-  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER' || item.type === 'APPLY_INVENTORY_MOVEMENT') {
-    // Retain legacy checkout and raw inventory records for operator reconciliation.
-    // The direct stock primitive was revoked from authenticated in the production
-    // migration; never replay it from a renderer-held queue or silently translate
-    // an untrusted payload into an authorized inventory command.
+  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER'
+    || item.type === 'APPLY_INVENTORY_MOVEMENT' || item.type === 'ADD_TABLE_ORDER_ITEMS') {
+    // Retain legacy checkout, raw inventory and non-atomic table-item records for
+    // operator reconciliation. Never replay them from renderer-held storage or
+    // silently translate an untrusted payload into an authorized command.
     throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'SEND_TO_KITCHEN') {
@@ -36,16 +36,6 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
   if (item.type === 'SEND_TO_CASHIER') {
     const { data, error } = await supabase.rpc('send_table_order_to_cashier', { _order_id: item.payload._order_id });
     if (error) throw error;
-    return data;
-  }
-  if (item.type === 'ADD_TABLE_ORDER_ITEMS') {
-    const { items: orderItems, orderId, tenantId } = item.payload as any;
-    const { error } = await supabase.from('table_order_items').insert(
-      orderItems.map((orderItem: any) => ({ tenant_id: tenantId, order_id: orderId, ...orderItem }))
-    );
-    if (error) throw error;
-    const { data, error: recalcError } = await supabase.rpc('recalc_table_order', { _order_id: orderId });
-    if (recalcError) throw recalcError;
     return data;
   }
   if (item.type === 'UPSERT_TABLE_ORDER_ITEMS') {

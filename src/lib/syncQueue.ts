@@ -55,7 +55,7 @@ export class OfflineOperationConflictError extends Error {
   }
 }
 
-/** Checkout and retired low-level stock writes must never use a renderer queue. */
+/** Checkout and retired/non-atomic financial writes must never use a renderer queue. */
 export class CheckoutDeviceCutoverError extends Error {
   constructor() {
     super("Checkout requires an enrolled device credential and secure native authorization. This client cannot submit or queue a sale; preserve the cart and request terminal provisioning.");
@@ -65,7 +65,8 @@ export class CheckoutDeviceCutoverError extends Error {
 
 /** Reject retired financial primitives before a network call or renderer enqueue. */
 export function assertCheckoutDeviceBoundaryReady(type: string): void {
-  if (type === "CHECKOUT_SALE_V2" || type === "CHECKOUT_SALE" || type === "CHECKOUT_TABLE_ORDER" || type === "APPLY_INVENTORY_MOVEMENT") {
+  if (type === "CHECKOUT_SALE_V2" || type === "CHECKOUT_SALE" || type === "CHECKOUT_TABLE_ORDER"
+    || type === "APPLY_INVENTORY_MOVEMENT" || type === "ADD_TABLE_ORDER_ITEMS") {
     throw new CheckoutDeviceCutoverError();
   }
 }

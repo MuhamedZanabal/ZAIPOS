@@ -7,7 +7,7 @@ const checkoutGuard = () => (
 ).assertCheckoutDeviceBoundaryReady;
 
 describe("credential-less financial primitive cutover", () => {
-  it("refuses legacy sale, restaurant checkout and direct inventory movement before submission or queueing", () => {
+  it("refuses legacy sale, restaurant checkout and non-atomic financial writes before submission or queueing", () => {
     const guard = checkoutGuard();
     expect(guard).toBeTypeOf("function");
     if (!guard) return;
@@ -15,6 +15,7 @@ describe("credential-less financial primitive cutover", () => {
     expect(() => guard("CHECKOUT_SALE")).toThrow(/device credential/i);
     expect(() => guard("CHECKOUT_TABLE_ORDER")).toThrow(/device credential/i);
     expect(() => guard("APPLY_INVENTORY_MOVEMENT")).toThrow(/device credential/i);
+    expect(() => guard("ADD_TABLE_ORDER_ITEMS")).toThrow(/device credential/i);
   });
 
   it("preserves supported nonfinancial kitchen queue operations", () => {

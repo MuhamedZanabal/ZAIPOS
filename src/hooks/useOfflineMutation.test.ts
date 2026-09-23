@@ -68,7 +68,7 @@ describe("offline mutation helpers", () => {
     expect(isTransientNetworkError(new Error("Forbidden"))).toBe(true);
   });
 
-  it.each(["CHECKOUT_SALE", "CHECKOUT_SALE_V2", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT"])(
+  it.each(["CHECKOUT_SALE", "CHECKOUT_SALE_V2", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT", "ADD_TABLE_ORDER_ITEMS"])(
     "denies direct credential-less or revoked %s queueing without a success receipt", async (type) => {
       const setPendingSyncCount = vi.fn();
       await expect(queueOfflineMutation(type, { _client_mutation_id: "client-1" }, setPendingSyncCount))

@@ -23,6 +23,7 @@ const electronAPI = {
   revokeDevice: (deviceId: string, authorization: ManagerAuthorization): Promise<{ deviceUid: string; provisioned: false; revoked: boolean }> => ipcRenderer.invoke(IPC_HANDLERS.REVOKE_DEVICE, deviceId, authorization),
   checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string | { status: 'pending'; mutationId: string }> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CHECKOUT, payload, authorization),
   cashMovement: (payload: Record<string, unknown>, authorization: ManagerAuthorization, cancel = false): Promise<string | null> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CASH_MOVEMENT, payload, authorization, cancel),
+  cashSession: (payload: Record<string, unknown>, authorization: ManagerAuthorization, close = false): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CASH_SESSION, payload, authorization, close),
   returnSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_SALE_RETURN, payload, authorization),
   voidSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_SALE_VOID, payload, authorization),
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_DELIVERY_COLLECTION, payload, authorization),
