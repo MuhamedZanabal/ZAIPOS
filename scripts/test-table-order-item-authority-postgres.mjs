@@ -48,6 +48,7 @@ const snapshot=()=>sql(`SELECT
 assert.equal(sql(`SELECT count(*) FROM pg_policies WHERE schemaname='public' AND tablename='table_order_items' AND policyname='toi_member_all'`),'0');
 for(const privilege of ['INSERT','UPDATE','DELETE']) assert.equal(sql(`SELECT has_table_privilege('authenticated','public.table_order_items','${privilege}')`),'f');
 assert.equal(sql(`SELECT has_function_privilege('authenticated','public.recalc_table_order(uuid)','EXECUTE')`),'f');
+assert.equal(sql(`SELECT has_function_privilege('authenticated','public.upsert_table_order_items(uuid,uuid,uuid,uuid,jsonb,text)','EXECUTE')`),'f');
 for(const [label,statement] of [
  ['direct insert',`INSERT INTO public.table_order_items(tenant_id,order_id,product_id,product_name,product_type) VALUES('${I.tenant}','${I.order}','${I.product}','Bypass','simple')`],
  ['direct update',`UPDATE public.table_order_items SET quantity=999 WHERE order_id='${I.order}'`],

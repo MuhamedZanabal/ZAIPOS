@@ -16,6 +16,7 @@ describe("credential-less financial primitive cutover", () => {
     expect(() => guard("CHECKOUT_TABLE_ORDER")).toThrow(/device credential/i);
     expect(() => guard("APPLY_INVENTORY_MOVEMENT")).toThrow(/device credential/i);
     expect(() => guard("ADD_TABLE_ORDER_ITEMS")).toThrow(/device credential/i);
+    expect(() => guard("UPSERT_TABLE_ORDER_ITEMS")).toThrow(/device credential/i);
   });
 
   it("preserves supported nonfinancial kitchen queue operations", () => {

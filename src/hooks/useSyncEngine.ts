@@ -17,7 +17,8 @@ import {
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
   if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER'
-    || item.type === 'APPLY_INVENTORY_MOVEMENT' || item.type === 'ADD_TABLE_ORDER_ITEMS') {
+    || item.type === 'APPLY_INVENTORY_MOVEMENT' || item.type === 'ADD_TABLE_ORDER_ITEMS'
+    || item.type === 'UPSERT_TABLE_ORDER_ITEMS') {
     // Retain legacy checkout, raw inventory and non-atomic table-item records for
     // operator reconciliation. Never replay them from renderer-held storage or
     // silently translate an untrusted payload into an authorized command.
@@ -50,21 +51,6 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
     if (error) throw error;
     return data;
   }
-  if (item.type === 'UPSERT_TABLE_ORDER_ITEMS') {
-    const payload = item.payload as any;
-    const { data: orderId, error } = await supabase.rpc('upsert_table_order_items', {
-      _tenant_id: payload.tenant_id,
-      _branch_id: payload.branch_id,
-      _table_id: payload.table_id,
-      _waiter_id: payload.waiter_id,
-      _items: payload.items,
-      _client_mutation_id: payload._client_mutation_id ?? null,
-    });
-    if (error) throw error;
-    if (!orderId) throw new Error('Could not create or update the table order');
-    return orderId;
-  }
-
   throw new UnknownSyncOperationError(item.type);
 }
 

@@ -66,7 +66,8 @@ export class CheckoutDeviceCutoverError extends Error {
 /** Reject retired financial primitives before a network call or renderer enqueue. */
 export function assertCheckoutDeviceBoundaryReady(type: string): void {
   if (type === "CHECKOUT_SALE_V2" || type === "CHECKOUT_SALE" || type === "CHECKOUT_TABLE_ORDER"
-    || type === "APPLY_INVENTORY_MOVEMENT" || type === "ADD_TABLE_ORDER_ITEMS") {
+    || type === "APPLY_INVENTORY_MOVEMENT" || type === "ADD_TABLE_ORDER_ITEMS"
+    || type === "UPSERT_TABLE_ORDER_ITEMS") {
     throw new CheckoutDeviceCutoverError();
   }
 }

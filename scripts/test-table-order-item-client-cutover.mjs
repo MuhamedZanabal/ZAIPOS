@@ -8,10 +8,13 @@ const files = {
   waiter: "src/modules/waiter/WaiterDashboard.tsx",
   kds: "src/modules/kds/KDS.tsx",
   syncEngine: "src/hooks/useSyncEngine.ts",
+  pos: "src/modules/pos/POS.tsx",
+  syncQueue: "src/lib/syncQueue.ts",
   migration: "supabase/migrations/20260923071500_atomic_table_order_item_mutations.sql",
   kitchenMigration: "supabase/migrations/20260923111500_scoped_table_kitchen_transitions.sql",
   lifecycleMigration: "supabase/migrations/20260923130000_scoped_table_order_lifecycle.sql",
   openMigration: "supabase/migrations/20260923152500_scoped_table_order_open.sql",
+  legacyCartMigration: "supabase/migrations/20260923170500_retire_untrusted_table_cart_upsert.sql",
 };
 const source = {};
 for (const [key, path] of Object.entries(files)) {
@@ -53,6 +56,9 @@ forbidPattern("waiter", /\.from\(["']table_orders["']\)[\s\S]{0,160}\.insert\s*\
   "direct waiter table-order creation");
 requireText("tables", "openTableOrder", "scoped table-order opening helper");
 requireText("waiter", "openTableOrder", "scoped waiter table-order opening helper");
+forbidPattern("pos", /rpc\(["']upsert_table_order_items["']/, "renderer call to untrusted table-cart RPC");
+forbidPattern("syncEngine", /rpc\(["']upsert_table_order_items["']/, "queue replay through untrusted table-cart RPC");
+requireText("syncQueue", '|| type === "UPSERT_TABLE_ORDER_ITEMS"', "table-cart queue fail-closed guard");
 forbidPattern("syncEngine", /\.from\(["']table_order_items["']\)[\s\S]{0,160}\.(?:insert|update|delete)\s*\(/,
   "queued direct table-order-item mutation");
 requireText("migration", "DROP POLICY IF EXISTS toi_member_all", "broad mutation-policy removal");
@@ -66,6 +72,7 @@ requireText("lifecycleMigration", "REVOKE EXECUTE ON FUNCTION public.send_table_
 requireText("lifecycleMigration", "transition_table_order_lifecycle_v2", "atomic replay-safe lifecycle command");
 requireText("openMigration", "REVOKE INSERT ON public.table_orders", "direct table-order INSERT revocation");
 requireText("openMigration", "open_table_order_v2", "scoped replay-safe order-opening command");
+requireText("legacyCartMigration", "REVOKE ALL ON FUNCTION public.upsert_table_order_items", "legacy table-cart RPC revocation");
 
 if (failures.length) {
   throw new Error(`Table-order item cutover incomplete:\n- ${failures.join("\n- ")}`);

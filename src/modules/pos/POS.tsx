@@ -459,7 +459,9 @@ export default function POS() {
 
   const sendToTableMutation = useOfflineMutation({
     type: "UPSERT_TABLE_ORDER_ITEMS",
-    mutationFn: async (payload: any) => upsertTableOrderItems(payload),
+    // Fail closed in useOfflineMutation before either online submission or
+    // renderer-queue persistence. The retired RPC trusted financial fields.
+    mutationFn: async () => { throw new Error("Secure table-cart submission is not available yet"); },
   });
 
   const handleSendToTable = async () => {
@@ -902,24 +904,4 @@ export default function POS() {
       </Dialog>
     </div>
   );
-}
-
-async function upsertTableOrderItems(payload: {
-  tenant_id: string;
-  branch_id: string;
-  table_id: string;
-  waiter_id: string | null;
-  items: any[];
-  _client_mutation_id?: string;
-}) {
-  const { data, error } = await supabase.rpc("upsert_table_order_items", {
-    _tenant_id: payload.tenant_id,
-    _branch_id: payload.branch_id,
-    _table_id: payload.table_id,
-    _waiter_id: payload.waiter_id,
-    _items: payload.items,
-    _client_mutation_id: payload._client_mutation_id ?? null,
-  });
-  if (error) throw error;
-  return data as string;
 }
