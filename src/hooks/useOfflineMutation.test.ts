@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import { useNetworkStore } from "@/stores/network";
+import { useTenantStore } from "@/stores/tenant";
 
 const mocks = vi.hoisted(() => {
   const queueRows: any[] = [];
@@ -43,7 +44,6 @@ function setNavigatorOnline(value: boolean) {
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value });
 }
 
-// A kitchen status command is supported; direct stock mutation is a revoked primitive.
 const supportedType = "SEND_TO_KITCHEN";
 
 describe("offline mutation helpers", () => {
@@ -58,6 +58,7 @@ describe("offline mutation helpers", () => {
     window.localStorage.clear();
     setNavigatorOnline(true);
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0, syncAttentionCount: 0 });
+    useTenantStore.setState({ tenantId: "tenant-1", branchId: "branch-1" });
   });
 
   it("detects transient network failures without hiding application errors", () => {
@@ -79,24 +80,47 @@ describe("offline mutation helpers", () => {
     },
   );
 
-  it("queues a permitted mutation with idempotency metadata and updates the pending count", async () => {
+  it("queues a permitted order-only RPC with active tenant and branch even though SQL args have no scope", async () => {
     const setPendingSyncCount = vi.fn();
     const result = await queueOfflineMutation(
       supportedType,
-      { _client_mutation_id: "client-1", amount: 1000 },
+      { _client_mutation_id: "client-1", _order_id: "order-1" },
       setPendingSyncCount,
     );
     expect(result).toEqual({ offline: true, queued: true });
     expect(mocks.add).toHaveBeenCalledTimes(1);
     expect(mocks.queueRows[0]).toMatchObject({
       type: supportedType,
-      payload: { _client_mutation_id: "client-1", amount: 1000 },
+      tenantId: "tenant-1",
+      branchId: "branch-1",
+      payload: { _client_mutation_id: "client-1", _order_id: "order-1" },
       status: "queued",
       retryCount: 0,
       clientMutationId: "client-1",
     });
     expect(typeof mocks.queueRows[0].deviceId).toBe("string");
     expect(setPendingSyncCount).toHaveBeenCalledWith(1);
+  });
+
+  it("fails closed without an active scope, never claiming a local save", async () => {
+    useTenantStore.setState({ tenantId: null, branchId: null });
+    const setPendingSyncCount = vi.fn();
+    await expect(queueOfflineMutation(supportedType, { _order_id: "order-1" }, setPendingSyncCount))
+      .rejects.toThrow(/active tenant and branch/i);
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect(setPendingSyncCount).not.toHaveBeenCalled();
+  });
+
+  it("rejects a payload whose tenant or branch conflicts with the selected scope", async () => {
+    const setPendingSyncCount = vi.fn();
+    await expect(queueOfflineMutation(supportedType, {
+      _tenant_id: "tenant-2", _branch_id: "branch-1", _order_id: "order-1",
+    }, setPendingSyncCount)).rejects.toThrow(/scope conflicts/i);
+    await expect(queueOfflineMutation(supportedType, {
+      _tenant_id: "tenant-1", _branch_id: "branch-2", _order_id: "order-1",
+    }, setPendingSyncCount)).rejects.toThrow(/scope conflicts/i);
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect(setPendingSyncCount).not.toHaveBeenCalled();
   });
 
   it("deduplicates a permitted offline command by its stable operation ID", async () => {
@@ -127,6 +151,16 @@ describe("offline mutation helpers", () => {
     }, setPendingSyncCount)).rejects.toThrow(/operation id.*different.*payload/i);
     expect(mocks.queueRows).toHaveLength(1);
     expect(mocks.queueRows[0].payload._order_id).toBe("order-1");
+  });
+
+  it("rejects reuse of an operation ID after switching branches", async () => {
+    const setPendingSyncCount = vi.fn();
+    const payload = { _client_mutation_id: "same-operation-id", _order_id: "order-1" };
+    await queueOfflineMutation(supportedType, payload, setPendingSyncCount);
+    useTenantStore.setState({ tenantId: "tenant-1", branchId: "branch-2" });
+    await expect(queueOfflineMutation(supportedType, payload, setPendingSyncCount))
+      .rejects.toThrow(/operation id.*different.*payload/i);
+    expect(mocks.queueRows).toHaveLength(1);
   });
 
   it("serializes concurrent permitted queue attempts by operation ID", async () => {
@@ -172,6 +206,7 @@ describe("offline mutation helpers", () => {
       status: "queued",
       clientMutationId: payload._client_mutation_id,
       tenantId: "tenant-1",
+      branchId: "branch-1",
       payload,
     });
   });
