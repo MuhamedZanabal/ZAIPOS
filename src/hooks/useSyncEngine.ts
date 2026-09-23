@@ -11,6 +11,7 @@ import {
   isActiveQueueStatus,
   isReplayableQueueStatus,
   syncQueueItemBelongsToTenant,
+  syncQueueScopeFromPayload,
   UnknownSyncOperationError,
 } from '@/lib/syncQueue';
 
@@ -23,17 +24,17 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
     throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'SEND_TO_KITCHEN') {
-    const { data, error } = await supabase.rpc('send_table_order_to_kitchen', item.payload);
+    const { data, error } = await supabase.rpc('send_table_order_to_kitchen', { _order_id: item.payload._order_id });
     if (error) throw error;
     return data;
   }
   if (item.type === 'MARK_ORDER_READY') {
-    const { data, error } = await supabase.rpc('mark_table_order_ready', item.payload);
+    const { data, error } = await supabase.rpc('mark_table_order_ready', { _order_id: item.payload._order_id });
     if (error) throw error;
     return data;
   }
   if (item.type === 'SEND_TO_CASHIER') {
-    const { data, error } = await supabase.rpc('send_table_order_to_cashier', item.payload);
+    const { data, error } = await supabase.rpc('send_table_order_to_cashier', { _order_id: item.payload._order_id });
     if (error) throw error;
     return data;
   }
@@ -73,6 +74,7 @@ export function useSyncEngine() {
   const setPendingSyncCount = useNetworkStore((state) => state.setPendingSyncCount);
   const setSyncAttentionCount = useNetworkStore((state) => state.setSyncAttentionCount);
   const tenantId = useTenantStore((state) => state.tenantId);
+  const branchId = useTenantStore((state) => state.branchId);
 
   const updatePendingCount = useCallback(async () => {
     try {
@@ -96,12 +98,13 @@ export function useSyncEngine() {
 
   const runSyncQueue = useCallback(async () => {
     const onlineNow = typeof navigator === 'undefined' ? isOnline : navigator.onLine;
-    if (!onlineNow || !tenantId) return;
+    if (!onlineNow || !tenantId || !branchId) return;
 
     try {
       const pendingItems = (await db.sync_queue.toArray())
         .filter((item) =>
           syncQueueItemBelongsToTenant(item, tenantId)
+          && (item.branchId ?? syncQueueScopeFromPayload(item.payload).branchId) === branchId
           && isReplayableQueueStatus(item.status)
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -182,7 +185,7 @@ export function useSyncEngine() {
     } catch (error) {
       logger.error("sync_queue_process_failed", { error: String(error) });
     }
-  }, [isOnline, tenantId, updatePendingCount]);
+  }, [isOnline, tenantId, branchId, updatePendingCount]);
 
   const processSyncQueue = useCallback(() => {
     if (activeSyncRun) return activeSyncRun;
