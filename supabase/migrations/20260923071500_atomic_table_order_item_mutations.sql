@@ -204,7 +204,8 @@ BEGIN
   INTO _order_subtotal_fils,_order_tax_fils
   FROM (
     SELECT
-      round(i.unit_price_fils::numeric * i.quantity)::bigint - i.discount_fils AS subtotal_fils,
+      round(public.bhd_numeric_to_fils(i.unit_price)::numeric * i.quantity)::bigint
+        - public.bhd_numeric_to_fils(COALESCE(i.discount,0)) AS subtotal_fils,
       COALESCE(i.tax_rate,0) AS tax_rate
     FROM public.table_order_items i
     WHERE i.order_id=_order_id AND i.status <> 'cancelled'

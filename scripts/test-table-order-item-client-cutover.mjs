@@ -31,7 +31,7 @@ forbidPattern("syncEngine", /\.from\(["']table_order_items["']\)[\s\S]{0,160}\.(
   "queued direct table-order-item mutation");
 requireText("migration", "DROP POLICY IF EXISTS toi_member_all", "broad mutation-policy removal");
 requireText("migration", "REVOKE INSERT, UPDATE, DELETE", "authenticated direct-DML revocation");
-requireText("migration", "unit_price_fils", "integer-fils order arithmetic");
+requireText("migration", "bhd_numeric_to_fils(i.unit_price)", "integer-fils order arithmetic");
 
 if (failures.length) {
   throw new Error(`Table-order item cutover incomplete:\n- ${failures.join("\n- ")}`);
