@@ -13,10 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOfflineMutation } from "@/hooks/useOfflineMutation";
 import { PaymentDialog } from "@/modules/pos/PaymentDialog";
-import {
-  paymentAllocationsToBhdRows,
-  type PaymentAllocation,
-} from "@/modules/pos/paymentAllocations";
+import { type PaymentAllocation } from "@/modules/pos/paymentAllocations";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +22,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { TableOrderMobile } from "./TableOrderMobile";
 import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, type TableItemStatus } from "./itemStatus";
 import { db } from "@/lib/db";
+import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
 
 export default function TableOrder() {
   const { id: orderId } = useParams<{ id: string }>();
@@ -311,14 +309,6 @@ export default function TableOrder() {
     navigate("/tables");
   };
 
-  const checkoutTableMutation = useOfflineMutation({
-    type: 'CHECKOUT_TABLE_ORDER',
-    mutationFn: async (payload: any) => {
-      const { error } = await supabase.rpc("checkout_table_order", payload);
-      if (error) throw error;
-    }
-  });
-
   const charge = async (
     allocations: PaymentAllocation[],
     tipAmount: number,
@@ -330,13 +320,8 @@ export default function TableOrder() {
     try {
       const baseTotal = Number(order?.total ?? 0);
       const payableTotal = Math.max(0, baseTotal - discountAmount + tipAmount);
-      await checkoutTableMutation.mutateAsync({
-        _order_id: orderId,
-        _payments: paymentAllocationsToBhdRows(allocations) as any,
-        _tip_amount: tipAmount,
-        _discount_total: discountAmount,
-        _coupon_code: couponCode ?? null,
-      });
+      if (!tenantId || !branchId) throw new Error('Table checkout scope is unavailable');
+      await checkoutTableOrderOnDevice({ tenantId, branchId, orderId, allocations, tipAmount, discountAmount, couponCode });
       toast.success("Cobro registrado");
       setPayOpen(false);
       qc.invalidateQueries({ queryKey: ["table-orders-open"] });

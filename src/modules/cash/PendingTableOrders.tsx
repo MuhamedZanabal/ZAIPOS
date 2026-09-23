@@ -5,11 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import { CreditCard, Eye, Users, Clock, UtensilsCrossed } from "lucide-react";
 import { PaymentDialog } from "@/modules/pos/PaymentDialog";
-import {
-  paymentAllocationsToBhdRows,
-  type PaymentAllocation,
-} from "@/modules/pos/paymentAllocations";
+import { type PaymentAllocation } from "@/modules/pos/paymentAllocations";
 import { toast } from "sonner";
+import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
 
 interface Props {
   tenantId: string;
@@ -67,15 +65,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
     setSubmitting(true);
     try {
       const payableTotal = Math.max(0, Number(payOrder.total) - discountAmount + tipAmount);
-      const { error } = await supabase.rpc("checkout_table_order", {
-        _order_id: payOrder.id,
-        _payments: paymentAllocationsToBhdRows(allocations) as any,
-        _tip_amount: tipAmount,
-        _discount_total: discountAmount,
-        _coupon_code: couponCode ?? null,
-        _client_mutation_id: crypto.randomUUID(),
-      } as any);
-      if (error) throw error;
+      await checkoutTableOrderOnDevice({ tenantId, branchId, orderId: payOrder.id, allocations, tipAmount, discountAmount, couponCode });
       toast.success(`Cobro registrado · ${formatCurrency(payableTotal)}`);
       setPayOrder(null);
       qc.invalidateQueries({ queryKey: ["pending-table-orders"] });

@@ -196,6 +196,37 @@ describe('native device credential custody', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('brokers table checkout through native custody and validates exact money before decrypting', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const saleId = '77777777-7777-4777-8777-777777777777';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(saleId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const payload = {
+      _tenant_id: tenantId, _branch_id: branchId,
+      _order_id: '55555555-5555-4555-8555-555555555555',
+      _payments: [{ method: 'cash' as const, amount: '1.250', reference: null }],
+      _tip_amount: '0.250', _discount_total: '0.000', _coupon_code: null,
+      _client_mutation_id: 'table-checkout:55555555-5555-4555-8555-555555555555',
+    };
+
+    await expect(service.checkoutTableOrder(payload, authorization)).resolves.toBe(saleId);
+    const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
+    expect(url).toContain('/rest/v1/rpc/checkout_table_order_v2_device');
+    expect(JSON.parse(String(request.body))).toEqual({
+      ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+
+    await expect(service.checkoutTableOrder({ ...payload, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.checkoutTableOrder({ ...payload, _tip_amount: '0.0001' }, authorization)).rejects.toThrow(/tip/i);
+    await expect(service.checkoutTableOrder({ ...payload, _payments: [{ method: 'cash', amount: '1.5x', reference: null }] }, authorization)).rejects.toThrow(/payment/i);
+    await expect(service.checkoutTableOrder({ ...payload, _client_mutation_id: ' padded-id' }, authorization)).rejects.toThrow(/operation ID/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('brokers returns and voids through native custody without exposing the credential', async () => {
     values.set('enrollment', {
       deviceUid: 'terminal-1', tenantId, branchId,

@@ -11,38 +11,30 @@ import {
   isActiveQueueStatus,
   isReplayableQueueStatus,
   syncQueueItemBelongsToTenant,
+  syncQueueScopeFromPayload,
   UnknownSyncOperationError,
 } from '@/lib/syncQueue';
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
-  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE') {
-    // Legacy sale records are retained in the queue for operator reconciliation.
-    // Do NOT send them through a credential-less RPC or silently convert their
-    // immutable payload/operation ID to an unapproved device checkout request.
+  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER' || item.type === 'APPLY_INVENTORY_MOVEMENT') {
+    // Retain legacy checkout and raw inventory records for operator reconciliation.
+    // The direct stock primitive was revoked from authenticated in the production
+    // migration; never replay it from a renderer-held queue or silently translate
+    // an untrusted payload into an authorized inventory command.
     throw new CheckoutDeviceCutoverError();
   }
-  if (item.type === 'CHECKOUT_TABLE_ORDER') {
-    const { data, error } = await supabase.rpc('checkout_table_order', item.payload);
-    if (error) throw error;
-    return data;
-  }
   if (item.type === 'SEND_TO_KITCHEN') {
-    const { data, error } = await supabase.rpc('send_table_order_to_kitchen', item.payload);
+    const { data, error } = await supabase.rpc('send_table_order_to_kitchen', { _order_id: item.payload._order_id });
     if (error) throw error;
     return data;
   }
   if (item.type === 'MARK_ORDER_READY') {
-    const { data, error } = await supabase.rpc('mark_table_order_ready', item.payload);
+    const { data, error } = await supabase.rpc('mark_table_order_ready', { _order_id: item.payload._order_id });
     if (error) throw error;
     return data;
   }
   if (item.type === 'SEND_TO_CASHIER') {
-    const { data, error } = await supabase.rpc('send_table_order_to_cashier', item.payload);
-    if (error) throw error;
-    return data;
-  }
-  if (item.type === 'APPLY_INVENTORY_MOVEMENT') {
-    const { data, error } = await supabase.rpc('apply_inventory_movement', item.payload);
+    const { data, error } = await supabase.rpc('send_table_order_to_cashier', { _order_id: item.payload._order_id });
     if (error) throw error;
     return data;
   }
@@ -82,6 +74,7 @@ export function useSyncEngine() {
   const setPendingSyncCount = useNetworkStore((state) => state.setPendingSyncCount);
   const setSyncAttentionCount = useNetworkStore((state) => state.setSyncAttentionCount);
   const tenantId = useTenantStore((state) => state.tenantId);
+  const branchId = useTenantStore((state) => state.branchId);
 
   const updatePendingCount = useCallback(async () => {
     try {
@@ -105,12 +98,13 @@ export function useSyncEngine() {
 
   const runSyncQueue = useCallback(async () => {
     const onlineNow = typeof navigator === 'undefined' ? isOnline : navigator.onLine;
-    if (!onlineNow || !tenantId) return;
+    if (!onlineNow || !tenantId || !branchId) return;
 
     try {
       const pendingItems = (await db.sync_queue.toArray())
         .filter((item) =>
           syncQueueItemBelongsToTenant(item, tenantId)
+          && (item.branchId ?? syncQueueScopeFromPayload(item.payload).branchId) === branchId
           && isReplayableQueueStatus(item.status)
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -191,7 +185,7 @@ export function useSyncEngine() {
     } catch (error) {
       logger.error("sync_queue_process_failed", { error: String(error) });
     }
-  }, [isOnline, tenantId, updatePendingCount]);
+  }, [isOnline, tenantId, branchId, updatePendingCount]);
 
   const processSyncQueue = useCallback(() => {
     if (activeSyncRun) return activeSyncRun;
