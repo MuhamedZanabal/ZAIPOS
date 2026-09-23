@@ -2,7 +2,23 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #83 (2026-09-23 15:17:56 +03)
+## Current checkpoint — PR #83 (2026-09-23 15:37:54 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `af277e1ad6198b39d46ca3b052fae063c60319dc` is mergeable with no submitted reviews or inline threads. No merge is authorized and offline checkout remains disabled.
+- Authenticated direct INSERT on `table_orders` and the broad insert policy are removed. `open_table_order_v2` locks the authoritative table, validates tenant, active branch, eligible branch role and assigned-waiter ownership, rejects unavailable/pending-payment tables, journals a canonical stable identity and audits the resolved order.
+- The Tables and Waiter Dashboard renderer paths use the scoped command. Their operation identity is persisted before submission and retained after indeterminate responses. A waiter opening an unassigned table atomically becomes its assigned waiter; competing different operation identities serialize on the table row and converge to one open order.
+- Exact-head evidence: all 21 workflows succeeded. CI #731 / run `35860984875` passed quality job `107180858375` and unsigned Windows packaging job `107182138809`. Table Checkout Security run `35860984996`, job `107180858738`, passed the production migration chain and real PostgreSQL direct-INSERT denial, wrong-branch/assigned-waiter/kitchen zero-effect denial, replay, payload-conflict, assignment and two-session competing-open convergence evidence.
+- Local verification: 65 Vitest files / 348 tests, TypeScript, production build (2,772 modules), 125 migration validations, renderer creation-cutover and PostgreSQL script syntax, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. Local `psql` remains unavailable; exact-head CI supplied disposable PostgreSQL runtime evidence. No force push, merge, deployment, release or production-data operation occurred.
+- The legacy `upsert_table_order_items` SECURITY DEFINER RPC remains a separate P0: it accepts renderer-supplied unit price, tax, discount and line totals under tenant-membership-only authority and can also create orders. This checkpoint does not claim that boundary is safe.
+
+### Immediate next executable actions
+
+1. Replace `upsert_table_order_items` with an authoritative branch/role/table-scoped atomic command that derives products, pricing, tax and totals server-side, preserves stable identity, and proves replay/conflict/contention/zero-effect behavior; migrate POS and queued replay before revoking the legacy RPC.
+2. Continue the financial-operation census for inventory batch, reconciliation, transfer, purchase receiving and production completion; do not broaden the private stock primitive.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled, then review the stacked security chain through normal review.
+4. Preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #83 (2026-09-23 15:17:56 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `782026275fd4d5477e96753c2036f2e4c12becd6` is mergeable and has no submitted reviews. No merge is authorized and offline checkout remains disabled.
 - Authenticated direct UPDATE/DELETE on `table_orders` and authenticated execution of `send_table_order_to_cashier(uuid)` are revoked. `transition_table_order_lifecycle_v2` validates tenant, active branch, branch role, assigned-waiter ownership, active order state and canonical stable identity before sending or cancelling an order.
