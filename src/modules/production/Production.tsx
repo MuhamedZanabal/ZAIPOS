@@ -179,6 +179,7 @@ export default function Production() {
 
       {completeOrder && (
         <CompleteOrderDialog
+          tenantId={tenantId!} branchId={branchId!}
           order={completeOrder}
           onClose={() => {
             setCompleteOrder(null);
@@ -235,7 +236,7 @@ function CreateOrderDialog({ tenantId, branchId, products, onClose }: any) {
   );
 }
 
-function CompleteOrderDialog({ order, onClose }: { order: any | null; onClose: () => void }) {
+function CompleteOrderDialog({ order, tenantId, branchId, onClose }: { order: any | null; tenantId: string; branchId: string; onClose: () => void }) {
   const [produced, setProduced] = useState("");
   const [waste, setWaste] = useState("0");
 
@@ -243,6 +244,8 @@ function CompleteOrderDialog({ order, onClose }: { order: any | null; onClose: (
     if (!order) return;
     try {
       await completeProductionOrderV2({
+        tenantId,
+        branchId,
         orderId: order.id,
         produced: Number(produced),
         waste: Number(waste),

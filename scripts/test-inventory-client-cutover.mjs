@@ -26,11 +26,12 @@ const forbidText = (key, text, label) => {
   if (source[key].includes(text)) failures.push(`${files[key]} still contains ${label}`);
 };
 
-requireText("helper", 'record_inventory_batch_v2', "record_inventory_batch_v2 helper");
-requireText("helper", 'transfer_inventory_v2', "transfer_inventory_v2 helper");
-requireText("helper", 'receive_purchase_order_v2', "receive_purchase_order_v2 helper");
-requireText("helper", 'complete_production_order_v2', "complete_production_order_v2 helper");
-requireText("helper", 'reconcile_inventory_levels_v2', "reconcile_inventory_levels_v2 helper");
+requireText("helper", 'runInventoryCommand("batch"', "native device-bound batch helper");
+requireText("helper", 'runInventoryCommand("transfer"', "native device-bound transfer helper");
+requireText("helper", 'runInventoryCommand("receive"', "native device-bound receiving helper");
+requireText("helper", 'runInventoryCommand("production"', "native device-bound production helper");
+requireText("helper", 'runInventoryCommand("reconcile"', "native device-bound reconciliation helper");
+forbidText("helper", 'supabase.rpc(', "renderer-callable inventory RPC");
 forbidText("helper", '"apply_inventory_movement"', "direct low-level inventory RPC");
 
 requireText("inventory", "recordInventoryBatchV2", "v2 manual movement call");
@@ -67,4 +68,4 @@ if (failures.length) {
   throw new Error(`Inventory client cutover incomplete:\n- ${failures.join("\n- ")}`);
 }
 
-console.log("PASS: all inventory mutation UIs use v2 command helpers and no client surface invokes the revoked low-level inventory primitive.");
+console.log("PASS: all inventory mutation UIs use native device-bound commands and no client surface invokes a legacy inventory RPC.");
