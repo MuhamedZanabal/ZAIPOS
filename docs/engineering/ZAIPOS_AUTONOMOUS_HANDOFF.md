@@ -2,6 +2,19 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — draft PR #86 (2026-09-23 21:31 +03)
+
+- Draft PR #86 targets main `31c81f69bac26690cb12bc897759db056dbc6642`. Verified implementation/documentation head `3f8c5b672ddde6394d95d959c0914e74c7579f1c` is clean/mergeable with no submitted reviews or inline threads.
+- Exact-head workflows: 2/2 succeeded. CI run `35902029893` passed quality job `107320356576` and unsigned Windows package job `107321507299`; Table Checkout Security run `35902029842`, job `107320355953`, succeeded.
+- Local evidence remains focused 3 files / 26 tests, full Vitest 68 files / 364 tests, TypeScript, production build (2,773 modules), ESLint zero errors and `git diff --check`.
+- PR checkpoint comment `5800590938` records the evidence. Offline checkout remains disabled. No merge, deployment, release, force push or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Perform packaged-desktop restart/crash/contention/corruption and operator reconciliation acceptance; verify exported receipts outside the application.
+2. Consider native IPC custody for final reconciliation evidence before treating local IndexedDB state as tamper-resistant.
+3. Proceed independently with the authoritative restaurant cart replacement, device-bound inventory mutations and rebuilt authorization census.
+
 ## Current local checkpoint — post-merge recovery semantics (2026-09-23 21:02:47 +03)
 
 - Independently fetched main `31c81f69bac26690cb12bc897759db056dbc6642`, the PR #85 security-stack merge. New scoped branch `fix/offline-reconciliation-dispositions-20260923` is based directly on main at local code heads `9f61bae` and `390d599`.
