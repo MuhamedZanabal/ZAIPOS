@@ -2,7 +2,24 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #81 (2026-09-23 02:35:15 +03)
+## Current checkpoint — PR #82 (2026-09-23 03:39:30 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #82 branch `fix/device-bound-cash-sessions-20260923` is stacked on draft PR #81 head `4a9ed4533f1eef9691b77b3eb813a196dfdf1a34`; no merge is authorized.
+- Verified code head: `c39b2fd202e952bc36aa49974d52c5a33e949910`. All 21 exact-head workflows completed successfully. CI #711 run `35802372217` passed quality job `106995380229` and unsigned Windows packaging job `106996048355`. Trusted Device Enforcement run `35802372280` passed the device-bound cash-session contract on real PostgreSQL. Unsigned packaging is not signing, installation, upgrade or rollback acceptance.
+- Credential-less `open_cash_session` and `close_cash_session` execution is revoked from authenticated callers. Device-bound v2 wrappers validate tenant, branch, user, enrolled/non-revoked terminal credential and exact BHD three-decimal inputs before opening or final reconciliation.
+- The renderer persists an immutable operation ID and canonical request before native submission, retains it across a lost response/restart and refuses a different operation while recovery is pending. Credential plaintext remains Electron-main-only behind narrow IPC.
+- PostgreSQL coverage proves missing/copied/wrong-branch/revoked credentials, payload substitution, legacy RPC calls, fractional fils, NaN/infinity, inactive branches and banned accounts are denied; rejected calls have zero operation/session effects. Opening/closing replay returns the original session. Existing concurrent cash movement/close and multi-open races now execute through enrolled-device authority.
+- CI-discovered repairs: initial head `a808121` lacked the required composite tenant/branch foreign key; `32e546f` added it. That head exposed the legacy close call in the cash-mutation race; `09c51e8` migrated it. That head then exposed credential-less open/close in the cash-session boundary suite; `c39b2fd` migrated the full exact-fils, account, branch, audit-rollback and contention contract. Do not cite the failed heads as passing evidence.
+- Local source-equivalent verification: focused 3 files / 22 tests; full 63 files / 329 tests; TypeScript; ESLint zero errors / 13 pre-existing warnings; production build (2,770 modules); 121 migration validations; native vault/static contracts; PostgreSQL script syntax and `git diff --check` all passed. No merge, deployment, release, force push or production-data operation occurred. Offline checkout remains disabled.
+
+### Immediate next executable actions
+
+1. Re-fetch PR #82, distinguish its documentation head from verified code head `c39b2fd`, and inspect all exact-head workflows before trusting this checkpoint.
+2. Continue the mutation census with renderer-callable inventory authority (`apply_inventory_movement` and adjacent inventory RPCs): classify the boundary, reproduce any credential-less unauthorized path, and add positive/negative PostgreSQL proof before a scoped cutover.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while keeping the immutable offline checkout gate disabled; then review the complete stacked security PR chain.
+4. Preserve external signing, physical hardware, production DR, provider authorization and regulatory gates as unresolved until independently exercised.
+
+## Previous checkpoint — PR #81 (2026-09-23 02:35:15 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #81 branch `fix/device-bound-table-checkout-20260922` is stacked on draft PR #80 head `ba236f9ef4d05357bcacad968ea023feadd319b9`.
 - Current code head: `896c0783767b49c13403f8330095b1875f3b16ea`. All 21 exact-head workflows completed successfully. CI #704 run `35797498899` passed quality job `106980070008` (real PostgreSQL migration/concurrency/adversarial suite, 326-test suite, lint and build) and unsigned Windows packaging job `106980812353`.
