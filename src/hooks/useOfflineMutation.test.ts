@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import { useNetworkStore } from "@/stores/network";
+import { useTenantStore } from "@/stores/tenant";
 
 const mocks = vi.hoisted(() => {
   const queueRows: any[] = [];
@@ -43,7 +44,7 @@ function setNavigatorOnline(value: boolean) {
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value });
 }
 
-const supportedType = "APPLY_INVENTORY_MOVEMENT";
+const supportedType = "SEND_TO_KITCHEN";
 
 describe("offline mutation helpers", () => {
   beforeEach(() => {
@@ -57,6 +58,7 @@ describe("offline mutation helpers", () => {
     window.localStorage.clear();
     setNavigatorOnline(true);
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0, syncAttentionCount: 0 });
+    useTenantStore.setState({ tenantId: "tenant-1", branchId: "branch-1" });
   });
 
   it("detects transient network failures without hiding application errors", () => {
@@ -66,8 +68,8 @@ describe("offline mutation helpers", () => {
     expect(isTransientNetworkError(new Error("Forbidden"))).toBe(true);
   });
 
-  it.each(["CHECKOUT_SALE", "CHECKOUT_SALE_V2", "CHECKOUT_TABLE_ORDER"])(
-    "denies direct credential-less %s queueing without a success receipt", async (type) => {
+  it.each(["CHECKOUT_SALE", "CHECKOUT_SALE_V2", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT", "ADD_TABLE_ORDER_ITEMS"])(
+    "denies direct credential-less or revoked %s queueing without a success receipt", async (type) => {
       const setPendingSyncCount = vi.fn();
       await expect(queueOfflineMutation(type, { _client_mutation_id: "client-1" }, setPendingSyncCount))
         .rejects.toThrow(/device credential/i);
@@ -78,18 +80,20 @@ describe("offline mutation helpers", () => {
     },
   );
 
-  it("queues a permitted mutation with idempotency metadata and updates the pending count", async () => {
+  it("queues a permitted order-only RPC with active tenant and branch even though SQL args have no scope", async () => {
     const setPendingSyncCount = vi.fn();
     const result = await queueOfflineMutation(
       supportedType,
-      { _client_mutation_id: "client-1", amount: 1000 },
+      { _client_mutation_id: "client-1", _order_id: "order-1" },
       setPendingSyncCount,
     );
     expect(result).toEqual({ offline: true, queued: true });
     expect(mocks.add).toHaveBeenCalledTimes(1);
     expect(mocks.queueRows[0]).toMatchObject({
       type: supportedType,
-      payload: { _client_mutation_id: "client-1", amount: 1000 },
+      tenantId: "tenant-1",
+      branchId: "branch-1",
+      payload: { _client_mutation_id: "client-1", _order_id: "order-1" },
       status: "queued",
       retryCount: 0,
       clientMutationId: "client-1",
@@ -98,11 +102,32 @@ describe("offline mutation helpers", () => {
     expect(setPendingSyncCount).toHaveBeenCalledWith(1);
   });
 
+  it("fails closed without an active scope, never claiming a local save", async () => {
+    useTenantStore.setState({ tenantId: null, branchId: null });
+    const setPendingSyncCount = vi.fn();
+    await expect(queueOfflineMutation(supportedType, { _order_id: "order-1" }, setPendingSyncCount))
+      .rejects.toThrow(/active tenant and branch/i);
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect(setPendingSyncCount).not.toHaveBeenCalled();
+  });
+
+  it("rejects a payload whose tenant or branch conflicts with the selected scope", async () => {
+    const setPendingSyncCount = vi.fn();
+    await expect(queueOfflineMutation(supportedType, {
+      _tenant_id: "tenant-2", _branch_id: "branch-1", _order_id: "order-1",
+    }, setPendingSyncCount)).rejects.toThrow(/scope conflicts/i);
+    await expect(queueOfflineMutation(supportedType, {
+      _tenant_id: "tenant-1", _branch_id: "branch-2", _order_id: "order-1",
+    }, setPendingSyncCount)).rejects.toThrow(/scope conflicts/i);
+    expect(mocks.add).not.toHaveBeenCalled();
+    expect(setPendingSyncCount).not.toHaveBeenCalled();
+  });
+
   it("deduplicates a permitted offline command by its stable operation ID", async () => {
     const setPendingSyncCount = vi.fn();
     const payload = {
       _client_mutation_id: "0f4cb42e-3e9c-4d4a-b98a-c2ec04b52d7d",
-      _payments: [{ method: "cash", amount_fils: 1128 }],
+      _order_id: "order-1",
     };
     await queueOfflineMutation(supportedType, payload, setPendingSyncCount);
     await queueOfflineMutation(supportedType, payload, setPendingSyncCount);
@@ -117,15 +142,25 @@ describe("offline mutation helpers", () => {
     await queueOfflineMutation(supportedType, {
       _client_mutation_id: operationId,
       _tenant_id: "tenant-1",
-      _payments: [{ method: "cash", amount_fils: 1128 }],
+      _order_id: "order-1",
     }, setPendingSyncCount);
     await expect(queueOfflineMutation(supportedType, {
       _client_mutation_id: operationId,
       _tenant_id: "tenant-1",
-      _payments: [{ method: "cash", amount_fils: 2128 }],
+      _order_id: "different-order",
     }, setPendingSyncCount)).rejects.toThrow(/operation id.*different.*payload/i);
     expect(mocks.queueRows).toHaveLength(1);
-    expect(mocks.queueRows[0].payload._payments[0].amount_fils).toBe(1128);
+    expect(mocks.queueRows[0].payload._order_id).toBe("order-1");
+  });
+
+  it("rejects reuse of an operation ID after switching branches", async () => {
+    const setPendingSyncCount = vi.fn();
+    const payload = { _client_mutation_id: "same-operation-id", _order_id: "order-1" };
+    await queueOfflineMutation(supportedType, payload, setPendingSyncCount);
+    useTenantStore.setState({ tenantId: "tenant-1", branchId: "branch-2" });
+    await expect(queueOfflineMutation(supportedType, payload, setPendingSyncCount))
+      .rejects.toThrow(/operation id.*different.*payload/i);
+    expect(mocks.queueRows).toHaveLength(1);
   });
 
   it("serializes concurrent permitted queue attempts by operation ID", async () => {
@@ -134,7 +169,7 @@ describe("offline mutation helpers", () => {
       _client_mutation_id: "8eb06e14-cf32-4d41-a11a-c16ae8b32652",
       _tenant_id: "tenant-1",
       _branch_id: "branch-1",
-      _payments: [{ method: "benefitpay", amount_fils: 1128 }],
+      _order_id: "order-1",
     };
     await Promise.all([
       queueOfflineMutation(supportedType, payload, setPendingSyncCount),
@@ -154,7 +189,7 @@ describe("offline mutation helpers", () => {
     const payload = {
       _client_mutation_id: "ca5d25bb-9eee-48d0-a233-3ef1ce806bca",
       _tenant_id: "tenant-1",
-      _payments: [{ method: "cash", amount_fils: 1128 }],
+      _order_id: "order-1",
     };
     const mutationFn = vi.fn(async (_variables: typeof payload) => { throw new TypeError("Failed to fetch"); });
     if (!failDuringRequest) {
@@ -171,6 +206,7 @@ describe("offline mutation helpers", () => {
       status: "queued",
       clientMutationId: payload._client_mutation_id,
       tenantId: "tenant-1",
+      branchId: "branch-1",
       payload,
     });
   });
@@ -180,6 +216,8 @@ describe("offline mutation helpers", () => {
     ["CHECKOUT_SALE_V2", false],
     ["CHECKOUT_SALE", true],
     ["CHECKOUT_SALE", false],
+    ["APPLY_INVENTORY_MOVEMENT", true],
+    ["APPLY_INVENTORY_MOVEMENT", false],
   ])("denies %s through the online/offline hook (online=%s) without clearing or queueing", async (type, online) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) =>
