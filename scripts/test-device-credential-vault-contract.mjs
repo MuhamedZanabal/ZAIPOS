@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 const vault = await readFile(new URL('../electron/device-credential-vault.ts', import.meta.url), 'utf8');
 const preload = await readFile(new URL('../electron/preload.ts', import.meta.url), 'utf8');
 const rendererTypes = await readFile(new URL('../src/types/electron.d.ts', import.meta.url), 'utf8');
+const offlineQueue = await readFile(new URL('../electron/services/device-offline-queue.ts', import.meta.url), 'utf8');
+const main = await readFile(new URL('../electron/main.ts', import.meta.url), 'utf8');
 assert.match(vault, /safeStorage\.encryptString\(credential\)/, 'terminal credential must be encrypted with Electron safeStorage');
 assert.match(vault, /safeStorage\.decryptString/, 'financial authority path must decrypt only in Electron main');
 assert.match(vault, /OS credential protection is unavailable/, 'vault must fail closed when OS protection is unavailable');
@@ -12,11 +14,20 @@ assert.match(vault, /expiresAt - issuedAt > 15 \* 60_000/, 'offline lease custod
 assert.match(vault, /expiresAt <= Date\.now\(\)/, 'offline lease reader must reject expired authority');
 assert.match(vault, /clearOfflineLease\(\)/, 'invalid or expired offline authority must be destroyed locally');
 assert.match(vault, /\^\[0-9a-fA-F\]\{64\}\$/, 'vault must require 256-bit hexadecimal secrets');
+assert.match(offlineQueue, /safeStorage\.encryptString\(plaintext\)/, 'native offline mutations must be encrypted at rest');
+assert.match(offlineQueue, /offline-mutation-queue-journal-v1/, 'native offline queue must retain a crash-recovery journal');
+assert.match(offlineQueue, /offline-mutation-confirmed-v1/, 'native offline queue must retain confirmed sale evidence');
+assert.match(offlineQueue, /mutation identity conflict/, 'native offline queue must surface payload substitution as an operator conflict');
+assert.match(offlineQueue, /_lease_token: lease\.token/, 'only Electron main reconciliation may attach lease capability material');
+assert.match(main, /createDeviceOfflineQueue/, 'Electron startup must recover the native offline queue');
+assert.match(main, /offlineOrchestrator\.recovery\(\)/, 'Electron startup must project operator-visible recovery state');
+assert.match(main, /enabled: false/, 'native offline checkout must remain disabled until acceptance');
 for (const [name, source] of [['preload', preload], ['renderer types', rendererTypes]]) {
   assert.doesNotMatch(source, /getDeviceCredential/i, `${name} must not expose a credential getter`);
   assert.doesNotMatch(source, /readForAuthority/i, `${name} must not expose the main-process credential reader`);
   assert.doesNotMatch(source, /readOfflineLeaseForAuthority/i, `${name} must not expose the main-process lease reader`);
   assert.doesNotMatch(source, /offlineLeaseCiphertext/i, `${name} must not expose encrypted offline lease storage`);
   assert.doesNotMatch(source, /credentialCiphertext/i, `${name} must not expose encrypted credential storage`);
+  assert.doesNotMatch(source, /lease[_A-Za-z]*token|offline.*queue/i, `${name} must not expose offline capability or native queue custody`);
 }
 console.log('Device credential and offline lease vault contract passed');

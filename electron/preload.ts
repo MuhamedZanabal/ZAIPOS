@@ -21,7 +21,7 @@ const electronAPI = {
   activateDevice: (approvalId: string, authorization: ManagerAuthorization) => ipcRenderer.invoke(IPC_HANDLERS.ACTIVATE_DEVICE, approvalId, authorization),
   rotateDeviceCredential: (approvalId: string, authorization: ManagerAuthorization): Promise<{ deviceUid: string; provisioned: true }> => ipcRenderer.invoke(IPC_HANDLERS.ROTATE_DEVICE_CREDENTIAL, approvalId, authorization),
   revokeDevice: (deviceId: string, authorization: ManagerAuthorization): Promise<{ deviceUid: string; provisioned: false; revoked: boolean }> => ipcRenderer.invoke(IPC_HANDLERS.REVOKE_DEVICE, deviceId, authorization),
-  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CHECKOUT, payload, authorization),
+  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string | { status: 'pending'; mutationId: string }> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CHECKOUT, payload, authorization),
   platform: process.platform as NodeJS.Platform,
 };
 contextBridge.exposeInMainWorld('electron', electronAPI);

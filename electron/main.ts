@@ -16,6 +16,9 @@ import { handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
 import { createDeviceCredentialService } from './services/device-credentials.js';
 import { createDeviceOfflineAuthority } from './services/device-offline-authority.js';
+import { createDeviceOfflineQueue } from './services/device-offline-queue.js';
+import { createDeviceOfflineOrchestrator } from './services/device-offline-orchestrator.js';
+import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +44,19 @@ function setupGlobalHandlers(): void {
   const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const deviceCredentials = createDeviceCredentialService(credentialStore, supabaseUrl, publishableKey);
   const offlineAuthority = createDeviceOfflineAuthority(credentialStore, supabaseUrl, publishableKey);
+  // Recovery runs in Electron main before any renderer can request financial work.
+  // No queue or lease-capability IPC exists while offline checkout remains gated.
+  const offlineQueue = createDeviceOfflineQueue(credentialStore, offlineAuthority, supabaseUrl, publishableKey);
+  const offlineOrchestrator = createDeviceOfflineOrchestrator(offlineQueue, { enabled: false });
+  const recoveredOfflineQueue = offlineQueue.recover();
+  const recoverySnapshot = offlineOrchestrator.recovery().map(({ mutationId, state }) => ({ mutationId, state }));
+  log('info', 'device_offline_queue_recovered', {
+    pendingCount: recoveredOfflineQueue.records.length,
+    quarantinedCount: offlineQueue.quarantined().length,
+    confirmedCount: offlineQueue.confirmed().length,
+    checkoutEnabled: offlineOrchestrator.enabled,
+    recovery: recoverySnapshot,
+  });
   const refreshOfflineAuthority = async (authorization: any): Promise<void> => {
     try {
       const lease = await offlineAuthority.refresh(authorization);
@@ -50,11 +66,19 @@ function setupGlobalHandlers(): void {
       log('warn', 'device_offline_authority_unavailable', { error: error?.message ?? String(error) });
     }
   };
+  const checkoutCoordinator = createDeviceCheckoutCoordinator({
+    checkout: (payload, authorization) => deviceCredentials.checkout(payload as any, authorization),
+    readActive: offlineAuthority.readActive,
+    refresh: offlineAuthority.refresh,
+    orchestrator: offlineOrchestrator,
+    report: (summary) => log('info', 'device_offline_queue_drained', summary),
+    reportFailure: (error) => log('warn', 'device_offline_queue_drain_failed', { error }),
+  });
   handleTrustedIpc(IPC_HANDLERS.GET_DEVICE_IDENTITY, () => deviceCredentials.identity());
   handleTrustedIpc(IPC_HANDLERS.ACTIVATE_DEVICE, async (_event, approvalId, authorization) => { const result = await deviceCredentials.activate(approvalId, app.getVersion(), process.platform, authorization); await refreshOfflineAuthority(authorization); return result; });
   handleTrustedIpc(IPC_HANDLERS.ROTATE_DEVICE_CREDENTIAL, async (_event, approvalId, authorization) => { offlineAuthority.clear(); const result = await deviceCredentials.rotate(approvalId, authorization); await refreshOfflineAuthority(authorization); return result; });
   handleTrustedIpc(IPC_HANDLERS.REVOKE_DEVICE, async (_event, deviceId, authorization) => { const result = await deviceCredentials.revoke(deviceId, authorization); offlineAuthority.clear(); return result; });
-  handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, (_event, payload, authorization) => deviceCredentials.checkout(payload, authorization));
+  handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, (_event, payload, authorization) => checkoutCoordinator.checkout(payload, authorization));
   handleTrustedIpc(IPC_HANDLERS.GET_SETTINGS, async () => getSettings());
   handleManagerIpc(IPC_HANDLERS.SAVE_SETTINGS, 'settings', async (_event, newSettings: Partial<AppSettings>) => { validateSettingsPatch(newSettings); if (!store) throw new Error('Settings are unavailable'); const current = getSettings(); const merged = { ...current, ...newSettings }; if (newSettings.printer) merged.printer = { ...current.printer, ...newSettings.printer }; if (newSettings.barcode) merged.barcode = { ...current.barcode, ...newSettings.barcode }; const validated = validateSettings(merged); store.set(validated); if (newSettings.barcode && mainWindow) await restartBarcodeScanner(validated.barcode, mainWindow); });
   handleManagerIpc(IPC_HANDLERS.SET_KIOSK, 'kiosk', async (_event, enabled: boolean) => { if (typeof enabled !== 'boolean') throw new Error('Invalid kiosk setting'); if (!mainWindow) return; store?.set('kiosk', enabled); mainWindow.setKiosk(enabled); mainWindow.setFullScreen(enabled); mainWindow.setMenuBarVisibility(!enabled); log('info', 'kiosk_mode_updated', { enabled }); });
