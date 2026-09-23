@@ -24,6 +24,7 @@ import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, ty
 import { db } from "@/lib/db";
 import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
 import { mutateTableOrderItem } from "@/lib/tableOrderItems";
+import { createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder } from "@/lib/tableKitchen";
 
 export default function TableOrder() {
   const { id: orderId } = useParams<{ id: string }>();
@@ -179,26 +180,30 @@ export default function TableOrder() {
   };
 
   const startPreparing = async (item: any) => {
-    const { error } = await supabase.rpc("start_preparing_table_item", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"start_preparing" }); }
+    catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const markReady = async (item: any) => {
-    const { error } = await supabase.rpc("mark_table_item_ready", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"mark_ready" }); }
+    catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const dispatchItem = async (item: any) => {
-    const { error } = await supabase.rpc("dispatch_table_item", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"dispatch" }); }
+    catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const undispatchItem = async (item: any) => {
-    const { error } = await supabase.rpc("undispatch_table_item", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"undispatch" }); }
+    catch (error: any) { return toast.error(error.message); }
     toast.success("Reverted to pending");
     await refetchItems();
   };
@@ -212,17 +217,15 @@ export default function TableOrder() {
 
   const sendKitchenMutation = useOfflineMutation({
     type: 'SEND_TO_KITCHEN',
-    mutationFn: async (payload: { _order_id: string }) => {
-      const { data, error } = await supabase.rpc("send_table_order_to_kitchen", payload);
-      if (error) throw error;
-      return data;
-    }
+    mutationFn: transitionTableOrder,
   });
 
   const sendAllToKitchen = async () => {
-    if (!orderId) return;
+    if (!tenantId || !branchId || !orderId) return;
     try {
-      const data = await sendKitchenMutation.mutateAsync({ _order_id: orderId });
+      const data = await sendKitchenMutation.mutateAsync(createTableOrderTransitionPayload({
+        tenantId, branchId, orderId, action:"send_to_kitchen",
+      }));
       toast.success(`${data ?? 0} item(s) sent to kitchen`);
     } catch (err: any) {
       toast.error(err.message);
@@ -236,17 +239,15 @@ export default function TableOrder() {
 
   const markReadyMutation = useOfflineMutation({
     type: 'MARK_ORDER_READY',
-    mutationFn: async (payload: { _order_id: string }) => {
-      const { data, error } = await supabase.rpc("mark_table_order_ready", payload);
-      if (error) throw error;
-      return data;
-    }
+    mutationFn: transitionTableOrder,
   });
 
   const markAllReady = async () => {
-    if (!orderId) return;
+    if (!tenantId || !branchId || !orderId) return;
     try {
-      const data = await markReadyMutation.mutateAsync({ _order_id: orderId });
+      const data = await markReadyMutation.mutateAsync(createTableOrderTransitionPayload({
+        tenantId, branchId, orderId, action:"mark_ready",
+      }));
       toast.success(`${data ?? 0} item(s) listos`);
     } catch (err: any) {
       toast.error(err.message);
@@ -314,7 +315,8 @@ export default function TableOrder() {
     // Revertir despachos
     for (const it of (items ?? [])) {
       if (it.status === "dispatched") {
-        await supabase.rpc("undispatch_table_item", { _item_id: it.id });
+        if (!tenantId || !branchId) throw new Error("Table branch scope is unavailable");
+        await transitionTableItem({ tenantId, branchId, itemId:it.id, action:"undispatch" });
       }
     }
     await supabase.from("table_orders").update({ status: "cancelled", closed_at: new Date().toISOString() }).eq("id", orderId);
