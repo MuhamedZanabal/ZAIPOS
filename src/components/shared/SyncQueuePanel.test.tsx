@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getQueueItems: vi.fn(async () => [] as any[]),
   discardItem: vi.fn(async () => undefined),
   retryItem: vi.fn(async () => undefined),
+  resolveReviewItem: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/hooks/useSyncEngine", () => ({
@@ -50,24 +51,23 @@ describe("SyncQueuePanel", () => {
     expect(screen.queryByText(/fallido|sincronizar|dispositivo|descartar/i)).not.toBeInTheDocument();
   });
 
-  it("requeues and processes a review item only after explicit operator retry", async () => {
+  it("does not offer retry or discard for immutable review records", async () => {
     render(<SyncQueuePanel open onOpenChange={vi.fn()} />);
-    const retry = await screen.findByRole("button", { name: /retry pos sale/i });
-
-    fireEvent.click(retry);
-
-    await waitFor(() => expect(mocks.retryItem).toHaveBeenCalledWith(2));
-    expect(mocks.processSyncQueue).toHaveBeenCalledTimes(1);
+    await screen.findByText("Requires review");
+    expect(screen.queryByRole("button", { name: /retry pos sale/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /discard pos sale/i })).not.toBeInTheDocument();
   });
 
-  it("requires confirmation before discarding an unresolved financial operation", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("records an explicit reconciliation disposition and operator note", async () => {
+    const prompt = vi.spyOn(window, "prompt").mockReturnValue("Verified against register Z-1042");
     render(<SyncQueuePanel open onOpenChange={vi.fn()} />);
-    const discard = await screen.findByRole("button", { name: /discard pos sale/i });
+    const reconcile = await screen.findByRole("button", { name: /mark reconciled pos sale/i });
 
-    fireEvent.click(discard);
+    fireEvent.click(reconcile);
 
-    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/cannot be undone/i));
-    expect(mocks.discardItem).not.toHaveBeenCalled();
+    expect(prompt).toHaveBeenCalledWith(expect.stringMatching(/external transaction/i));
+    await waitFor(() => expect(mocks.resolveReviewItem).toHaveBeenCalledWith(
+      2, "reconciled_externally", "Verified against register Z-1042"
+    ));
   });
 });

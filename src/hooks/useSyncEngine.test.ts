@@ -80,12 +80,13 @@ describe("useSyncEngine", () => {
     (supabase.rpc as any).mockReset().mockResolvedValue({ data: "operation-id", error: null });
   });
 
-  it("exposes queue inspection, discard, and explicit retry controls", () => {
+  it("exposes queue inspection, retry, discard, and reconciliation controls", () => {
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     expect(typeof result.current.processSyncQueue).toBe("function");
     expect(typeof result.current.getQueueItems).toBe("function");
     expect(typeof result.current.discardItem).toBe("function");
     expect(typeof result.current.retryItem).toBe("function");
+    expect(typeof result.current.resolveReviewItem).toBe("function");
   });
 
   it("replays a permitted kitchen command with only SQL arguments, preserving committed evidence", async () => {
@@ -205,6 +206,27 @@ describe("useSyncEngine", () => {
     await act(async () => result.current.processSyncQueue());
     expect(mockDbStore).toHaveLength(1);
     expect(mockDbStore[0]).toMatchObject({ status: "requires_review", failureCode: "unknown_operation", retryCount: 1 });
+  });
+
+  it("preserves immutable review evidence while recording an explicit reconciliation disposition", async () => {
+    const payload = { _tenant_id: "t1", _branch_id: "b1", exact: "evidence" };
+    const id = await enqueue({ type: "UNKNOWN_OPERATION", payload });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    await act(async () => result.current.retryItem(id));
+    expect(mockDbStore[0].status).toBe("requires_review");
+    await act(async () => result.current.discardItem(id));
+    expect(mockDbStore).toHaveLength(1);
+    await act(async () => result.current.resolveReviewItem(
+      id, "reconciled_externally", "Matched external reference Z-1042"
+    ));
+    expect(mockDbStore[0]).toMatchObject({
+      status: "resolved",
+      payload,
+      reconciliationDisposition: "reconciled_externally",
+      reconciliationNote: "Matched external reference Z-1042",
+      resolvedAt: expect.any(String),
+    });
   });
 
   it("marks exhausted network retries failed and permits an explicit retry", async () => {

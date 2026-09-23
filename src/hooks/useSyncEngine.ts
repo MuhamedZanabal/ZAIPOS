@@ -241,7 +241,8 @@ export function useSyncEngine() {
   const discardItem = useCallback(async (id: number) => {
     try {
       const item = await db.sync_queue.get(id);
-      if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)) return;
+      if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)
+        || item.status === 'requires_review' || item.status === 'resolved') return;
       await db.sync_queue.delete(id);
       await updatePendingCount();
     } catch (error) {
@@ -256,7 +257,7 @@ export function useSyncEngine() {
         !item
         || !tenantId
         || !syncQueueItemBelongsToTenant(item, tenantId)
-        || (item.status !== 'failed' && item.status !== 'requires_review')
+        || item.status !== 'failed'
       ) return;
       await db.sync_queue.update(id, {
         status: 'queued',
@@ -271,5 +272,29 @@ export function useSyncEngine() {
     }
   }, [tenantId, updatePendingCount]);
 
-  return { processSyncQueue, getQueueItems, discardItem, retryItem };
+  const resolveReviewItem = useCallback(async (
+    id: number,
+    disposition: 'confirmed_not_applied' | 'reconciled_externally',
+    note: string,
+  ) => {
+    const normalizedNote = note.trim();
+    if (normalizedNote.length < 8) throw new Error('A reconciliation note of at least 8 characters is required.');
+    const item = await db.sync_queue.get(id);
+    if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)
+      || item.status !== 'requires_review') return;
+    const now = new Date().toISOString();
+    await db.sync_queue.update(id, {
+      status: 'resolved',
+      reconciliationDisposition: disposition,
+      reconciliationNote: normalizedNote,
+      resolvedAt: now,
+      updatedAt: now,
+    });
+    logger.info('sync_queue_item_reconciled', {
+      id, type: item.type, clientMutationId: item.clientMutationId, disposition,
+    });
+    await updatePendingCount();
+  }, [tenantId, updatePendingCount]);
+
+  return { processSyncQueue, getQueueItems, discardItem, retryItem, resolveReviewItem };
 }
