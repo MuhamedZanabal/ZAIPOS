@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useAuth } from "@/hooks/useAuth";
+import { createTableOrderOpenPayload, openTableOrder } from "@/lib/tableKitchen";
 import { formatCurrency } from "@/lib/format";
 import {
   Plus, Bike, ScanLine, Receipt, Users, UtensilsCrossed,
@@ -280,12 +281,10 @@ export default function WaiterDashboard() {
   const openTable = async (tableId: string) => {
     const existing = orderByTable[tableId];
     if (existing) { navigate(`/tables/${existing.id}`); return; }
-    const { data, error } = await supabase.from("table_orders").insert({
-      tenant_id: tenantId, branch_id: branchId, table_id: tableId,
-      waiter_id: user.id, status: "open",
-    }).select().single();
-    if (error) return toast.error(error.message);
-    await supabase.from("tables").update({ status: "occupied" }).eq("id", tableId);
+    let data: {id:string};
+    try {
+      data=await openTableOrder(createTableOrderOpenPayload({tenantId,branchId,tableId}));
+    } catch(error:any) { return toast.error(error.message); }
     qc.invalidateQueries({ queryKey: ["waiter-orders-open"] });
     qc.invalidateQueries({ queryKey: ["waiter-tables"] });
     navigate(`/tables/${data.id}`);

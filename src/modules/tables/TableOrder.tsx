@@ -23,6 +23,8 @@ import { TableOrderMobile } from "./TableOrderMobile";
 import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, type TableItemStatus } from "./itemStatus";
 import { db } from "@/lib/db";
 import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
+import { mutateTableOrderItem } from "@/lib/tableOrderItems";
+import { createTableOrderLifecyclePayload, createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder, transitionTableOrderLifecycle } from "@/lib/tableKitchen";
 
 export default function TableOrder() {
   const { id: orderId } = useParams<{ id: string }>();
@@ -139,36 +141,15 @@ export default function TableOrder() {
     return res.filter((p) => p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q));
   }, [products, branchProducts, channelPrices, branchId, search, selectedCategory]);
 
-  const recalc = async () => {
-    if (!orderId) return;
-    await supabase.rpc("recalc_table_order", { _order_id: orderId });
+  const refreshOrder = async () => {
     qc.invalidateQueries({ queryKey: ["table-order", orderId] });
     qc.invalidateQueries({ queryKey: ["table-orders-open"] });
   };
 
   const insertProduct = async (p: any, notes?: string) => {
-    if (!tenantId || !orderId) return;
-    const existing = items?.find((i) => i.product_id === p.id && i.status === "pending" && !notes);
-    if (existing) {
-      const newQty = Number(existing.quantity) + 1;
-      const lineSub = newQty * Number(existing.unit_price) - Number(existing.discount);
-      await supabase.from("table_order_items").update({
-        quantity: newQty,
-        line_total: lineSub + (lineSub * Number(existing.tax_rate) / 100),
-      }).eq("id", existing.id);
-    } else {
-      const lineSub = Number(p.price);
-      await supabase.from("table_order_items").insert({
-        tenant_id: tenantId, order_id: orderId, product_id: p.id,
-        product_name: p.name, product_type: p.product_type,
-        quantity: 1, unit_price: Number(p.price), tax_rate: Number(p.tax_rate ?? 0), discount: 0,
-        line_total: lineSub + (lineSub * Number(p.tax_rate ?? 0) / 100),
-        status: "pending",
-        notes: notes?.trim() || null,
-      });
-    }
-    await refetchItems();
-    await recalc();
+    if (!tenantId || !branchId || !orderId) return;
+    await mutateTableOrderItem({ tenantId, branchId, orderId, action: "add", productId: p.id, quantity: 1, notes });
+    await Promise.all([refetchItems(), refreshOrder()]);
   };
 
   const addProduct = async (p: any) => {
@@ -189,40 +170,40 @@ export default function TableOrder() {
   };
 
   const setQty = async (item: any, qty: number) => {
-    if (qty <= 0) {
-      await supabase.from("table_order_items").delete().eq("id", item.id);
-    } else {
-      const lineSub = qty * Number(item.unit_price) - Number(item.discount);
-      await supabase.from("table_order_items").update({
-        quantity: qty,
-        line_total: lineSub + (lineSub * Number(item.tax_rate) / 100),
-      }).eq("id", item.id);
-    }
-    await refetchItems();
-    await recalc();
+    if (!tenantId || !branchId || !orderId) return;
+    await mutateTableOrderItem({
+      tenantId, branchId, orderId, itemId: item.id,
+      action: qty <= 0 ? "delete" : "set_quantity",
+      quantity: qty <= 0 ? null : qty,
+    });
+    await Promise.all([refetchItems(), refreshOrder()]);
   };
 
   const startPreparing = async (item: any) => {
-    const { error } = await supabase.rpc("start_preparing_table_item", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"start_preparing" }); }
+    catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const markReady = async (item: any) => {
-    const { error } = await supabase.rpc("mark_table_item_ready", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"mark_ready" }); }
+    catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const dispatchItem = async (item: any) => {
-    const { error } = await supabase.rpc("dispatch_table_item", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"dispatch" }); }
+    catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const undispatchItem = async (item: any) => {
-    const { error } = await supabase.rpc("undispatch_table_item", { _item_id: item.id });
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"undispatch" }); }
+    catch (error: any) { return toast.error(error.message); }
     toast.success("Reverted to pending");
     await refetchItems();
   };
@@ -236,17 +217,15 @@ export default function TableOrder() {
 
   const sendKitchenMutation = useOfflineMutation({
     type: 'SEND_TO_KITCHEN',
-    mutationFn: async (payload: { _order_id: string }) => {
-      const { data, error } = await supabase.rpc("send_table_order_to_kitchen", payload);
-      if (error) throw error;
-      return data;
-    }
+    mutationFn: transitionTableOrder,
   });
 
   const sendAllToKitchen = async () => {
-    if (!orderId) return;
+    if (!tenantId || !branchId || !orderId) return;
     try {
-      const data = await sendKitchenMutation.mutateAsync({ _order_id: orderId });
+      const data = await sendKitchenMutation.mutateAsync(createTableOrderTransitionPayload({
+        tenantId, branchId, orderId, action:"send_to_kitchen",
+      }));
       toast.success(`${data ?? 0} item(s) sent to kitchen`);
     } catch (err: any) {
       toast.error(err.message);
@@ -260,17 +239,15 @@ export default function TableOrder() {
 
   const markReadyMutation = useOfflineMutation({
     type: 'MARK_ORDER_READY',
-    mutationFn: async (payload: { _order_id: string }) => {
-      const { data, error } = await supabase.rpc("mark_table_order_ready", payload);
-      if (error) throw error;
-      return data;
-    }
+    mutationFn: transitionTableOrder,
   });
 
   const markAllReady = async () => {
-    if (!orderId) return;
+    if (!tenantId || !branchId || !orderId) return;
     try {
-      const data = await markReadyMutation.mutateAsync({ _order_id: orderId });
+      const data = await markReadyMutation.mutateAsync(createTableOrderTransitionPayload({
+        tenantId, branchId, orderId, action:"mark_ready",
+      }));
       toast.success(`${data ?? 0} item(s) listos`);
     } catch (err: any) {
       toast.error(err.message);
@@ -280,14 +257,11 @@ export default function TableOrder() {
 
   const sendCashierMutation = useOfflineMutation({
     type: 'SEND_TO_CASHIER',
-    mutationFn: async (payload: { _order_id: string }) => {
-      const { error } = await supabase.rpc("send_table_order_to_cashier", payload);
-      if (error) throw error;
-    }
+    mutationFn: transitionTableOrderLifecycle,
   });
 
   const sendToCashier = async () => {
-    if (!orderId) return;
+    if (!tenantId || !branchId || !orderId) return;
     const activeItems = (items ?? []).filter((i: any) => i.status !== "cancelled");
     if (activeItems.length === 0) return toast.error("Add at least one product");
     const ready = activeItems.some((i: any) => i.status === "ready" || i.status === "dispatched");
@@ -297,7 +271,9 @@ export default function TableOrder() {
     }
 
     try {
-      await sendCashierMutation.mutateAsync({ _order_id: orderId });
+      await sendCashierMutation.mutateAsync(createTableOrderLifecyclePayload({
+        tenantId,branchId,orderId,action:"send_to_cashier",
+      }));
       toast.success("Sent to register · The cashier can charge from their screen");
     } catch (err: any) {
       toast.error(err.message);
@@ -335,14 +311,12 @@ export default function TableOrder() {
   const cancelOrder = async () => {
     if (!orderId || !order) return;
     if (!confirm("Cancel this order? Dispatched items will be reverted.")) return;
-    // Revertir despachos
-    for (const it of (items ?? [])) {
-      if (it.status === "dispatched") {
-        await supabase.rpc("undispatch_table_item", { _item_id: it.id });
-      }
-    }
-    await supabase.from("table_orders").update({ status: "cancelled", closed_at: new Date().toISOString() }).eq("id", orderId);
-    // Manual status update removed: handled by database trigger
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try {
+      await transitionTableOrderLifecycle(createTableOrderLifecyclePayload({
+        tenantId,branchId,orderId,action:"cancel",
+      }));
+    } catch (error:any) { return toast.error(error.message); }
     toast.success("Order cancelled");
     qc.invalidateQueries({ queryKey: ["table-orders-open"] });
     qc.invalidateQueries({ queryKey: ["tables"] });

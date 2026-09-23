@@ -2,7 +2,70 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #82 (2026-09-23 09:16:39 +03)
+## Current checkpoint — PR #83 (2026-09-23 15:37:54 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `af277e1ad6198b39d46ca3b052fae063c60319dc` is mergeable with no submitted reviews or inline threads. No merge is authorized and offline checkout remains disabled.
+- Authenticated direct INSERT on `table_orders` and the broad insert policy are removed. `open_table_order_v2` locks the authoritative table, validates tenant, active branch, eligible branch role and assigned-waiter ownership, rejects unavailable/pending-payment tables, journals a canonical stable identity and audits the resolved order.
+- The Tables and Waiter Dashboard renderer paths use the scoped command. Their operation identity is persisted before submission and retained after indeterminate responses. A waiter opening an unassigned table atomically becomes its assigned waiter; competing different operation identities serialize on the table row and converge to one open order.
+- Exact-head evidence: all 21 workflows succeeded. CI #731 / run `35860984875` passed quality job `107180858375` and unsigned Windows packaging job `107182138809`. Table Checkout Security run `35860984996`, job `107180858738`, passed the production migration chain and real PostgreSQL direct-INSERT denial, wrong-branch/assigned-waiter/kitchen zero-effect denial, replay, payload-conflict, assignment and two-session competing-open convergence evidence.
+- Local verification: 65 Vitest files / 348 tests, TypeScript, production build (2,772 modules), 125 migration validations, renderer creation-cutover and PostgreSQL script syntax, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. Local `psql` remains unavailable; exact-head CI supplied disposable PostgreSQL runtime evidence. No force push, merge, deployment, release or production-data operation occurred.
+- The legacy `upsert_table_order_items` SECURITY DEFINER RPC remains a separate P0: it accepts renderer-supplied unit price, tax, discount and line totals under tenant-membership-only authority and can also create orders. This checkpoint does not claim that boundary is safe.
+
+### Immediate next executable actions
+
+1. Replace `upsert_table_order_items` with an authoritative branch/role/table-scoped atomic command that derives products, pricing, tax and totals server-side, preserves stable identity, and proves replay/conflict/contention/zero-effect behavior; migrate POS and queued replay before revoking the legacy RPC.
+2. Continue the financial-operation census for inventory batch, reconciliation, transfer, purchase receiving and production completion; do not broaden the private stock primitive.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled, then review the stacked security chain through normal review.
+4. Preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #83 (2026-09-23 15:17:56 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `782026275fd4d5477e96753c2036f2e4c12becd6` is mergeable and has no submitted reviews. No merge is authorized and offline checkout remains disabled.
+- Authenticated direct UPDATE/DELETE on `table_orders` and authenticated execution of `send_table_order_to_cashier(uuid)` are revoked. `transition_table_order_lifecycle_v2` validates tenant, active branch, branch role, assigned-waiter ownership, active order state and canonical stable identity before sending or cancelling an order.
+- Cancellation is one transaction: dispatched inventory is reversed through the scoped item transition, remaining items and the order are cancelled, and the lifecycle journal plus audit evidence commit together. It locks items before the order to match the existing item-transition lock order and prevent a cancellation/dispatch lock cycle. Lost-response replay returns the original state; changed-payload reuse is rejected.
+- Renderer send-to-cashier, cancellation and queued replay use the scoped lifecycle command. Operation identity is persisted before submission and retained after an indeterminate response; direct renderer status mutation is absent. Existing tenant-member INSERT is deliberately retained pending the separate order-creation authority census.
+- Exact-head evidence: all 21 workflows succeeded. CI #729 / run `35859010181` passed quality job `107174332012` and unsigned Windows packaging job `107175004679`. Table Checkout Security run `35859010409`, job `107174332235`, passed the production migration chain and real PostgreSQL direct-DML/legacy-RPC denial, wrong-branch/unassigned-waiter/kitchen zero-effect denial, replay, payload conflict, concurrent send, concurrent cancellation and exact single inventory-reversal contract. Backup Restore run `35859010183` also succeeded.
+- Local verification: 65 Vitest files / 347 tests, TypeScript, production build (2,772 modules), 124 migration validations, lifecycle client-cutover and PostgreSQL script syntax, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. The package has no `typecheck` npm alias, so `npx tsc --noEmit` supplied TypeScript evidence. Local `psql` remains unavailable; exact-head CI supplied disposable PostgreSQL runtime evidence. No force push, merge, deployment, release or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Audit and replace direct tenant-member table-order creation with a branch/role/table-scoped, replay-safe command, including contention and zero-effect denial tests.
+2. Continue the financial-operation census for inventory batch, reconciliation, transfer, purchase receiving and production completion; do not broaden the private stock primitive.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled, then review the stacked security chain through normal review.
+4. Preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #83 (2026-09-23 14:19:30 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `c82f8fcf45302954e84a8f8c227771c977d8b512` is the current implementation checkpoint. No merge is authorized and offline checkout remains disabled.
+- All six credential-less kitchen/status RPCs are revoked from authenticated execution. `transition_table_item_v2` and `transition_table_order_v2` lock the authoritative item/order, verify tenant, active branch, branch role and assigned-waiter scope, journal a canonical stable identity, reject payload substitution, and audit committed transitions.
+- Dispatch and undispatch no longer expose general inventory mutation authority to waiters. A private server-only helper applies exact three-decimal sale/consumption/return effects under the scoped table command; assigned waiters can serve only their own order, kitchen users can prepare/ready but cannot dispatch, and general authenticated callers cannot execute the helper.
+- Renderer and KDS callers use the scoped commands. Item identity is persisted before submission and retained across indeterminate responses. Bulk kitchen commands carry their identity through the offline queue; legacy queued records reuse their stored tenant/branch/operation scope. Replays and concurrent identical dispatches converge without a second stock movement.
+- Exact-head evidence: all 21 workflows succeeded. CI #727 / run `35853169253` passed quality job `107155385167` and unsigned Windows packaging job `107156350339`. Table Checkout Security run `35853169400`, job `107155385924`, passed production migration-chain application plus real PostgreSQL legacy-denial, wrong-branch, unassigned-waiter, kitchen-dispatch denial, zero-effect, lost-response replay, payload-conflict, exact inventory reversal and two-session dispatch contention evidence.
+- Local verification: 65 Vitest files / 345 tests, TypeScript, production build (2,772 modules), 123 migration validations, table-item/kitchen client cutover, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. Local `psql` is unavailable; exact-head CI supplied disposable PostgreSQL runtime evidence. No force push, merge, deployment, release or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Audit and harden `send_table_order_to_cashier` plus direct table-order cancellation/status writes with atomic branch/role authority, stable identity, replay/conflict tests and zero-effect denial evidence.
+2. Continue the financial-operation census for inventory batch, reconciliation, transfer, purchase receiving and production completion; do not broaden the private stock primitive.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled, then review the stacked security chain through normal review.
+4. Preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #83 (2026-09-23 10:27:00 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 branch `fix/atomic-table-order-items-20260923` is stacked directly on clean PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `02361a3f80bed4b4e1f5a60522b4b552096af463` is mergeable and clean with no submitted reviews or inline threads. No merge is authorized.
+- Restaurant item add/quantity/delete now uses one SECURITY DEFINER command. Authenticated direct INSERT/UPDATE/DELETE and direct recalculation are revoked; the broad `toi_member_all` policy is removed. The command locks the open order, verifies active tenant/branch plus assigned waiter or elevated branch role, derives authoritative table-channel pricing, computes BHD totals through integer fils, journals the canonical request and audits the result atomically.
+- Renderer code persists the operation identity before submission, reuses it after an indeterminate response, and no longer supplies price/tax/total fields. KDS status transitions remain server RPCs. Persisted legacy `ADD_TABLE_ORDER_ITEMS` records remain quarantined by the parent work; offline checkout remains disabled.
+- Exact-head evidence: all 21 workflows succeeded. CI #725 / run `35831057784` passed quality job `107083502459` and unsigned Windows packaging job `107084293991`. Table Checkout Security run `35831057836` passed the real PostgreSQL direct-DML, wrong-branch, unassigned-waiter, detail, exact-fils, replay, payload-conflict, audit, deletion and two-session concurrency contract.
+- CI found and repaired one real defect: code head `322671a` referenced nonexistent restaurant-item fils shadow columns. Head `02361a3` instead converts authoritative numeric columns through `bhd_numeric_to_fils` before all aggregation and proves a `0.001` quantity produces an exact `0.002` BHD subtotal rather than sub-fils state. Do not cite `322671a` as passing evidence.
+- Local verification: 64 Vitest files / 342 tests, TypeScript, production build (2,771 modules), 122 migration validations, renderer cutover and native vault contracts, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. Local `psql` is unavailable; exact-head CI supplied disposable real-PostgreSQL evidence. No force push, merge, deployment, release or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Add real PostgreSQL authorization contracts for `start_preparing_table_item`, `mark_table_item_ready`, `send_table_order_to_kitchen`, `mark_table_order_ready`, `dispatch_table_item` and `undispatch_table_item`; replace tenant-membership-only checks with explicit tenant/branch/role/order authority and stable mutation identity where financial inventory effects occur.
+2. Continue the remaining financial-operation census and evidence matrix, then complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled.
+3. Review and integrate the draft security stack only through normal review; preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #82 (2026-09-23 09:16:39 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main is still `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #82 now targets current PR #81 head `5b3e267013adb05bdfa917c3c55a0ac3a006e923` at exact head `c7de8849817b878ad72ea3af4fe0afab9362bf5c`. GitHub reports the PR mergeable and clean; there are no submitted reviews or inline threads. No PR merge is authorized.
 - The non-force two-parent synchronization commit incorporated PR #81's verified queue scope/inventory quarantine work and retained all device-bound cash-session changes. It also removes the non-atomic `ADD_TABLE_ORDER_ITEMS` replay path: new enqueue attempts fail closed and persisted records become `requires_review` without an RPC, direct table insert, payload mutation or deletion.

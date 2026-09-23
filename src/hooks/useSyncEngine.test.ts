@@ -48,7 +48,11 @@ vi.mock("@/lib/db", () => ({
 
 const wrapper = ({ children }: { children: React.ReactNode }) => children as any;
 
-// Order-only RPCs do not accept the queue's metadata fields as SQL arguments.
+const expectedKitchenReplay = {
+  _tenant_id: "t1", _branch_id: "b1", _order_id: "order-1",
+  _operation_id: "0f4cb42e-3e9c-4d4a-b98a-c2ec04b52d7d", _action: "send_to_kitchen",
+};
+
 async function enqueue(overrides: Record<string, unknown> = {}) {
   return db.sync_queue.add({
     type: "SEND_TO_KITCHEN",
@@ -90,7 +94,7 @@ describe("useSyncEngine", () => {
     const originalPayload = structuredClone(mockDbStore[0].payload);
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await act(async () => result.current.processSyncQueue());
-    expect(supabase.rpc).toHaveBeenCalledWith("send_table_order_to_kitchen", { _order_id: "order-1" });
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_v2", expectedKitchenReplay);
     expect(mockDbStore).toHaveLength(1);
     expect(mockDbStore[0]).toMatchObject({ id, status: "committed", retryCount: 0, serverResult: "operation-id", payload: originalPayload });
     expect(mockDbStore[0].committedAt).toEqual(expect.any(String));
@@ -102,8 +106,20 @@ describe("useSyncEngine", () => {
     await enqueue({ status: "sending" });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await act(async () => result.current.processSyncQueue());
-    expect(supabase.rpc).toHaveBeenCalledWith("send_table_order_to_kitchen", { _order_id: "order-1" });
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_v2", expectedKitchenReplay);
     expect(mockDbStore[0].status).toBe("committed");
+  });
+
+  it("replays send-to-cashier through the scoped lifecycle boundary", async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await enqueue({ type:"SEND_TO_CASHIER" });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_lifecycle_v2", {
+      ...expectedKitchenReplay,
+      _action:"send_to_cashier",
+    });
+    expect(mockDbStore[0]).toMatchObject({ status:"committed",serverResult:"operation-id" });
   });
 
   it("recovers a permitted operation whose first response was lost", async () => {
@@ -117,8 +133,8 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "retrying", failureCode: "network", retryCount: 1 });
     await act(async () => result.current.processSyncQueue());
     expect(supabase.rpc).toHaveBeenCalledTimes(2);
-    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "send_table_order_to_kitchen", { _order_id: "order-1" });
-    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "send_table_order_to_kitchen", { _order_id: "order-1" });
+    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "transition_table_order_v2", expectedKitchenReplay);
+    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "transition_table_order_v2", expectedKitchenReplay);
     expect(mockDbStore[0]).toMatchObject({ status: "committed", serverResult: "original-operation-id", retryCount: 1 });
   });
 

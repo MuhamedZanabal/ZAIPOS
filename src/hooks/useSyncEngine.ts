@@ -24,17 +24,29 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
     throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'SEND_TO_KITCHEN') {
-    const { data, error } = await supabase.rpc('send_table_order_to_kitchen', { _order_id: item.payload._order_id });
+    const { data, error } = await supabase.rpc('transition_table_order_v2' as any, {
+      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
+      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _action:'send_to_kitchen',
+    });
     if (error) throw error;
     return data;
   }
   if (item.type === 'MARK_ORDER_READY') {
-    const { data, error } = await supabase.rpc('mark_table_order_ready', { _order_id: item.payload._order_id });
+    const { data, error } = await supabase.rpc('transition_table_order_v2' as any, {
+      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
+      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _action:'mark_ready',
+    });
     if (error) throw error;
     return data;
   }
   if (item.type === 'SEND_TO_CASHIER') {
-    const { data, error } = await supabase.rpc('send_table_order_to_cashier', { _order_id: item.payload._order_id });
+    const { data, error } = await supabase.rpc('transition_table_order_lifecycle_v2' as any, {
+      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
+      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _action:'send_to_cashier',
+    });
     if (error) throw error;
     return data;
   }
