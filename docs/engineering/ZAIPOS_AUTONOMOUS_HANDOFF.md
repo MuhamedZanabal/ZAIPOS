@@ -2,7 +2,23 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #83 (2026-09-23 14:19:30 +03)
+## Current checkpoint — PR #83 (2026-09-23 15:17:56 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `782026275fd4d5477e96753c2036f2e4c12becd6` is mergeable and has no submitted reviews. No merge is authorized and offline checkout remains disabled.
+- Authenticated direct UPDATE/DELETE on `table_orders` and authenticated execution of `send_table_order_to_cashier(uuid)` are revoked. `transition_table_order_lifecycle_v2` validates tenant, active branch, branch role, assigned-waiter ownership, active order state and canonical stable identity before sending or cancelling an order.
+- Cancellation is one transaction: dispatched inventory is reversed through the scoped item transition, remaining items and the order are cancelled, and the lifecycle journal plus audit evidence commit together. It locks items before the order to match the existing item-transition lock order and prevent a cancellation/dispatch lock cycle. Lost-response replay returns the original state; changed-payload reuse is rejected.
+- Renderer send-to-cashier, cancellation and queued replay use the scoped lifecycle command. Operation identity is persisted before submission and retained after an indeterminate response; direct renderer status mutation is absent. Existing tenant-member INSERT is deliberately retained pending the separate order-creation authority census.
+- Exact-head evidence: all 21 workflows succeeded. CI #729 / run `35859010181` passed quality job `107174332012` and unsigned Windows packaging job `107175004679`. Table Checkout Security run `35859010409`, job `107174332235`, passed the production migration chain and real PostgreSQL direct-DML/legacy-RPC denial, wrong-branch/unassigned-waiter/kitchen zero-effect denial, replay, payload conflict, concurrent send, concurrent cancellation and exact single inventory-reversal contract. Backup Restore run `35859010183` also succeeded.
+- Local verification: 65 Vitest files / 347 tests, TypeScript, production build (2,772 modules), 124 migration validations, lifecycle client-cutover and PostgreSQL script syntax, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. The package has no `typecheck` npm alias, so `npx tsc --noEmit` supplied TypeScript evidence. Local `psql` remains unavailable; exact-head CI supplied disposable PostgreSQL runtime evidence. No force push, merge, deployment, release or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Audit and replace direct tenant-member table-order creation with a branch/role/table-scoped, replay-safe command, including contention and zero-effect denial tests.
+2. Continue the financial-operation census for inventory batch, reconciliation, transfer, purchase receiving and production completion; do not broaden the private stock primitive.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled, then review the stacked security chain through normal review.
+4. Preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #83 (2026-09-23 14:19:30 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `c82f8fcf45302954e84a8f8c227771c977d8b512` is the current implementation checkpoint. No merge is authorized and offline checkout remains disabled.
 - All six credential-less kitchen/status RPCs are revoked from authenticated execution. `transition_table_item_v2` and `transition_table_order_v2` lock the authoritative item/order, verify tenant, active branch, branch role and assigned-waiter scope, journal a canonical stable identity, reject payload substitution, and audit committed transitions.
