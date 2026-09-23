@@ -15,10 +15,11 @@ import {
 } from '@/lib/syncQueue';
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
-  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER') {
-    // Retain legacy financial checkout records for operator reconciliation.
-    // Never replay a renderer-held payload through a credential-less financial RPC
-    // or silently convert it into a privileged device-bound checkout request.
+  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER' || item.type === 'APPLY_INVENTORY_MOVEMENT') {
+    // Retain legacy checkout and raw inventory records for operator reconciliation.
+    // The direct stock primitive was revoked from authenticated in the production
+    // migration; never replay it from a renderer-held queue or silently translate
+    // an untrusted payload into an authorized inventory command.
     throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'SEND_TO_KITCHEN') {
@@ -33,11 +34,6 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
   }
   if (item.type === 'SEND_TO_CASHIER') {
     const { data, error } = await supabase.rpc('send_table_order_to_cashier', item.payload);
-    if (error) throw error;
-    return data;
-  }
-  if (item.type === 'APPLY_INVENTORY_MOVEMENT') {
-    const { data, error } = await supabase.rpc('apply_inventory_movement', item.payload);
     if (error) throw error;
     return data;
   }
