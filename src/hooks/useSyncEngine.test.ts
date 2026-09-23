@@ -110,6 +110,18 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0].status).toBe("committed");
   });
 
+  it("replays send-to-cashier through the scoped lifecycle boundary", async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await enqueue({ type:"SEND_TO_CASHIER" });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_lifecycle_v2", {
+      ...expectedKitchenReplay,
+      _action:"send_to_cashier",
+    });
+    expect(mockDbStore[0]).toMatchObject({ status:"committed",serverResult:"operation-id" });
+  });
+
   it("recovers a permitted operation whose first response was lost", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any)

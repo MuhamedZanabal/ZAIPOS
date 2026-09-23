@@ -24,7 +24,7 @@ import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, ty
 import { db } from "@/lib/db";
 import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
 import { mutateTableOrderItem } from "@/lib/tableOrderItems";
-import { createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder } from "@/lib/tableKitchen";
+import { createTableOrderLifecyclePayload, createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder, transitionTableOrderLifecycle } from "@/lib/tableKitchen";
 
 export default function TableOrder() {
   const { id: orderId } = useParams<{ id: string }>();
@@ -257,14 +257,11 @@ export default function TableOrder() {
 
   const sendCashierMutation = useOfflineMutation({
     type: 'SEND_TO_CASHIER',
-    mutationFn: async (payload: { _order_id: string }) => {
-      const { error } = await supabase.rpc("send_table_order_to_cashier", payload);
-      if (error) throw error;
-    }
+    mutationFn: transitionTableOrderLifecycle,
   });
 
   const sendToCashier = async () => {
-    if (!orderId) return;
+    if (!tenantId || !branchId || !orderId) return;
     const activeItems = (items ?? []).filter((i: any) => i.status !== "cancelled");
     if (activeItems.length === 0) return toast.error("Add at least one product");
     const ready = activeItems.some((i: any) => i.status === "ready" || i.status === "dispatched");
@@ -274,7 +271,9 @@ export default function TableOrder() {
     }
 
     try {
-      await sendCashierMutation.mutateAsync({ _order_id: orderId });
+      await sendCashierMutation.mutateAsync(createTableOrderLifecyclePayload({
+        tenantId,branchId,orderId,action:"send_to_cashier",
+      }));
       toast.success("Sent to register · The cashier can charge from their screen");
     } catch (err: any) {
       toast.error(err.message);
@@ -312,15 +311,12 @@ export default function TableOrder() {
   const cancelOrder = async () => {
     if (!orderId || !order) return;
     if (!confirm("Cancel this order? Dispatched items will be reverted.")) return;
-    // Revertir despachos
-    for (const it of (items ?? [])) {
-      if (it.status === "dispatched") {
-        if (!tenantId || !branchId) throw new Error("Table branch scope is unavailable");
-        await transitionTableItem({ tenantId, branchId, itemId:it.id, action:"undispatch" });
-      }
-    }
-    await supabase.from("table_orders").update({ status: "cancelled", closed_at: new Date().toISOString() }).eq("id", orderId);
-    // Manual status update removed: handled by database trigger
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    try {
+      await transitionTableOrderLifecycle(createTableOrderLifecyclePayload({
+        tenantId,branchId,orderId,action:"cancel",
+      }));
+    } catch (error:any) { return toast.error(error.message); }
     toast.success("Order cancelled");
     qc.invalidateQueries({ queryKey: ["table-orders-open"] });
     qc.invalidateQueries({ queryKey: ["tables"] });

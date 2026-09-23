@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } }));
 
-import { createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder } from "./tableKitchen";
+import {
+  createTableOrderLifecyclePayload,
+  createTableOrderTransitionPayload,
+  transitionTableItem,
+  transitionTableOrder,
+  transitionTableOrderLifecycle,
+} from "./tableKitchen";
 
 describe("scoped table kitchen transitions", () => {
   beforeEach(() => { mocks.rpc.mockReset(); sessionStorage.clear(); });
@@ -30,5 +36,18 @@ describe("scoped table kitchen transitions", () => {
     const payload = createTableOrderTransitionPayload({ tenantId:"t",branchId:"b",orderId:"o",action:"send_to_kitchen",operationId:"queue-id" });
     await expect(transitionTableOrder(payload)).resolves.toBe(2);
     expect(mocks.rpc.mock.calls[0][1]).toMatchObject({_operation_id:"queue-id",_tenant_id:"t",_branch_id:"b"});
+  });
+
+  it("persists lifecycle identity before submit and reuses it after response loss", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data:null,error:new Error("Failed to fetch") })
+      .mockResolvedValueOnce({ data:{ id:"o",status:"sent_to_cashier" },error:null });
+    const first = createTableOrderLifecyclePayload({ tenantId:"t",branchId:"b",orderId:"o",action:"send_to_cashier" });
+    await expect(transitionTableOrderLifecycle(first)).rejects.toThrow("Failed to fetch");
+    const replay = createTableOrderLifecyclePayload({ tenantId:"t",branchId:"b",orderId:"o",action:"send_to_cashier" });
+    expect(replay._client_mutation_id).toBe(first._client_mutation_id);
+    await expect(transitionTableOrderLifecycle(replay)).resolves.toMatchObject({ id:"o",status:"sent_to_cashier" });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2,"transition_table_order_lifecycle_v2",{
+      _tenant_id:"t",_branch_id:"b",_order_id:"o",_operation_id:first._client_mutation_id,_action:"send_to_cashier",
+    });
   });
 });

@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type TableItemTransition = "start_preparing" | "mark_ready" | "dispatch" | "undispatch";
 export type TableOrderTransition = "send_to_kitchen" | "mark_ready";
+export type TableOrderLifecycleAction = "send_to_cashier" | "cancel";
 
 const PREFIX = "zaipos:table-kitchen-operation:";
 
@@ -51,5 +52,32 @@ export async function transitionTableOrder(payload: ReturnType<typeof createTabl
   });
   if (error) throw error;
   if (typeof data !== "number") throw new Error("Table-order transition returned an invalid receipt");
+  return data;
+}
+
+export function createTableOrderLifecyclePayload(args: {
+  tenantId:string; branchId:string; orderId:string; action:TableOrderLifecycleAction; operationId?:string;
+}) {
+  const pending = persistedOperationId(
+    [args.tenantId,args.branchId,args.orderId,args.action],
+    args.operationId,
+  );
+  return {
+    _tenant_id:args.tenantId,_branch_id:args.branchId,_order_id:args.orderId,_action:args.action,
+    _client_mutation_id:pending.operationId,
+  };
+}
+
+export async function transitionTableOrderLifecycle(payload: ReturnType<typeof createTableOrderLifecyclePayload>) {
+  const pending=persistedOperationId([
+    payload._tenant_id,payload._branch_id,payload._order_id,payload._action,
+  ],payload._client_mutation_id);
+  const { data,error }=await supabase.rpc("transition_table_order_lifecycle_v2" as any,{
+    _tenant_id:payload._tenant_id,_branch_id:payload._branch_id,_order_id:payload._order_id,
+    _operation_id:pending.operationId,_action:payload._action,
+  });
+  clearForDefinitiveResult(pending.key,error);
+  if(error) throw error;
+  if(!data || typeof data!=="object") throw new Error("Table-order lifecycle returned an invalid receipt");
   return data;
 }

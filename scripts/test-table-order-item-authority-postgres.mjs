@@ -118,4 +118,40 @@ assert.deepEqual(await Promise.all([runDispatch(),runDispatch()]),['dispatched',
 assert.equal(effectSnapshot(),'9.000|3|5','concurrent identical dispatches must converge to one inventory effect');
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action LIKE 'table_item_transition.%'`),'5');
 
-console.log('PASS: table-item writes and kitchen transitions are atomic, branch/role scoped and exactly-once; dispatch inventory effects converge and denied calls have zero effect.');
+for(const privilege of ['UPDATE','DELETE'])
+  assert.equal(sql(`SELECT has_table_privilege('authenticated','public.table_orders','${privilege}')`),'f',`direct table-order ${privilege} must be revoked`);
+assert.equal(sql(`SELECT has_function_privilege('authenticated','public.send_table_order_to_cashier(uuid)','EXECUTE')`),'f');
+assert.throws(()=>authAs(I.manager,`UPDATE public.table_orders SET status='cancelled' WHERE id='${I.order}'`,'direct order status'),/permission denied/i);
+
+const lifecycle=({actor=I.waiter,branch=I.branch,op,action='send_to_cashier'}={})=>authAs(actor,
+`SELECT (public.transition_table_order_lifecycle_v2('${I.tenant}','${branch}','${I.order}','${op}','${action}')).status::text`,op);
+const lifecycleSnapshot=()=>sql(`SELECT
+(SELECT status::text FROM public.table_orders WHERE id='${I.order}')||'|'||
+(SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${I.center}' AND product_id='${I.product}')||'|'||
+(SELECT count(*) FROM public.inventory_movements WHERE reference_id='${I.order}')||'|'||
+(SELECT count(*) FROM public.operation_log WHERE tenant_id='${I.tenant}' AND operation_type='transition_table_order_lifecycle_v2')`);
+
+const beforeLifecycle=lifecycleSnapshot();
+assert.throws(()=>lifecycle({actor:I.otherWaiter,op:'lifecycle-unassigned-001'}),/forbidden|permission/i);
+assert.throws(()=>lifecycle({actor:I.outsider,branch:I.otherBranch,op:'lifecycle-wrong-branch-001'}),/scope|forbidden|permission/i);
+assert.throws(()=>lifecycle({actor:I.kitchen,op:'lifecycle-kitchen-001'}),/forbidden|permission/i);
+assert.equal(lifecycleSnapshot(),beforeLifecycle,'denied lifecycle requests must have zero order, inventory, or journal effect');
+
+const concurrentCashierSql=`SELECT (public.transition_table_order_lifecycle_v2('${I.tenant}','${I.branch}','${I.order}','lifecycle-cashier-concurrent','send_to_cashier')).status::text`;
+const runCashier=()=>execAsync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${I.waiter}';${concurrentCashierSql};COMMIT;`],{env:conn.env,encoding:'utf8'}).then(({stdout})=>stdout.trim().split(/\r?\n/).filter(Boolean).at(-1));
+assert.deepEqual(await Promise.all([runCashier(),runCashier()]),['sent_to_cashier','sent_to_cashier']);
+assert.equal(lifecycleSnapshot(),'sent_to_cashier|9.000|3|1','concurrent cashier transitions must converge to one lifecycle effect');
+assert.equal(lifecycle({op:'lifecycle-cashier-concurrent'}),'sent_to_cashier','lost-response lifecycle replay must return committed state');
+assert.throws(()=>lifecycle({op:'lifecycle-cashier-concurrent',action:'cancel'}),/different request|operation ID/i);
+assert.equal(lifecycleSnapshot(),'sent_to_cashier|9.000|3|1');
+
+const concurrentCancelSql=`SELECT (public.transition_table_order_lifecycle_v2('${I.tenant}','${I.branch}','${I.order}','lifecycle-cancel-001','cancel')).status::text`;
+const runCancel=()=>execAsync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${I.waiter}';${concurrentCancelSql};COMMIT;`],{env:conn.env,encoding:'utf8'}).then(({stdout})=>stdout.trim().split(/\r?\n/).filter(Boolean).at(-1));
+assert.deepEqual(await Promise.all([runCancel(),runCancel()]),['cancelled','cancelled']);
+assert.equal(lifecycleSnapshot(),'cancelled|10.000|4|2','cancellation must reverse dispatch inventory exactly once');
+assert.equal(sql(`SELECT count(*) FROM public.table_order_items WHERE order_id='${I.order}' AND status<>'cancelled'`),'0');
+assert.equal(lifecycle({op:'lifecycle-cancel-001',action:'cancel'}),'cancelled');
+assert.equal(lifecycleSnapshot(),'cancelled|10.000|4|2','cancellation replay must not repeat inventory effects');
+assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action LIKE 'table_order_lifecycle.%'`),'2');
+
+console.log('PASS: table-item, kitchen and order-lifecycle writes are atomic, branch/role scoped and exactly-once; inventory effects converge and denied calls have zero effect.');
