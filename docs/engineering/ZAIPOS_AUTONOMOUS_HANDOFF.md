@@ -2,7 +2,23 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #83 (2026-09-23 10:27:00 +03)
+## Current checkpoint — PR #83 (2026-09-23 14:19:30 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `c82f8fcf45302954e84a8f8c227771c977d8b512` is the current implementation checkpoint. No merge is authorized and offline checkout remains disabled.
+- All six credential-less kitchen/status RPCs are revoked from authenticated execution. `transition_table_item_v2` and `transition_table_order_v2` lock the authoritative item/order, verify tenant, active branch, branch role and assigned-waiter scope, journal a canonical stable identity, reject payload substitution, and audit committed transitions.
+- Dispatch and undispatch no longer expose general inventory mutation authority to waiters. A private server-only helper applies exact three-decimal sale/consumption/return effects under the scoped table command; assigned waiters can serve only their own order, kitchen users can prepare/ready but cannot dispatch, and general authenticated callers cannot execute the helper.
+- Renderer and KDS callers use the scoped commands. Item identity is persisted before submission and retained across indeterminate responses. Bulk kitchen commands carry their identity through the offline queue; legacy queued records reuse their stored tenant/branch/operation scope. Replays and concurrent identical dispatches converge without a second stock movement.
+- Exact-head evidence: all 21 workflows succeeded. CI #727 / run `35853169253` passed quality job `107155385167` and unsigned Windows packaging job `107156350339`. Table Checkout Security run `35853169400`, job `107155385924`, passed production migration-chain application plus real PostgreSQL legacy-denial, wrong-branch, unassigned-waiter, kitchen-dispatch denial, zero-effect, lost-response replay, payload-conflict, exact inventory reversal and two-session dispatch contention evidence.
+- Local verification: 65 Vitest files / 345 tests, TypeScript, production build (2,772 modules), 123 migration validations, table-item/kitchen client cutover, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. Local `psql` is unavailable; exact-head CI supplied disposable PostgreSQL runtime evidence. No force push, merge, deployment, release or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Audit and harden `send_table_order_to_cashier` plus direct table-order cancellation/status writes with atomic branch/role authority, stable identity, replay/conflict tests and zero-effect denial evidence.
+2. Continue the financial-operation census for inventory batch, reconciliation, transfer, purchase receiving and production completion; do not broaden the private stock primitive.
+3. Complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled, then review the stacked security chain through normal review.
+4. Preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #83 (2026-09-23 10:27:00 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 branch `fix/atomic-table-order-items-20260923` is stacked directly on clean PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `02361a3f80bed4b4e1f5a60522b4b552096af463` is mergeable and clean with no submitted reviews or inline threads. No merge is authorized.
 - Restaurant item add/quantity/delete now uses one SECURITY DEFINER command. Authenticated direct INSERT/UPDATE/DELETE and direct recalculation are revoked; the broad `toi_member_all` policy is removed. The command locks the open order, verifies active tenant/branch plus assigned waiter or elevated branch role, derives authoritative table-channel pricing, computes BHD totals through integer fils, journals the canonical request and audits the result atomically.
