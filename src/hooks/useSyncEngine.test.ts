@@ -48,16 +48,15 @@ vi.mock("@/lib/db", () => ({
 
 const wrapper = ({ children }: { children: React.ReactNode }) => children as any;
 
-// A permitted, non-checkout command retains the generic offline exactly-once contract.
-// Legacy checkout rows are tested separately below: they cannot bypass device authority.
+// Kitchen status replay is a permitted, non-checkout queue operation. The retired
+// raw stock primitive is tested separately and must never reach Supabase.
 async function enqueue(overrides: Record<string, unknown> = {}) {
   return db.sync_queue.add({
-    type: "APPLY_INVENTORY_MOVEMENT",
+    type: "SEND_TO_KITCHEN",
     payload: {
       _tenant_id: "t1",
       _branch_id: "b1",
-      _items: [{ product_id: "p1", quantity: 1, discount_fils: 0, modifiers: [] }],
-      _payments: [{ method: "cash", amount_fils: 1128, reference: null }],
+      _order_id: "order-1",
       _client_mutation_id: "0f4cb42e-3e9c-4d4a-b98a-c2ec04b52d7d",
     },
     status: "queued",
@@ -86,13 +85,13 @@ describe("useSyncEngine", () => {
     expect(typeof result.current.retryItem).toBe("function");
   });
 
-  it("replays a permitted operation unchanged and retains committed evidence", async () => {
+  it("replays a permitted kitchen command unchanged and retains committed evidence", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     const id = await enqueue();
     const originalPayload = structuredClone(mockDbStore[0].payload);
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await act(async () => result.current.processSyncQueue());
-    expect(supabase.rpc).toHaveBeenCalledWith("apply_inventory_movement", originalPayload);
+    expect(supabase.rpc).toHaveBeenCalledWith("send_table_order_to_kitchen", originalPayload);
     expect(mockDbStore).toHaveLength(1);
     expect(mockDbStore[0]).toMatchObject({ id, status: "committed", retryCount: 0, serverResult: "operation-id" });
     expect(mockDbStore[0].committedAt).toEqual(expect.any(String));
@@ -105,11 +104,11 @@ describe("useSyncEngine", () => {
     const payload = structuredClone(mockDbStore[0].payload);
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await act(async () => result.current.processSyncQueue());
-    expect(supabase.rpc).toHaveBeenCalledWith("apply_inventory_movement", payload);
+    expect(supabase.rpc).toHaveBeenCalledWith("send_table_order_to_kitchen", payload);
     expect(mockDbStore[0].status).toBe("committed");
   });
 
-  it("recovers a permitted committed operation whose first response was lost", async () => {
+  it("recovers a permitted operation whose first response was lost", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any)
       .mockResolvedValueOnce({ data: null, error: new TypeError("Failed to fetch") })
@@ -121,8 +120,8 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "retrying", failureCode: "network", retryCount: 1 });
     await act(async () => result.current.processSyncQueue());
     expect(supabase.rpc).toHaveBeenCalledTimes(2);
-    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "apply_inventory_movement", payload);
-    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "apply_inventory_movement", payload);
+    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "send_table_order_to_kitchen", payload);
+    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "send_table_order_to_kitchen", payload);
     expect(mockDbStore[0]).toMatchObject({ status: "committed", serverResult: "original-operation-id", retryCount: 1 });
   });
 
@@ -196,7 +195,7 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "queued", retryCount: 0 });
   });
 
-  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE", "CHECKOUT_TABLE_ORDER"])(
+  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT"])(
     "quarantines already persisted %s without RPC, deleting or altering payload", async (type) => {
       const { supabase } = await import("@/integrations/supabase/client");
       const payload = { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] };
