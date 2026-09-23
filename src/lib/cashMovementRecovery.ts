@@ -2,6 +2,8 @@ import { bhdToFils } from './bahrain';
 import { supabase } from '@/integrations/supabase/client';
 
 export type CashMovementRequest = {
+  _tenant_id: string;
+  _branch_id: string;
   _session_id: string;
   _type: 'in' | 'out';
   _amount: string;
@@ -18,6 +20,7 @@ export type CashMovementDraft = {
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const key = (actorId: string) => `zaipos:cash-movement:v1:${actorId}`;
 export function validateCashMovement(request: CashMovementRequest) {
+  if (!uuid.test(request._tenant_id) || !uuid.test(request._branch_id)) throw new Error('An identified tenant and branch are required');
   if (!uuid.test(request._session_id)) throw new Error('An identified cash session is required');
   if (!['in', 'out'].includes(request._type)) throw new Error('Invalid cash movement type');
   if (typeof request._amount !== 'string' || bhdToFils(request._amount) <= 0) throw new Error('Enter a positive exact cash amount');
@@ -57,8 +60,14 @@ export async function executeCashMovement(actorId: string, request: CashMovement
     // The write and read-back must succeed before crossing the network boundary.
     localStorage.setItem(key(actorId), JSON.stringify(draft));
     if (localStorage.getItem(key(actorId)) !== JSON.stringify(draft)) throw new Error('Cash recovery data could not be saved');
-    const {data, error} = await supabase.rpc((cancel ? 'cancel_cash_movement_v2' : 'record_cash_movement_v2') as never, request as never);
-    if (error) {
+    if (!window.electron?.cashMovement) throw new Error('Cash movements require the supported provisioned desktop application');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) throw new Error('An active authenticated session is required');
+    let data: string | null;
+    try {
+      data = await window.electron.cashMovement(request, { accessToken, tenantId: request._tenant_id, branchId: request._branch_id }, cancel);
+    } catch (error: any) {
       // The server's immutable reference binding proves this different request
       // could not have committed. Preserve that outcome before allowing a new voucher.
       if (error.code === 'ZC001') {

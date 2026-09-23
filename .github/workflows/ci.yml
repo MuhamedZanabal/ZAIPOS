@@ -86,6 +86,9 @@ jobs:
       - name: Test real checkout concurrency
         run: node scripts/test-checkout-concurrency.mjs
 
+      - name: Test offline checkout reconciliation adversarially
+        run: node scripts/test-offline-checkout-reconciliation-postgres.mjs
+
       - name: Test transaction authorization and audit
         run: node scripts/test-transaction-auth-audit.mjs
 
@@ -108,7 +111,22 @@ jobs:
         run: node scripts/test-cash-session-lifecycle-postgres.mjs
 
       - name: Test device registry authorization
-        run: npm run test:migrations:devices
+        shell: bash
+        run: |
+          set +e
+          npm run test:migrations:devices > device-registry-test.log 2>&1
+          status=$?
+          cat device-registry-test.log
+          exit "$status"
+
+      - name: Preserve device registry failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-registry-failure-${{ github.sha }}
+          path: device-registry-test.log
+          if-no-files-found: error
+          retention-days: 2
 
       - name: Test historical receipt reprint
         run: npm run test:migrations:receipt-reprint

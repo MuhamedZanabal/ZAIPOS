@@ -7,7 +7,7 @@ import { useTenantStore } from "@/stores/tenant";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn().mockResolvedValue({ data: "sale-id", error: null }),
+    rpc: vi.fn().mockResolvedValue({ data: "operation-id", error: null }),
     from: vi.fn(() => ({
       insert: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
@@ -48,16 +48,20 @@ vi.mock("@/lib/db", () => ({
 
 const wrapper = ({ children }: { children: React.ReactNode }) => children as any;
 
+const expectedKitchenReplay = {
+  _tenant_id: "t1", _branch_id: "b1", _order_id: "order-1",
+  _operation_id: "0f4cb42e-3e9c-4d4a-b98a-c2ec04b52d7d", _action: "send_to_kitchen",
+};
+
 async function enqueue(overrides: Record<string, unknown> = {}) {
   return db.sync_queue.add({
-    type: "CHECKOUT_SALE_V2",
+    type: "SEND_TO_KITCHEN",
     payload: {
-      _tenant_id: "t1",
-      _branch_id: "b1",
-      _items: [{ product_id: "p1", quantity: 1, discount_fils: 0, modifiers: [] }],
-      _payments: [{ method: "cash", amount_fils: 1128, reference: null }],
+      _order_id: "order-1",
       _client_mutation_id: "0f4cb42e-3e9c-4d4a-b98a-c2ec04b52d7d",
     },
+    tenantId: "t1",
+    branchId: "b1",
     status: "queued",
     createdAt: "2026-09-05T10:00:00.000Z",
     retryCount: 0,
@@ -73,7 +77,7 @@ describe("useSyncEngine", () => {
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0, syncAttentionCount: 0 });
     useTenantStore.setState({ tenantId: "t1", branchId: "b1" });
     const { supabase } = await import("@/integrations/supabase/client");
-    (supabase.rpc as any).mockReset().mockResolvedValue({ data: "sale-id", error: null });
+    (supabase.rpc as any).mockReset().mockResolvedValue({ data: "operation-id", error: null });
   });
 
   it("exposes queue inspection, discard, and explicit retry controls", () => {
@@ -84,73 +88,61 @@ describe("useSyncEngine", () => {
     expect(typeof result.current.retryItem).toBe("function");
   });
 
-  it("replays checkout v2 unchanged and retains committed evidence", async () => {
+  it("replays a permitted kitchen command with only SQL arguments, preserving committed evidence", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     const id = await enqueue();
     const originalPayload = structuredClone(mockDbStore[0].payload);
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
-
-    expect(supabase.rpc).toHaveBeenCalledWith("checkout_sale_v2", originalPayload);
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_v2", expectedKitchenReplay);
     expect(mockDbStore).toHaveLength(1);
-    expect(mockDbStore[0]).toMatchObject({
-      id,
-      status: "committed",
-      retryCount: 0,
-      serverResult: "sale-id",
-    });
+    expect(mockDbStore[0]).toMatchObject({ id, status: "committed", retryCount: 0, serverResult: "operation-id", payload: originalPayload });
     expect(mockDbStore[0].committedAt).toEqual(expect.any(String));
     expect(useNetworkStore.getState().pendingSyncCount).toBe(0);
   });
 
-  it("replays a crash-left sending checkout with the same operation ID", async () => {
+  it("replays a crash-left sending permitted command with the same order identity", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     await enqueue({ status: "sending" });
-    const payload = structuredClone(mockDbStore[0].payload);
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
-
-    expect(supabase.rpc).toHaveBeenCalledWith("checkout_sale_v2", payload);
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_v2", expectedKitchenReplay);
     expect(mockDbStore[0].status).toBe("committed");
   });
 
-  it("recovers when checkout committed but its first response was lost", async () => {
+  it("replays send-to-cashier through the scoped lifecycle boundary", async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await enqueue({ type:"SEND_TO_CASHIER" });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    expect(supabase.rpc).toHaveBeenCalledWith("transition_table_order_lifecycle_v2", {
+      ...expectedKitchenReplay,
+      _action:"send_to_cashier",
+    });
+    expect(mockDbStore[0]).toMatchObject({ status:"committed",serverResult:"operation-id" });
+  });
+
+  it("recovers a permitted operation whose first response was lost", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any)
       .mockResolvedValueOnce({ data: null, error: new TypeError("Failed to fetch") })
-      .mockResolvedValueOnce({ data: "original-sale-id", error: null });
+      .mockResolvedValueOnce({ data: "original-operation-id", error: null });
     await enqueue();
-    const payload = structuredClone(mockDbStore[0].payload);
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
-    expect(mockDbStore[0]).toMatchObject({
-      status: "retrying",
-      failureCode: "network",
-      retryCount: 1,
-    });
-
+    expect(mockDbStore[0]).toMatchObject({ status: "retrying", failureCode: "network", retryCount: 1 });
     await act(async () => result.current.processSyncQueue());
-
     expect(supabase.rpc).toHaveBeenCalledTimes(2);
-    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "checkout_sale_v2", payload);
-    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "checkout_sale_v2", payload);
-    expect(mockDbStore[0]).toMatchObject({
-      status: "committed",
-      serverResult: "original-sale-id",
-      retryCount: 1,
-    });
+    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "transition_table_order_v2", expectedKitchenReplay);
+    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "transition_table_order_v2", expectedKitchenReplay);
+    expect(mockDbStore[0]).toMatchObject({ status: "committed", serverResult: "original-operation-id", retryCount: 1 });
   });
 
   it("does not replay committed evidence a second time", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     await enqueue({ status: "committed", committedAt: "2026-09-05T10:01:00.000Z" });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
-
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
 
@@ -158,37 +150,36 @@ describe("useSyncEngine", () => {
     const { supabase } = await import("@/integrations/supabase/client");
     await enqueue();
     await enqueue({
-      payload: {
-        _tenant_id: "t2",
-        _branch_id: "b2",
-        _client_mutation_id: "8c946033-0ac9-4ee0-96c9-94e19350ad1f",
-      },
+      tenantId: "t2", branchId: "b2",
+      payload: { _order_id: "order-2", _client_mutation_id: "8c946033-0ac9-4ee0-96c9-94e19350ad1f" },
       clientMutationId: "8c946033-0ac9-4ee0-96c9-94e19350ad1f",
     });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     const visibleItems = await result.current.getQueueItems();
     await act(async () => result.current.processSyncQueue());
-
     expect(visibleItems).toHaveLength(1);
-    expect(visibleItems[0].payload._tenant_id).toBe("t1");
+    expect(visibleItems[0].tenantId).toBe("t1");
     expect(supabase.rpc).toHaveBeenCalledTimes(1);
-    expect(mockDbStore.find((item) => item.payload._tenant_id === "t2")?.status).toBe("queued");
+    expect(mockDbStore.find((item) => item.tenantId === "t2")?.status).toBe("queued");
   });
 
-  it("serializes concurrent sync triggers from the app and queue panel", async () => {
+  it("preserves a queued operation for another branch without replaying it", async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await enqueue({ branchId: "b2" });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(mockDbStore[0].status).toBe("queued");
+  });
+
+  it("serializes concurrent permitted sync triggers", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
     await enqueue();
     const appEngine = renderHook(() => useSyncEngine(), { wrapper });
     const panelEngine = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => {
-      await Promise.all([
-        appEngine.result.current.processSyncQueue(),
-        panelEngine.result.current.processSyncQueue(),
-      ]);
+      await Promise.all([appEngine.result.current.processSyncQueue(), panelEngine.result.current.processSyncQueue()]);
     });
-
     expect(supabase.rpc).toHaveBeenCalledTimes(1);
     expect(mockDbStore[0].status).toBe("committed");
   });
@@ -197,69 +188,53 @@ describe("useSyncEngine", () => {
     ["The selected cash session is not open for this branch", "cash_session_closed"],
     ["Product p1 is unavailable for this branch", "product_unavailable"],
     ["Payments (1128 fils) must exactly equal sale total (1250 fils)", "payment_mismatch"],
-  ])("moves a stale checkout to review without automatic retries: %s", async (message, failureCode) => {
+  ])("moves rejected permitted commands to review without automatic retries: %s", async (message, failureCode) => {
     const { supabase } = await import("@/integrations/supabase/client");
     (supabase.rpc as any).mockResolvedValueOnce({ data: null, error: { message } });
     await enqueue();
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
     await act(async () => result.current.processSyncQueue());
-
     expect(supabase.rpc).toHaveBeenCalledTimes(1);
-    expect(mockDbStore[0]).toMatchObject({
-      status: "requires_review",
-      failureCode,
-      retryCount: 1,
-    });
+    expect(mockDbStore[0]).toMatchObject({ status: "requires_review", failureCode, retryCount: 1 });
   });
 
   it("marks an unknown operation for review instead of deleting it", async () => {
-    await enqueue({
-      type: "UNKNOWN_OPERATION",
-      payload: { _tenant_id: "t1", _branch_id: "b1" },
-    });
+    await enqueue({ type: "UNKNOWN_OPERATION" });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
-
     expect(mockDbStore).toHaveLength(1);
-    expect(mockDbStore[0]).toMatchObject({
-      status: "requires_review",
-      failureCode: "unknown_operation",
-      retryCount: 1,
-    });
+    expect(mockDbStore[0]).toMatchObject({ status: "requires_review", failureCode: "unknown_operation", retryCount: 1 });
   });
 
   it("marks exhausted network retries failed and permits an explicit retry", async () => {
     const { supabase } = await import("@/integrations/supabase/client");
-    (supabase.rpc as any).mockResolvedValueOnce({
-      data: null,
-      error: new TypeError("Failed to fetch"),
-    });
+    (supabase.rpc as any).mockResolvedValueOnce({ data: null, error: new TypeError("Failed to fetch") });
     const id = await enqueue({ status: "retrying", retryCount: 4 });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
     await act(async () => result.current.processSyncQueue());
-    expect(mockDbStore[0]).toMatchObject({
-      status: "failed",
-      failureCode: "retry_exhausted",
-      retryCount: 5,
-    });
-
+    expect(mockDbStore[0]).toMatchObject({ status: "failed", failureCode: "retry_exhausted", retryCount: 5 });
     await act(async () => result.current.retryItem(id));
     expect(mockDbStore[0]).toMatchObject({ status: "queued", retryCount: 0 });
   });
 
-  it("preserves the legacy checkout route while retaining its result", async () => {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const payload = { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] };
-    await enqueue({ type: "CHECKOUT_SALE", payload, clientMutationId: "legacy-id" });
-    const { result } = renderHook(() => useSyncEngine(), { wrapper });
-
-    await act(async () => result.current.processSyncQueue());
-
-    expect(supabase.rpc).toHaveBeenCalledWith("checkout_sale", payload);
-    expect(mockDbStore[0]).toMatchObject({ status: "committed", serverResult: "sale-id" });
-  });
+  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT", "ADD_TABLE_ORDER_ITEMS"])(
+    "quarantines already persisted %s without RPC, deletion or payload alteration", async (type) => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const payload = { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] };
+      await enqueue({ type, payload, clientMutationId: "legacy-id" });
+      const originalPayload = structuredClone(mockDbStore[0].payload);
+      const { result } = renderHook(() => useSyncEngine(), { wrapper });
+      await act(async () => result.current.processSyncQueue());
+      await act(async () => result.current.processSyncQueue());
+      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(mockDbStore).toHaveLength(1);
+      expect(mockDbStore[0]).toMatchObject({
+        status: "requires_review", failureCode: "authorization", retryCount: 1,
+        clientMutationId: "legacy-id", payload: originalPayload,
+      });
+      expect(mockDbStore[0].committedAt).toBeUndefined();
+      expect(useNetworkStore.getState().syncAttentionCount).toBe(1);
+    },
+  );
 });

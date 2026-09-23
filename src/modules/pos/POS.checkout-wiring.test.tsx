@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   openDrawer: vi.fn().mockResolvedValue({ ok: true }),
   printTicket: vi.fn().mockResolvedValue({ ok: true }),
   rpc: vi.fn(),
+  checkoutSale: vi.fn(),
   priceOverride: undefined as undefined | Record<string, unknown>,
 }));
 
@@ -116,7 +117,7 @@ vi.mock("@/integrations/supabase/client", () => {
   };
   return {
     supabase: {
-      auth: { getUser: vi.fn() },
+      auth: { getUser: vi.fn(), getSession: vi.fn(async () => ({ data: { session: { access_token: "test-token" } } })) },
       from: vi.fn(() => saleQuery),
       rpc: state.rpc,
     },
@@ -154,6 +155,8 @@ describe("POS native split checkout wiring", () => {
       if (name !== "checkout_sale_v2") throw new Error(`Unexpected RPC: ${name}`);
       return { data: "60000000-0000-0000-0000-000000000001", error: null };
     });
+    state.checkoutSale.mockResolvedValue("60000000-0000-0000-0000-000000000001");
+    Object.defineProperty(window, "electron", { configurable: true, value: { checkoutSale: state.checkoutSale } });
   });
 
   it("commits all payment allocations through checkout_sale_v2 and prints the split receipt", async () => {
@@ -167,9 +170,9 @@ describe("POS native split checkout wiring", () => {
 
     await waitFor(() => expect(state.printTicket).toHaveBeenCalledTimes(1));
 
-    expect(state.rpc).toHaveBeenCalledTimes(1);
-    const [rpcName, payload] = state.rpc.mock.calls[0];
-    expect(rpcName).toBe("checkout_sale_v2");
+    expect(state.checkoutSale).toHaveBeenCalledTimes(1);
+    const [payload, authorization] = state.checkoutSale.mock.calls[0];
+    expect(authorization).toEqual(expect.objectContaining({ accessToken: "test-token" }));
     expect(payload).toMatchObject({
       _tenant_id: "10000000-0000-0000-0000-000000000001",
       _branch_id: "20000000-0000-0000-0000-000000000001",
@@ -203,6 +206,28 @@ describe("POS native split checkout wiring", () => {
     expect(state.openDrawer).not.toHaveBeenCalled();
   });
 
+  it("reuses the same checkout operation ID after an indeterminate network response", async () => {
+    state.allocations = [
+      { method: "cash", amountFils: 8_500, tenderedFils: 8_500, changeFils: 0, reference: null },
+    ];
+    state.checkoutSale
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce("60000000-0000-0000-0000-000000000001");
+
+    render(<POS />);
+    const complete = screen.getByRole("button", { name: "Complete mixed sale" });
+    fireEvent.click(complete);
+    await waitFor(() => expect(state.checkoutSale).toHaveBeenCalledTimes(1));
+    fireEvent.click(complete);
+    await waitFor(() => expect(state.checkoutSale).toHaveBeenCalledTimes(2));
+
+    const firstPayload = state.checkoutSale.mock.calls[0][0];
+    const retryPayload = state.checkoutSale.mock.calls[1][0];
+    expect(firstPayload._client_mutation_id).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(retryPayload).toEqual(firstPayload);
+    expect(state.clear).toHaveBeenCalledTimes(1);
+  });
+
   it("carries manager approval identity through checkout and prints the approved price", async () => {
     state.priceOverride = {
       requestId: "90000000-0000-0000-0000-000000000001",
@@ -219,8 +244,8 @@ describe("POS native split checkout wiring", () => {
     fireEvent.click(screen.getByRole("button", { name: "Complete mixed sale" }));
 
     await waitFor(() => expect(state.printTicket).toHaveBeenCalledTimes(1));
-    const checkoutCall = state.rpc.mock.calls.find(([name]) => name === "checkout_sale_v2");
-    expect(checkoutCall?.[1]._items[0]).toEqual(expect.objectContaining({
+    const checkoutCall = state.checkoutSale.mock.calls[0];
+    expect(checkoutCall?.[0]._items[0]).toEqual(expect.objectContaining({
       price_override_request_id: "90000000-0000-0000-0000-000000000001",
     }));
     expect(state.printTicket).toHaveBeenCalledWith(expect.objectContaining({

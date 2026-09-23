@@ -9,6 +9,7 @@ const required = [
   "supplier_ledger_entries",
   "supplier_financial_operations",
   "record_supplier_payment_v1",
+  "record_supplier_payment_v2_device",
   "get_supplier_statement_v1",
   "purchase_receipt",
   "amount_fils",

@@ -210,6 +210,13 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
       }
 
       const attempt = submissionAttempt.current;
+      if (!window.electron?.returnSale) {
+        throw new Error("Sale returns require the supported provisioned desktop application.");
+      }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("An authenticated operator session is required to return a sale.");
       let evidenceUrl: string | null = null;
       if (evidenceFile && attempt.evidencePath) {
         const { error: uploadError } = await supabase.storage
@@ -219,7 +226,9 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
         evidenceUrl = attempt.evidencePath;
       }
 
-      const { data, error } = await supabase.rpc("process_sale_return_v2" as any, {
+      return window.electron.returnSale({
+        _tenant_id: tenantId,
+        _branch_id: branchId,
         _sale_id: sale.id,
         _items: selectedItems.map(({ item, quantity }) => ({
           sale_item_id: item.id,
@@ -230,9 +239,11 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
         _cash_session_id: isInPersonSale ? openSession?.id ?? null : null,
         _reason: reason.trim() || null,
         _evidence_url: evidenceUrl,
+      }, {
+        accessToken,
+        tenantId,
+        branchId,
       });
-      if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       toast.success("Return recorded with server-authoritative refund accounting.");

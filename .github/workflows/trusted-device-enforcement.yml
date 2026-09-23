@@ -1,0 +1,97 @@
+name: Trusted Device Enforcement Contract
+on:
+  pull_request:
+    paths:
+      - 'electron/device-credential-vault.ts'
+      - 'electron/preload.ts'
+      - 'electron/types.ts'
+      - 'src/types/electron.d.ts'
+      - 'scripts/test-device-credential-vault-contract.mjs'
+      - 'scripts/test-device-activation-edge-contract.mjs'
+      - 'scripts/test-device-rotation-edge-contract.mjs'
+      - 'scripts/test-device-offline-lease-contract.mjs'
+      - 'scripts/test-trusted-device-enforcement-postgres.mjs'
+      - 'scripts/test-device-enrollment-approval-postgres.mjs'
+      - 'scripts/test-device-credential-activation-postgres.mjs'
+      - 'scripts/test-device-credential-rotation-postgres.mjs'
+      - 'scripts/test-delivery-financial-authority-postgres.mjs'
+      - 'scripts/test-device-bound-table-checkout-postgres.mjs'
+      - 'scripts/test-device-bound-cash-session-postgres.mjs'
+      - 'scripts/test-device-bound-cash-session.mjs'
+      - '.github/workflows/trusted-device-enforcement.yml'
+      - 'supabase/functions/activate-device/**'
+      - 'supabase/functions/rotate-device-credential/**'
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+jobs:
+  trusted-device:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify native credential custody boundary
+        run: node scripts/test-device-credential-vault-contract.mjs
+      - name: Verify activation Edge authority boundary
+        run: node scripts/test-device-activation-edge-contract.mjs
+      - name: Verify rotation Edge authority boundary
+        run: node scripts/test-device-rotation-edge-contract.mjs
+      - name: Verify bounded offline lease authority boundary
+        run: node scripts/test-device-offline-lease-contract.mjs
+      - run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply production migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Verify manager-only enrollment approval
+        run: node scripts/test-device-enrollment-approval-postgres.mjs
+      - name: Verify single-use credential activation
+        run: node scripts/test-device-credential-activation-postgres.mjs
+      - name: Verify manager-approved credential rotation
+        run: node scripts/test-device-credential-rotation-postgres.mjs
+      - name: Verify enrolled and revoked device authority
+        id: enforcement
+        shell: bash
+        run: |
+          set +e
+          node scripts/test-trusted-device-enforcement-postgres.mjs > trusted-device-enforcement.log 2>&1
+          status=$?
+          cat trusted-device-enforcement.log
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      - name: Verify device-bound return and void authority
+        run: node scripts/test-device-bound-return-void-postgres.mjs
+      - name: Verify device-bound customer credit payment authority
+        run: node scripts/test-device-bound-customer-credit-postgres.mjs
+      - name: Verify device-bound supplier payment authority
+        run: node scripts/test-device-bound-supplier-payment-postgres.mjs
+      - name: Verify device-bound delivery collection authority
+        run: node scripts/test-delivery-financial-authority-postgres.mjs
+      - name: Verify device-bound table checkout authority
+        run: node scripts/test-device-bound-table-checkout-postgres.mjs
+      - name: Verify device-bound cash-session authority
+        run: node scripts/test-device-bound-cash-session-postgres.mjs
+      - name: Preserve trusted-device enforcement diagnostics
+        if: failure() && steps.enforcement.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trusted-device-enforcement-failure-${{ github.sha }}
+          path: trusted-device-enforcement.log
+          if-no-files-found: error
+          retention-days: 2

@@ -19,6 +19,7 @@ const I = {
   registerA: "47000000-0000-0000-0000-000000000121",
   sessionA: "47000000-0000-0000-0000-000000000122",
   centerA: "47000000-0000-0000-0000-000000000123",
+  deviceUid: "financial-history-terminal-121",
 };
 
 function psql(args, capture = true) {
@@ -150,9 +151,19 @@ assertEqual("receipt cost history captured once", scalar(`SELECT count(*)::text 
 assertEqual("receipt cost source", scalar(`SELECT source FROM public.product_prices WHERE purchase_order_item_id='${I.orderItemA}'::uuid;`), "purchase_receipt");
 assertEqual("receipt updates current product cost", scalar(`SELECT cost_fils::text FROM public.products WHERE id='${I.productA}'::uuid;`), "650");
 
+// Historical COGS checkout must use the same enrolled-device authority as production POS.
+const deviceApprovalId = asUser(
+  I.managerA,
+  `SELECT public.approve_device_enrollment('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.deviceUid}')::text;`,
+);
+const deviceCredential = scalar(
+  `SELECT credential FROM public.activate_device_enrollment('${deviceApprovalId}'::uuid,'financial-history-contract','ci');`,
+);
+if (!/^[0-9a-f]{64}$/i.test(deviceCredential)) throw new Error("device activation did not return a 256-bit credential");
+
 const items = JSON.stringify([{ product_id: I.productA, quantity: "1.000", discount_fils: 0 }]).replaceAll("'", "''");
 const payments = JSON.stringify([{ method: "cash", amount_fils: 1500, reference: null }]).replaceAll("'", "''");
-const checkout = `SELECT public.checkout_sale_v2('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${items}'::jsonb,'${payments}'::jsonb,0::bigint,NULL,NULL::uuid,'pos'::public.sales_channel,0::bigint,NULL,'financial-checkout-operation-121','${I.sessionA}'::uuid)::text;`;
+const checkout = `SELECT public.checkout_sale_v2_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${items}'::jsonb,'${payments}'::jsonb,0::bigint,NULL,NULL::uuid,'pos'::public.sales_channel,0::bigint,NULL,'financial-checkout-operation-121','${I.sessionA}'::uuid,'${I.deviceUid}','${deviceCredential}')::text;`;
 const saleId = asUser(I.cashierA, checkout);
 assertEqual("sale snapshots received unit cost", scalar(`SELECT unit_cost_fils::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "650");
 assertEqual("sale snapshots historical COGS", scalar(`SELECT line_cost_fils::text FROM public.sale_items WHERE sale_id='${saleId}'::uuid;`), "650");

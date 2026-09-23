@@ -52,6 +52,7 @@ for (const table of ["supplier_subledger_cutovers","supplier_ledger_entries","su
 for (const signature of [
   "public.set_supplier_opening_balance_v1(uuid,uuid,uuid,bigint,text,text)",
   "public.record_supplier_payment_v1(uuid,uuid,uuid,bigint,text,text,text,text)",
+  "public.record_supplier_payment_v2_device(uuid,uuid,uuid,bigint,text,text,text,text,text,text)",
   "public.get_supplier_statement_v1(uuid,uuid,uuid)",
 ]) {
   assertEqual(`required function ${signature}`, scalar(`SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
@@ -99,6 +100,10 @@ sql(`
     ('${I.supplierA}','${I.tenantA}','Supplier A','active'),
     ('${I.supplierB}','${I.tenantA}','Supplier B','active')
   ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.devices(tenant_id,branch_id,device_uid,app_version,os,credential_hash,credential_issued_at)
+  VALUES('${I.tenantA}','${I.branchA}','supplier-contract-terminal','1.0.0','windows',extensions.digest(convert_to('${'b'.repeat(64)}','UTF8'),'sha256'),now())
+  ON CONFLICT (tenant_id,device_uid) DO UPDATE SET branch_id=EXCLUDED.branch_id, revoked_at=NULL, credential_hash=EXCLUDED.credential_hash;
 
   -- A row inserted already in received state represents pre-cutover historical shape.
   -- The subledger must not fabricate an unpaid liability from it.
@@ -156,17 +161,20 @@ expectReject(
 );
 assertEqual("failed receipt rolls back PO state", scalar(`SELECT status FROM public.purchase_orders WHERE id='${I.orderNoSupplier}'::uuid;`), "draft");
 
-const payment = (operationId, amount = 800, method = "bank_transfer") => `SELECT public.record_supplier_payment_v1('${I.tenantA}','${I.branchA}','${I.supplierA}',${amount}::bigint,'${method}','BANK-REF-111','Part payment','${operationId}')::text;`;
+assertEqual("credential-less supplier payment denied", scalar(`SELECT has_function_privilege('authenticated','public.record_supplier_payment_v1(uuid,uuid,uuid,bigint,text,text,text,text)','EXECUTE');`), "f");
+
+const payment = (operationId, amount = 800, method = "bank_transfer") => `SELECT public.record_supplier_payment_v2_device('${I.tenantA}','${I.branchA}','${I.supplierA}',${amount}::bigint,'${method}','BANK-REF-111','Part payment','${operationId}','supplier-contract-terminal','${'b'.repeat(64)}')::text;`;
 const paymentEntry = asUser(I.managerA, payment("supplier-payment-111"));
 assertEqual("supplier payment replay", asUser(I.managerA, payment("supplier-payment-111")), paymentEntry);
 assertEqual("payment exactly once", scalar(`SELECT count(*)::text FROM public.supplier_ledger_entries WHERE id='${paymentEntry}'::uuid AND entry_type='payment' AND amount_fils=800;`), "1");
 expectReject("payment operation payload mismatch", I.managerA, payment("supplier-payment-111", 900));
-expectReject("cashier cannot record payment", I.cashierA, payment("supplier-payment-cashier-111"));
-expectReject("inventory role cannot record payment", I.inventoryA, payment("supplier-payment-inventory-111"));
+expectReject("cashier cannot record payment", I.cashierA, payment("supplier-payment-cashier-111"), /forbidden|authoriz|permission|role/i);
+expectReject("inventory role cannot record payment", I.inventoryA, payment("supplier-payment-inventory-111"), /forbidden|authoriz|permission|device|role/i);
 expectReject(
   "other tenant manager cannot record payment",
   I.managerB,
-  `SELECT public.record_supplier_payment_v1('${I.tenantA}','${I.branchA}','${I.supplierA}',100::bigint,'cash',NULL,NULL,'supplier-payment-cross-111')::text;`,
+  `SELECT public.record_supplier_payment_v2_device('${I.tenantA}','${I.branchA}','${I.supplierA}',100::bigint,'cash',NULL,NULL,'supplier-payment-cross-111','supplier-contract-terminal','${'b'.repeat(64)}')::text;`,
+  /forbidden|authoriz|permission|device|tenant/i,
 );
 assertEqual("payment audit exactly once", scalar(`SELECT count(*)::text FROM public.audit_logs WHERE action='supplier.payment_recorded' AND entity_id='${paymentEntry}'::uuid;`), "1");
 

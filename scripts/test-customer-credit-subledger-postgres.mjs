@@ -47,6 +47,7 @@ for (const signature of [
   "public.set_customer_credit_opening_balance_v1(uuid,bigint,text,text)",
   "public.record_customer_credit_charge_v1(uuid,bigint,text,text,text)",
   "public.record_customer_credit_payment_v1(uuid,bigint,text,text,text)",
+  "public.record_customer_credit_payment_v2_device(uuid,uuid,uuid,bigint,text,text,text,text,text)",
   "public.get_customer_credit_statement_v1(uuid)",
 ]) {
   assertEqual(`required function ${signature}`, scalar(`SELECT to_regprocedure('${signature}') IS NOT NULL;`), "t");
@@ -86,7 +87,12 @@ sql(`
     ('${I.customerA}','${I.tenantA}','Credit Customer A','active'),
     ('${I.customerB}','${I.tenantB}','Credit Customer B','active')
   ON CONFLICT (id) DO NOTHING;
+  INSERT INTO public.devices(tenant_id,branch_id,device_uid,app_version,os,credential_hash,credential_issued_at)
+  VALUES('${I.tenantA}','${I.branchA}','credit-contract-terminal','1.0.0','windows',extensions.digest(convert_to('${'a'.repeat(64)}','UTF8'),'sha256'),now())
+  ON CONFLICT (tenant_id,device_uid) DO UPDATE SET branch_id=EXCLUDED.branch_id, revoked_at=NULL, credential_hash=EXCLUDED.credential_hash;
 `);
+
+assertEqual("credential-less customer credit payment denied", scalar(`SELECT has_function_privilege('authenticated','public.record_customer_credit_payment_v1(uuid,bigint,text,text,text)','EXECUTE');`), "f");
 
 const setLimit = (amount, op = "credit-limit-0001") =>
   `SELECT public.set_customer_credit_limit_v1('${I.customerA}'::uuid,${amount}::bigint,'Approved account limit','${op}');`;
@@ -113,11 +119,11 @@ expectReject("credit limit cannot be exceeded", I.managerA,
   `SELECT public.record_customer_credit_charge_v1('${I.customerA}'::uuid,3000::bigint,'manual_sale','sale-ref-002','credit-charge-0002');`, /limit|credit|balance/i);
 
 const payment = asUser(I.cashierA,
-  `SELECT public.record_customer_credit_payment_v1('${I.customerA}'::uuid,500::bigint,'cash','receipt-credit-001','credit-payment-0001');`);
+  `SELECT public.record_customer_credit_payment_v2_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.customerA}'::uuid,500::bigint,'cash','receipt-credit-001','credit-payment-0001','credit-contract-terminal','${'a'.repeat(64)}');`);
 assertEqual("payment replay is stable", asUser(I.cashierA,
-  `SELECT public.record_customer_credit_payment_v1('${I.customerA}'::uuid,500::bigint,'cash','receipt-credit-001','credit-payment-0001');`), payment);
+  `SELECT public.record_customer_credit_payment_v2_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.customerA}'::uuid,500::bigint,'cash','receipt-credit-001','credit-payment-0001','credit-contract-terminal','${'a'.repeat(64)}');`), payment);
 expectReject("payment cannot overpay receivable", I.cashierA,
-  `SELECT public.record_customer_credit_payment_v1('${I.customerA}'::uuid,999999::bigint,'cash','receipt-credit-002','credit-payment-0002');`, /overpay|balance|credit/i);
+  `SELECT public.record_customer_credit_payment_v2_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.customerA}'::uuid,999999::bigint,'cash','receipt-credit-002','credit-payment-0002','credit-contract-terminal','${'a'.repeat(64)}');`, /overpay|balance|credit/i);
 
 assertEqual("exact reconstructed balance in fils", scalar(`SELECT balance_fils::text FROM public.customer_credit_accounts WHERE customer_id='${I.customerA}'::uuid;`), "2000");
 assertEqual("immutable entries reconstruct same balance", scalar(`SELECT COALESCE(sum(amount_fils),0)::text FROM public.customer_credit_entries WHERE customer_id='${I.customerA}'::uuid;`), "2000");
