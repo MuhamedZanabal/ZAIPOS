@@ -10,6 +10,7 @@ requireMatch('opening wrapper requires device authority',migration,/open_cash_se
 requireMatch('closing wrapper requires device authority',migration,/close_cash_session_v2_device[\s\S]*require_financial_device_v1/);
 requireMatch('legacy opening revoked',migration,/REVOKE ALL ON FUNCTION public\.open_cash_session\([\s\S]*authenticated/);
 requireMatch('legacy closing revoked',migration,/REVOKE ALL ON FUNCTION public\.close_cash_session\([\s\S]*authenticated/);
+requireMatch('operation journal structurally binds tenant and branch',migration,/FOREIGN KEY \(tenant_id, branch_id\) REFERENCES public\.branches\(tenant_id, id\)/);
 requireMatch('native credential broker used',native,/async cashSession[\s\S]*_device_credential/);
 requireMatch('cash UI uses recovery helper',cash,/executeCashSession/);
 forbid('cash UI cannot call legacy open RPC',cash,/rpc\(["']open_cash_session["']/);

@@ -13,6 +13,8 @@ CREATE TABLE public.cash_session_device_operations (
   created_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz,
   PRIMARY KEY (tenant_id, operation_id),
+  CONSTRAINT cash_session_device_operations_tenant_branch_fkey
+    FOREIGN KEY (tenant_id, branch_id) REFERENCES public.branches(tenant_id, id) ON DELETE RESTRICT,
   CHECK (length(operation_id) BETWEEN 8 AND 200)
 );
 ALTER TABLE public.cash_session_device_operations ENABLE ROW LEVEL SECURITY;
