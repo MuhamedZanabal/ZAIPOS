@@ -23,6 +23,7 @@ import { TableOrderMobile } from "./TableOrderMobile";
 import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, type TableItemStatus } from "./itemStatus";
 import { db } from "@/lib/db";
 import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
+import { mutateTableOrderItem } from "@/lib/tableOrderItems";
 
 export default function TableOrder() {
   const { id: orderId } = useParams<{ id: string }>();
@@ -139,36 +140,15 @@ export default function TableOrder() {
     return res.filter((p) => p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q));
   }, [products, branchProducts, channelPrices, branchId, search, selectedCategory]);
 
-  const recalc = async () => {
-    if (!orderId) return;
-    await supabase.rpc("recalc_table_order", { _order_id: orderId });
+  const refreshOrder = async () => {
     qc.invalidateQueries({ queryKey: ["table-order", orderId] });
     qc.invalidateQueries({ queryKey: ["table-orders-open"] });
   };
 
   const insertProduct = async (p: any, notes?: string) => {
-    if (!tenantId || !orderId) return;
-    const existing = items?.find((i) => i.product_id === p.id && i.status === "pending" && !notes);
-    if (existing) {
-      const newQty = Number(existing.quantity) + 1;
-      const lineSub = newQty * Number(existing.unit_price) - Number(existing.discount);
-      await supabase.from("table_order_items").update({
-        quantity: newQty,
-        line_total: lineSub + (lineSub * Number(existing.tax_rate) / 100),
-      }).eq("id", existing.id);
-    } else {
-      const lineSub = Number(p.price);
-      await supabase.from("table_order_items").insert({
-        tenant_id: tenantId, order_id: orderId, product_id: p.id,
-        product_name: p.name, product_type: p.product_type,
-        quantity: 1, unit_price: Number(p.price), tax_rate: Number(p.tax_rate ?? 0), discount: 0,
-        line_total: lineSub + (lineSub * Number(p.tax_rate ?? 0) / 100),
-        status: "pending",
-        notes: notes?.trim() || null,
-      });
-    }
-    await refetchItems();
-    await recalc();
+    if (!tenantId || !branchId || !orderId) return;
+    await mutateTableOrderItem({ tenantId, branchId, orderId, action: "add", productId: p.id, quantity: 1, notes });
+    await Promise.all([refetchItems(), refreshOrder()]);
   };
 
   const addProduct = async (p: any) => {
@@ -189,17 +169,13 @@ export default function TableOrder() {
   };
 
   const setQty = async (item: any, qty: number) => {
-    if (qty <= 0) {
-      await supabase.from("table_order_items").delete().eq("id", item.id);
-    } else {
-      const lineSub = qty * Number(item.unit_price) - Number(item.discount);
-      await supabase.from("table_order_items").update({
-        quantity: qty,
-        line_total: lineSub + (lineSub * Number(item.tax_rate) / 100),
-      }).eq("id", item.id);
-    }
-    await refetchItems();
-    await recalc();
+    if (!tenantId || !branchId || !orderId) return;
+    await mutateTableOrderItem({
+      tenantId, branchId, orderId, itemId: item.id,
+      action: qty <= 0 ? "delete" : "set_quantity",
+      quantity: qty <= 0 ? null : qty,
+    });
+    await Promise.all([refetchItems(), refreshOrder()]);
   };
 
   const startPreparing = async (item: any) => {

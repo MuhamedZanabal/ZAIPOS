@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
+import { connection } from './postgres-recovery.mjs';
+
+if (!process.env.POSTGRES_ADMIN_URL) throw new Error('Disposable contract database required');
+const conn=connection(process.env.POSTGRES_ADMIN_URL);
+const sql=(statement,stage='table-item authority')=>{try{return execFileSync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',statement],{env:conn.env,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}catch(error){throw new Error(`${stage}: ${String(error.stderr??error.message).trim()}`);}};
+const authAs=(user,statement,stage)=>sql(`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${user}';${statement};COMMIT;`,stage);
+const execAsync=promisify(execFile);
+const I={
+ tenant:'a9100000-0000-0000-0000-000000000001',branch:'b9100000-0000-0000-0000-000000000001',otherBranch:'b9100000-0000-0000-0000-000000000002',
+ manager:'c9100000-0000-0000-0000-000000000001',waiter:'c9100000-0000-0000-0000-000000000002',otherWaiter:'c9100000-0000-0000-0000-000000000003',outsider:'c9100000-0000-0000-0000-000000000004',
+ product:'d9100000-0000-0000-0000-000000000001',detail:'d9100000-0000-0000-0000-000000000002',table:'e9100000-0000-0000-0000-000000000001',order:'f9100000-0000-0000-0000-000000000001'
+};
+sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
+('${I.manager}','table-item-manager@zaipos.test','{}'),('${I.waiter}','table-item-waiter@zaipos.test','{}'),
+('${I.otherWaiter}','table-item-other-waiter@zaipos.test','{}'),('${I.outsider}','table-item-outsider@zaipos.test','{}');
+INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode) VALUES('${I.tenant}','Table Item Authority','table-item-authority','BHD',10,false);
+INSERT INTO public.branches(id,tenant_id,name,status) VALUES('${I.branch}','${I.tenant}','Restaurant','active'),('${I.otherBranch}','${I.tenant}','Other','active');
+INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
+('${I.manager}','${I.tenant}','${I.branch}','manager'),('${I.waiter}','${I.tenant}','${I.branch}','waiter'),
+('${I.otherWaiter}','${I.tenant}','${I.branch}','waiter'),('${I.outsider}','${I.tenant}','${I.otherBranch}','cashier');
+INSERT INTO public.products(id,tenant_id,name,product_type,price,cost,tax_rate,status,requires_detail) VALUES
+('${I.product}','${I.tenant}','Authoritative Meal','simple',1.000,0.500,10,'active',false),
+('${I.detail}','${I.tenant}','Prepared Steak','simple',2.000,0.800,10,'active',true);
+INSERT INTO public.branch_products(tenant_id,branch_id,product_id,is_available,local_price) VALUES('${I.tenant}','${I.branch}','${I.product}',true,1.250);
+INSERT INTO public.product_channel_prices(tenant_id,product_id,branch_id,channel,price) VALUES('${I.tenant}','${I.product}','${I.branch}','tables',1.500);
+INSERT INTO public.tables(id,tenant_id,branch_id,name,status,assigned_waiter_id) VALUES('${I.table}','${I.tenant}','${I.branch}','Authority Table','occupied','${I.waiter}');
+INSERT INTO public.table_orders(id,tenant_id,branch_id,table_id,waiter_id,status) VALUES('${I.order}','${I.tenant}','${I.branch}','${I.table}','${I.waiter}','open');`);
+
+const call=({actor=I.waiter,branch=I.branch,op='table-item-add-001',action='add',item=null,product=I.product,quantity='1.000',notes=null}={})=>authAs(actor,
+`SELECT public.mutate_table_order_item_v2('${I.tenant}','${branch}','${I.order}','${op}','${action}',${item?`'${item}'`:'NULL'},${product?`'${product}'`:'NULL'},${quantity??'NULL'},${notes===null?'NULL':`'${String(notes).replaceAll("'","''")}'`})::text`,op);
+const snapshot=()=>sql(`SELECT
+(SELECT count(*) FROM public.table_order_items WHERE order_id='${I.order}')||'|'||
+(SELECT COALESCE(sum(quantity),0) FROM public.table_order_items WHERE order_id='${I.order}')||'|'||
+(SELECT subtotal::text||':'||tax_total::text||':'||total::text FROM public.table_orders WHERE id='${I.order}')||'|'||
+(SELECT count(*) FROM public.operation_log WHERE tenant_id='${I.tenant}' AND operation_type='mutate_table_order_item_v2')`);
+
+assert.equal(sql(`SELECT count(*) FROM pg_policies WHERE schemaname='public' AND tablename='table_order_items' AND policyname='toi_member_all'`),'0');
+for(const privilege of ['INSERT','UPDATE','DELETE']) assert.equal(sql(`SELECT has_table_privilege('authenticated','public.table_order_items','${privilege}')`),'f');
+assert.equal(sql(`SELECT has_function_privilege('authenticated','public.recalc_table_order(uuid)','EXECUTE')`),'f');
+for(const [label,statement] of [
+ ['direct insert',`INSERT INTO public.table_order_items(tenant_id,order_id,product_id,product_name,product_type) VALUES('${I.tenant}','${I.order}','${I.product}','Bypass','simple')`],
+ ['direct update',`UPDATE public.table_order_items SET quantity=999 WHERE order_id='${I.order}'`],
+ ['direct delete',`DELETE FROM public.table_order_items WHERE order_id='${I.order}'`],
+]) assert.throws(()=>authAs(I.manager,statement,label),/permission denied/i,label);
+
+const empty=snapshot();
+assert.throws(()=>call({actor:I.otherWaiter,op:'table-item-unassigned'}),/not assigned|forbidden|permission/i);
+assert.throws(()=>call({actor:I.outsider,branch:I.otherBranch,op:'table-item-wrong-branch'}),/scope|forbidden|permission/i);
+assert.throws(()=>call({op:'table-item-fractional',quantity:'1.0001'}),/three decimal/i);
+assert.throws(()=>call({op:'table-item-detail',product:I.detail}),/details are required/i);
+assert.equal(snapshot(),empty,'denied requests must have zero item, total, or journal effect');
+
+const item=call();assert.match(item,/^[a-f\d-]{36}$/i);
+assert.equal(sql(`SELECT unit_price::text||'|'||line_total::text FROM public.table_order_items WHERE id='${item}'`),'1.500|1.650');
+assert.equal(snapshot(),'1|1.000|1.500:0.150:1.650|1');
+assert.equal(call(),item,'lost-response replay must return the original item');
+assert.equal(snapshot(),'1|1.000|1.500:0.150:1.650|1');
+assert.throws(()=>call({quantity:'2.000'}),/different request|operation ID/i);
+assert.equal(snapshot(),'1|1.000|1.500:0.150:1.650|1');
+
+assert.equal(call({actor:I.manager,op:'table-item-qty-001',action:'set_quantity',item,product:null,quantity:'2.000'}),item);
+assert.equal(snapshot(),'1|2.000|3.000:0.300:3.300|2');
+assert.equal(call({actor:I.manager,op:'table-item-delete-001',action:'delete',item,product:null,quantity:null}),item);
+assert.equal(snapshot(),'0|0|0.000:0.000:0.000|3');
+
+const fractional=call({op:'table-item-exact-fils-001',quantity:'0.001'});
+assert.equal(snapshot(),'1|0.001|0.002:0.000:0.002|4','fractional quantities must round once into exact integer fils');
+assert.equal(call({actor:I.manager,op:'table-item-exact-fils-delete',action:'delete',item:fractional,product:null,quantity:null}),fractional);
+assert.equal(snapshot(),'0|0|0.000:0.000:0.000|5');
+assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action LIKE 'table_order_item.%'`),'5');
+
+const concurrentSql=`SELECT public.mutate_table_order_item_v2('${I.tenant}','${I.branch}','${I.order}','table-item-concurrent-001','add',NULL,'${I.product}',1.000,NULL)::text`;
+const run=()=>execAsync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${I.waiter}';${concurrentSql};COMMIT;`],{env:conn.env,encoding:'utf8'}).then(({stdout})=>stdout.trim().split(/\r?\n/).filter(Boolean).at(-1));
+const concurrent=await Promise.all([run(),run()]);
+assert.equal(concurrent[0],concurrent[1]);
+assert.equal(snapshot(),'1|1.000|1.500:0.150:1.650|6');
+
+console.log('PASS: table-item writes are atomic, server-priced, branch/role scoped and exactly-once; direct RLS bypass and rejected calls have zero effect.');

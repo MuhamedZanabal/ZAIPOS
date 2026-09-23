@@ -9,6 +9,8 @@ on:
       - "electron/**"
       - "supabase/migrations/**"
       - "scripts/test-table-checkout-rpc-boundary-postgres.mjs"
+      - "scripts/test-table-order-item-authority-postgres.mjs"
+      - "scripts/test-table-order-item-client-cutover.mjs"
       - ".github/workflows/table-checkout-security-contract.yml"
   push:
     branches:
@@ -20,6 +22,8 @@ on:
       - "electron/**"
       - "supabase/migrations/**"
       - "scripts/test-table-checkout-rpc-boundary-postgres.mjs"
+      - "scripts/test-table-order-item-authority-postgres.mjs"
+      - "scripts/test-table-order-item-client-cutover.mjs"
       - ".github/workflows/table-checkout-security-contract.yml"
 
 permissions:
@@ -65,6 +69,10 @@ jobs:
           status=$?
           cat table-checkout-security-runtime.log
           exit "$status"
+      - name: Verify atomic table-order item authority
+        run: node scripts/test-table-order-item-authority-postgres.mjs
+      - name: Verify renderer table-item cutover
+        run: node scripts/test-table-order-item-client-cutover.mjs
       - name: Preserve table checkout failure diagnostics
         if: failure() && steps.table_checkout_runtime.outcome == 'failure'
         uses: actions/upload-artifact@v4
