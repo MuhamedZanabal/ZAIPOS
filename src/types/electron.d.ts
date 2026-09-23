@@ -1,76 +1,29 @@
 import type { ManagerAuthorization } from '../../electron/types';
-/**
- * src/types/electron.d.ts
- * Declaraciones de tipos para window.electron en el renderer.
- * Esto le dice a TypeScript que window.electron existe y cuál es su forma.
- * Solo se llena en runtime cuando corremos dentro de Electron.
- */
-
 import type { TicketData, AppSettings } from '../../electron/types';
 
 export interface ElectronBridge {
-  /** Imprime un ticket en la impresora térmica ESC/POS */
   printTicket: (data: TicketData) => Promise<{ ok: boolean; error?: string }>;
-
-  /** Envía el pulso eléctrico para abrir la gaveta de dinero */
   openDrawer: () => Promise<{ ok: boolean; error?: string }>;
-
-  /**
-   * Registra un callback para códigos de barras detectados via puerto serial.
-   * Retorna una función de cleanup (para usar en useEffect).
-   */
   onBarcodeScanned: (callback: (code: string) => void) => () => void;
-
-  /** Obtiene la configuration actual de la app */
   getSettings: () => Promise<AppSettings>;
-
-  /** Guarda la configuration de la app */
   saveSettings: (settings: Partial<AppSettings>, authorization: ManagerAuthorization) => Promise<void>;
-
-  /**
-   * Activa o desactiva el modo kiosco.
-   * Solo disponible para el rol Admin.
-   */
   setKiosk: (enabled: boolean, authorization: ManagerAuthorization) => Promise<void>;
-
-  /** Downloads an available update after explicit operator approval. */
   downloadUpdate: (authorization: ManagerAuthorization) => Promise<{ ok: boolean; error?: string }>;
-
-  /** Instala la actualización descargada y reinicia la app */
   installUpdate: (authorization: ManagerAuthorization) => Promise<void>;
-
-  /** Escucha el evento de actualización disponible */
-  onUpdateAvailable: (
-    callback: (info: { version: string; releaseNotes?: string }) => void
-  ) => () => void;
-
-  /** Escucha el progreso de descarga de la actualización */
-  onDownloadProgress: (
-    callback: (progress: { percent: number; bytesPerSecond: number }) => void
-  ) => () => void;
-
-  /** Escucha cuando la actualización está lista para instalar */
+  onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string }) => void) => () => void;
+  onDownloadProgress: (callback: (progress: { percent: number; bytesPerSecond: number }) => void) => () => void;
   onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
-
-  /** Abre una URL en el navegador del sistema */
   openExternal: (url: string) => Promise<void>;
-
-  /** Versión de la app desde package.json */
   getAppVersion: () => Promise<string>;
-
-  /** 'linux' | 'darwin' | 'win32' */
+  getDeviceIdentity: () => Promise<{ deviceUid: string; provisioned: boolean }>;
+  activateDevice: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;
+  rotateDeviceCredential: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;
+  revokeDevice: (deviceId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: false; revoked: boolean }>;
+  checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   platform: NodeJS.Platform;
 }
 
 declare global {
-  interface Window {
-    /**
-     * API del puente Electron/Renderer.
-     * Solo existe cuando la app corre dentro de Electron.
-     * Usa `isElectron()` o `useHardware()` para verificar disponibilidad.
-     */
-    electron?: ElectronBridge;
-  }
+  interface Window { electron?: ElectronBridge; }
 }
-
 export {};

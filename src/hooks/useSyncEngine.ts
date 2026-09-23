@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenantStore } from '@/stores/tenant';
 import {
+  CheckoutDeviceCutoverError,
   classifySyncFailure,
   isActiveQueueStatus,
   isReplayableQueueStatus,
@@ -14,17 +15,11 @@ import {
 } from '@/lib/syncQueue';
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
-  if (item.type === 'CHECKOUT_SALE_V2') {
-    const { data, error } = await supabase.rpc('checkout_sale_v2', item.payload as any);
-    if (error) throw error;
-    return data;
-  }
-  if (item.type === 'CHECKOUT_SALE') {
-    // Legacy queue compatibility. New POS transactions use CHECKOUT_SALE_V2,
-    // but already-persisted legacy payloads must keep their original RPC shape.
-    const { data, error } = await supabase.rpc('checkout_sale', item.payload);
-    if (error) throw error;
-    return data;
+  if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE') {
+    // Legacy sale records are retained in the queue for operator reconciliation.
+    // Do NOT send them through a credential-less RPC or silently convert their
+    // immutable payload/operation ID to an unapproved device checkout request.
+    throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'CHECKOUT_TABLE_ORDER') {
     const { data, error } = await supabase.rpc('checkout_table_order', item.payload);

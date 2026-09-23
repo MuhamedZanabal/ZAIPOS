@@ -28,8 +28,11 @@ const activated = scalar(`SET ROLE service_role; SELECT device_id::text || '|' |
 const [deviceId, activatedUid, credential] = activated.split('|');
 assertEqual('activation preserves device UID', activatedUid, uid);
 if (!/^[a-f\d]{64}$/i.test(credential)) throw new Error('activation did not return a 256-bit credential');
-const heartbeatSql = (branchId, deviceUid, secret = credential) => `SELECT (public.register_device_heartbeat('${deviceUid}','Device POS','${branchId}'::uuid,'${secret}')).id::text;`;
-assertEqual('credential heartbeat returns enrolled device', asAuthenticated(I.cashierA, heartbeatSql(I.branchA, uid)), deviceId);
+const heartbeatSql = (branchId, deviceUid, secret = credential) => `SELECT public.register_device_heartbeat('${deviceUid}','Device POS','${branchId}'::uuid,'${secret}');`;
+// Credential-bound heartbeat intentionally returns void, never a devices composite
+// containing credential_hash. Verify successful execution and persisted identity separately.
+asAuthenticated(I.cashierA, heartbeatSql(I.branchA, uid));
+assertEqual('credential heartbeat retains enrolled device', scalar(`SELECT count(*)::text FROM public.devices WHERE id='${deviceId}'::uuid AND device_uid='${uid}' AND last_seen_at IS NOT NULL;`), '1');
 expectReject('wrong-branch heartbeat', I.cashierA, heartbeatSql(I.branchAOther, uid));
 expectReject('copied UID with wrong credential', I.cashierA, heartbeatSql(I.branchA, uid, '0'.repeat(64)));
 
@@ -37,7 +40,9 @@ assertEqual('same-branch manager sees device', asAuthenticated(I.managerA, `SELE
 assertEqual('different-branch manager cannot see device', asAuthenticated(I.managerAOther, `SELECT count(*)::text FROM public.devices WHERE id='${deviceId}'::uuid;`), '0');
 assertEqual('cashier cannot enumerate fleet', asAuthenticated(I.cashierA, `SELECT count(*)::text FROM public.devices WHERE id='${deviceId}'::uuid;`), '0');
 expectReject('direct device mutation', I.cashierA, `UPDATE public.devices SET app_version='9.9.9' WHERE id='${deviceId}'::uuid;`);
-sql(`UPDATE public.devices SET revoked_at=now(), is_active=false WHERE id='${deviceId}'::uuid;`);
+// revoked_at is the canonical revocation state. Device authority functions reject a
+// revoked row directly; do not couple this contract to a non-existent is_active flag.
+sql(`UPDATE public.devices SET revoked_at=now() WHERE id='${deviceId}'::uuid;`);
 expectReject('revoked device heartbeat', I.cashierA, heartbeatSql(I.branchA, uid));
 
 const signature='public.authorize_desktop_action(uuid,uuid,text,text,uuid)';

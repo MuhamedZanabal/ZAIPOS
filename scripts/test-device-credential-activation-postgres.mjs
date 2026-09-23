@@ -18,6 +18,7 @@ const tenant = 'a0000000-0000-0000-0000-000000000721';
 const branch = 'b0000000-0000-0000-0000-000000000721';
 const manager = 'c0000000-0000-0000-0000-000000000721';
 const uid = 'SEC004-credential-terminal';
+const revokedUid = 'SEC004-revoked-manager-terminal';
 const asManager = statement => sql(`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${manager}'; ${statement}; COMMIT;`);
 
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES ('${manager}','activation-manager@zaipos.test','{}');
@@ -41,4 +42,25 @@ assert.throws(() => sql(`SET ROLE service_role; SELECT * FROM public.activate_de
   'Consumed approval must be impossible to replay');
 assert.equal(sql(`SELECT count(*) FROM public.devices WHERE tenant_id='${tenant}' AND device_uid='${uid}'`), '1');
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${tenant}' AND action='device.enrollment_activated' AND metadata->>'device_id'='${deviceId}'`), '1');
-console.log('PASS: activation is privileged, single-use, server-generated, verifier-only at rest, and audited.');
+
+const revokedApproval = asManager(`SELECT public.approve_device_enrollment('${tenant}','${branch}','${revokedUid}')`);
+sql(`DELETE FROM public.user_roles
+WHERE user_id='${manager}' AND tenant_id='${tenant}' AND branch_id='${branch}' AND role='manager';`);
+
+assert.throws(
+  () => sql(`SET ROLE service_role; SELECT * FROM public.activate_device_enrollment('${revokedApproval}','1.0.0','windows'); RESET ROLE;`),
+  /authoriz|permission|role|eligible/i,
+  'Activation must revalidate that the approving user still holds an eligible role',
+);
+assert.equal(
+  sql(`SELECT count(*) FROM public.devices WHERE tenant_id='${tenant}' AND device_uid='${revokedUid}'`),
+  '0',
+  'Revoked manager approval must not create a device',
+);
+assert.equal(
+  sql(`SELECT (consumed_at IS NULL)::text FROM public.device_enrollment_approvals WHERE id='${revokedApproval}'`),
+  'true',
+  'Rejected activation must not consume the approval',
+);
+
+console.log('PASS: activation is privileged, single-use, server-generated, verifier-only at rest, audited, and revalidates approver authority.');
