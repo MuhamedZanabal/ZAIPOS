@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 const files = {
   helper: "src/lib/tableOrderItems.ts",
+  cartHelper: "src/lib/tableCart.ts",
   kitchenHelper: "src/lib/tableKitchen.ts",
   tableOrder: "src/modules/tables/TableOrder.tsx",
   tables: "src/modules/tables/Tables.tsx",
@@ -15,6 +16,7 @@ const files = {
   lifecycleMigration: "supabase/migrations/20260923130000_scoped_table_order_lifecycle.sql",
   openMigration: "supabase/migrations/20260923152500_scoped_table_order_open.sql",
   legacyCartMigration: "supabase/migrations/20260923170500_retire_untrusted_table_cart_upsert.sql",
+  cartMigration: "supabase/migrations/20260923184500_authoritative_table_cart.sql",
 };
 const source = {};
 for (const [key, path] of Object.entries(files)) {
@@ -73,6 +75,14 @@ requireText("lifecycleMigration", "transition_table_order_lifecycle_v2", "atomic
 requireText("openMigration", "REVOKE INSERT ON public.table_orders", "direct table-order INSERT revocation");
 requireText("openMigration", "open_table_order_v2", "scoped replay-safe order-opening command");
 requireText("legacyCartMigration", "REVOKE ALL ON FUNCTION public.upsert_table_order_items", "legacy table-cart RPC revocation");
+requireText("cartHelper", 'append_table_cart_v2', "authoritative cart RPC");
+requireText("cartHelper", "sessionStorage.setItem", "persist-before-submit cart identity");
+requireText("pos", "appendTableCart", "authoritative POS table-cart helper usage");
+requireText("pos", "Restaurant line discounts require an authoritative manager policy", "fail-closed restaurant discount policy");
+requireText("cartMigration", "open_table_order_v2", "scoped atomic table opening");
+requireText("cartMigration", "product_channel_prices", "server-owned table pricing");
+requireText("cartMigration", "modifier_groups", "server-owned modifier policy");
+requireText("cartMigration", "discount,0", "zero restaurant line discount");
 
 if (failures.length) {
   throw new Error(`Table-order item cutover incomplete:\n- ${failures.join("\n- ")}`);

@@ -12,6 +12,7 @@ const I={
  tenant:'a9100000-0000-0000-0000-000000000001',branch:'b9100000-0000-0000-0000-000000000001',otherBranch:'b9100000-0000-0000-0000-000000000002',
  manager:'c9100000-0000-0000-0000-000000000001',waiter:'c9100000-0000-0000-0000-000000000002',otherWaiter:'c9100000-0000-0000-0000-000000000003',outsider:'c9100000-0000-0000-0000-000000000004',kitchen:'c9100000-0000-0000-0000-000000000005',
  product:'d9100000-0000-0000-0000-000000000001',detail:'d9100000-0000-0000-0000-000000000002',table:'e9100000-0000-0000-0000-000000000001',raceTable:'e9100000-0000-0000-0000-000000000002',otherTable:'e9100000-0000-0000-0000-000000000003',order:'f9100000-0000-0000-0000-000000000001',center:'a9100000-0000-0000-0000-000000000099'
+ ,modifierGroup:'a9200000-0000-0000-0000-000000000001',modifierOption:'a9200000-0000-0000-0000-000000000002'
 };
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
 ('${I.manager}','table-item-manager@zaipos.test','{}'),('${I.waiter}','table-item-waiter@zaipos.test','{}'),
@@ -185,4 +186,38 @@ assert.equal(sql(`SELECT assigned_waiter_id::text FROM public.tables WHERE id='$
 assert.equal(sql(`SELECT count(*) FROM public.operation_log WHERE tenant_id='${I.tenant}' AND operation_type='open_table_order_v2'`),'3');
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action='table_order.open'`),'3');
 
-console.log('PASS: table-item, kitchen and order-lifecycle writes are atomic, branch/role scoped and exactly-once; inventory effects converge and denied calls have zero effect.');
+sql(`INSERT INTO public.modifier_groups(id,tenant_id,product_id,name,required,min_selections,max_selections)
+VALUES('${I.modifierGroup}','${I.tenant}','${I.product}','Required side',true,1,1);
+INSERT INTO public.modifier_options(id,group_id,name,price_delta,is_available)
+VALUES('${I.modifierOption}','${I.modifierGroup}','Authoritative side',0.250,true);`);
+const cartItems=(quantity='0.001',extra='')=>`[{"product_id":"${I.product}","quantity":${quantity},"modifier_option_ids":["${I.modifierOption}"],"notes":null${extra}}]`;
+const appendCart=({actor=I.waiter,branch=I.branch,table=I.raceTable,op='table-cart-001',items=cartItems()}={})=>authAs(actor,
+`SELECT public.append_table_cart_v2('${I.tenant}','${branch}','${table}','${op}','${items.replaceAll("'","''")}'::jsonb)::text`,op);
+const cartSnapshot=()=>sql(`SELECT
+(SELECT count(*) FROM public.table_order_items i JOIN public.table_orders o ON o.id=i.order_id WHERE o.table_id='${I.raceTable}')||'|'||
+(SELECT subtotal::text||':'||tax_total::text||':'||total::text FROM public.table_orders WHERE table_id='${I.raceTable}' AND status='open')||'|'||
+(SELECT count(*) FROM public.operation_log WHERE tenant_id='${I.tenant}' AND operation_type='append_table_cart_v2')`);
+
+assert.equal(sql(`SELECT has_function_privilege('authenticated','public.append_table_cart_v2(uuid,uuid,uuid,text,jsonb)','EXECUTE')`),'t');
+const beforeCart=cartSnapshot();
+assert.throws(()=>appendCart({actor:I.otherWaiter,op:'table-cart-unassigned'}),/another waiter|forbidden|permission/i);
+assert.throws(()=>appendCart({actor:I.outsider,branch:I.otherBranch,op:'table-cart-wrong-branch'}),/scope|forbidden|permission/i);
+assert.throws(()=>appendCart({op:'table-cart-financial-field',items:cartItems('1.000',',"discount_fils":100')}),/may contain only/i);
+assert.throws(()=>appendCart({op:'table-cart-missing-required',items:`[{"product_id":"${I.product}","quantity":1,"modifier_option_ids":[],"notes":null}]`}),/group policy/i);
+assert.equal(cartSnapshot(),beforeCart,'denied cart calls must have zero item, total, or cart-journal effect');
+
+const cartOrder=appendCart();
+assert.equal(cartOrder,raced[0]);
+assert.equal(cartSnapshot(),'1|0.002:0.000:0.002|1','authoritative modifier price must round through exact fils');
+assert.equal(sql(`SELECT unit_price::text||'|'||discount::text||'|'||line_total::text||'|'||(modifiers->0->>'name') FROM public.table_order_items WHERE order_id='${cartOrder}'`),'1.750|0.000|0.002|Authoritative side');
+assert.equal(appendCart(),cartOrder,'lost-response cart replay must return the original order');
+assert.equal(cartSnapshot(),'1|0.002:0.000:0.002|1');
+assert.throws(()=>appendCart({items:cartItems('1.000')}),/different request|operation ID/i);
+
+const concurrentCartSql=`SELECT public.append_table_cart_v2('${I.tenant}','${I.branch}','${I.raceTable}','table-cart-concurrent','${cartItems('1.000')}'::jsonb)::text`;
+const runCart=()=>execAsync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${I.waiter}';${concurrentCartSql};COMMIT;`],{env:conn.env,encoding:'utf8'}).then(({stdout})=>stdout.trim().split(/\r?\n/).filter(Boolean).at(-1));
+assert.deepEqual(await Promise.all([runCart(),runCart()]),[cartOrder,cartOrder]);
+assert.equal(cartSnapshot(),'2|1.752:0.175:1.927|2','concurrent identical carts must append exactly once');
+assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action='table_cart.append'`),'2');
+
+console.log('PASS: restaurant item, cart, kitchen and lifecycle writes are server-authoritative, exact-fils, branch/role scoped and exactly-once; denied calls have zero effect.');
