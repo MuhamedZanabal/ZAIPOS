@@ -105,6 +105,33 @@ describe('native device credential custody', () => {
     expect(error).toMatchObject({ code: 'ZC001', message: 'Cash movement reference conflict' });
   });
 
+  it('brokers cash-session opening and closing through native custody with canonical counts', async () => {
+    values.set('enrollment', {
+      deviceUid: 'terminal-1', tenantId, branchId,
+      encryptedCredential: Buffer.from(`protected:${'b'.repeat(64)}`).toString('base64'),
+    });
+    const sessionId = '66666666-6666-4666-8666-666666666666';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(sessionId), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = createDeviceCredentialService(store, 'https://project.supabase.co', 'publishable-key');
+    const base = {
+      _tenant_id: tenantId, _branch_id: branchId, _operation_id: '77777777-7777-4777-8777-777777777777',
+      _session_id: null, _register_id: null, _opening_amount: '1.001', _counted_amount: null,
+      _counted_card: null, _counted_transfer: null, _counted_qr: null, _notes: null,
+    };
+    await expect(service.cashSession(base, authorization)).resolves.toBe(sessionId);
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toContain('/rest/v1/rpc/open_cash_session_v2_device');
+    expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toMatchObject({
+      _opening_amount: '1.001', _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
+    });
+    const close = { ...base, _session_id: sessionId, _opening_amount: null, _counted_amount: '1.001', _counted_card: '0.000', _counted_transfer: '0.000', _counted_qr: '0.000' };
+    await expect(service.cashSession(close, authorization, true)).resolves.toBe(sessionId);
+    expect((fetchMock.mock.calls[1] as unknown as [string])[0]).toContain('/rest/v1/rpc/close_cash_session_v2_device');
+    await expect(service.cashSession({ ...base, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.cashSession({ ...base, _opening_amount: '1.0001' }, authorization)).rejects.toThrow(/opening cash/i);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('brokers customer credit payments through native custody and rejects scope substitution', async () => {
     values.set('enrollment', {
       deviceUid: 'terminal-1', tenantId, branchId,

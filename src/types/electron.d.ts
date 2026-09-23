@@ -21,6 +21,7 @@ export interface ElectronBridge {
   revokeDevice: (deviceId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: false; revoked: boolean }>;
   checkoutSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string | { status: 'pending'; mutationId: string }>;
   cashMovement: (payload: Record<string, unknown>, authorization: ManagerAuthorization, cancel?: boolean) => Promise<string | null>;
+  cashSession: (payload: Record<string, unknown>, authorization: ManagerAuthorization, close?: boolean) => Promise<string>;
   returnSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   voidSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;

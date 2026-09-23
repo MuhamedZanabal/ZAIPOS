@@ -27,6 +27,7 @@ import {
 import { PendingTableOrders } from "./PendingTableOrders";
 import { cn } from "@/lib/utils";
 import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
+import { executeCashSession, readCashSessionDraft, type CashSessionDraft } from "@/lib/deviceCashSession";
 
 export default function Cash() {
   const { tenantId, branchId, hasRole } = useTenantContext();
@@ -37,9 +38,23 @@ export default function Cash() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [moveDialog, setMoveDialog] = useState<null | "in" | "out">(null);
   const [counts, setCounts] = useState({ cash: "", card: "", transfer: "", qr: "" });
+  const [sessionRecovery, setSessionRecovery] = useState<CashSessionDraft | null>(null);
 
   const { data: session } = useOpenSession(branchId);
   const canViewDifferences = hasRole("owner", "admin");
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const draft = readCashSessionDraft(user.id);
+      setSessionRecovery(draft);
+      if (draft?.action === 'open') setOpenAmount(draft.request._opening_amount ?? '0.000');
+      if (draft?.action === 'close') {
+        setCounts({ cash: draft.request._counted_amount ?? '', card: draft.request._counted_card ?? '', transfer: draft.request._counted_transfer ?? '', qr: draft.request._counted_qr ?? '' });
+        setCloseOpen(true);
+      }
+    } catch (error: any) { toast.error(error.message); }
+  }, [user?.id]);
 
   const { data: history } = useQuery({
     queryKey: ["cash-history", branchId],
@@ -92,24 +107,28 @@ export default function Cash() {
     if (!tenantId || !branchId || !user || sessionSaving) return;
     setSessionSaving(true);
     try {
-      const { error } = await supabase.rpc("open_cash_session" as never, {
-        _tenant_id: tenantId, _branch_id: branchId, _opening_amount: exactCount(openAmount),
-      } as never);
-      if (error) throw error;
+      await executeCashSession(user.id, 'open', {
+        _tenant_id: tenantId, _branch_id: branchId, _session_id: null, _register_id: null,
+        _opening_amount: exactCount(openAmount), _counted_amount: null, _counted_card: null,
+        _counted_transfer: null, _counted_qr: null, _notes: null,
+      });
+      setSessionRecovery(null);
       toast.success("Register opened");
       qc.invalidateQueries();
     } catch (error: any) { toast.error(error.message ?? 'Opening response uncertain; check register history before retrying'); }
     finally { setSessionSaving(false); }
   };
   const closeSession = async () => {
-    if (!session || sessionSaving) return;
+    const sessionId = session?.id ?? sessionRecovery?.request._session_id;
+    if (!tenantId || !branchId || !user || !sessionId || sessionSaving) return;
     setSessionSaving(true);
     try {
-      const { error } = await supabase.rpc("close_cash_session" as never, {
-        _session_id: session.id, _counted_amount: exactCount(counts.cash), _notes: null,
-        _counted_card: exactCount(counts.card), _counted_transfer: exactCount(counts.transfer), _counted_qr: exactCount(counts.qr),
-      } as never);
-      if (error) throw error;
+      await executeCashSession(user.id, 'close', {
+        _tenant_id: tenantId, _branch_id: branchId, _session_id: sessionId, _register_id: null, _opening_amount: null,
+        _counted_amount: exactCount(counts.cash), _notes: null, _counted_card: exactCount(counts.card),
+        _counted_transfer: exactCount(counts.transfer), _counted_qr: exactCount(counts.qr),
+      });
+      setSessionRecovery(null);
       toast.success("Register closed successfully");
       setCloseOpen(false);setCounts({cash: '',card: '',transfer: '',qr: ''});qc.invalidateQueries();
     } catch (error: any) { toast.error(error.message ?? 'Closing response uncertain; check register history before retrying'); }
