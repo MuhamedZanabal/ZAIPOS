@@ -73,6 +73,8 @@ jobs:
           exit "$status"
       - name: Verify device-bound return and void authority
         run: node scripts/test-device-bound-return-void-postgres.mjs
+      - name: Verify device-bound customer credit payment authority
+        run: node scripts/test-device-bound-customer-credit-postgres.mjs
       - name: Preserve trusted-device enforcement diagnostics
         if: failure() && steps.enforcement.outcome == 'failure'
         uses: actions/upload-artifact@v4
