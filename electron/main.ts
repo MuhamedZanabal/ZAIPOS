@@ -15,6 +15,7 @@ import { validateSettings, validateSettingsPatch } from './hardware-security.js'
 import { handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
 import { createDeviceCredentialService } from './services/device-credentials.js';
+import { createDeviceOfflineAuthority } from './services/device-offline-authority.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,11 +37,23 @@ function createWindow(settings: AppSettings): BrowserWindow {
 }
 
 function setupGlobalHandlers(): void {
-  const deviceCredentials = createDeviceCredentialService(credentialStore, import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const deviceCredentials = createDeviceCredentialService(credentialStore, supabaseUrl, publishableKey);
+  const offlineAuthority = createDeviceOfflineAuthority(credentialStore, supabaseUrl, publishableKey);
+  const refreshOfflineAuthority = async (authorization: any): Promise<void> => {
+    try {
+      const lease = await offlineAuthority.refresh(authorization);
+      log('info', 'device_offline_authority_refreshed', { leaseId: lease.leaseId, expiresAt: lease.expiresAt });
+    } catch (error: any) {
+      offlineAuthority.clear();
+      log('warn', 'device_offline_authority_unavailable', { error: error?.message ?? String(error) });
+    }
+  };
   handleTrustedIpc(IPC_HANDLERS.GET_DEVICE_IDENTITY, () => deviceCredentials.identity());
-  handleTrustedIpc(IPC_HANDLERS.ACTIVATE_DEVICE, (_event, approvalId, authorization) => deviceCredentials.activate(approvalId, app.getVersion(), process.platform, authorization));
-  handleTrustedIpc(IPC_HANDLERS.ROTATE_DEVICE_CREDENTIAL, (_event, approvalId, authorization) => deviceCredentials.rotate(approvalId, authorization));
-  handleTrustedIpc(IPC_HANDLERS.REVOKE_DEVICE, (_event, deviceId, authorization) => deviceCredentials.revoke(deviceId, authorization));
+  handleTrustedIpc(IPC_HANDLERS.ACTIVATE_DEVICE, async (_event, approvalId, authorization) => { const result = await deviceCredentials.activate(approvalId, app.getVersion(), process.platform, authorization); await refreshOfflineAuthority(authorization); return result; });
+  handleTrustedIpc(IPC_HANDLERS.ROTATE_DEVICE_CREDENTIAL, async (_event, approvalId, authorization) => { offlineAuthority.clear(); const result = await deviceCredentials.rotate(approvalId, authorization); await refreshOfflineAuthority(authorization); return result; });
+  handleTrustedIpc(IPC_HANDLERS.REVOKE_DEVICE, async (_event, deviceId, authorization) => { const result = await deviceCredentials.revoke(deviceId, authorization); offlineAuthority.clear(); return result; });
   handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, (_event, payload, authorization) => deviceCredentials.checkout(payload, authorization));
   handleTrustedIpc(IPC_HANDLERS.GET_SETTINGS, async () => getSettings());
   handleManagerIpc(IPC_HANDLERS.SAVE_SETTINGS, 'settings', async (_event, newSettings: Partial<AppSettings>) => { validateSettingsPatch(newSettings); if (!store) throw new Error('Settings are unavailable'); const current = getSettings(); const merged = { ...current, ...newSettings }; if (newSettings.printer) merged.printer = { ...current.printer, ...newSettings.printer }; if (newSettings.barcode) merged.barcode = { ...current.barcode, ...newSettings.barcode }; const validated = validateSettings(merged); store.set(validated); if (newSettings.barcode && mainWindow) await restartBarcodeScanner(validated.barcode, mainWindow); });
