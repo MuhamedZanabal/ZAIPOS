@@ -2,7 +2,22 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #82 (2026-09-23 03:39:30 +03)
+## Current checkpoint — PR #82 (2026-09-23 09:16:39 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main is still `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #82 now targets current PR #81 head `5b3e267013adb05bdfa917c3c55a0ac3a006e923` at exact head `c7de8849817b878ad72ea3af4fe0afab9362bf5c`. GitHub reports the PR mergeable and clean; there are no submitted reviews or inline threads. No PR merge is authorized.
+- The non-force two-parent synchronization commit incorporated PR #81's verified queue scope/inventory quarantine work and retained all device-bound cash-session changes. It also removes the non-atomic `ADD_TABLE_ORDER_ITEMS` replay path: new enqueue attempts fail closed and persisted records become `requires_review` without an RPC, direct table insert, payload mutation or deletion.
+- Exact-head evidence: all 21 workflows succeeded. CI #722 / run `35825484644` passed quality job `107066155815` (real PostgreSQL migration/authorization/concurrency chain, inventory cutover contract, 339 Vitest tests, lint and build) and unsigned Windows packaging job `107066845401`. Trusted Device Enforcement `35825484362`, Table Checkout Security `35825484482`, and Backup Restore `35825484358` also passed at this exact SHA.
+- Local source-equivalent verification: TDD reproduced three failures before the legacy table-item quarantine; focused 3 files / 43 tests passed afterward; full 63 files / 339 tests, TypeScript, ESLint zero errors / 13 pre-existing warnings, production build (2,770 modules), 121 migration validations, inventory client cutover, native vault and `git diff --check` passed. Local real PostgreSQL remains unavailable because `psql` is not installed; exact-head CI supplied disposable PostgreSQL evidence.
+- Offline checkout remains disabled. No merge, force push, deployment, release, production-data mutation, credential exposure or control weakening occurred.
+
+### Immediate next executable actions
+
+1. Audit and replace the remaining direct `table_order_items` insert/update/delete renderer paths and the broad `toi_member_all` policy with atomic server commands, explicit branch/role authority, stable operation identity and PostgreSQL zero-effect/replay tests.
+2. Continue device-bound classification of `record_inventory_batch_v2`, reconciliation, transfer, purchase receiving and production completion without re-exposing the retired raw stock primitive.
+3. Finish offline restart, contention, corruption, quarantine and operator-recovery acceptance while the checkout gate remains disabled; then review the entire stacked security chain.
+4. Preserve signed Windows, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #82 (2026-09-23 03:39:30 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #82 branch `fix/device-bound-cash-sessions-20260923` is stacked on draft PR #81. PR #81 advanced to `5b3e267013adb05bdfa917c3c55a0ac3a006e923`; this child branch is being synchronized by a normal two-parent commit without rewriting history. No PR merge is authorized.
 - Verified code head: `c39b2fd202e952bc36aa49974d52c5a33e949910`. All 21 exact-head workflows completed successfully. CI #711 run `35802372217` passed quality job `106995380229` and unsigned Windows packaging job `106996048355`. Trusted Device Enforcement run `35802372280` passed the device-bound cash-session contract on real PostgreSQL. Unsigned packaging is not signing, installation, upgrade or rollback acceptance.
