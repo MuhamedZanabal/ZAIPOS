@@ -71,6 +71,8 @@ jobs:
           cat trusted-device-enforcement.log
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
+      - name: Verify device-bound return and void authority
+        run: node scripts/test-device-bound-return-void-postgres.mjs
       - name: Preserve trusted-device enforcement diagnostics
         if: failure() && steps.enforcement.outcome == 'failure'
         uses: actions/upload-artifact@v4
