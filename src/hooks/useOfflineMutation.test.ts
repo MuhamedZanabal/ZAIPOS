@@ -43,7 +43,8 @@ function setNavigatorOnline(value: boolean) {
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value });
 }
 
-const supportedType = "APPLY_INVENTORY_MOVEMENT";
+// A kitchen status command is supported; direct stock mutation is a revoked primitive.
+const supportedType = "SEND_TO_KITCHEN";
 
 describe("offline mutation helpers", () => {
   beforeEach(() => {
@@ -66,8 +67,8 @@ describe("offline mutation helpers", () => {
     expect(isTransientNetworkError(new Error("Forbidden"))).toBe(true);
   });
 
-  it.each(["CHECKOUT_SALE", "CHECKOUT_SALE_V2", "CHECKOUT_TABLE_ORDER"])(
-    "denies direct credential-less %s queueing without a success receipt", async (type) => {
+  it.each(["CHECKOUT_SALE", "CHECKOUT_SALE_V2", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT"])(
+    "denies direct credential-less or revoked %s queueing without a success receipt", async (type) => {
       const setPendingSyncCount = vi.fn();
       await expect(queueOfflineMutation(type, { _client_mutation_id: "client-1" }, setPendingSyncCount))
         .rejects.toThrow(/device credential/i);
@@ -102,7 +103,7 @@ describe("offline mutation helpers", () => {
     const setPendingSyncCount = vi.fn();
     const payload = {
       _client_mutation_id: "0f4cb42e-3e9c-4d4a-b98a-c2ec04b52d7d",
-      _payments: [{ method: "cash", amount_fils: 1128 }],
+      _order_id: "order-1",
     };
     await queueOfflineMutation(supportedType, payload, setPendingSyncCount);
     await queueOfflineMutation(supportedType, payload, setPendingSyncCount);
@@ -117,15 +118,15 @@ describe("offline mutation helpers", () => {
     await queueOfflineMutation(supportedType, {
       _client_mutation_id: operationId,
       _tenant_id: "tenant-1",
-      _payments: [{ method: "cash", amount_fils: 1128 }],
+      _order_id: "order-1",
     }, setPendingSyncCount);
     await expect(queueOfflineMutation(supportedType, {
       _client_mutation_id: operationId,
       _tenant_id: "tenant-1",
-      _payments: [{ method: "cash", amount_fils: 2128 }],
+      _order_id: "different-order",
     }, setPendingSyncCount)).rejects.toThrow(/operation id.*different.*payload/i);
     expect(mocks.queueRows).toHaveLength(1);
-    expect(mocks.queueRows[0].payload._payments[0].amount_fils).toBe(1128);
+    expect(mocks.queueRows[0].payload._order_id).toBe("order-1");
   });
 
   it("serializes concurrent permitted queue attempts by operation ID", async () => {
@@ -134,7 +135,7 @@ describe("offline mutation helpers", () => {
       _client_mutation_id: "8eb06e14-cf32-4d41-a11a-c16ae8b32652",
       _tenant_id: "tenant-1",
       _branch_id: "branch-1",
-      _payments: [{ method: "benefitpay", amount_fils: 1128 }],
+      _order_id: "order-1",
     };
     await Promise.all([
       queueOfflineMutation(supportedType, payload, setPendingSyncCount),
@@ -154,7 +155,7 @@ describe("offline mutation helpers", () => {
     const payload = {
       _client_mutation_id: "ca5d25bb-9eee-48d0-a233-3ef1ce806bca",
       _tenant_id: "tenant-1",
-      _payments: [{ method: "cash", amount_fils: 1128 }],
+      _order_id: "order-1",
     };
     const mutationFn = vi.fn(async (_variables: typeof payload) => { throw new TypeError("Failed to fetch"); });
     if (!failDuringRequest) {
@@ -180,6 +181,8 @@ describe("offline mutation helpers", () => {
     ["CHECKOUT_SALE_V2", false],
     ["CHECKOUT_SALE", true],
     ["CHECKOUT_SALE", false],
+    ["APPLY_INVENTORY_MOVEMENT", true],
+    ["APPLY_INVENTORY_MOVEMENT", false],
   ])("denies %s through the online/offline hook (online=%s) without clearing or queueing", async (type, online) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) =>
