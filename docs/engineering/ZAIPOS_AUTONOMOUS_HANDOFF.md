@@ -2,12 +2,13 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current local checkpoint — post-merge recovery semantics (2026-09-23 20:00:52 +03)
+## Current local checkpoint — post-merge recovery semantics (2026-09-23 21:02:47 +03)
 
-- Independently fetched main `31c81f69bac26690cb12bc897759db056dbc6642`, the PR #85 security-stack merge. New scoped branch `fix/offline-reconciliation-dispositions-20260923` is based directly on main at local code head `9f61bae`.
+- Independently fetched main `31c81f69bac26690cb12bc897759db056dbc6642`, the PR #85 security-stack merge. New scoped branch `fix/offline-reconciliation-dispositions-20260923` is based directly on main at local code heads `9f61bae` and `390d599`.
 - `requires_review` records can no longer be retried into a predictable quarantine loop or discarded. Operators must choose `confirmed_not_applied` or `reconciled_externally` and enter a reconciliation note; the original payload, mutation identity, failure evidence and timestamps remain stored with a durable `resolved` status.
 - Retry remains available only for exhausted transient failures. Delete remains unavailable for review and resolved evidence. Tenant isolation is checked before disposition changes, and resolved records leave active/attention counts without being erased.
-- Local evidence: focused reconciliation/queue suite 3 files / 43 tests; full Vitest 67 files / 363 tests; TypeScript; production build (2,772 modules); `git diff --check`; and ESLint zero errors passed. The new contract proves retry and discard are no-ops for review evidence and explicit reconciliation preserves the original payload.
+- Reconciliation now re-reads authenticated `user_roles` and admits only owner/admin/manager/super-admin within tenant/branch scope. Cashier and other roles cannot resolve evidence. Every resolved record captures the actor and can export a versioned JSON evidence receipt containing scope, original payload, failure, disposition and a deterministic SHA-256 digest.
+- Local evidence: focused reconciliation/queue suite 3 files / 26 tests; full Vitest 68 files / 364 tests; TypeScript; production build (2,773 modules); `git diff --check`; and ESLint zero errors passed. Contracts prove denied-role zero mutation, preserved payload, actor capture and deterministic receipt hashing.
 - Separate local branch `fix/retire-legacy-table-upsert-20260923` contains code `b6b591b` and handoff `712cade` for the restaurant bypass cutover, with 67 files / 362 tests, build, TypeScript, 127 migrations and static contracts green. Neither branch is published because push still fails with missing GitHub credentials. No merge, deployment, release, force push or production-data operation occurred; offline checkout remains disabled.
 
 ### Immediate next executable actions
