@@ -25,6 +25,12 @@ export type DeviceCustomerCreditPaymentPayload = {
   _payment_method: 'cash' | 'card' | 'benefitpay' | 'bank_transfer' | 'cheque' | 'other';
   _payment_reference: string; _operation_id: string;
 };
+export type DeviceSupplierPaymentPayload = {
+  _tenant_id: string; _branch_id: string; _supplier_id: string;
+  _amount_fils: string;
+  _payment_method: 'cash' | 'card' | 'benefitpay' | 'bank_transfer' | 'cheque' | 'other';
+  _payment_reference: string | null; _note: string | null; _operation_id: string;
+};
 const RECORD_KEY = 'enrollment';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function requireString(value: unknown, label: string, max = 4096): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${label}`); return value.trim(); }
@@ -105,6 +111,25 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'record_customer_credit_payment_v2_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
       if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Customer credit payment returned an invalid identifier');
+      return result;
+    },
+    async supplierPayment(payload: DeviceSupplierPaymentPayload, authorization: DeviceAuthorization): Promise<string> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Supplier payment scope does not match authorization scope');
+      const paymentMethod = requireCanonicalString(payload._payment_method, 'supplier payment method', 2, 32);
+      if (!['cash', 'card', 'benefitpay', 'bank_transfer', 'cheque', 'other'].includes(paymentMethod)) throw new Error('Invalid supplier payment method');
+      const request = {
+        _tenant_id: requireUuid(payload._tenant_id, 'tenant ID'), _branch_id: requireUuid(payload._branch_id, 'branch ID'),
+        _supplier_id: requireUuid(payload._supplier_id, 'supplier ID'),
+        _amount_fils: requirePositiveFils(payload._amount_fils),
+        _payment_method: paymentMethod,
+        _payment_reference: optionalCanonicalString(payload._payment_reference, 'supplier payment reference', 256),
+        _note: optionalCanonicalString(payload._note, 'supplier payment note', 500),
+        _operation_id: requireCanonicalString(payload._operation_id, 'supplier payment operation ID', 8, 128),
+      };
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, 'record_supplier_payment_v2_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
+      if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Supplier payment returned an invalid identifier');
       return result;
     },
     async returnSale(payload: DeviceSaleReturnPayload, authorization: DeviceAuthorization): Promise<string> {
