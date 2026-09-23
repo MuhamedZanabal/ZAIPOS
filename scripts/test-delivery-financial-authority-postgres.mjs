@@ -7,6 +7,7 @@ const I = {
   branchA: "2d000000-0000-0000-0000-000000000001",
   branchB: "2d000000-0000-0000-0000-000000000002",
   cashierA: "3d000000-0000-0000-0000-000000000001",
+  managerA: "3d000000-0000-0000-0000-000000000006",
   centerA: "4d000000-0000-0000-0000-000000000001",
   productA: "5d000000-0000-0000-0000-000000000001",
 };
@@ -54,8 +55,9 @@ assertEqual(
 );
 
 sql(`
-  INSERT INTO auth.users(id,email,raw_user_meta_data)
-  VALUES ('${I.cashierA}','delivery-authority@zaipos.test','{}')
+  INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
+    ('${I.cashierA}','delivery-authority@zaipos.test','{}'),
+    ('${I.managerA}','delivery-manager@zaipos.test','{}')
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,allow_negative_stock) VALUES
@@ -69,7 +71,9 @@ sql(`
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role)
-  VALUES ('${I.cashierA}','${I.tenantA}','${I.branchA}','cashier')
+  VALUES
+    ('${I.cashierA}','${I.tenantA}','${I.branchA}','cashier'),
+    ('${I.managerA}','${I.tenantA}','${I.branchA}','manager')
   ON CONFLICT DO NOTHING;
 
   INSERT INTO public.inventory_centers(id,tenant_id,branch_id,name,type,status)
@@ -156,6 +160,15 @@ expectReject(
 );
 assertEqual("delivery direct financial mutation is revoked", scalar(`SELECT has_table_privilege('authenticated','public.delivery_orders','UPDATE');`), "f");
 assertEqual("delivery collection v2 exists", scalar(`SELECT to_regprocedure('public.collect_delivery_payment_v2(uuid,public.payment_method,uuid,text,text)') IS NOT NULL;`), "t");
+assertEqual("legacy collection v2 is not executable", scalar(`SELECT has_function_privilege('authenticated','public.collect_delivery_payment_v2(uuid,public.payment_method,uuid,text,text)','EXECUTE');`), "f");
+assertEqual("device-bound collection v3 is executable", scalar(`SELECT has_function_privilege('authenticated','public.collect_delivery_payment_v3_device(uuid,uuid,uuid,public.payment_method,uuid,text,text,text,text)','EXECUTE');`), "t");
+
+const deviceUid = 'delivery-collection-terminal';
+const copiedDeviceUid = 'copied-delivery-terminal';
+const approvalId = asUser(I.managerA, `SELECT public.approve_device_enrollment('${I.tenantA}','${I.branchA}','${deviceUid}')`);
+const activation = scalar(`SET ROLE service_role; SELECT device_id::text || '|' || credential FROM public.activate_device_enrollment('${approvalId}','1.0.0','linux'); RESET ROLE;`);
+const [deviceId, deviceCredential] = activation.split('|');
+if (!/^[0-9a-f-]{36}$/i.test(deviceId) || !/^[0-9a-f]{64}$/i.test(deviceCredential)) throw new Error('delivery device activation returned invalid authority');
 
 const outsider='3d000000-0000-0000-0000-000000000002';
 const wrongBranchUser='3d000000-0000-0000-0000-000000000003';
@@ -163,15 +176,20 @@ const branchA2='2d000000-0000-0000-0000-000000000003';
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES ('${outsider}','delivery-outsider@zaipos.test','{}'),('${wrongBranchUser}','delivery-wrongbranch@zaipos.test','{}');
 INSERT INTO public.branches(id,tenant_id,name,status) VALUES ('${branchA2}','${I.tenantA}','Other same-tenant branch','active');
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES ('${outsider}','${I.tenantB}','${I.branchB}','cashier'),('${wrongBranchUser}','${I.tenantA}','${branchA2}','cashier');`);
-expectReject('cross tenant collection denied',outsider,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-outsider',NULL)`,/forbidden/i);
-expectReject('wrong branch collection denied',wrongBranchUser,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-wrongbranch',NULL)`,/forbidden/i);
+expectReject('legacy collection bypass denied',I.cashierA,`SELECT public.collect_delivery_payment_v2('${orderId}','cash',NULL,'collection-legacy',NULL)`,/permission denied/i);
 expectReject('cross tenant courier read denied',outsider,`SELECT public.list_courier_deliveries('${I.tenantA}','${I.branchA}')`,/forbidden/i);
 assertEqual('wrong branch direct delivery read isolated',asUser(wrongBranchUser,`SELECT count(*)::text FROM public.delivery_orders WHERE id='${orderId}'`),'0');
 const sessionId = "6d000000-0000-0000-0000-000000000001";
 sql(`INSERT INTO public.cash_sessions(id,tenant_id,branch_id,user_id) VALUES ('${sessionId}','${I.tenantA}','${I.branchA}','${I.cashierA}');`);
 asUser(I.cashierA, `SELECT public.update_delivery_status('${orderId}','ready',NULL)`);
-const collect = ({order=orderId, method='cash', session=sessionId, op='collection-contract-0001'}={}) =>
-  `SELECT public.collect_delivery_payment_v2('${order}','${method}','${session}','${op}',NULL)::text`;
+const collect = ({order=orderId, method='cash', session=sessionId, op='collection-contract-0001', tenant=I.tenantA, branch=I.branchA, uid=deviceUid, credential=deviceCredential}={}) =>
+  `SELECT public.collect_delivery_payment_v3_device('${tenant}','${branch}','${order}','${method}','${session}','${op}',NULL,'${uid}','${credential}')::text`;
+const denialBaseline = scalar(`SELECT count(*)::text || ':' || (SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}') FROM public.delivery_collections;`);
+expectReject('missing device credential denied',I.cashierA,collect({credential:''}),/device credential|required|authoriz/i);
+expectReject('copied device credential denied',I.cashierA,collect({uid:copiedDeviceUid}),/device credential|required|authoriz/i);
+expectReject('cross tenant collection denied',outsider,collect({tenant:I.tenantB,branch:I.branchB,op:'collection-outsider'}),/device credential|forbidden|scope|authoriz/i);
+expectReject('wrong branch collection denied',wrongBranchUser,collect({branch:branchA2,op:'collection-wrongbranch'}),/device credential|forbidden|scope|authoriz/i);
+assertEqual('device denials have zero financial effect',scalar(`SELECT count(*)::text || ':' || (SELECT total_cash_fils::text FROM public.cash_sessions WHERE id='${sessionId}') FROM public.delivery_collections;`),denialBaseline);
 expectReject('wrong receiving session', I.cashierA, collect({session:I.branchB}), /open receiving cash session/i);
 expectReject('cannot mark delivered without collection', I.cashierA, `SELECT public.update_delivery_status('${orderId}','delivered',NULL)`, /atomic delivery collection/i);
 expectReject('cannot directly rewrite delivery fee', I.cashierA, `UPDATE public.delivery_orders SET delivery_fee_fils=1 WHERE id='${orderId}'`, /permission denied/i);
@@ -230,7 +248,12 @@ assertEqual('transfer collection preserves a single fils',scalar(`SELECT total_t
 sql(`UPDATE public.cash_sessions SET status='closed' WHERE id='${sessionId}';`);
 assertEqual('lost response retry survives later till closure',asUser(I.cashierA,collect()),collectionId);
 assertEqual('courier read model exposes exact strings',asUser(I.cashierA,`SELECT jsonb_typeof(public.list_courier_deliveries('${I.tenantA}','${I.branchA}')->'orders'->0->'collection_total_fils')`),'string');
+const preRevocationSnapshot = scalar(`SELECT count(*)::text || ':' || total_cash_fils::text || ':' || total_qr_fils::text || ':' || total_card_fils::text || ':' || total_transfer_fils::text FROM public.delivery_collections, public.cash_sessions WHERE public.cash_sessions.id='${sessionId}' GROUP BY total_cash_fils,total_qr_fils,total_card_fils,total_transfer_fils;`);
+assertEqual('delivery device revoked',asUser(I.managerA,`SELECT public.revoke_device_enrollment('${I.tenantA}','${deviceId}','delivery authority regression')`),'t');
+expectReject('revoked device cannot replay collection',I.cashierA,collect(),/device credential|revok|authoriz/i);
+expectReject('revoked device cannot create collection',I.cashierA,collect({order:rollbackOrder,op:'collection-after-revoke'}),/device credential|revok|authoriz/i);
+assertEqual('revoked attempts have zero financial effect',scalar(`SELECT count(*)::text || ':' || total_cash_fils::text || ':' || total_qr_fils::text || ':' || total_card_fils::text || ':' || total_transfer_fils::text FROM public.delivery_collections, public.cash_sessions WHERE public.cash_sessions.id='${sessionId}' GROUP BY total_cash_fils,total_qr_fils,total_card_fils,total_transfer_fils;`),preRevocationSnapshot);
 sql(`DELETE FROM public.user_roles WHERE user_id='${I.cashierA}' AND tenant_id='${I.tenantA}';`);
-expectReject('revoked actor cannot replay collection',I.cashierA,collect(),/forbidden/i);
+expectReject('revoked actor cannot replay collection',I.cashierA,collect(),/device credential|revok|authoriz|forbidden/i);
 
 process.stdout.write("Delivery financial-authority PostgreSQL PASS: exact fee fils, server price/tax authority, atomic sale/inventory linkage, payload-bound idempotency, and tenant/branch denial verified.\n");

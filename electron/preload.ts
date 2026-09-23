@@ -25,6 +25,7 @@ const electronAPI = {
   cashMovement: (payload: Record<string, unknown>, authorization: ManagerAuthorization, cancel = false): Promise<string | null> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_CASH_MOVEMENT, payload, authorization, cancel),
   returnSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_SALE_RETURN, payload, authorization),
   voidSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_SALE_VOID, payload, authorization),
+  collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_DELIVERY_COLLECTION, payload, authorization),
   platform: process.platform as NodeJS.Platform,
 };
 contextBridge.exposeInMainWorld('electron', electronAPI);
