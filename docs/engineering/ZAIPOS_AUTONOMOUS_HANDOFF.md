@@ -2,7 +2,22 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #83 (2026-09-23 15:37:54 +03)
+## Current local checkpoint — post-merge main (2026-09-23 19:38:43 +03)
+
+- Independently fetched `origin/main` at `31c81f69bac26690cb12bc897759db056dbc6642` (`Merge pull request #85 from MuhamedZanabal/integrate/security-financial-authority-20260923`). The integrated trusted-device/financial-security stack is now the base. Reported post-merge verification is 19/19 green; this runtime confirmed the SHA but could not query workflow metadata because `gh` is unavailable.
+- New branch `fix/retire-legacy-table-upsert-20260923` is based exactly on that main SHA. Local commit `b6b591b` revokes PUBLIC/anon/authenticated execution of `upsert_table_order_items(uuid,uuid,uuid,uuid,jsonb,text)`, removes POS and sync-engine calls to it, rejects new `UPSERT_TABLE_ORDER_ITEMS` submissions before network or persistence, and quarantines old records unchanged as `requires_review`.
+- This intentionally fails closed instead of converting renderer-owned product names, prices, tax, discounts and line totals into authoritative writes. The next implementation must derive all supported product/modifier/discount accounting on the server; the retired RPC must not be restored.
+- Local evidence on the integrated tree: focused 3 files / 46 tests; full Vitest 67 files / 362 tests; TypeScript; build (2,772 modules); 127 migration validations; renderer cutover; PostgreSQL contract syntax; `git diff --check`; and ESLint zero errors / 13 existing warnings passed. Local `psql` is unavailable, so real PostgreSQL execution remains a remote-CI gate.
+- Push remains blocked: `fatal: could not read Username for 'https://github.com': No such device or address`. Fetch works anonymously, but the runtime has no `gh` binary or GitHub credential helper. No remote branch/PR/CI claim applies to `b6b591b`. No merge, deployment, release, force push or production-data operation occurred; offline checkout remains disabled.
+
+### Immediate next executable actions
+
+1. Restore authorized GitHub write transport, push `b6b591b`, open a scoped draft PR against main, and require exact-head migration plus real PostgreSQL grant-denial evidence.
+2. Implement an atomic authoritative replacement accepting product/modifier identities and quantities only, with branch/table availability, pricing, tax, governed discount policy, exact fils, tenant/branch/role/waiter scope, stable replay identity, conflict/contention and zero-effect proof.
+3. Continue trusted-device classification for inventory batch, reconciliation, transfer, receiving and production completion; rebuild the authorization census against current main; replace misleading `requires_review` retry/discard semantics with explicit reconciliation dispositions.
+4. Keep RETAIL/RESTAURANT enforcement as P1 and signed Windows/hardware/DR/provider/regulatory acceptance external.
+
+## Previous checkpoint — PR #83 (2026-09-23 15:37:54 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `af277e1ad6198b39d46ca3b052fae063c60319dc` is mergeable with no submitted reviews or inline threads. No merge is authorized and offline checkout remains disabled.
 - Authenticated direct INSERT on `table_orders` and the broad insert policy are removed. `open_table_order_v2` locks the authoritative table, validates tenant, active branch, eligible branch role and assigned-waiter ownership, rejects unavailable/pending-payment tables, journals a canonical stable identity and audits the resolved order.
