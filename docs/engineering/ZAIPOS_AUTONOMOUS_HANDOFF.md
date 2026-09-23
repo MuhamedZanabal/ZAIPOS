@@ -2,7 +2,22 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #82 (2026-09-23 09:16:39 +03)
+## Current checkpoint — PR #83 (2026-09-23 10:27:00 +03)
+
+- Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 branch `fix/atomic-table-order-items-20260923` is stacked directly on clean PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `02361a3f80bed4b4e1f5a60522b4b552096af463` is mergeable and clean with no submitted reviews or inline threads. No merge is authorized.
+- Restaurant item add/quantity/delete now uses one SECURITY DEFINER command. Authenticated direct INSERT/UPDATE/DELETE and direct recalculation are revoked; the broad `toi_member_all` policy is removed. The command locks the open order, verifies active tenant/branch plus assigned waiter or elevated branch role, derives authoritative table-channel pricing, computes BHD totals through integer fils, journals the canonical request and audits the result atomically.
+- Renderer code persists the operation identity before submission, reuses it after an indeterminate response, and no longer supplies price/tax/total fields. KDS status transitions remain server RPCs. Persisted legacy `ADD_TABLE_ORDER_ITEMS` records remain quarantined by the parent work; offline checkout remains disabled.
+- Exact-head evidence: all 21 workflows succeeded. CI #725 / run `35831057784` passed quality job `107083502459` and unsigned Windows packaging job `107084293991`. Table Checkout Security run `35831057836` passed the real PostgreSQL direct-DML, wrong-branch, unassigned-waiter, detail, exact-fils, replay, payload-conflict, audit, deletion and two-session concurrency contract.
+- CI found and repaired one real defect: code head `322671a` referenced nonexistent restaurant-item fils shadow columns. Head `02361a3` instead converts authoritative numeric columns through `bhd_numeric_to_fils` before all aggregation and proves a `0.001` quantity produces an exact `0.002` BHD subtotal rather than sub-fils state. Do not cite `322671a` as passing evidence.
+- Local verification: 64 Vitest files / 342 tests, TypeScript, production build (2,771 modules), 122 migration validations, renderer cutover and native vault contracts, `git diff --check`, and ESLint zero errors / 13 pre-existing warnings passed. Local `psql` is unavailable; exact-head CI supplied disposable real-PostgreSQL evidence. No force push, merge, deployment, release or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Add real PostgreSQL authorization contracts for `start_preparing_table_item`, `mark_table_item_ready`, `send_table_order_to_kitchen`, `mark_table_order_ready`, `dispatch_table_item` and `undispatch_table_item`; replace tenant-membership-only checks with explicit tenant/branch/role/order authority and stable mutation identity where financial inventory effects occur.
+2. Continue the remaining financial-operation census and evidence matrix, then complete offline restart, contention, corruption, quarantine and operator-recovery acceptance while checkout stays disabled.
+3. Review and integrate the draft security stack only through normal review; preserve signing, physical hardware, measured production DR, provider authorization and regulatory acceptance as external gates.
+
+## Previous checkpoint — PR #82 (2026-09-23 09:16:39 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main is still `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #82 now targets current PR #81 head `5b3e267013adb05bdfa917c3c55a0ac3a006e923` at exact head `c7de8849817b878ad72ea3af4fe0afab9362bf5c`. GitHub reports the PR mergeable and clean; there are no submitted reviews or inline threads. No PR merge is authorized.
 - The non-force two-parent synchronization commit incorporated PR #81's verified queue scope/inventory quarantine work and retained all device-bound cash-session changes. It also removes the non-atomic `ADD_TABLE_ORDER_ITEMS` replay path: new enqueue attempts fail closed and persisted records become `requires_review` without an RPC, direct table insert, payload mutation or deletion.
