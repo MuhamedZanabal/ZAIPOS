@@ -1,5 +1,6 @@
 import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 import { useNetworkStore } from '@/stores/network';
+import { useTenantStore } from '@/stores/tenant';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import {
@@ -79,7 +80,17 @@ export async function queueOfflineMutation<TVariables>(
   const deviceId = getDeviceId();
   const payload = withClientMutationId(variables, deviceId);
   const clientMutationId = (payload as any)?._client_mutation_id as string | undefined;
-  const { tenantId, branchId } = syncQueueScopeFromPayload(payload);
+  const payloadScope = syncQueueScopeFromPayload(payload);
+  const selectedScope = useTenantStore.getState();
+  if (!selectedScope.tenantId || !selectedScope.branchId) {
+    throw new Error('An active tenant and branch are required before an offline operation can be queued.');
+  }
+  if ((payloadScope.tenantId && payloadScope.tenantId !== selectedScope.tenantId)
+    || (payloadScope.branchId && payloadScope.branchId !== selectedScope.branchId)) {
+    throw new Error('Offline operation scope conflicts with the active tenant or branch.');
+  }
+  const tenantId = selectedScope.tenantId;
+  const branchId = selectedScope.branchId;
 
   await db.transaction('rw', db.sync_queue, async () => {
     const existing = clientMutationId
@@ -87,7 +98,8 @@ export async function queueOfflineMutation<TVariables>(
       : undefined;
 
     if (existing) {
-      if (existing.type !== type || !syncQueuePayloadsEqual(existing.payload, payload)) {
+      if (existing.type !== type || !syncQueuePayloadsEqual(existing.payload, payload)
+        || existing.tenantId !== tenantId || existing.branchId !== branchId) {
         throw new OfflineOperationConflictError(clientMutationId!);
       }
       return;
@@ -110,7 +122,7 @@ export async function queueOfflineMutation<TVariables>(
 
   const count = (await db.sync_queue.toArray()).filter((item) =>
     isActiveQueueStatus(item.status)
-    && (!tenantId || syncQueueItemBelongsToTenant(item, tenantId))
+    && syncQueueItemBelongsToTenant(item, tenantId)
   ).length;
   setPendingSyncCount(count);
 
