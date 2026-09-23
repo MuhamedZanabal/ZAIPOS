@@ -2,6 +2,23 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — draft PR #87 authoritative table cart (2026-09-23 22:17 +03)
+
+- Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. Draft PR #87 exact code head `48e9286e396464c2b03a3246f8c1fa3a73c486f2` extends the verified legacy-RPC revocation with an authoritative cart replacement. No merge is authorized and offline checkout remains disabled.
+- `append_table_cart_v2` accepts only product IDs, quantities, modifier option IDs and notes. It calls the scoped order-opening command, locks the order, revalidates branch/role/waiter authority, derives product identity, table-channel price, tax, modifier names/deltas and exact-fils totals, enforces required/min/max modifier rules, and audits the single transaction.
+- Renderer-supplied product names, prices, tax, line totals and discounts are absent. Unknown financial keys are rejected. Restaurant line discounts remain zero and the UI fails closed until a governed server policy is implemented.
+- Stable cart identity persists before submission. Lost responses replay the original order; changed payload reuse is rejected; concurrent identical requests converge to one append. Denied role, wrong branch, missing modifier, invalid financial field and malformed quantity paths have zero cart/journal effect.
+- Exact-head evidence: 21/21 workflows succeeded. CI run `35907644135` passed quality job `107339226435` and unsigned Windows package `107340331172`. Table Checkout Security run `35907644305`, job `107339226826`, passed the production migration chain and real PostgreSQL authority/replay/contention suite.
+- Local evidence: focused 6 files / 56 tests; full Vitest 68 files / 364 tests; TypeScript; ESLint zero errors; 128 migration validations; renderer cutover; production build (2,773 modules); and `git diff --check` passed. PR checkpoint comment `5801312258` records the evidence.
+- No merge, deployment, release, force push or production-data operation occurred. Unsigned packaging is not installation, hardware or signing acceptance.
+
+### Immediate next executable actions
+
+1. Review PR #87 normally. Do not merge through autonomous execution.
+2. Continue device-bound authority for inventory batch, reconciliation, transfer, receiving and production-completion mutations, selecting one scoped command at a time with negative/replay/contention/zero-effect proof.
+3. Rebuild the authorization census against current main and complete packaged-desktop operator recovery acceptance.
+4. Keep RETAIL/RESTAURANT enforcement as P1 and signing/hardware/DR/provider/regulatory gates external.
+
 ## Current checkpoint — draft PR #87 (2026-09-23 21:31 +03)
 
 - Draft PR #87 targets main `31c81f69bac26690cb12bc897759db056dbc6642`. Verified implementation/documentation head `6ff2c747e0202aa6025c860fdd3b419bec5733a2` is clean/mergeable with no submitted reviews or inline threads.
