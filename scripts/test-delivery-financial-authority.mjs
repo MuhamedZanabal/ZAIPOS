@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const delivery = readFileSync(`${root}/src/modules/delivery/Delivery.tsx`, "utf8");
+const courier = readFileSync(`${root}/src/modules/courier/CourierDashboard.tsx`, "utf8");
+const deviceMigration = readFileSync(`${root}/supabase/migrations/20260922173250_device_bound_delivery_collection.sql`, "utf8");
 const types = readFileSync(`${root}/src/integrations/supabase/types.ts`, "utf8");
 
 function assertMatch(label, text, pattern) {
@@ -36,5 +38,10 @@ assertNoMatch(
 assertMatch("generated DB contract exposes exact delivery fee", types, /delivery_fee_fils:\s*number/);
 assertMatch("generated DB contract exposes v2 delivery command", types, /register_delivery_order_v2:/);
 assertMatch("v2 command accepts exact delivery-fee fils", types, /_delivery_fee_fils:\s*number/);
+assertMatch("courier collection uses native credential custody", courier, /window\.electron\.collectDeliveryPayment/);
+assertNoMatch("courier collection cannot bypass native custody", courier, /rpc\(["']collect_delivery_payment_v2["']/);
+assertMatch("device wrapper verifies terminal authority", deviceMigration, /require_delivery_collection_device_v1/);
+assertMatch("delivery device authority preserves assigned courier access", deviceMigration, /'courier'[\s\S]*public\.app_role/);
+assertMatch("legacy collection execute is revoked", deviceMigration, /REVOKE ALL ON FUNCTION public\.collect_delivery_payment_v2[\s\S]*authenticated/);
 
 console.log("Delivery financial-authority static contract: PASS");

@@ -27,34 +27,34 @@ import {
 import { PendingTableOrders } from "./PendingTableOrders";
 import { cn } from "@/lib/utils";
 import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
-
-import { acknowledgeCashSession, readCashSession, recoverCashSession, startCashSessionOperation, type CashSessionDraft, type CashSessionRequest } from '@/lib/cashSessionRecovery';
+import { executeCashSession, readCashSessionDraft, type CashSessionDraft } from "@/lib/deviceCashSession";
 
 export default function Cash() {
   const { tenantId, branchId, hasRole } = useTenantContext();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const actorId = user?.id;
   const [openAmount, setOpenAmount] = useState("0.000");
   const [sessionSaving, setSessionSaving] = useState(false);
-  const [sessionDraft, setSessionDraft] = useState<CashSessionDraft | null>(null);
-  const [sessionRecoveryError, setSessionRecoveryError] = useState('');
-  const refreshSessionRecovery = useCallback(() => {
-    try { setSessionDraft(actorId ? readCashSession(actorId) : null); setSessionRecoveryError(''); }
-    catch (error: any) { setSessionRecoveryError(error.message); }
-  }, [actorId]);
-  useEffect(() => {
-    refreshSessionRecovery();
-    window.addEventListener('storage', refreshSessionRecovery);
-    return () => window.removeEventListener('storage', refreshSessionRecovery);
-  }, [refreshSessionRecovery]);
-  const sessionBlocked = sessionSaving || !!sessionDraft || !!sessionRecoveryError;
   const [closeOpen, setCloseOpen] = useState(false);
   const [moveDialog, setMoveDialog] = useState<null | "in" | "out">(null);
   const [counts, setCounts] = useState({ cash: "", card: "", transfer: "", qr: "" });
+  const [sessionRecovery, setSessionRecovery] = useState<CashSessionDraft | null>(null);
 
   const { data: session } = useOpenSession(branchId);
   const canViewDifferences = hasRole("owner", "admin");
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const draft = readCashSessionDraft(user.id);
+      setSessionRecovery(draft);
+      if (draft?.action === 'open') setOpenAmount(draft.request._opening_amount ?? '0.000');
+      if (draft?.action === 'close') {
+        setCounts({ cash: draft.request._counted_amount ?? '', card: draft.request._counted_card ?? '', transfer: draft.request._counted_transfer ?? '', qr: draft.request._counted_qr ?? '' });
+        setCloseOpen(true);
+      }
+    } catch (error: any) { toast.error(error.message); }
+  }, [user?.id]);
 
   const { data: history } = useQuery({
     queryKey: ["cash-history", branchId],
@@ -103,34 +103,36 @@ export default function Cash() {
     if (fils < 0) throw new Error('Cash amounts cannot be negative');
     return filsToBhd(fils);
   };
-  const submitSession = async (request?: CashSessionRequest, cancel = false) => {
-    if (!user || sessionSaving) return;
+  const openSession = async () => {
+    if (!tenantId || !branchId || !user || sessionSaving) return;
     setSessionSaving(true);
     try {
-      const result = request ? await startCashSessionOperation(user.id, request) : await recoverCashSession(user.id, cancel);
-      if (result.state === 'rejected') toast.error('Operation identity belongs to a different request. Reconcile before continuing.');
-      else toast.success(result.state === 'cancelled' ? 'Session request cancelled without changing a register' : 'Original session operation confirmed');
-      setCloseOpen(false); qc.invalidateQueries();
-    } catch (error: any) { toast.error(error.message ?? 'Session response uncertain. Recover the saved request.'); }
-    finally { refreshSessionRecovery(); setSessionSaving(false); }
-  };
-  const openSession = async () => {
-    if (!tenantId || !branchId || sessionBlocked) return;
-    try { await submitSession({kind:'open',tenant_id:tenantId,branch_id:branchId,register_id:null,opening_amount:exactCount(openAmount)}); }
-    catch (error: any) { toast.error(error.message); }
+      await executeCashSession(user.id, 'open', {
+        _tenant_id: tenantId, _branch_id: branchId, _session_id: null, _register_id: null,
+        _opening_amount: exactCount(openAmount), _counted_amount: null, _counted_card: null,
+        _counted_transfer: null, _counted_qr: null, _notes: null,
+      });
+      setSessionRecovery(null);
+      toast.success("Register opened");
+      qc.invalidateQueries();
+    } catch (error: any) { toast.error(error.message ?? 'Opening response uncertain; check register history before retrying'); }
+    finally { setSessionSaving(false); }
   };
   const closeSession = async () => {
-    if (!session || !tenantId || !branchId || sessionBlocked) return;
-    try { await submitSession({kind:'close',tenant_id:tenantId,branch_id:branchId,session_id:session.id,
-      counted_cash:exactCount(counts.cash),counted_card:exactCount(counts.card),counted_transfer:exactCount(counts.transfer),counted_qr:exactCount(counts.qr),notes:null}); }
-    catch (error: any) { toast.error(error.message); }
-  };
-  const acknowledgeSession = async () => {
-    if (!user || sessionSaving) return;
+    const sessionId = session?.id ?? sessionRecovery?.request._session_id;
+    if (!tenantId || !branchId || !user || !sessionId || sessionSaving) return;
     setSessionSaving(true);
-    try { await acknowledgeCashSession(user.id); }
-    catch (error: any) { toast.error(error.message); }
-    finally { refreshSessionRecovery();setSessionSaving(false); }
+    try {
+      await executeCashSession(user.id, 'close', {
+        _tenant_id: tenantId, _branch_id: branchId, _session_id: sessionId, _register_id: null, _opening_amount: null,
+        _counted_amount: exactCount(counts.cash), _notes: null, _counted_card: exactCount(counts.card),
+        _counted_transfer: exactCount(counts.transfer), _counted_qr: exactCount(counts.qr),
+      });
+      setSessionRecovery(null);
+      toast.success("Register closed successfully");
+      setCloseOpen(false);setCounts({cash: '',card: '',transfer: '',qr: ''});qc.invalidateQueries();
+    } catch (error: any) { toast.error(error.message ?? 'Closing response uncertain; check register history before retrying'); }
+    finally { setSessionSaving(false); }
   };
 
   return (
@@ -153,7 +155,6 @@ export default function Cash() {
             <button
               type="button"
               className="g-btn g-btn-primary"
-              disabled={sessionBlocked}
               onClick={() => {
                 setCounts({ cash: "", card: "", transfer: "", qr: "" });
                 setCloseOpen(true);
@@ -165,18 +166,6 @@ export default function Cash() {
         )}
       </div>
 
-      {sessionRecoveryError && <p role="alert">{sessionRecoveryError}</p>}
-      {sessionDraft && <section className="glass rounded-2xl p-4 space-y-3" aria-label="Session recovery">
-        <p role="status">Saved {sessionDraft.request.kind} request: {sessionDraft.state}. Operation {sessionDraft.operationId}</p>
-        <p>Original branch: {sessionDraft.request.branch_id}. {sessionDraft.request.kind === 'open' ? `Opening cash: ${sessionDraft.request.opening_amount} BHD` : `Session: ${sessionDraft.request.session_id}. Counts (BHD): cash ${sessionDraft.request.counted_cash}, card ${sessionDraft.request.counted_card}, bank transfer ${sessionDraft.request.counted_transfer}, BenefitPay ${sessionDraft.request.counted_qr}.`}</p>
-        {sessionDraft.state === 'rejected' && <p role="alert">The server reported a conflicting actor or payload. Preserve this request and ask a manager to reconcile the original operation. A conflict is not a recorded or cancelled receipt.</p>}
-        {sessionDraft.sessionId && <p>Confirmed session: {sessionDraft.sessionId}. This receipt describes the original operation; check current register status before selling.</p>}
-        {(sessionDraft.state === 'pending' || sessionDraft.state === 'rejected') ? <>
-          <button type="button" className="g-btn g-btn-primary" disabled={sessionSaving || !!sessionRecoveryError} onClick={() => submitSession()}>Retry saved session request</button>
-          <button type="button" className="g-btn g-btn-ghost" disabled={sessionSaving || !!sessionRecoveryError} onClick={() => submitSession(undefined,true)}>Resolve session cancellation</button>
-          <p>Cancellation only prevents an uncommitted request. A committed opening or closing is retained and confirmed.</p>
-        </> : <button type="button" className="g-btn g-btn-ghost" disabled={sessionSaving || !!sessionRecoveryError} onClick={acknowledgeSession}>Acknowledge session receipt</button>}
-      </section>}
       <Tabs defaultValue="current">
         <TabsList>
           <TabsTrigger value="current">Current register</TabsTrigger>
@@ -202,14 +191,13 @@ export default function Cash() {
                       type="number"
                       min="0"
                       step="0.001"
-                      disabled={sessionBlocked}
                       value={openAmount}
                       onChange={(event) => setOpenAmount(event.target.value)}
                       className="h-14 pl-12 text-2xl font-black tabular-nums border-2 focus:border-primary"
                     />
                   </div>
                 </div>
-                <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={sessionBlocked} onClick={openSession}>
+                <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={sessionSaving} onClick={openSession}>
                   <LockOpen size={20} className="mr-2" /> Open register now
                 </button>
               </div>
@@ -368,18 +356,18 @@ export default function Cash() {
             </DialogTitle>
           </DialogHeader>
           <div className="p-6 space-y-6">
-            <CountField disabled={sessionBlocked} label="Counted Cash" value={counts.cash} onChange={(value) => setCounts({ ...counts, cash: value })} />
+            <CountField label="Counted Cash" value={counts.cash} onChange={(value) => setCounts({ ...counts, cash: value })} />
             <div className="space-y-3 border-t pt-4">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 Other payment methods
               </Label>
               <div className="grid grid-cols-2 gap-3">
-                <CountField disabled={sessionBlocked} label="Card" value={counts.card} onChange={(value) => setCounts({ ...counts, card: value })} compact />
-                <CountField disabled={sessionBlocked} label="Bank Transfer" value={counts.transfer} onChange={(value) => setCounts({ ...counts, transfer: value })} compact />
-                <CountField disabled={sessionBlocked} label="BenefitPay" value={counts.qr} onChange={(value) => setCounts({ ...counts, qr: value })} compact />
+                <CountField label="Card" value={counts.card} onChange={(value) => setCounts({ ...counts, card: value })} compact />
+                <CountField label="Bank Transfer" value={counts.transfer} onChange={(value) => setCounts({ ...counts, transfer: value })} compact />
+                <CountField label="BenefitPay" value={counts.qr} onChange={(value) => setCounts({ ...counts, qr: value })} compact />
               </div>
             </div>
-            <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={sessionBlocked} onClick={closeSession}>
+            <button type="button" className="g-btn g-btn-primary g-btn-touch w-full" disabled={sessionSaving} onClick={closeSession}>
               Close register
             </button>
           </div>
@@ -388,6 +376,8 @@ export default function Cash() {
 
       <CashMovementDialog
         actorId={user?.id ?? null}
+        tenantId={tenantId}
+        branchId={branchId}
         open={moveDialog !== null}
         type={moveDialog ?? "in"}
         sessionId={session?.id ?? null}
@@ -406,13 +396,11 @@ function CountField({
   value,
   onChange,
   compact = false,
-  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   compact?: boolean;
-  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -422,7 +410,6 @@ function CountField({
         min="0"
         step="0.001"
         value={value}
-        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         className={compact ? "h-8 text-sm" : "font-bold tabular-nums"}
         placeholder="0.000"
@@ -432,12 +419,14 @@ function CountField({
 }
 
 export function CashMovementDialog({
-  open, type, sessionId, actorId, onClose,
+  open, type, sessionId, actorId, tenantId, branchId, onClose,
 }: {
   open: boolean;
   type: "in" | "out";
   sessionId: string | null;
   actorId: string | null;
+  tenantId: string | null;
+  branchId: string | null;
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
@@ -462,7 +451,7 @@ export function CashMovementDialog({
     setSaving(true);
     try {
       const request = draft?.request ?? {
-        _session_id: sessionId ?? "", _type: type,
+        _tenant_id: tenantId ?? "", _branch_id: branchId ?? "", _session_id: sessionId ?? "", _type: type,
         _amount: filsToBhd(bhdToFils(amount)), _reason: reason.trim(), _reference: reference.trim(),
       };
       const completed = await executeCashMovement(actorId, request, cancel);

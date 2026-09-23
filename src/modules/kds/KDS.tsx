@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ChefHat, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { transitionTableItem } from "@/lib/tableKitchen";
 
 type TableItemStatus = Database["public"]["Enums"]["table_item_status"];
 
@@ -185,7 +186,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
 }
 
 export default function KDS() {
-  const { branchId } = useTenantContext();
+  const { tenantId, branchId } = useTenantContext();
   const qc = useQueryClient();
   const [station, setStation] = useState(() => localStorage.getItem("kds_station") || "Todas");
   const [soundOn, setSoundOn] = useState(true);
@@ -267,15 +268,19 @@ export default function KDS() {
   }, [filtered, now, soundOn]);
 
   const markPreparing = async (itemId: string) => {
-    const { error } = await supabase.rpc("start_preparing_table_item", { _item_id: itemId });
-    if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
+    if (!tenantId || !branchId) return toast.error("Kitchen branch scope is unavailable");
+    try {
+      await transitionTableItem({ tenantId, branchId, itemId, action:"start_preparing" });
+      qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
+    } catch (error: any) { toast.error(error.message); }
   };
 
   const markDispatched = async (itemId: string) => {
-    const { error } = await supabase.rpc("mark_table_item_ready", { _item_id: itemId });
-    if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
+    if (!tenantId || !branchId) return toast.error("Kitchen branch scope is unavailable");
+    try {
+      await transitionTableItem({ tenantId, branchId, itemId, action:"mark_ready" });
+      qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
+    } catch (error: any) { toast.error(error.message); }
   };
 
   const orderCount = Object.keys(byOrder).length;

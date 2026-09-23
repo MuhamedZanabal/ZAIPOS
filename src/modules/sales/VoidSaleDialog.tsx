@@ -28,7 +28,7 @@ interface VoidSaleDialogProps {
 }
 
 export function VoidSaleDialog({ open, onOpenChange, sale }: VoidSaleDialogProps) {
-  const { branchId } = useTenantContext();
+  const { tenantId, branchId } = useTenantContext();
   const { data: openSession } = useOpenSession(branchId);
   const qc = useQueryClient();
   const [reason, setReason] = useState("");
@@ -69,14 +69,26 @@ export function VoidSaleDialog({ open, onOpenChange, sale }: VoidSaleDialogProps
         operationIdRef.current = `void-${crypto.randomUUID()}`;
       }
 
-      const { data, error } = await supabase.rpc("process_sale_void_v2" as any, {
+      if (!tenantId || !branchId || !window.electron?.voidSale) {
+        throw new Error("Sale voids require the supported provisioned desktop application.");
+      }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("An authenticated operator session is required to void a sale.");
+
+      return window.electron.voidSale({
+        _tenant_id: tenantId,
+        _branch_id: branchId,
         _sale_id: sale.id,
         _client_mutation_id: operationIdRef.current,
         _cash_session_id: isInPersonSale ? sale.session_id : null,
         _reason: reason.trim() || null,
+      }, {
+        accessToken,
+        tenantId,
+        branchId,
       });
-      if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       toast.success("Sale voided with compensating payment, stock, and till evidence.");

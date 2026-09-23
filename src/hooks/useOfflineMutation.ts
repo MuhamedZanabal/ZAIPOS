@@ -1,8 +1,10 @@
 import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 import { useNetworkStore } from '@/stores/network';
+import { useTenantStore } from '@/stores/tenant';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import {
+  assertCheckoutDeviceBoundaryReady,
   isActiveQueueStatus,
   isTransientNetworkFailure,
   OfflineOperationConflictError,
@@ -12,9 +14,11 @@ import {
 } from '@/lib/syncQueue';
 import { getDeviceId } from '@/lib/deviceIdentity';
 
-interface OfflineMutationConfig<TData, TError, TVariables, TContext> 
+interface OfflineMutationConfig<TData, TError, TVariables, TContext>
   extends UseMutationOptions<TData, TError, TVariables, TContext> {
   type: string; // Identificador único para el sync_engine (e.g., 'CREATE_ORDER')
+  /** Checkout may use the native credential broker online, but must never enter the legacy renderer queue. */
+  nativeDeviceCheckout?: boolean;
 }
 
 export interface OfflineQueuedResult {
@@ -31,13 +35,21 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
   return useMutation({
     ...config,
     mutationFn: async (variables: TVariables) => {
+      // Never claim checkout is queued or authorized while the only available
+      // client path is the credential-less RPC revoked by SEC-004.
+      if (!config.nativeDeviceCheckout) assertCheckoutDeviceBoundaryReady(config.type);
       const queueMutation = async () => {
         await queueOfflineMutation(config.type, variables, setPendingSyncCount);
         toast.success('Saved locally. It will synchronize when the connection returns.');
         return { offline: true, queued: true } as TData;
       };
 
-      if (!isOnline || isBrowserOffline()) return queueMutation();
+      if (!isOnline || isBrowserOffline()) {
+        if (config.nativeDeviceCheckout) {
+          throw new Error('Device-authorized checkout requires a live connection; the cart was preserved');
+        }
+        return queueMutation();
+      }
 
       // Modo Online: Ejecutar mutación normal
       if (config.mutationFn) {
@@ -45,6 +57,9 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
           return await config.mutationFn(variables, undefined as never);
         } catch (error) {
           if (isTransientNetworkError(error)) {
+            if (config.nativeDeviceCheckout) {
+              throw new Error('Checkout result is unknown because the connection was lost; the cart was preserved. Retry the same sale to recover its original result.');
+            }
             return queueMutation();
           }
           throw error;
@@ -60,10 +75,22 @@ export async function queueOfflineMutation<TVariables>(
   variables: TVariables,
   setPendingSyncCount: (count: number) => void,
 ): Promise<OfflineQueuedResult> {
+  // Guard the direct enqueue API too: a caller must not bypass the hook's check.
+  assertCheckoutDeviceBoundaryReady(type);
   const deviceId = getDeviceId();
   const payload = withClientMutationId(variables, deviceId);
   const clientMutationId = (payload as any)?._client_mutation_id as string | undefined;
-  const { tenantId, branchId } = syncQueueScopeFromPayload(payload);
+  const payloadScope = syncQueueScopeFromPayload(payload);
+  const selectedScope = useTenantStore.getState();
+  if (!selectedScope.tenantId || !selectedScope.branchId) {
+    throw new Error('An active tenant and branch are required before an offline operation can be queued.');
+  }
+  if ((payloadScope.tenantId && payloadScope.tenantId !== selectedScope.tenantId)
+    || (payloadScope.branchId && payloadScope.branchId !== selectedScope.branchId)) {
+    throw new Error('Offline operation scope conflicts with the active tenant or branch.');
+  }
+  const tenantId = selectedScope.tenantId;
+  const branchId = selectedScope.branchId;
 
   await db.transaction('rw', db.sync_queue, async () => {
     const existing = clientMutationId
@@ -71,7 +98,8 @@ export async function queueOfflineMutation<TVariables>(
       : undefined;
 
     if (existing) {
-      if (existing.type !== type || !syncQueuePayloadsEqual(existing.payload, payload)) {
+      if (existing.type !== type || !syncQueuePayloadsEqual(existing.payload, payload)
+        || existing.tenantId !== tenantId || existing.branchId !== branchId) {
         throw new OfflineOperationConflictError(clientMutationId!);
       }
       return;
@@ -94,7 +122,7 @@ export async function queueOfflineMutation<TVariables>(
 
   const count = (await db.sync_queue.toArray()).filter((item) =>
     isActiveQueueStatus(item.status)
-    && (!tenantId || syncQueueItemBelongsToTenant(item, tenantId))
+    && syncQueueItemBelongsToTenant(item, tenantId)
   ).length;
   setPendingSyncCount(count);
 

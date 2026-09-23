@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useAuth } from "@/hooks/useAuth";
+import { createTableOrderOpenPayload, openTableOrder } from "@/lib/tableKitchen";
 import { useDevMode } from "@/hooks/useDevMode";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -429,18 +430,11 @@ export default function Tables() {
       navigate(`/tables/${existing.id}`);
       return;
     }
-    const { data, error } = await supabase
-      .from("table_orders")
-      .insert({
-        tenant_id: tenantId,
-        branch_id: branchId,
-        table_id: tableId,
-        waiter_id: user!.id,
-        status: "open",
-      })
-      .select()
-      .single();
-    if (error) return toast.error(error.message);
+    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    let data: {id:string};
+    try {
+      data=await openTableOrder(createTableOrderOpenPayload({tenantId,branchId,tableId}));
+    } catch(error:any) { return toast.error(error.message); }
     qc.invalidateQueries({ queryKey: ["table-orders-open"] });
     qc.invalidateQueries({ queryKey: ["tables"] });
     navigate(`/tables/${data.id}`);
