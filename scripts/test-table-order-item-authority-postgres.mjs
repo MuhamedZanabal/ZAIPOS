@@ -11,7 +11,7 @@ const execAsync=promisify(execFile);
 const I={
  tenant:'a9100000-0000-0000-0000-000000000001',branch:'b9100000-0000-0000-0000-000000000001',otherBranch:'b9100000-0000-0000-0000-000000000002',
  manager:'c9100000-0000-0000-0000-000000000001',waiter:'c9100000-0000-0000-0000-000000000002',otherWaiter:'c9100000-0000-0000-0000-000000000003',outsider:'c9100000-0000-0000-0000-000000000004',kitchen:'c9100000-0000-0000-0000-000000000005',
- product:'d9100000-0000-0000-0000-000000000001',detail:'d9100000-0000-0000-0000-000000000002',table:'e9100000-0000-0000-0000-000000000001',order:'f9100000-0000-0000-0000-000000000001',center:'a9100000-0000-0000-0000-000000000099'
+ product:'d9100000-0000-0000-0000-000000000001',detail:'d9100000-0000-0000-0000-000000000002',table:'e9100000-0000-0000-0000-000000000001',raceTable:'e9100000-0000-0000-0000-000000000002',otherTable:'e9100000-0000-0000-0000-000000000003',order:'f9100000-0000-0000-0000-000000000001',center:'a9100000-0000-0000-0000-000000000099'
 };
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
 ('${I.manager}','table-item-manager@zaipos.test','{}'),('${I.waiter}','table-item-waiter@zaipos.test','{}'),
@@ -28,7 +28,10 @@ INSERT INTO public.products(id,tenant_id,name,product_type,price,cost,tax_rate,s
 ('${I.detail}','${I.tenant}','Prepared Steak','simple',2.000,0.800,10,'active',true);
 INSERT INTO public.branch_products(tenant_id,branch_id,product_id,is_available,local_price) VALUES('${I.tenant}','${I.branch}','${I.product}',true,1.250);
 INSERT INTO public.product_channel_prices(tenant_id,product_id,branch_id,channel,price) VALUES('${I.tenant}','${I.product}','${I.branch}','tables',1.500);
-INSERT INTO public.tables(id,tenant_id,branch_id,name,status,assigned_waiter_id) VALUES('${I.table}','${I.tenant}','${I.branch}','Authority Table','occupied','${I.waiter}');
+INSERT INTO public.tables(id,tenant_id,branch_id,name,status,assigned_waiter_id) VALUES
+('${I.table}','${I.tenant}','${I.branch}','Authority Table','occupied','${I.waiter}'),
+('${I.raceTable}','${I.tenant}','${I.branch}','Race Table','available',NULL),
+('${I.otherTable}','${I.tenant}','${I.otherBranch}','Other Branch Table','available','${I.outsider}');
 INSERT INTO public.table_orders(id,tenant_id,branch_id,table_id,waiter_id,status) VALUES('${I.order}','${I.tenant}','${I.branch}','${I.table}','${I.waiter}','open');
 INSERT INTO public.inventory_centers(id,tenant_id,branch_id,name,type,status) VALUES('${I.center}','${I.tenant}','${I.branch}','Bodega Principal','warehouse','active');
 INSERT INTO public.inventory_stocks(tenant_id,branch_id,inventory_center_id,product_id,quantity)
@@ -153,5 +156,32 @@ assert.equal(sql(`SELECT count(*) FROM public.table_order_items WHERE order_id='
 assert.equal(lifecycle({op:'lifecycle-cancel-001',action:'cancel'}),'cancelled');
 assert.equal(lifecycleSnapshot(),'cancelled|10.000|4|2','cancellation replay must not repeat inventory effects');
 assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action LIKE 'table_order_lifecycle.%'`),'2');
+
+assert.equal(sql(`SELECT has_table_privilege('authenticated','public.table_orders','INSERT')`),'f');
+assert.throws(()=>authAs(I.manager,`INSERT INTO public.table_orders(tenant_id,branch_id,table_id,waiter_id,status) VALUES('${I.tenant}','${I.branch}','${I.raceTable}','${I.manager}','open')`,'direct order insert'),/permission denied/i);
+const openOrder=({actor=I.waiter,branch=I.branch,table=I.table,op='open-table-001'}={})=>authAs(actor,
+`SELECT (public.open_table_order_v2('${I.tenant}','${branch}','${table}','${op}')).id::text`,op);
+const openSnapshot=()=>sql(`SELECT
+(SELECT count(*) FROM public.table_orders WHERE tenant_id='${I.tenant}')||'|'||
+(SELECT count(*) FROM public.operation_log WHERE tenant_id='${I.tenant}' AND operation_type='open_table_order_v2')`);
+const beforeOpen=openSnapshot();
+assert.throws(()=>openOrder({actor:I.otherWaiter,op:'open-assigned-other'}),/another waiter|forbidden|permission/i);
+assert.throws(()=>openOrder({actor:I.outsider,branch:I.branch,table:I.otherTable,op:'open-wrong-branch'}),/scope|forbidden|permission/i);
+assert.throws(()=>openOrder({actor:I.kitchen,table:I.raceTable,op:'open-kitchen-denied'}),/forbidden|permission/i);
+assert.equal(openSnapshot(),beforeOpen,'denied order-opening requests must have zero order or journal effect');
+
+const opened=openOrder();
+assert.match(opened,/^[a-f\d-]{36}$/i);
+assert.equal(openOrder(),opened,'lost-response order-opening replay must return the original order');
+assert.throws(()=>openOrder({table:I.raceTable}),/different request|operation ID/i);
+assert.equal(sql(`SELECT waiter_id::text||'|'||status::text FROM public.table_orders WHERE id='${opened}'`),`${I.waiter}|open`);
+
+const runOpen=(op)=>execAsync('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',`BEGIN;SET LOCAL ROLE authenticated;SET LOCAL request.jwt.claim.sub='${I.waiter}';SELECT (public.open_table_order_v2('${I.tenant}','${I.branch}','${I.raceTable}','${op}')).id::text;COMMIT;`],{env:conn.env,encoding:'utf8'}).then(({stdout})=>stdout.trim().split(/\r?\n/).filter(Boolean).at(-1));
+const raced=await Promise.all([runOpen('open-race-001'),runOpen('open-race-002')]);
+assert.equal(raced[0],raced[1],'competing table opens must converge to one open order');
+assert.equal(sql(`SELECT count(*) FROM public.table_orders WHERE table_id='${I.raceTable}' AND status='open'`),'1');
+assert.equal(sql(`SELECT assigned_waiter_id::text FROM public.tables WHERE id='${I.raceTable}'`),I.waiter);
+assert.equal(sql(`SELECT count(*) FROM public.operation_log WHERE tenant_id='${I.tenant}' AND operation_type='open_table_order_v2'`),'3');
+assert.equal(sql(`SELECT count(*) FROM public.audit_logs WHERE tenant_id='${I.tenant}' AND action='table_order.open'`),'3');
 
 console.log('PASS: table-item, kitchen and order-lifecycle writes are atomic, branch/role scoped and exactly-once; inventory effects converge and denied calls have zero effect.');

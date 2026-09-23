@@ -5,7 +5,9 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } 
 
 import {
   createTableOrderLifecyclePayload,
+  createTableOrderOpenPayload,
   createTableOrderTransitionPayload,
+  openTableOrder,
   transitionTableItem,
   transitionTableOrder,
   transitionTableOrderLifecycle,
@@ -49,5 +51,16 @@ describe("scoped table kitchen transitions", () => {
     expect(mocks.rpc).toHaveBeenNthCalledWith(2,"transition_table_order_lifecycle_v2",{
       _tenant_id:"t",_branch_id:"b",_order_id:"o",_operation_id:first._client_mutation_id,_action:"send_to_cashier",
     });
+  });
+
+  it("opens a table with complete scope and a persisted retry identity", async () => {
+    mocks.rpc.mockResolvedValueOnce({data:null,error:new Error("network timeout")})
+      .mockResolvedValueOnce({data:{id:"order"},error:null});
+    const first=createTableOrderOpenPayload({tenantId:"t",branchId:"b",tableId:"table"});
+    await expect(openTableOrder(first)).rejects.toThrow("network timeout");
+    const replay=createTableOrderOpenPayload({tenantId:"t",branchId:"b",tableId:"table"});
+    expect(replay._operation_id).toBe(first._operation_id);
+    await expect(openTableOrder(replay)).resolves.toEqual({id:"order"});
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2,"open_table_order_v2",replay);
   });
 });

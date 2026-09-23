@@ -81,3 +81,24 @@ export async function transitionTableOrderLifecycle(payload: ReturnType<typeof c
   if(!data || typeof data!=="object") throw new Error("Table-order lifecycle returned an invalid receipt");
   return data;
 }
+
+export function createTableOrderOpenPayload(args: {
+  tenantId:string; branchId:string; tableId:string; operationId?:string;
+}) {
+  const pending=persistedOperationId([args.tenantId,args.branchId,args.tableId,"open"],args.operationId);
+  return {
+    _tenant_id:args.tenantId,_branch_id:args.branchId,_table_id:args.tableId,
+    _operation_id:pending.operationId,
+  };
+}
+
+export async function openTableOrder(payload: ReturnType<typeof createTableOrderOpenPayload>) {
+  const pending=persistedOperationId([
+    payload._tenant_id,payload._branch_id,payload._table_id,"open",
+  ],payload._operation_id);
+  const {data,error}=await supabase.rpc("open_table_order_v2" as any,payload);
+  clearForDefinitiveResult(pending.key,error);
+  if(error) throw error;
+  if(!data || typeof data!=="object" || !("id" in data)) throw new Error("Table-order opening returned an invalid receipt");
+  return data as {id:string};
+}
