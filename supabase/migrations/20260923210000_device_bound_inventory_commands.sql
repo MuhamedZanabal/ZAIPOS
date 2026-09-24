@@ -2,6 +2,70 @@
 -- trusted-terminal credential. Existing v2 routines remain private atomic cores.
 BEGIN;
 
+-- The historical production core selected a removed `is_default` column. Keep
+-- its transactional/idempotent behavior, but choose the same deterministic
+-- active center used by apply_inventory_movement on the current schema.
+CREATE OR REPLACE FUNCTION public.complete_production_order_v2(
+  _order_id uuid, _produced numeric, _waste numeric, _client_mutation_id text
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  _user_id uuid := auth.uid(); _o record; _comp record; _center_id uuid;
+  _request jsonb; _claim record; _operation_id uuid; _consumed numeric;
+BEGIN
+  IF _user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  SELECT id,tenant_id,branch_id,product_id,status INTO _o
+  FROM public.production_orders WHERE id=_order_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Production order not found'; END IF;
+  IF NOT public.has_branch_role(_user_id,_o.tenant_id,_o.branch_id,
+    ARRAY['owner','admin','manager','kitchen']::public.app_role[])
+  THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  IF _produced IS NULL OR _produced < 0 OR _produced <> round(_produced,3)
+  THEN RAISE EXCEPTION 'Produced quantity must be non-negative with at most three decimal places'; END IF;
+  IF COALESCE(_waste,0) < 0 OR COALESCE(_waste,0) <> round(COALESCE(_waste,0),3)
+  THEN RAISE EXCEPTION 'Waste quantity must be non-negative with at most three decimal places'; END IF;
+
+  SELECT id INTO _center_id FROM public.inventory_centers
+  WHERE tenant_id=_o.tenant_id AND branch_id=_o.branch_id AND status='active'
+  ORDER BY (name='Bodega Principal') DESC, created_at, id LIMIT 1;
+  IF _center_id IS NULL THEN RAISE EXCEPTION 'No active inventory center exists for production branch'; END IF;
+
+  _request := jsonb_build_object('order_id',_order_id,'produced',_produced,
+    'waste',COALESCE(_waste,0),'inventory_center_id',_center_id);
+  SELECT * INTO _claim FROM public.claim_inventory_operation_v2(
+    _o.tenant_id,_o.branch_id,'production_complete',_client_mutation_id,_request);
+  _operation_id := _claim.operation_id;
+  IF _claim.is_replay THEN RETURN _operation_id; END IF;
+  IF _o.status='completed' THEN RAISE EXCEPTION 'Production order is already completed under another operation'; END IF;
+
+  FOR _comp IN SELECT component_product_id,quantity,COALESCE(waste_pct,0) AS waste_pct
+    FROM public.product_components WHERE parent_product_id=_o.product_id ORDER BY id
+  LOOP
+    _consumed := _comp.quantity * _produced * (1 + _comp.waste_pct / 100.0);
+    IF _consumed > 0 THEN
+      PERFORM public.apply_inventory_movement(_o.tenant_id,_o.branch_id,_comp.component_product_id,
+        'consumption'::public.movement_type,_consumed,'Production order','inventory_operation',
+        _operation_id,_user_id,_center_id);
+      INSERT INTO public.production_consumptions(tenant_id,order_id,product_id,quantity)
+      VALUES (_o.tenant_id,_order_id,_comp.component_product_id,_consumed);
+    END IF;
+  END LOOP;
+  IF _produced > 0 THEN
+    PERFORM public.apply_inventory_movement(_o.tenant_id,_o.branch_id,_o.product_id,
+      'production'::public.movement_type,_produced,'Production output','inventory_operation',
+      _operation_id,_user_id,_center_id);
+  END IF;
+  UPDATE public.production_orders SET status='completed',produced_quantity=_produced,
+    waste_quantity=COALESCE(_waste,0),completed_at=now(),user_id=_user_id WHERE id=_order_id;
+  UPDATE public.inventory_operations SET status='completed',completed_at=now() WHERE id=_operation_id;
+  IF to_regclass('public.audit_logs') IS NOT NULL THEN
+    EXECUTE 'INSERT INTO public.audit_logs (tenant_id,user_id,action,entity,entity_id,metadata) VALUES ($1,$2,$3,$4,$5,$6)'
+    USING _o.tenant_id,_user_id,'production.completed_v2','inventory_operations',_operation_id,
+      jsonb_build_object('branch_id',_o.branch_id,'production_order_id',_order_id,'produced',_produced,
+        'waste',COALESCE(_waste,0),'client_mutation_id',_client_mutation_id);
+  END IF;
+  RETURN _operation_id;
+END; $$;
+
 CREATE OR REPLACE FUNCTION public.require_inventory_device_v1(
   _tenant_id uuid, _branch_id uuid, _device_uid text, _device_credential text
 ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
