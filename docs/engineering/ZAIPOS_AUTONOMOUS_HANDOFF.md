@@ -2,6 +2,20 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+
+## Current checkpoint — synchronized business-mode/router-security stack (2026-09-24 22:01 +03)
+
+- Main remains `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. PR #92 remains its direct child at `2401e99fc877791d404aadd0c660d110874e7146`; PR #93 is now correctly stacked on PR #92.
+- Independent combined-tree discovery reproduced a real documentation conflict between the two individually green branches. Two-parent synchronization commit `9540da7e9a7b2ee6c02f4dd62718045a3d4637f4` resolves that conflict while preserving both code lines and both historical checkpoints.
+- PR #93 is directly ahead of PR #92 by six commits and behind by zero. Its scoped diff remains four files: the React Router package/lock updates, adversarial route test, and handoff.
+- Exact synchronized head `9540da7e9a7b2ee6c02f4dd62718045a3d4637f4` completed 22/22 workflows successfully. CI run `36017697969` passed quality job `107694342308` and unsigned Windows packaging job `107695632153`; all independent authorization, financial, backup, inventory, supplier, reporting, trusted-device and table-checkout workflows passed.
+- Combined local evidence: 71 Vitest files / 382 tests, TypeScript, ESLint zero errors / 13 pre-existing warnings, production build (2,782 modules), 131 migration validations, authoritative business-mode static contract, authorization census at 1,860 occurrences / 419 runtime surfaces, zero production dependency audit findings, and `git diff --check`.
+- PR #93 is draft, mergeable, and has no submitted reviews or inline threads. Offline checkout remains disabled. No main merge, deployment, release, force push or production-data operation occurred.
+
+### Immediate next executable action
+
+An authorized maintainer should review and integrate PR #92 first at expected head `2401e99fc877791d404aadd0c660d110874e7146`, then PR #93 at synchronized head `9540da7e9a7b2ee6c02f4dd62718045a3d4637f4` or this documentation-only successor. Require the complete post-merge workflow matrix on main after each integration. External signing, hardware, production recovery and Bahrain regulatory acceptance remain outside repository completion.
+
 ## Current checkpoint — business-mode bootstrap hardening (2026-09-24 16:23 +03)
 
 - Main is `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. The authoritative `RETAIL | RESTAURANT` implementation from PR #90 is integrated, but independent post-merge review found two upgrade/bootstrap defects. Draft PR #92 is based directly on that main and remains unmerged.
