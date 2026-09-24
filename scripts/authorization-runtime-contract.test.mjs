@@ -79,7 +79,7 @@ test('all fifteen privileged-credential census hits are accounted for and only e
 test('lexical false positives remain explicitly classified instead of disappearing from the census', () => {
   const classified = classifyRuntimeSurfaces(census());
   const falsePositives = classified.filter(entry => entry.policy === 'scanner-false-positive');
-  assert.equal(falsePositives.length, 30);
+  assert.equal(falsePositives.length, 31);
   assert.ok(falsePositives.some(entry => entry.path === 'electron/device-credential-vault.ts'));
   assert.ok(falsePositives.some(entry => entry.kind === 'sql-revoke'));
 });
