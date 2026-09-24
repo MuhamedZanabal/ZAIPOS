@@ -76,7 +76,7 @@ test('every Edge Function has an explicit authentication and authority classific
   assert.deepEqual(declaredKeys, expectedKeys, 'missing, stale or unreviewed Edge Function authority');
   for (const key of declaredKeys) {
     const entry = contract.surfaces[key];
-    assert.ok(['user-jwt', 'service-role-jwt', 'hmac'].includes(entry.authentication), `${key}: authentication must be explicit`);
+    assert.ok(['user-jwt', 'service-role-jwt', 'exact-service-role-secret', 'hmac'].includes(entry.authentication), `${key}: authentication must be explicit`);
     assert.ok(Array.isArray(entry.allowed_roles), `${key}: allowed roles must be explicit`);
     assert.equal(typeof entry.uses_service_role, 'boolean', `${key}: service-role custody must be explicit`);
     assert.ok(Array.isArray(entry.negative_evidence) && entry.negative_evidence.length > 0, `${key}: negative evidence required`);
