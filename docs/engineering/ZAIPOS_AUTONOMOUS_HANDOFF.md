@@ -2,6 +2,20 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — authoritative business mode (2026-09-24 11:20 +03)
+
+- Authorized P0 consolidation PR #91 merged the final reviewed PR #86–#89 tree onto `main` at `fea0c074845c2a6d4cba073fbf877a82f1af69a6`. This corrected the stacked-PR integration: earlier child merges had targeted parent branches rather than `main`. No force push, deployment, release or production-data operation occurred; offline checkout remains disabled.
+- Draft PR #90 is now based on that integrated main. Exact verified P1 code head `d0f932d0695867aa1487aacb507c1b464aa76f1c` completed 22/22 workflows successfully. CI run `35974130763` passed quality job `107550471364`, including the full PostgreSQL migration chain and the authoritative business-mode contract; its unsigned Windows packaging job also passed. Authorization Surface Census, Table Checkout Security, Trusted Device Enforcement and Backup Restore all passed at the same head.
+- Added immutable authoritative `RETAIL | RESTAURANT` tenant configuration. Bootstrap accepts only those modes, persists the selection, creates mode-appropriate channels and revokes the legacy bootstrap entry point. Existing tenants with active table service are migrated to `RESTAURANT` for compatibility.
+- Backend triggers reject restaurant table, order and item writes for inactive or `RETAIL` tenants. Tenant context, protected routes and navigation use the stored authoritative mode; retail tenants cannot enter tables, waiter, KDS or restaurant recipe routes. Hiding navigation is not relied on as the backend control.
+- PostgreSQL evidence proves retail restaurant-write denial with zero effects, restaurant positive access, immutable mode, authenticated-only v2 bootstrap and legacy bootstrap denial. The mode migration initially exposed stale restaurant fixtures; both exact-head table authority suites now declare `RESTAURANT` explicitly rather than weakening enforcement.
+- The authorization census baseline was deliberately advanced for the new RPC/functions/grants/revokes/triggers after the guard failed closed. Runtime authority remains fully classified at 419/419; the census contains 1,860 occurrences across 17 kinds.
+- Fresh local evidence: 70 Vitest files / 378 tests, TypeScript, production build (2,774 modules), 131 migration validations, business-mode static contract, route-mode boundaries, ESLint zero errors / 13 pre-existing warnings and `git diff --check` passed. Real PostgreSQL evidence is supplied by exact-head CI.
+
+### Immediate next executable action
+
+Review PR #90 and integrate it through normal authorized review, verifying expected head `d0f932d0695867aa1487aacb507c1b464aa76f1c` or the documentation-only successor before merge. Then require the complete post-merge workflow matrix on `main`. Signed Windows installation, physical hardware and Bahrain regulatory acceptance remain explicitly external.
+
 ## Current checkpoint — completed runtime authorization classification review (2026-09-24 10:03 +03)
 
 - Draft PR #89 exact pre-review head `0002231a069e5af78391b9c8c00d4cef2b928218` contains PRs #86, #87 and #88 in its ancestry. All 22 exact-head workflows completed successfully, including CI, Authorization Surface Census, Trusted Device Enforcement, Table Checkout Security and Backup Restore. Offline checkout remains disabled; no merge, deployment or release is authorized.
