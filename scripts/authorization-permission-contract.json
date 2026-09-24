@@ -1,0 +1,570 @@
+{
+  "schema": 1,
+  "status": "runtime-classification-verified",
+  "meaning": "Authorization review summary. All integrated runtime authorization-sensitive occurrences are classified by authorization-runtime-contract.mjs with explicit authority and adversarial-evidence references. The broader lexical census remains a drift detector and is not, by itself, proof of enforcement.",
+  "roles": [
+    "super_admin",
+    "owner",
+    "admin",
+    "manager",
+    "cashier",
+    "waiter",
+    "kitchen",
+    "inventory",
+    "courier",
+    "staff"
+  ],
+  "dimensions": [
+    "role",
+    "tenant",
+    "branch",
+    "account_state",
+    "session_state",
+    "device_state",
+    "operation_identity"
+  ],
+  "required_surface_kinds": [
+    "application-route",
+    "background-job",
+    "data-export",
+    "edge-function",
+    "external-navigation",
+    "ipc-main",
+    "ipc-renderer",
+    "privileged-credential",
+    "rls-policy",
+    "rpc-client",
+    "security-definer",
+    "sql-function",
+    "sql-grant",
+    "sql-revoke",
+    "sql-trigger",
+    "table-client"
+  ],
+  "default": "deny-unclassified",
+  "surfaces": {
+    "application-route|src/App.tsx|/": {
+      "ui_access": "public",
+      "ui_roles": [],
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/auth": {
+      "ui_access": "public",
+      "ui_roles": [],
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/403": {
+      "ui_access": "public",
+      "ui_roles": [],
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/qr/:branchId": {
+      "ui_access": "public",
+      "ui_roles": [],
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|*": {
+      "ui_access": "public",
+      "ui_roles": [],
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/onboarding": {
+      "ui_access": "authenticated",
+      "ui_roles": [],
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/pos": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/tables/:id": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier",
+        "waiter"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/tables": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier",
+        "waiter"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/waiter": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "waiter"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/courier": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "courier",
+        "staff"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/dashboard": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "inventory",
+        "courier",
+        "staff"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/products": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/pricing-policy": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/categories": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/recipes": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "kitchen"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/catalog": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/channel-prices": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/inventory": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "inventory",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/cash": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/sales": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/production": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "kitchen"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/kds": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "kitchen"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/digital-orders": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/whatsapp": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/delivery": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier",
+        "courier",
+        "staff"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/branches": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/employees": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/shifts": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/reports": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/customers": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/suppliers": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/expenses": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/settings": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "application-route|src/App.tsx|/ai": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "inventory",
+        "courier",
+        "staff"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
+    "edge-function|supabase/functions/activate-device/index.ts|supabase/functions/activate-device/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "uses_service_role": true,
+      "server_authorization": "approval-user-device-tenant-branch-role",
+      "negative_evidence": [
+        "missing-jwt",
+        "wrong-user",
+        "wrong-device",
+        "expired-or-consumed-approval",
+        "wrong-role"
+      ]
+    },
+    "edge-function|supabase/functions/ai-order-agent/index.ts|supabase/functions/ai-order-agent/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [],
+      "uses_service_role": false,
+      "server_authorization": "explicit-in-function-jwt-validation-read-only-disabled-action",
+      "negative_evidence": [
+        "missing-jwt",
+        "invalid-or-inactive-session",
+        "wrong-tenant-injection-no-action-path",
+        "wrong-branch-injection-no-action-path",
+        "role-injection-no-action-path",
+        "credential-injection-no-action-path"
+      ]
+    },
+    "edge-function|supabase/functions/create-user/index.ts|supabase/functions/create-user/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin"
+      ],
+      "uses_service_role": true,
+      "server_authorization": "tenant-and-branch-scoped-user-administration",
+      "negative_evidence": [
+        "missing-jwt",
+        "wrong-role",
+        "wrong-branch",
+        "foreign-tenant-branch",
+        "branch-lookup-failure",
+        "banned-or-deleted-caller"
+      ]
+    },
+    "edge-function|supabase/functions/embed-knowledge-doc/index.ts|supabase/functions/embed-knowledge-doc/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "uses_service_role": true,
+      "server_authorization": "tenant-branch-role-and-document-scope",
+      "negative_evidence": [
+        "missing-jwt",
+        "wrong-role",
+        "wrong-tenant-or-branch",
+        "missing-document"
+      ]
+    },
+    "edge-function|supabase/functions/evolution-webhook/index.ts|supabase/functions/evolution-webhook/index.ts": {
+      "authentication": "hmac",
+      "allowed_roles": [],
+      "uses_service_role": true,
+      "server_authorization": "constant-time-hmac-before-body-and-tenant-routing",
+      "negative_evidence": [
+        "missing-secret",
+        "missing-signature",
+        "invalid-signature",
+        "malformed-body-after-auth"
+      ]
+    },
+    "edge-function|supabase/functions/pos-pin/index.ts|supabase/functions/pos-pin/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "uses_service_role": true,
+      "server_authorization": "rpc-enforced-tenant-branch-employee-device-session",
+      "negative_evidence": [
+        "missing-jwt",
+        "wrong-role",
+        "wrong-branch",
+        "unregistered-device",
+        "locked-pin"
+      ]
+    },
+    "edge-function|supabase/functions/process-email-queue/index.ts|supabase/functions/process-email-queue/index.ts": {
+      "authentication": "exact-service-role-secret",
+      "allowed_roles": [],
+      "uses_service_role": true,
+      "server_authorization": "exact-service-role-secret-only-background-worker",
+      "negative_evidence": [
+        "missing-credential",
+        "ordinary-user-token",
+        "forged-service-role-claim"
+      ]
+    },
+    "edge-function|supabase/functions/process-invoice/index.ts|supabase/functions/process-invoice/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "inventory"
+      ],
+      "uses_service_role": false,
+      "server_authorization": "tenant-branch-role-before-bounded-provider-call",
+      "negative_evidence": [
+        "missing-jwt-before-json",
+        "wrong-role",
+        "wrong-tenant-or-branch",
+        "oversized-body",
+        "unsupported-media"
+      ]
+    },
+    "edge-function|supabase/functions/rotate-device-credential/index.ts|supabase/functions/rotate-device-credential/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "uses_service_role": true,
+      "server_authorization": "approval-user-device-tenant-branch-role",
+      "negative_evidence": [
+        "missing-jwt",
+        "wrong-user",
+        "wrong-device",
+        "expired-or-consumed-approval",
+        "wrong-role"
+      ]
+    },
+    "edge-function|supabase/functions/send-whatsapp-message/index.ts|supabase/functions/send-whatsapp-message/index.ts": {
+      "authentication": "user-jwt",
+      "allowed_roles": [
+        "owner",
+        "admin",
+        "manager",
+        "cashier"
+      ],
+      "uses_service_role": true,
+      "server_authorization": "conversation-derived-tenant-branch-role",
+      "negative_evidence": [
+        "missing-jwt",
+        "wrong-role",
+        "cross-tenant-conversation",
+        "missing-conversation-generic-denial"
+      ]
+    }
+  },
+  "runtime_contract": {
+    "file": "scripts/authorization-runtime-contract.mjs",
+    "integrated_runtime_occurrences": 419,
+    "original_requested_runtime_occurrences": 416,
+    "added_by_integrated_offline_recovery": 3,
+    "required_negative_dimensions": [
+      "missing_authentication",
+      "wrong_tenant",
+      "wrong_branch",
+      "unauthorized_role",
+      "inactive_account",
+      "credential_misuse"
+    ],
+    "default": "deny-unclassified"
+  }
+}

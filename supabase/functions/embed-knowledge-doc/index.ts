@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
   // Generate embedding via OpenRouter
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
-  if (!apiKey) return json({ error: "OPENROUTER_API_KEY not configured" }, 500);
+  if (!apiKey) return json({ error: "Embedding provider unavailable" }, 503);
 
   const embedRes = await fetch("https://openrouter.ai/api/v1/embeddings", {
     method: "POST",
@@ -70,15 +70,12 @@ Deno.serve(async (req) => {
     }),
   });
 
-  if (!embedRes.ok) {
-    const errText = await embedRes.text().catch(() => "");
-    return json({ error: `OpenRouter error ${embedRes.status}: ${errText}` }, 500);
-  }
+  if (!embedRes.ok) return json({ error: "Embedding provider unavailable" }, 502);
 
   const embedData = await embedRes.json();
   const embedding: number[] = embedData?.data?.[0]?.embedding;
   if (!embedding || embedding.length !== DIMS) {
-    return json({ error: `Unexpected embedding dimensions: ${embedding?.length}` }, 500);
+    return json({ error: "Embedding provider returned invalid output" }, 502);
   }
 
   // Store embedding
@@ -86,9 +83,11 @@ Deno.serve(async (req) => {
   const { error: updateErr } = await adminSupabase
     .from("ai_knowledge_docs")
     .update({ embedding: vectorLiteral })
-    .eq("id", doc_id);
+    .eq("id", doc_id)
+    .eq("tenant_id", tenant_id)
+    .eq("branch_id", branch_id);
 
-  if (updateErr) return json({ error: updateErr.message }, 500);
+  if (updateErr) return json({ error: "Embedding update failed" }, 500);
 
   return json({ ok: true, dims: DIMS });
 });

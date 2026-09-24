@@ -54,6 +54,8 @@ export const ROUTE_ROLES: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/shifts",        roles: ["owner", "admin", "manager"] },
   { prefix: "/reports",       roles: ["owner", "admin", "manager"] },
   { prefix: "/settings",      roles: ["owner", "admin"] },
+  { prefix: "/dashboard", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
+  { prefix: "/ai", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
   // Dashboard: todos los roles autenticados pueden aterrizar aquí
   { prefix: "/", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
 ];
@@ -67,7 +69,13 @@ export function canAccessRoles(userRoles: string[], required?: AppRole[]) {
 export function rolesForPath(pathname: string): AppRole[] | undefined {
   if (pathname === "/onboarding") return undefined;
   const match = ROUTE_ROLES
-    .filter((rule) => pathname === rule.prefix || (rule.prefix !== "/" && pathname.startsWith(rule.prefix)))
+    .filter((rule) => pathname === rule.prefix || (rule.prefix !== "/" && pathname.startsWith(`${rule.prefix}/`)))
     .sort((a, b) => b.prefix.length - a.prefix.length)[0];
   return match?.roles;
+}
+
+/** Fail closed for undeclared protected routes. Server-side authorization remains authoritative. */
+export function canAccessProtectedPath(userRoles: string[], pathname: string): boolean {
+  const requiredRoles = rolesForPath(pathname);
+  return requiredRoles !== undefined && requiredRoles.length > 0 && canAccessRoles(userRoles, requiredRoles);
 }
