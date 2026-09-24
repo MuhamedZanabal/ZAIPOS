@@ -1,18 +1,19 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { SyncQueueItem } from './db';
 
-const MANAGER_ROLES = new Set(['owner', 'admin', 'manager', 'super_admin']);
-
 export async function assertReconciliationAuthority(tenantId: string, branchId?: string) {
   const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError || !auth.user) throw new Error('An authenticated manager is required to reconcile queue evidence.');
-  const { data, error } = await supabase.from('user_roles').select('role, branch_id')
-    .eq('user_id', auth.user.id).eq('tenant_id', tenantId);
+  if (authError || !auth.user || !tenantId || !branchId) {
+    throw new Error('An authenticated branch manager is required to reconcile queue evidence.');
+  }
+  const { data: authorized, error } = await supabase.rpc('has_branch_role' as any, {
+    _user_id: auth.user.id,
+    _tenant_id: tenantId,
+    _branch_id: branchId,
+    _roles: ['owner', 'admin', 'manager'],
+  });
   if (error) throw error;
-  const authorized = (data ?? []).some((membership: { role: string; branch_id: string | null }) =>
-    MANAGER_ROLES.has(membership.role)
-    && (membership.role === 'super_admin' || membership.branch_id === null || membership.branch_id === branchId));
-  if (!authorized) throw new Error('Owner, admin, or manager authority is required to reconcile queue evidence.');
+  if (authorized !== true) throw new Error('Owner, admin, or manager authority is required to reconcile queue evidence.');
   return auth.user.id;
 }
 
@@ -44,6 +45,8 @@ export async function buildReconciliationReceipt(item: SyncQueueItem) {
 }
 
 export async function downloadReconciliationReceipt(item: SyncQueueItem) {
+  if (!item.tenantId || !item.branchId) throw new Error('Reconciliation evidence is missing tenant or branch scope.');
+  await assertReconciliationAuthority(item.tenantId, item.branchId);
   const receipt = await buildReconciliationReceipt(item);
   const url = URL.createObjectURL(new Blob([`${JSON.stringify(receipt, null, 2)}\n`], { type: 'application/json;charset=utf-8' }));
   const link = document.createElement('a');
