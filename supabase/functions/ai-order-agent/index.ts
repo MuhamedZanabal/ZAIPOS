@@ -25,9 +25,6 @@ Deno.serve(async (request) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser();
   if (authError || !user) return json({ error: 'Unauthorized' }, 401);
 
-  const { data: active, error: activeError } = await userClient.rpc('is_current_account_active_v1');
-  if (activeError || active !== true) return json({ error: 'Forbidden' }, 403);
-
   // This endpoint intentionally has no tenant/branch/action input while P0 AI
   // writes are disabled. Authentication cannot be used to obtain a write path.
   return json({
