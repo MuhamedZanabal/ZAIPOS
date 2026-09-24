@@ -18,7 +18,7 @@ sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
 ('${I.manager}','table-item-manager@zaipos.test','{}'),('${I.waiter}','table-item-waiter@zaipos.test','{}'),
 ('${I.otherWaiter}','table-item-other-waiter@zaipos.test','{}'),('${I.outsider}','table-item-outsider@zaipos.test','{}'),
 ('${I.kitchen}','table-item-kitchen@zaipos.test','{}');
-INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode) VALUES('${I.tenant}','Table Item Authority','table-item-authority','BHD',10,false);
+INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,business_mode) VALUES('${I.tenant}','Table Item Authority','table-item-authority','BHD',10,false,'RESTAURANT');
 INSERT INTO public.branches(id,tenant_id,name,status) VALUES('${I.branch}','${I.tenant}','Restaurant','active'),('${I.otherBranch}','${I.tenant}','Other','active');
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
 ('${I.manager}','${I.tenant}','${I.branch}','manager'),('${I.waiter}','${I.tenant}','${I.branch}','waiter'),
