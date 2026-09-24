@@ -35,6 +35,7 @@ import { TickRail } from "@/components/shared/TickRail";
 import { LiveDot } from "@/components/shared/LiveDot";
 import { useDevMode } from "@/hooks/useDevMode";
 import { productMatchesBarcode, productMatchesCatalogueQuery } from "@/lib/productBarcodes";
+import { appendTableCart } from "@/lib/tableCart";
 
 export default function POS() {
   const navigate = useNavigate();
@@ -457,51 +458,28 @@ export default function POS() {
     } finally { setSubmitting(false); }
   };
 
-  const sendToTableMutation = useOfflineMutation({
-    type: "UPSERT_TABLE_ORDER_ITEMS",
-    mutationFn: async (payload: any) => upsertTableOrderItems(payload),
-  });
-
   const handleSendToTable = async () => {
     if (!selectedTableId) return toast.error("Select a table first");
     if (lines.length === 0) return toast.error("Add products to the ticket");
 
     setSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const items = lines.map((l) => {
-        const unitPrice = Number(l.product.price);
-        const qty = l.quantity;
-        const disc = l.discount || 0;
-        const taxRate = Number((l.product as any).tax_rate || 0);
-        const lineBase = unitPrice * qty - disc;
-        return {
+      if (lines.some((line) => Number(line.discount || 0) !== 0)) {
+        throw new Error("Restaurant line discounts require an authoritative manager policy and cannot be sent yet");
+      }
+      const items = lines.map((l) => ({
           product_id: l.product.id,
-          product_name: l.product.name,
-          product_type: l.product.product_type || "simple",
-          quantity: qty,
-          unit_price: unitPrice,
-          tax_rate: taxRate,
-          discount: disc,
-          modifiers: l.product._modifiers ?? [],
-          line_total: lineBase + (lineBase * taxRate) / 100,
-        };
-      });
+          quantity: l.quantity,
+          modifier_option_ids: (l.product._modifiers ?? []).map((modifier) => modifier.option_id),
+          notes: null,
+      }));
       
-      const result = await sendToTableMutation.mutateAsync({
-        tenant_id: tenantId!,
-        branch_id: branchId!,
-        table_id: selectedTableId,
-        waiter_id: user?.id ?? null,
+      const result = await appendTableCart({
+        tenantId: tenantId!, branchId: branchId!, tableId: selectedTableId,
         items,
       });
 
-      toast.success(
-        result && typeof result === "string"
-          ? "Order sent to the table"
-          : "Order queued offline"
-      );
+      toast.success(result.orderId ? "Order sent to the table" : "Could not confirm the table order");
       clear();
       setSelectedTableId(null);
       qc.invalidateQueries({ queryKey: ["pos-tables"] });
@@ -902,24 +880,4 @@ export default function POS() {
       </Dialog>
     </div>
   );
-}
-
-async function upsertTableOrderItems(payload: {
-  tenant_id: string;
-  branch_id: string;
-  table_id: string;
-  waiter_id: string | null;
-  items: any[];
-  _client_mutation_id?: string;
-}) {
-  const { data, error } = await supabase.rpc("upsert_table_order_items", {
-    _tenant_id: payload.tenant_id,
-    _branch_id: payload.branch_id,
-    _table_id: payload.table_id,
-    _waiter_id: payload.waiter_id,
-    _items: payload.items,
-    _client_mutation_id: payload._client_mutation_id ?? null,
-  });
-  if (error) throw error;
-  return data as string;
 }

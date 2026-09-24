@@ -2,7 +2,52 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
-## Current checkpoint — PR #83 (2026-09-23 15:37:54 +03)
+## Current checkpoint — draft PR #87 authoritative table cart (2026-09-23 22:17 +03)
+
+- Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. Draft PR #87 exact code head `48e9286e396464c2b03a3246f8c1fa3a73c486f2` extends the verified legacy-RPC revocation with an authoritative cart replacement. No merge is authorized and offline checkout remains disabled.
+- `append_table_cart_v2` accepts only product IDs, quantities, modifier option IDs and notes. It calls the scoped order-opening command, locks the order, revalidates branch/role/waiter authority, derives product identity, table-channel price, tax, modifier names/deltas and exact-fils totals, enforces required/min/max modifier rules, and audits the single transaction.
+- Renderer-supplied product names, prices, tax, line totals and discounts are absent. Unknown financial keys are rejected. Restaurant line discounts remain zero and the UI fails closed until a governed server policy is implemented.
+- Stable cart identity persists before submission. Lost responses replay the original order; changed payload reuse is rejected; concurrent identical requests converge to one append. Denied role, wrong branch, missing modifier, invalid financial field and malformed quantity paths have zero cart/journal effect.
+- Exact-head evidence: 21/21 workflows succeeded. CI run `35907644135` passed quality job `107339226435` and unsigned Windows package `107340331172`. Table Checkout Security run `35907644305`, job `107339226826`, passed the production migration chain and real PostgreSQL authority/replay/contention suite.
+- Local evidence: focused 6 files / 56 tests; full Vitest 68 files / 364 tests; TypeScript; ESLint zero errors; 128 migration validations; renderer cutover; production build (2,773 modules); and `git diff --check` passed. PR checkpoint comment `5801312258` records the evidence.
+- No merge, deployment, release, force push or production-data operation occurred. Unsigned packaging is not installation, hardware or signing acceptance.
+
+### Immediate next executable actions
+
+1. Review PR #87 normally. Do not merge through autonomous execution.
+2. Continue device-bound authority for inventory batch, reconciliation, transfer, receiving and production-completion mutations, selecting one scoped command at a time with negative/replay/contention/zero-effect proof.
+3. Rebuild the authorization census against current main and complete packaged-desktop operator recovery acceptance.
+4. Keep RETAIL/RESTAURANT enforcement as P1 and signing/hardware/DR/provider/regulatory gates external.
+
+## Current checkpoint — draft PR #87 (2026-09-23 21:31 +03)
+
+- Draft PR #87 targets main `31c81f69bac26690cb12bc897759db056dbc6642`. Verified implementation/documentation head `6ff2c747e0202aa6025c860fdd3b419bec5733a2` is clean/mergeable with no submitted reviews or inline threads.
+- Exact-head workflows: 21/21 succeeded. CI run `35902033720` passed quality job `107320369037` and unsigned Windows package job `107321554649`; Table Checkout Security run `35902033597`, job `107320368201`, passed the production migration chain and real PostgreSQL legacy-grant denial contract.
+- Local evidence remains focused 3 files / 46 tests, full Vitest 67 files / 362 tests, TypeScript, build (2,772 modules), 127 migration validations, renderer cutover, ESLint zero errors and `git diff --check`.
+- PR checkpoint comment `5800591222` records the evidence. Offline checkout remains disabled. No merge, deployment, release, force push or production-data operation occurred.
+
+### Immediate next executable actions
+
+1. Review PR #87 normally; do not merge through this automation.
+2. Implement the authoritative general restaurant cart command using server-derived product/modifier identity, branch/table pricing, tax, governed discounts, exact fils, scoped authority, replay/conflict and contention proof.
+3. Continue device-bound inventory mutations and the rebuilt authorization census against current main.
+
+## Current local checkpoint — post-merge main (2026-09-23 19:38:43 +03)
+
+- Independently fetched `origin/main` at `31c81f69bac26690cb12bc897759db056dbc6642` (`Merge pull request #85 from MuhamedZanabal/integrate/security-financial-authority-20260923`). The integrated trusted-device/financial-security stack is now the base. Reported post-merge verification is 19/19 green; this runtime confirmed the SHA but could not query workflow metadata because `gh` is unavailable.
+- New branch `fix/retire-legacy-table-upsert-20260923` is based exactly on that main SHA. Local commit `b6b591b` revokes PUBLIC/anon/authenticated execution of `upsert_table_order_items(uuid,uuid,uuid,uuid,jsonb,text)`, removes POS and sync-engine calls to it, rejects new `UPSERT_TABLE_ORDER_ITEMS` submissions before network or persistence, and quarantines old records unchanged as `requires_review`.
+- This intentionally fails closed instead of converting renderer-owned product names, prices, tax, discounts and line totals into authoritative writes. The next implementation must derive all supported product/modifier/discount accounting on the server; the retired RPC must not be restored.
+- Local evidence on the integrated tree: focused 3 files / 46 tests; full Vitest 67 files / 362 tests; TypeScript; build (2,772 modules); 127 migration validations; renderer cutover; PostgreSQL contract syntax; `git diff --check`; and ESLint zero errors / 13 existing warnings passed. Local `psql` is unavailable, so real PostgreSQL execution remains a remote-CI gate.
+- Push remains blocked: `fatal: could not read Username for 'https://github.com': No such device or address`. Fetch works anonymously, but the runtime has no `gh` binary or GitHub credential helper. No remote branch/PR/CI claim applies to `b6b591b`. No merge, deployment, release, force push or production-data operation occurred; offline checkout remains disabled.
+
+### Immediate next executable actions
+
+1. Restore authorized GitHub write transport, push `b6b591b`, open a scoped draft PR against main, and require exact-head migration plus real PostgreSQL grant-denial evidence.
+2. Implement an atomic authoritative replacement accepting product/modifier identities and quantities only, with branch/table availability, pricing, tax, governed discount policy, exact fils, tenant/branch/role/waiter scope, stable replay identity, conflict/contention and zero-effect proof.
+3. Continue trusted-device classification for inventory batch, reconciliation, transfer, receiving and production completion; rebuild the authorization census against current main; replace misleading `requires_review` retry/discard semantics with explicit reconciliation dispositions.
+4. Keep RETAIL/RESTAURANT enforcement as P1 and signed Windows/hardware/DR/provider/regulatory acceptance external.
+
+## Previous checkpoint — PR #83 (2026-09-23 15:37:54 +03)
 
 - Repository `MuhamedZanabal/ZAIPOS`; main remains `44dd533251acde0de35fe31a8286532857d268ef`. Draft PR #83 remains stacked directly on PR #82 head `1602ea9ea0ddf54d743400ec6fa18701317e5bb6`. Verified code head `af277e1ad6198b39d46ca3b052fae063c60319dc` is mergeable with no submitted reviews or inline threads. No merge is authorized and offline checkout remains disabled.
 - Authenticated direct INSERT on `table_orders` and the broad insert policy are removed. `open_table_order_v2` locks the authoritative table, validates tenant, active branch, eligible branch role and assigned-waiter ownership, rejects unavailable/pending-payment tables, journals a canonical stable identity and audits the resolved order.

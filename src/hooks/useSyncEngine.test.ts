@@ -218,7 +218,7 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "queued", retryCount: 0 });
   });
 
-  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT", "ADD_TABLE_ORDER_ITEMS"])(
+  it.each(["CHECKOUT_SALE_V2", "CHECKOUT_SALE", "CHECKOUT_TABLE_ORDER", "APPLY_INVENTORY_MOVEMENT", "ADD_TABLE_ORDER_ITEMS", "UPSERT_TABLE_ORDER_ITEMS"])(
     "quarantines already persisted %s without RPC, deletion or payload alteration", async (type) => {
       const { supabase } = await import("@/integrations/supabase/client");
       const payload = { _tenant_id: "t1", _branch_id: "b1", _items: [], _payments: [] };
