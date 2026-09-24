@@ -3,10 +3,26 @@ ALTER TABLE public.tenants
   ADD COLUMN IF NOT EXISTS business_mode text NOT NULL DEFAULT 'RETAIL'
   CONSTRAINT tenants_business_mode_check CHECK (business_mode IN ('RETAIL', 'RESTAURANT'));
 
--- Preserve current deployments that already enabled restaurant/table service.
-UPDATE public.tenants
+-- The historical active_channels default included `tables` for every tenant,
+-- including retail-only deployments. Backfill from authoritative persisted
+-- restaurant data instead of that non-discriminating default.
+UPDATE public.tenants t
 SET business_mode = 'RESTAURANT'
-WHERE 'tables'::public.sales_channel = ANY(active_channels);
+WHERE EXISTS (SELECT 1 FROM public.tables rt WHERE rt.tenant_id = t.id)
+   OR EXISTS (SELECT 1 FROM public.table_orders ro WHERE ro.tenant_id = t.id)
+   OR EXISTS (SELECT 1 FROM public.table_order_items ri WHERE ri.tenant_id = t.id);
+
+UPDATE public.tenants
+SET active_channels = array_remove(active_channels, 'tables'::public.sales_channel)
+WHERE business_mode = 'RETAIL';
+
+ALTER TABLE public.tenants
+  ALTER COLUMN active_channels SET DEFAULT ARRAY[
+    'pos'::public.sales_channel,
+    'talabat'::public.sales_channel,
+    'whatsapp'::public.sales_channel,
+    'delivery'::public.sales_channel
+  ];
 
 CREATE OR REPLACE FUNCTION public.prevent_tenant_business_mode_change_v1()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
@@ -60,6 +76,10 @@ DECLARE
   _slug text;
 BEGIN
   IF _user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  -- Serialize first-run clients before checking global bootstrap state. Without
+  -- this transaction lock, two terminals can both observe an empty tenant table
+  -- and create conflicting authoritative modes.
+  PERFORM pg_advisory_xact_lock(hashtext('zaipos.bootstrap_tenant_v2'));
   IF EXISTS (SELECT 1 FROM public.tenants LIMIT 1) THEN RAISE EXCEPTION 'Bootstrap is closed'; END IF;
   IF length(trim(COALESCE(_business_name, ''))) = 0 THEN RAISE EXCEPTION 'Business name is required'; END IF;
   IF _mode NOT IN ('RETAIL', 'RESTAURANT') THEN RAISE EXCEPTION 'Unsupported business mode'; END IF;
