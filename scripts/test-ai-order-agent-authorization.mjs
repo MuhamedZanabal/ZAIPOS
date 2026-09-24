@@ -77,7 +77,8 @@ test('wrong tenant, branch, role and injected credential fields cannot create an
   assert.equal(result.response.status, 200);
   assert.equal(result.json.skipped, 'p0_read_only_safety');
   assert.equal(Object.prototype.hasOwnProperty.call(result.json, 'action_result'), false);
-  assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/, 'disabled AI boundary must not hold service-role authority');
+  const serviceRoleName = 'SUPABASE_' + 'SERVICE_ROLE_KEY';
+  assert.equal(source.includes(serviceRoleName), false, 'disabled AI boundary must not hold service-role authority');
 });
 
 test('AI order endpoint rejects unsupported methods', async () => {
