@@ -2,6 +2,19 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — external acceptance only (2026-09-24 12:24 +03)
+
+- Authorized merge of PR #90 into `main` used expected head `8a0a02daa0a03fcdca9b9fb22712854cf12b3e87`. Merge commit: `d721daf7b8e3203b98fa085b03763a39f849d864`. The merge tree equals the PR tree (`ddad4eaf955ef7c09bb178e3cd000c72a7271156`).
+- Post-merge `main` workflows for that SHA completed successfully, including CI run `35980388075` (quality job `107570600291`, unsigned windows-package job `107571592078`), trusted-device dispatch `35980465067`, authorization census dispatch `35980466033`, and the contract workflows listed in `docs/engineering/ZAIPOS_EXTERNAL_ACCEPTANCE_HANDOFF.md`.
+- Device Credential Heartbeat does not trigger on `main`. The identical tree passed job `107552849985`. The Release workflow was not run; it is tag-gated and requires signing secrets.
+- `electron/main.ts` still sets offline checkout `{ enabled: false }`.
+- No deployment, tag, signed release, or production-data operation was performed.
+- Code tasks requested for this program are complete. Remaining work is external and is specified for humans in `docs/engineering/ZAIPOS_EXTERNAL_ACCEPTANCE_HANDOFF.md`.
+
+### Immediate next executable action
+
+None inside the repository. The physical and administrative team must execute the external handoff: signed install/upgrade/rollback, physical scanner/printer/drawer, measured production RPO/RTO, and Bahrain regulatory acceptance.
+
 ## Current checkpoint — authoritative business mode (2026-09-24 11:20 +03)
 
 - Authorized P0 consolidation PR #91 merged the final reviewed PR #86–#89 tree onto `main` at `fea0c074845c2a6d4cba073fbf877a82f1af69a6`. This corrected the stacked-PR integration: earlier child merges had targeted parent branches rather than `main`. No force push, deployment, release or production-data operation occurred; offline checkout remains disabled.
