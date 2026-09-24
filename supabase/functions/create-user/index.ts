@@ -43,6 +43,12 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    const { data: activeCaller, error: activeCallerError } = await admin.rpc("is_active_auth_user", {
+      _user_id: callerId,
+    });
+    if (activeCallerError) return json({ error: "Unable to verify account state" }, 500);
+    if (activeCaller !== true) return json({ error: "Forbidden" }, 403);
+
     // Verify caller is owner/admin of that tenant
     const { data: callerRoles, error: rErr } = await admin
       .from("user_roles")
