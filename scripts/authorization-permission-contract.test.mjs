@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { scanSource } from './test-authorization-surface-census.mjs';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -50,9 +50,33 @@ test('permission-contract role derivation respects route segment boundaries', ()
 test('every currently discovered application route has one explicit UI policy declaration', () => {
   assert.equal(new Set(routeSurfaces.map(surface => surface.identifier)).size, routeSurfaces.length, 'ambiguous duplicate route');
   const expectedKeys = routeSurfaces.map(surface => routeKey(surface.identifier)).sort();
-  const declaredKeys = Object.keys(contract.surfaces).sort();
+  const declaredKeys = Object.keys(contract.surfaces).filter(key => key.startsWith('application-route|')).sort();
   assert.deepEqual(declaredKeys, expectedKeys, 'missing, stale or unreviewed authorization-sensitive route');
   assert.deepEqual([...publicRoutes].filter(path => !routeSurfaces.some(surface => surface.identifier === path)), [], 'stale public route allowlist');
+});
+
+test('every Edge Function has an explicit authentication and authority classification', () => {
+  const edgeSurfaces = readdirSync(new URL('../supabase/functions/', import.meta.url), {withFileTypes: true})
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('_'))
+    .flatMap(entry => {
+      try {
+        const path = `supabase/functions/${entry.name}/index.ts`;
+        return scanSource(path, read(`../${path}`)).filter(surface => surface.kind === 'edge-function');
+      } catch {
+        return [];
+      }
+    });
+  const expectedKeys = edgeSurfaces.map(surface => `edge-function|${surface.path}|${surface.identifier}`).sort();
+  const declaredKeys = Object.keys(contract.surfaces).filter(key => key.startsWith('edge-function|')).sort();
+  assert.deepEqual(declaredKeys, expectedKeys, 'missing, stale or unreviewed Edge Function authority');
+  for (const key of declaredKeys) {
+    const entry = contract.surfaces[key];
+    assert.ok(['user-jwt', 'service-role-jwt', 'hmac'].includes(entry.authentication), `${key}: authentication must be explicit`);
+    assert.ok(Array.isArray(entry.allowed_roles), `${key}: allowed roles must be explicit`);
+    assert.equal(typeof entry.uses_service_role, 'boolean', `${key}: service-role custody must be explicit`);
+    assert.ok(Array.isArray(entry.negative_evidence) && entry.negative_evidence.length > 0, `${key}: negative evidence required`);
+    assert.notEqual(entry.server_authorization, 'not-assessed', `${key}: Edge Function authority must be assessed`);
+  }
 });
 
 test('declared route UI roles match current route guards without claiming server enforcement', () => {
