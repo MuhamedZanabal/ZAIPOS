@@ -15,6 +15,7 @@ on:
       - 'scripts/authorization-runtime-contract.mjs'
       - 'scripts/authorization-runtime-contract.test.mjs'
       - 'scripts/test-canonical-authorization-helpers-postgres.mjs'
+      - 'scripts/test-storage-authorization-postgres.mjs'
       - 'scripts/test-ai-order-agent-authorization.mjs'
       - 'scripts/test-process-email-queue-authorization.mjs'
       - 'scripts/test-business-export-authorization-postgres.mjs'
@@ -53,6 +54,8 @@ jobs:
         run: node scripts/test-production-migration-chain-supabase.mjs
       - name: Verify canonical authentication, tenant, branch, role and account-state authority
         run: node scripts/test-canonical-authorization-helpers-postgres.mjs
+      - name: Verify storage tenant-membership authorization
+        run: node scripts/test-storage-authorization-postgres.mjs
       - name: Verify business export authorization matrix
         run: node scripts/test-business-export-authorization-postgres.mjs
       - name: Verify create-user branch authorization
