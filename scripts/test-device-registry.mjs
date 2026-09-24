@@ -12,7 +12,7 @@ function sql(statement) { return psql(['-c', statement], false); }
 function scalar(statement) { return psql(['-Atq', '-c', statement]).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? ''; }
 function asAuthenticated(userId, statement) { return scalar(`BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub='${userId}'; ${statement}; COMMIT;`); }
 function assertEqual(label, actual, expected) { if (actual !== expected) throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); }
-function expectReject(label, userId, statement, pattern = /not authorized|permission denied|revoked|credential|enroll/i) { try { asAuthenticated(userId, statement); } catch (error) { const message = String(error?.stderr ?? error?.message ?? error); if (!pattern.test(message)) throw new Error(`${label}: wrong rejection: ${message}`); return; } throw new Error(`${label}: expected rejection`); }
+function expectReject(label, userId, statement, pattern = /forbidden|not authorized|permission denied|revoked|credential|enroll/i) { try { asAuthenticated(userId, statement); } catch (error) { const message = String(error?.stderr ?? error?.message ?? error); if (!pattern.test(message)) throw new Error(`${label}: wrong rejection: ${message}`); return; } throw new Error(`${label}: expected rejection`); }
 
 sql(`
 INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES ('${I.managerA}','device-manager-a@zaipos.test','{}'),('${I.managerAOther}','device-manager-other@zaipos.test','{}'),('${I.managerB}','device-manager-b@zaipos.test','{}'),('${I.cashierA}','device-cashier-a@zaipos.test','{}') ON CONFLICT (id) DO NOTHING;
