@@ -21,7 +21,6 @@ export function summarize(surfaces) {
     sha256: createHash('sha256').update(entries.sort().join('\n')).digest('hex'),
   }]));
 }
-
 export function validate(surfaces, baseline) {
   if (baseline?.schema !== 2 || !baseline.kinds || typeof baseline.kinds !== 'object' ||
       Array.isArray(baseline.kinds) || Object.keys(baseline.kinds).length === 0)
@@ -56,4 +55,3 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exitCode = 1;
   }
 }
-
