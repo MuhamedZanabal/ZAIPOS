@@ -42,4 +42,3 @@ test('malformed surface data fails closed', () => {
   assert.throws(()=>summarize([{kind:'rpc-client',path:'',text:'whatever'}]), /surface/);
   assert.throws(()=>summarize([{...known[0],scope:'unknown'}]), /surface/);
 });
-
