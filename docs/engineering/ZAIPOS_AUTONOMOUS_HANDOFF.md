@@ -7,12 +7,13 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 - Draft PR #89 remains stacked on PR #88. Local code head before this documentation update is `db386a4a6229d56875dea4d2fc09c3e2b96fa93e`. No merge, deployment, release, force push or production-data action is authorized. Offline checkout remains disabled.
 - All ten discovered Edge Functions now have explicit permission-matrix entries recording authentication mode, allowed roles, service-role custody, authoritative scope and negative evidence. A drift test fails if an Edge Function is added, removed or left unclassified.
 - Reproduced and repaired the highest-risk live gap in `process-invoice`: it previously parsed an unbounded attacker-controlled JSON body before authentication and returned raw exception messages. It now authenticates first, rejects non-POST methods, caps declared request and encoded media sizes, allowlists JPEG/PNG/WebP/PDF, validates base64 before Gemini, preserves tenant/branch role checks, fails closed when provider configuration is absent, and returns generic provider/internal failures.
+- Hardened `embed-knowledge-doc` service-role custody: its embedding update is now constrained by document ID, tenant and branch, and neither provider bodies nor database error details are returned to callers.
 - TDD evidence: three focused contracts failed before implementation and passed afterward. Fresh local verification: 69 Vitest files / 368 tests; 30 authorization/census tests; TypeScript; production build (2,773 modules); 129 migrations; ESLint zero errors / 13 pre-existing warnings; census baseline unchanged at 1,820 occurrences; `git diff --check`.
 - Previous PR #89 code head `2e2f8b973b7da797d3900f507eed2e289cee6747` completed both CI run `35944819273` and Authorization Surface Census run `35944819274` successfully. Documentation head `e1a17dc67a0d4525091e6112e4db3e827a869c2d` completed census successfully while its CI run was still in progress at discovery.
 
 ### Immediate next executable action
 
-Publish the Edge classification commit to PR #89 and require exact-head CI. Then classify privileged service-role credential custody and direct table-client surfaces, beginning with `embed-knowledge-doc` administrative reads/writes and ensuring every mutation is tenant/branch constrained with generic failures.
+Publish the additional embedding hardening to PR #89 and require exact-head CI. Then classify the remaining privileged service-role and direct table-client occurrences, prioritizing outbound messaging writes and device-enrollment/rotation administrative operations.
 
 ## Current checkpoint — authorization census rebuild (2026-09-24 04:50 +03)
 
