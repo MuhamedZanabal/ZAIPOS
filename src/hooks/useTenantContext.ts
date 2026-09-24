@@ -12,6 +12,7 @@ type TenantSummary = {
   currency: string | null;
   tax_rate: number | null;
   active_channels: string[] | null;
+  business_mode: "RETAIL" | "RESTAURANT";
 };
 
 function isTenantSummary(value: unknown): value is TenantSummary {
@@ -28,7 +29,7 @@ export function useTenantContext() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("tenant_id, role, branch_id, tenants(id, name, currency, tax_rate, active_channels)")
+        .select("tenant_id, role, branch_id, tenants(id, name, currency, tax_rate, active_channels, business_mode)")
         .eq("user_id", user!.id);
       if (error) throw error;
       return data ?? [];
@@ -87,6 +88,11 @@ export function useTenantContext() {
     return normalizeBahrainChannels(null);
   }, [memberships, tenantId]);
 
+  const businessMode = useMemo(() => {
+    const tenantObj = memberships?.find((membership) => membership.tenant_id === tenantId)?.tenants;
+    return isTenantSummary(tenantObj) && tenantObj.business_mode === "RESTAURANT" ? "RESTAURANT" : "RETAIL";
+  }, [memberships, tenantId]);
+
   return {
     tenantId,
     branchId,
@@ -100,5 +106,6 @@ export function useTenantContext() {
     isLoading: loadingRoles,
     needsOnboarding: !loadingRoles && (memberships?.length ?? 0) === 0,
     activeChannels,
+    businessMode,
   };
 }

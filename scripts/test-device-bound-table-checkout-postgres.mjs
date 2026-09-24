@@ -26,7 +26,7 @@ const copiedUid='copied-table-terminal';
 
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
  ('${I.manager}','table-manager@zaipos.test','{}'),('${I.waiter}','table-waiter@zaipos.test','{}'),('${I.outsider}','table-outsider@zaipos.test','{}');
-INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,allow_negative_stock) VALUES('${I.tenant}','Table Device','table-device-contract','BHD',10,false,false);
+INSERT INTO public.tenants(id,name,slug,currency,tax_rate,dev_mode,allow_negative_stock,business_mode) VALUES('${I.tenant}','Table Device','table-device-contract','BHD',10,false,false,'RESTAURANT');
 INSERT INTO public.branches(id,tenant_id,name,status) VALUES('${I.branch}','${I.tenant}','Table Branch','active'),('${I.otherBranch}','${I.tenant}','Other Table Branch','active');
 INSERT INTO public.user_roles(user_id,tenant_id,branch_id,role) VALUES
  ('${I.manager}','${I.tenant}','${I.branch}','manager'),('${I.waiter}','${I.tenant}','${I.branch}','waiter'),('${I.outsider}','${I.tenant}','${I.otherBranch}','cashier');

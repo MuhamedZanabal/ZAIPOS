@@ -79,3 +79,10 @@ export function canAccessProtectedPath(userRoles: string[], pathname: string): b
   const requiredRoles = rolesForPath(pathname);
   return requiredRoles !== undefined && requiredRoles.length > 0 && canAccessRoles(userRoles, requiredRoles);
 }
+
+const RESTAURANT_PATHS = ["/tables", "/waiter", "/kds", "/recipes"];
+
+export function canAccessBusinessMode(mode: "RETAIL" | "RESTAURANT", pathname: string): boolean {
+  if (mode === "RESTAURANT") return true;
+  return !RESTAURANT_PATHS.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}

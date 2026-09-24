@@ -40,31 +40,31 @@
     },
     "rpc-client": {
       "count": 67,
-      "sha256": "9de1f31916f7fd7ea252410a226e0069aa6a555291f2da06b74f23dd6a874848"
+      "sha256": "1736e843c7a3608df2c84c2b65bd807827fb85f1b11d7601d8cf181f0c005906"
     },
     "rpc-client-dynamic": {
       "count": 4,
       "sha256": "fb67b68e6831a60ac15cb7578fe453ebc6edc638ee13f0c885ddcd16d9172cb4"
     },
     "security-definer": {
-      "count": 261,
-      "sha256": "d17f6fb4648b247bb9ee1fe71a4025d522c3846c40a1bc28a53aa6e2d0a6aa98"
+      "count": 262,
+      "sha256": "4f12eefd10f40acca85ac4755054de18232b1dcaa4a9c03f99f442527d0a6d39"
     },
     "sql-function": {
-      "count": 314,
-      "sha256": "2929af417cde6f1c30ac42dc89620ca76dc1f0ef4d3766968fc88cd529f70490"
+      "count": 317,
+      "sha256": "9202f80c3ecce0eb933c45fe6bc23e1bb2b0fe5e64170035a7fb8afecfb76273"
     },
     "sql-grant": {
-      "count": 209,
-      "sha256": "1b18bc45c113070104a9547ce4f122041ea454f84afecdbccdc81761ce08324f"
+      "count": 210,
+      "sha256": "6266f4fd86d99a5f4fa2559a6396c847a7a5a4da8d4e5c5072a89136ad730d61"
     },
     "sql-revoke": {
-      "count": 325,
-      "sha256": "00dc74967341e78e102127ce1f4e3e62c20be8bf2c0590cc559af1f16868ace2"
+      "count": 330,
+      "sha256": "ddfac450d7fcf0e1939f8c0754619395304179d0ee1e014897c1eed5c7b773f7"
     },
     "sql-trigger": {
-      "count": 77,
-      "sha256": "d955bc5b9933f2a98df58b64292809672793ade5122960a3daa21368abfe7d2b"
+      "count": 81,
+      "sha256": "615bce4704e9e434fd1099c18726d1c0d3520a171c9025bae8ccb8778d077fcd"
     },
     "table-client": {
       "count": 281,

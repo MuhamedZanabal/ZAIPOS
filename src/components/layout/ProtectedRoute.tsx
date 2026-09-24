@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { Loader2 } from "lucide-react";
-import { canAccessProtectedPath } from "@/lib/roles";
+import { canAccessBusinessMode, canAccessProtectedPath } from "@/lib/roles";
 
 /** Ruta de aterrizaje según el rol principal del user */
 function homeForRoles(roles: string[]): string {
@@ -18,7 +18,7 @@ function homeForRoles(roles: string[]): string {
 export function ProtectedRoute() {
   const location = useLocation();
   const { user, loading } = useAuth();
-  const { needsOnboarding, isLoading, roles } = useTenantContext();
+  const { needsOnboarding, isLoading, roles, businessMode } = useTenantContext();
 
   if (loading || (user && isLoading)) {
     return (
@@ -35,7 +35,7 @@ export function ProtectedRoute() {
   }
 
   if (!needsOnboarding && location.pathname !== "/onboarding") {
-    if (!canAccessProtectedPath(roles, location.pathname)) {
+    if (!canAccessProtectedPath(roles, location.pathname) || !canAccessBusinessMode(businessMode, location.pathname)) {
       // Si el user no puede acceder a esta ruta, redirigirlo a su módulo
       // principal en lugar de mostrar 403 — solo mostramos 403 si tampoco
       // puede acceder a su propio home (situación anómala).
