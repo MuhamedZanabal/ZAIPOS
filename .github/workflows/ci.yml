@@ -80,9 +80,6 @@ jobs:
       - name: Test production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
 
-      - name: Test authoritative business mode
-        run: node scripts/test-business-mode-authority.mjs && node scripts/test-business-mode-postgres.mjs
-
       - name: Test tenant-branch structural integrity
         run: node scripts/test-tenant-branch-integrity.mjs
 
@@ -202,6 +199,13 @@ jobs:
 
       - name: Test P0 AI RPC lockdown
         run: npm run test:migrations:ai-lockdown
+
+      # This contract intentionally exercises first-tenant bootstrap against an
+      # empty database. Keep it after every other PostgreSQL contract so its
+      # isolated fixture reset cannot invalidate migration-chain fixtures used
+      # by the structural and financial acceptance suites above.
+      - name: Test authoritative business mode
+        run: node scripts/test-business-mode-authority.mjs && node scripts/test-business-mode-postgres.mjs
 
       - name: Audit production dependencies
         run: npm audit --audit-level=high --omit=dev
