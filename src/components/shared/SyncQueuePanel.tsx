@@ -13,11 +13,14 @@ import {
   Clock,
   Send,
   RotateCcw,
+  FileCheck2,
+  Download,
 } from "lucide-react";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import type { SyncQueueItem, SyncQueueStatus } from "@/lib/db";
 import { isReplayableQueueStatus } from "@/lib/syncQueue";
 import { formatDistanceToNow } from "date-fns";
+import { downloadReconciliationReceipt } from "@/lib/syncReconciliation";
 
 const TYPE_LABELS: Record<string, string> = {
   CHECKOUT_SALE_V2: "POS Sale",
@@ -38,6 +41,7 @@ const STATUS_LABELS: Record<SyncQueueStatus, string> = {
   retrying: "Retrying",
   failed: "Failed",
   requires_review: "Requires review",
+  resolved: "Reconciled",
 };
 
 const FAILURE_LABELS: Record<string, string> = {
@@ -57,7 +61,7 @@ const FAILURE_LABELS: Record<string, string> = {
 };
 
 function StatusIcon({ status }: { status: SyncQueueStatus }) {
-  if (status === "committed") return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+  if (status === "committed" || status === "resolved") return <CheckCircle2 className="h-4 w-4 text-green-600" />;
   if (status === "sending") return <Send className="h-4 w-4 text-blue-600" />;
   if (status === "retrying") return <RefreshCw className="h-4 w-4 text-amber-500" />;
   if (status === "failed" || status === "requires_review") {
@@ -72,11 +76,12 @@ interface Props {
 }
 
 export function SyncQueuePanel({ open, onOpenChange }: Props) {
-  const { processSyncQueue, getQueueItems, discardItem, retryItem } = useSyncEngine();
+  const { processSyncQueue, getQueueItems, discardItem, retryItem, resolveReviewItem } = useSyncEngine();
   const [items, setItems] = useState<SyncQueueItem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [discarding, setDiscarding] = useState<number | null>(null);
   const [retrying, setRetrying] = useState<number | null>(null);
+  const [resolving, setResolving] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const rows = await getQueueItems();
@@ -111,6 +116,25 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
     await processSyncQueue();
     await refresh();
     setRetrying(null);
+  };
+
+  const handleResolve = async (
+    id: number,
+    disposition: "confirmed_not_applied" | "reconciled_externally",
+  ) => {
+    const note = window.prompt(
+      disposition === "confirmed_not_applied"
+        ? "Record how you verified that this operation was not applied."
+        : "Record the external transaction/reference used to reconcile this operation."
+    );
+    if (!note) return;
+    setResolving(id);
+    try {
+      await resolveReviewItem(id, disposition, note);
+      await refresh();
+    } finally {
+      setResolving(null);
+    }
   };
 
   const pending = items.filter((item) => isReplayableQueueStatus(item.status)).length;
@@ -205,9 +229,17 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
                       {item.error}
                     </p>
                   )}
+                  {item.status === "resolved" && item.reconciliationDisposition && (
+                    <p className="text-xs text-green-700 mt-1">
+                      {item.reconciliationDisposition === "confirmed_not_applied"
+                        ? "Confirmed not applied"
+                        : "Reconciled externally"}
+                      {item.reconciliationNote && ` · ${item.reconciliationNote}`}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {(item.status === "failed" || item.status === "requires_review") && (
+                  {item.status === "failed" && (
                     <Button
                       size="icon"
                       variant="outline"
@@ -221,7 +253,31 @@ export function SyncQueuePanel({ open, onOpenChange }: Props) {
                         : <RotateCcw className="h-3.5 w-3.5" />}
                     </Button>
                   )}
-                  {item.status !== "sending" && item.status !== "committed" && (
+                  {item.status === "requires_review" && (
+                    <>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]"
+                        aria-label={`Confirm not applied ${TYPE_LABELS[item.type] ?? item.type}`}
+                        disabled={resolving === item.id}
+                        onClick={() => item.id !== undefined && handleResolve(item.id, "confirmed_not_applied")}>
+                        Not applied
+                      </Button>
+                      <Button size="icon" variant="outline" className="h-7 w-7"
+                        aria-label={`Mark reconciled ${TYPE_LABELS[item.type] ?? item.type}`}
+                        disabled={resolving === item.id}
+                        onClick={() => item.id !== undefined && handleResolve(item.id, "reconciled_externally")}>
+                        {resolving === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck2 className="h-3.5 w-3.5" />}
+                      </Button>
+                    </>
+                  )}
+                  {item.status === "resolved" && (
+                    <Button size="icon" variant="outline" className="h-7 w-7"
+                      aria-label={`Export reconciliation ${TYPE_LABELS[item.type] ?? item.type}`}
+                      onClick={() => void downloadReconciliationReceipt(item)}>
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {item.status !== "sending" && item.status !== "committed"
+                    && item.status !== "requires_review" && item.status !== "resolved" && (
                     <Button
                       size="icon"
                       variant="ghost"
