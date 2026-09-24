@@ -9,11 +9,21 @@ const compiled = ts.transpileModule(source.replace(/^import\s+\{\s*createClient\
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
 
-async function invoke({ branchId = 'branch-a', branchTenant = 'tenant-a', branchError = null, role = 'cashier', callerRole = 'owner', callerBranchId = null } = {}) {
-  const calls = { branchLookup: 0, profileLookup: 0, created: 0, inserted: 0 };
+async function invoke({ branchId = 'branch-a', branchTenant = 'tenant-a', branchError = null, role = 'cashier', callerRole = 'owner', callerBranchId = null, callerState = 'active', callerStateError = null } = {}) {
+  const calls = { callerState: 0, branchLookup: 0, profileLookup: 0, created: 0, inserted: 0 };
   let handler;
   const admin = {
-    auth: { admin: { createUser: async () => { calls.created++; return { data: { user: { id: 'new-user' } }, error: null }; } } },
+    auth: { admin: {
+      createUser: async () => { calls.created++; return { data: { user: { id: 'new-user' } }, error: null }; },
+      getUserById: async () => {
+        calls.callerState++;
+        if (callerStateError) return { data: { user: null }, error: callerStateError };
+        if (callerState === 'missing') return { data: { user: null }, error: null };
+        if (callerState === 'banned') return { data: { user: { id: 'caller', banned_until: new Date(Date.now() + 86400000).toISOString(), deleted_at: null } }, error: null };
+        if (callerState === 'deleted') return { data: { user: { id: 'caller', banned_until: null, deleted_at: new Date().toISOString() } }, error: null };
+        return { data: { user: { id: 'caller', banned_until: null, deleted_at: null } }, error: null };
+      },
+    } },
     from(table) {
       const filters = {};
       let selected;
@@ -100,6 +110,23 @@ for (const [name, options] of [
     const { status, calls } = await invoke(options);
     assert.equal(status, 403);
     assert.equal(calls.branchLookup, 1);
+    assert.equal(calls.profileLookup, 0);
+    assert.equal(calls.created, 0);
+    assert.equal(calls.inserted, 0);
+  });
+}
+
+for (const [name, options, expectedStatus] of [
+  ['banned caller', { callerState: 'banned' }, 403],
+  ['deleted caller', { callerState: 'deleted' }, 403],
+  ['missing caller state', { callerState: 'missing' }, 403],
+  ['account-state lookup failure', { callerStateError: { message: 'auth unavailable' } }, 500],
+]) {
+  test(`create-user rejects ${name} before role lookup or mutation`, async () => {
+    const { status, calls } = await invoke(options);
+    assert.equal(status, expectedStatus);
+    assert.equal(calls.callerState, 1);
+    assert.equal(calls.branchLookup, 0);
     assert.equal(calls.profileLookup, 0);
     assert.equal(calls.created, 0);
     assert.equal(calls.inserted, 0);
