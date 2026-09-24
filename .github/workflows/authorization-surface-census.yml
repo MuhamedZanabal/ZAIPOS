@@ -99,4 +99,3 @@ jobs:
           if-no-files-found: error
       - name: Reject unreviewed census changes
         run: node scripts/authorization-census-guard.mjs authorization-surface-census.json scripts/authorization-surface-baseline.json
-
