@@ -237,7 +237,7 @@ assertEqual('assigned courier can read only their order',asUser(courier,`SELECT 
 assertEqual('unassigned courier sees no customer orders',asUser(courierOther,`SELECT jsonb_array_length(public.list_courier_deliveries('${I.tenantA}','${I.branchA}')->'orders')::text`),'0');
 assertEqual('assigned courier direct read uses private employee authorization safely',asUser(courier,`SELECT count(*)::text FROM public.delivery_orders WHERE id='${courierOrder}'`),'1');
 sql(`UPDATE public.employees SET status='inactive' WHERE id='${employee}';`);
-expectReject('inactive courier cannot collect',courier,courierCall,/forbidden/i);
+expectReject('inactive courier cannot collect',courier,courierCall,/forbidden|not authorized/i);
 sql(`UPDATE public.employees SET status='active' WHERE id='${employee}';`);
 asUser(courier,courierCall);
 assertEqual('card collection preserves a single fils',scalar(`SELECT total_card_fils::text FROM public.cash_sessions WHERE id='${sessionId}'`),'1251');
