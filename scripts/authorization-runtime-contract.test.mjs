@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   EDGE_FUNCTION_AUTHORITY,
+  EVIDENCE_CATALOG,
   EXPECTED_RUNTIME_OCCURRENCES,
   POLICIES,
   REQUIRED_NEGATIVE_DIMENSIONS,
@@ -23,6 +24,14 @@ function census() {
     return scanSource(path, body);
   });
 }
+
+test('all evidence references resolve to concrete tracked repository files', () => {
+  validatePolicies();
+  for (const [label, paths] of Object.entries(EVIDENCE_CATALOG)) {
+    assert.ok(Array.isArray(paths) && paths.length > 0, label);
+    for (const path of paths) assert.equal(existsSync(path), true, `${label}: missing ${path}`);
+  }
+});
 
 test('all runtime authorization occurrences have an explicit authority policy', () => {
   validatePolicies();
