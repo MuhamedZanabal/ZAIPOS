@@ -26,6 +26,7 @@ export interface ElectronBridge {
   voidSale: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   checkoutTableOrder: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
+  inventoryCommand: (command: string, payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   platform: NodeJS.Platform;
 }
 

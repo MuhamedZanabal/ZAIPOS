@@ -139,6 +139,8 @@ export default function Suppliers() {
     mutationFn: async (order: PurchaseOrder) => {
       if (!defaultCenter?.id) throw new Error("No active inventory center is configured for this branch");
       return receivePurchaseOrderV2({
+        tenantId: tenantId!,
+        branchId: branchId!,
         orderId: order.id,
         inventoryCenterId: defaultCenter.id,
         clientMutationId: `purchase-order-receive-${order.id}`,

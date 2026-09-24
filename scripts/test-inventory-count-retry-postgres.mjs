@@ -25,20 +25,22 @@ sql(`
  VALUES('${ids.product}','${ids.tenant}','Count Item','simple',1.000,0.500,10,'active');
  INSERT INTO public.inventory_stocks(tenant_id,branch_id,inventory_center_id,product_id,quantity)
  VALUES('${ids.tenant}','${ids.branch}','${ids.center}','${ids.product}',5.000);
+ INSERT INTO public.devices(tenant_id,branch_id,device_uid,app_version,os,credential_hash,credential_issued_at)
+ VALUES('${ids.tenant}','${ids.branch}','count-retry-terminal','1.0.0','windows',extensions.digest(convert_to('${'c'.repeat(64)}','UTF8'),'sha256'),now());
 `);
-const call=(op='count-retry-contract-001',quantity='10.001')=>`SELECT public.reconcile_inventory_levels_v2(
+const call=(op='count-retry-contract-001',quantity='10.001')=>`SELECT public.reconcile_inventory_levels_v3_device(
  '${ids.tenant}','${ids.branch}','${ids.center}',
  '[{"product_id":"${ids.product}","target_quantity":"${quantity}","effect_key":"sku:COUNT"}]'::jsonb,
- ${literal(op)},'Bulk physical inventory import')::text`;
+ ${literal(op)},'Bulk physical inventory import','count-retry-terminal','${'c'.repeat(64)}')::text`;
 const stock=()=>sql(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${ids.center}' AND product_id='${ids.product}'`);
 const evidence=()=>sql(`SELECT md5(coalesce(jsonb_agg(to_jsonb(m) ORDER BY id)::text,'')) FROM public.inventory_movements m WHERE tenant_id='${ids.tenant}'`);
 
 const first=asUser(ids.manager,call());
 assert.match(first,/^[0-9a-f-]{36}$/);assert.equal(stock(),'10.001');
 // A later authoritative stock reduction must survive a retry of the old count.
-asUser(ids.manager,`SELECT public.record_inventory_batch_v2('${ids.tenant}','${ids.branch}','${ids.center}',
+asUser(ids.manager,`SELECT public.record_inventory_batch_v3_device('${ids.tenant}','${ids.branch}','${ids.center}',
  '[{"product_id":"${ids.product}","movement_type":"waste","quantity":1,"effect_key":"waste-1"}]'::jsonb,
- 'count-retry-intervening-movement','Documented intervening stock reduction')`);
+ 'count-retry-intervening-movement','Documented intervening stock reduction','count-retry-terminal','${'c'.repeat(64)}')`);
 assert.equal(stock(),'9.001');const before=evidence();
 const exec=promisify(execFile);
 const replies=await Promise.all(Array.from({length:4},()=>exec('psql',['-X','-Atq','-v','ON_ERROR_STOP=1','-c',userSql(ids.manager,call())],{env:conn.env,encoding:'utf8'})));

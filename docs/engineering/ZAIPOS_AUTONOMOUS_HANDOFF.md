@@ -2,6 +2,32 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — PR #88 adversarial inventory authority (2026-09-24 04:22 +03)
+
+- Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. Draft PR #88 remains stacked on PR #87. Exact verified code head is `01b660664f17f8a59d62322857bcd5b2b082071a`. No merge, deployment or release is authorized; offline checkout remains disabled.
+- Added `scripts/test-device-bound-inventory-postgres.mjs` to the Trusted Device workflow. It proves legacy v2 grant denial and zero-effect missing, copied, mismatched, inactive-branch, wrong-role and revoked credential failures for all five inventory commands. It also proves four-way concurrent convergence, lost-response replay and payload-substitution rejection for batch, reconciliation, transfer, purchase receiving and production completion.
+- Hardened `require_inventory_device_v1` to reject inactive branches before reaching any core mutation.
+- The new real-PostgreSQL contract exposed a live core defect: production completion referenced removed `inventory_centers.is_default`. The current migration replaces that selection with deterministic active-center selection matching `apply_inventory_movement`, without weakening atomicity, role checks, exact thousandths, idempotency or audit.
+- Failure history: `d46b06d` failed because restricted database diagnostics were intentionally redacted from assertions; `8ed232a` then exposed missing payable supplier fixture data; `1ea72f0` exposed the removed production-center column. These are not passing evidence. Exact head `01b6606` has passed the complete 129-migration quality job and the dedicated Trusted Device workflow, including the new matrix. Unsigned Windows packaging remained in progress at final observation.
+- Local verification: 68 Vitest files / 364 tests; TypeScript; production build (2,773 modules); 129 migrations; inventory client cutover; credential vault; ESLint zero errors (13 pre-existing warnings); `git diff --check`.
+
+### Immediate next executable action
+
+Confirm exact-head Windows packaging, then rebuild the authorization census against current main plus PRs #86–#88. Review #86, #87 and #88 normally; do not merge autonomously.
+
+## Current checkpoint — draft PR #88 device-bound inventory commands (2026-09-24 01:20 +03)
+
+- Draft PR #88 is stacked on PR #87. Exact code head `3ddf09b3919af0bc7d71d675ce493bb06da296d9`; base `7c2a1ba07faeb2ae0616a08505d7c1c13f7f55af`. No merge, deployment or release is authorized. Offline checkout remains disabled.
+- Authenticated execution was revoked from inventory batch, physical reconciliation, transfer, purchase receiving and production-completion v2 routines. Five v3 wrappers require an active tenant/branch-matched enrolled device and retain the v2 atomic/idempotent cores and role checks.
+- All renderer call sites now fail closed outside the trusted desktop and use one allowlisted IPC boundary. The credential remains OS-encrypted and is injected only in Electron main.
+- CI exposed three stale contracts that called revoked APIs. They were migrated to enrolled-device calls without restoring grants. Current exact-head quality job `107405745008` passed its full real-PostgreSQL chain. Twenty independent workflows completed successfully; unsigned Windows packaging was still running when this checkpoint was written.
+- Local: 68 Vitest files / 364 tests, TypeScript, build (2,773 modules), 129 migrations, inventory client cutover, ESLint zero errors (13 pre-existing warnings), and `git diff --check` passed.
+- Remaining: independently add dedicated missing/copied/wrong-branch/revoked credential and zero-effect tests for each inventory wrapper; rebuild the authorization census; packaged recovery/operator acceptance; authoritative RETAIL/RESTAURANT enforcement; external signed Windows/hardware/DR/provider/regulatory acceptance.
+
+### Immediate next executable action
+
+Wait for PR #88 exact-head packaging completion, then add the dedicated inventory device-bound PostgreSQL matrix. Review PRs #86, #87 and #88 normally; do not merge autonomously.
+
 ## Current checkpoint — draft PR #87 authoritative table cart (2026-09-23 22:17 +03)
 
 - Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. Draft PR #87 exact code head `48e9286e396464c2b03a3246f8c1fa3a73c486f2` extends the verified legacy-RPC revocation with an authoritative cart replacement. No merge is authorized and offline checkout remains disabled.

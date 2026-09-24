@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { desktopAuthorization } from "@/lib/desktopAuthorization";
 
 export type DirectInventoryMovementType = "purchase" | "adjustment" | "waste" | "return";
 
@@ -19,6 +19,13 @@ export function createInventoryMutationId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
+async function runInventoryCommand(command: string, payload: Record<string, unknown>, tenantId: string, branchId: string) {
+  if (!window.electron?.inventoryCommand) throw new Error("Trusted desktop inventory authority is unavailable");
+  const authorization = await desktopAuthorization();
+  if (authorization.tenantId !== tenantId || authorization.branchId !== branchId) throw new Error("Inventory command scope does not match the selected desktop branch");
+  return window.electron.inventoryCommand(command, payload, authorization);
+}
+
 export async function recordInventoryBatchV2(args: {
   tenantId: string;
   branchId: string;
@@ -27,7 +34,7 @@ export async function recordInventoryBatchV2(args: {
   clientMutationId: string;
   reason?: string | null;
 }) {
-  const { data, error } = await supabase.rpc("record_inventory_batch_v2" as any, {
+  return runInventoryCommand("batch", {
     _tenant_id: args.tenantId,
     _branch_id: args.branchId,
     _inventory_center_id: args.inventoryCenterId,
@@ -39,9 +46,7 @@ export async function recordInventoryBatchV2(args: {
     })),
     _client_mutation_id: args.clientMutationId,
     _reason: args.reason ?? null,
-  });
-  if (error) throw error;
-  return data as string;
+  }, args.tenantId, args.branchId);
 }
 
 export async function reconcileInventoryLevelsV2(args: {
@@ -52,7 +57,7 @@ export async function reconcileInventoryLevelsV2(args: {
   clientMutationId: string;
   reason?: string | null;
 }) {
-  const { data, error } = await supabase.rpc("reconcile_inventory_levels_v2" as any, {
+  return runInventoryCommand("reconcile", {
     _tenant_id: args.tenantId,
     _branch_id: args.branchId,
     _inventory_center_id: args.inventoryCenterId,
@@ -63,9 +68,7 @@ export async function reconcileInventoryLevelsV2(args: {
     })),
     _client_mutation_id: args.clientMutationId,
     _reason: args.reason ?? null,
-  });
-  if (error) throw error;
-  return data as string;
+  }, args.tenantId, args.branchId);
 }
 
 export async function transferInventoryV2(args: {
@@ -78,7 +81,7 @@ export async function transferInventoryV2(args: {
   reason?: string | null;
   clientMutationId: string;
 }) {
-  const { data, error } = await supabase.rpc("transfer_inventory_v2" as any, {
+  return runInventoryCommand("transfer", {
     _tenant_id: args.tenantId,
     _branch_id: args.branchId,
     _product_id: args.productId,
@@ -87,37 +90,39 @@ export async function transferInventoryV2(args: {
     _quantity: args.quantity,
     _reason: args.reason ?? null,
     _client_mutation_id: args.clientMutationId,
-  });
-  if (error) throw error;
-  return data as string;
+  }, args.tenantId, args.branchId);
 }
 
 export async function receivePurchaseOrderV2(args: {
+  tenantId: string;
+  branchId: string;
   orderId: string;
   inventoryCenterId: string;
   clientMutationId: string;
 }) {
-  const { data, error } = await supabase.rpc("receive_purchase_order_v2" as any, {
+  return runInventoryCommand("receive", {
+    _tenant_id: args.tenantId,
+    _branch_id: args.branchId,
     _order_id: args.orderId,
     _inventory_center_id: args.inventoryCenterId,
     _client_mutation_id: args.clientMutationId,
-  });
-  if (error) throw error;
-  return data as string;
+  }, args.tenantId, args.branchId);
 }
 
 export async function completeProductionOrderV2(args: {
+  tenantId: string;
+  branchId: string;
   orderId: string;
   produced: number;
   waste?: number;
   clientMutationId: string;
 }) {
-  const { data, error } = await supabase.rpc("complete_production_order_v2" as any, {
+  return runInventoryCommand("production", {
+    _tenant_id: args.tenantId,
+    _branch_id: args.branchId,
     _order_id: args.orderId,
     _produced: args.produced,
     _waste: args.waste ?? 0,
     _client_mutation_id: args.clientMutationId,
-  });
-  if (error) throw error;
-  return data as string;
+  }, args.tenantId, args.branchId);
 }

@@ -18,6 +18,7 @@ on:
       - 'scripts/test-device-bound-table-checkout-postgres.mjs'
       - 'scripts/test-device-bound-cash-session-postgres.mjs'
       - 'scripts/test-device-bound-cash-session.mjs'
+      - 'scripts/test-device-bound-inventory-postgres.mjs'
       - '.github/workflows/trusted-device-enforcement.yml'
       - 'supabase/functions/activate-device/**'
       - 'supabase/functions/rotate-device-credential/**'
@@ -87,6 +88,8 @@ jobs:
         run: node scripts/test-device-bound-table-checkout-postgres.mjs
       - name: Verify device-bound cash-session authority
         run: node scripts/test-device-bound-cash-session-postgres.mjs
+      - name: Verify device-bound inventory authority
+        run: node scripts/test-device-bound-inventory-postgres.mjs
       - name: Preserve trusted-device enforcement diagnostics
         if: failure() && steps.enforcement.outcome == 'failure'
         uses: actions/upload-artifact@v4

@@ -250,5 +250,21 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Sale void returned an invalid identifier');
       return result;
     },
+    async inventoryCommand(command: string, payload: Record<string, unknown>, authorization: DeviceAuthorization): Promise<string> {
+      const auth = validateAuthorization(authorization);
+      if (!payload || payload._tenant_id !== auth.tenantId || payload._branch_id !== auth.branchId) throw new Error('Inventory command scope does not match authorization scope');
+      const functions: Record<string, string> = {
+        batch: 'record_inventory_batch_v3_device', reconcile: 'reconcile_inventory_levels_v3_device',
+        transfer: 'transfer_inventory_v3_device', receive: 'receive_purchase_order_v3_device',
+        production: 'complete_production_order_v3_device',
+      };
+      const functionName = functions[requireCanonicalString(command, 'inventory command', 3, 32)];
+      if (!functionName) throw new Error('Unsupported inventory command');
+      requireUuid(payload._tenant_id, 'tenant ID'); requireUuid(payload._branch_id, 'branch ID');
+      const record = requireProvisionedScope(auth); const credential = decryptCredential(record);
+      const result = await callRpc(baseUrl, publishableKey, auth.accessToken, functionName, { ...payload, _device_uid: record.deviceUid, _device_credential: credential });
+      if (typeof result !== 'string' || !UUID.test(result)) throw new Error('Inventory command returned an invalid identifier');
+      return result;
+    },
   };
 }

@@ -137,7 +137,7 @@ sql(`
   ON CONFLICT (id) DO NOTHING;
 `);
 
-const receive = `SELECT public.receive_purchase_order_v2('${I.orderA}'::uuid,'${I.centerA}'::uuid,'supplier-receipt-operation-111')::text;`;
+const receive = `SELECT public.receive_purchase_order_v3_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.orderA}'::uuid,'${I.centerA}'::uuid,'supplier-receipt-operation-111','supplier-contract-terminal','${'b'.repeat(64)}')::text;`;
 const receiptOperation = asUser(I.inventoryA, receive);
 assertEqual("purchase receipt replay", asUser(I.inventoryA, receive), receiptOperation);
 assertEqual("receipt payable exactly once", scalar(`SELECT count(*)::text FROM public.supplier_ledger_entries WHERE purchase_order_id='${I.orderA}'::uuid AND entry_type='purchase_receipt';`), "1");
@@ -156,7 +156,7 @@ sql(`
 expectReject(
   "receipt without supplier fails closed",
   I.inventoryA,
-  `SELECT public.receive_purchase_order_v2('${I.orderNoSupplier}'::uuid,'${I.centerA}'::uuid,'supplier-receipt-operation-112')::text;`,
+  `SELECT public.receive_purchase_order_v3_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.orderNoSupplier}'::uuid,'${I.centerA}'::uuid,'supplier-receipt-operation-112','supplier-contract-terminal','${'b'.repeat(64)}')::text;`,
   /supplier|payable/i,
 );
 assertEqual("failed receipt rolls back PO state", scalar(`SELECT status FROM public.purchase_orders WHERE id='${I.orderNoSupplier}'::uuid;`), "draft");
