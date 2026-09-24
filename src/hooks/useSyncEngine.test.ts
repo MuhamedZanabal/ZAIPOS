@@ -203,6 +203,35 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "requires_review", failureCode, retryCount: 1 });
   });
 
+  it.each([null, "corrupt", 42, []])(
+    "quarantines a corrupted persisted payload (%j) without RPC or evidence loss",
+    async (corruptPayload) => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      await enqueue({
+        type: "SEND_TO_KITCHEN",
+        payload: corruptPayload,
+        tenantId: "t1",
+        branchId: "b1",
+        clientMutationId: "corrupt-persisted-operation",
+      });
+      const { result } = renderHook(() => useSyncEngine(), { wrapper });
+      await act(async () => result.current.processSyncQueue());
+      await act(async () => result.current.processSyncQueue());
+
+      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(mockDbStore).toHaveLength(1);
+      expect(mockDbStore[0]).toMatchObject({
+        status: "requires_review",
+        failureCode: "validation",
+        retryCount: 1,
+        clientMutationId: "corrupt-persisted-operation",
+      });
+      expect(mockDbStore[0].payload).toEqual(corruptPayload);
+      expect(mockDbStore[0].error).toMatch(/payload is malformed.*operator review/i);
+      expect(useNetworkStore.getState().syncAttentionCount).toBe(1);
+    },
+  );
+
   it("marks an unknown operation for review instead of deleting it", async () => {
     await enqueue({ type: "UNKNOWN_OPERATION" });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
