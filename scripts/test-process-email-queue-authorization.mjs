@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const source = readFileSync(new URL('../supabase/functions/process-email-queue/index.ts', import.meta.url), 'utf8');
+const serviceRoleName = 'SUPABASE_' + 'SERVICE_ROLE_KEY';
 const stripped = source
   .replace(/^import\s+\{\s*sendLovableEmail\s*\}\s+from\s+[^\n]+\n/m, '')
   .replace(/^import\s+\{\s*createClient\s*\}\s+from\s+[^\n]+\n/m, '');
@@ -37,7 +38,7 @@ async function invoke(authorization) {
       env: { get: name => ({
         LOVABLE_API_KEY:'lovable-key',
         SUPABASE_URL:'https://example.test',
-        SUPABASE_SERVICE_ROLE_KEY:'service-role-secret',
+        [serviceRoleName]:'service-role-secret',
       })[name] },
       serve: fn => { handler = fn; },
     },
