@@ -80,6 +80,9 @@ jobs:
       - name: Test production PostgreSQL migration chain
         run: node scripts/test-production-migration-chain-supabase.mjs
 
+      - name: Test authoritative business mode
+        run: node scripts/test-business-mode-authority.mjs && node scripts/test-business-mode-postgres.mjs
+
       - name: Test tenant-branch structural integrity
         run: node scripts/test-tenant-branch-integrity.mjs
 
