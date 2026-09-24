@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
       .select("id, tenant_id, branch_id, channel, external_conversation_id, customer_phone")
       .eq("id", conversation_id)
       .single();
-    if (!data) return json({ error: "Conversation not found" }, 404);
+    // Do not expose whether a cross-tenant conversation identifier exists.
+    if (!data) return json({ error: "Forbidden" }, 403);
     conv = data;
     target_tenant = conv.tenant_id;
     target_branch = conv.branch_id;

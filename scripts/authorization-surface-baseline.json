@@ -1,0 +1,23 @@
+{
+  "schema": 2,
+  "meaning": "Census fingerprint only; this is NOT an authorization approval or security test. Rebuilt against the post-PR88 combined tree and expanded to cover direct table clients, SQL grants/revokes/triggers, privileged service-role credentials, and scheduled jobs.",
+  "kinds": {
+    "application-route": {"count": 36, "sha256": "1c2b9ec0969793e877b571f8a5a1a3e3a1bfe780ec6a6869b67ebb2b381c518b"},
+    "background-job": {"count": 1, "sha256": "0d74aabd9373496f9ef53bf29832af4e9362f9c1f8a204133fcea608f444d337"},
+    "data-export": {"count": 3, "sha256": "b6df1c2c93c4721c82d6ae1b4b12cd100a8163544832b804a9711270a42e1ac3"},
+    "edge-function": {"count": 10, "sha256": "a4b11226d32f301ad9230398a92662d77c1b316f9e7a4d336e37f97c766c6fd7"},
+    "external-navigation": {"count": 3, "sha256": "241ed1c994c681774200d6791116173f546fae5c2afac1a7f9acc59edb5f8df3"},
+    "ipc-main": {"count": 32, "sha256": "5f22efd2d750d7230674e9830ff0a6d9ddd477730ef5c922130b8f45baa72b33"},
+    "ipc-renderer": {"count": 27, "sha256": "439fa2049cb3a4b7c2992e230919ec9a6ef80dd087c8937d684fc7627ca5fbc5"},
+    "privileged-credential": {"count": 15, "sha256": "5913ffd888199b4a360b36f1dc46917e9736f4c1331cacc24aa48b64c9ce5720"},
+    "rls-policy": {"count": 178, "sha256": "00f9002962c6d7a4fbe8f778220c21d4d76b6d095fb0628c71d2c2d9127cf8e0"},
+    "rpc-client": {"count": 66, "sha256": "9c4da6bca170bb2c91382f967ee980b23a6c34a87a77f5147a7c5a4e8fe0a7e3"},
+    "rpc-client-dynamic": {"count": 4, "sha256": "fb67b68e6831a60ac15cb7578fe453ebc6edc638ee13f0c885ddcd16d9172cb4"},
+    "security-definer": {"count": 256, "sha256": "5303193baac131b95385f4699a9685aa3022fe0fa0ac9a8d4e1137b6e079e739"},
+    "sql-function": {"count": 309, "sha256": "2f6f4996f03bc53617a67ea9de606440963f936a404616c6f403990a747d3b5c"},
+    "sql-grant": {"count": 204, "sha256": "dc5f6c87d44145b1d838051c564c3f2f7058e37201ee484fade5785543bef6e3"},
+    "sql-revoke": {"count": 320, "sha256": "88d35b24e31b86da37e7a1b701a8343e34802c4c50570056e3750f4c856b37ae"},
+    "sql-trigger": {"count": 77, "sha256": "d955bc5b9933f2a98df58b64292809672793ade5122960a3daa21368abfe7d2b"},
+    "table-client": {"count": 279, "sha256": "5ff785a0e39f12a344e407e9885edc21dff12db84d0b19763974a08e27eb286a"}
+  }
+}

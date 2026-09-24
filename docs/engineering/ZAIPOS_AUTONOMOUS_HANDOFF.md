@@ -2,6 +2,18 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — authorization census rebuild (2026-09-24 04:50 +03)
+
+- Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. This scoped branch is based on the combined PR #88 tree; local implementation head before this documentation update is `885b475477d454693869c7c044e4354058d0af6a`. No merge, deployment, release, force push or production-data action is authorized. Offline checkout remains disabled.
+- Ported the stale PR #68 census framework selectively rather than merging its diverged runtime. The current scanner now fingerprints application routes, exports, Edge Functions, Electron IPC, privileged credentials, direct table clients, RPC clients, RLS policies, SQL functions, SECURITY DEFINER routines, grants, revokes, triggers, scheduled jobs and external navigation.
+- Current committed census contains 1,820 occurrences across 17 kinds: 1,234 migration, 416 runtime and 170 verification occurrences. The baseline is explicitly discovery-only and does not endorse any permission. The permission contract stays `classification-in-progress`, defaults to deny-unclassified and cannot claim verified while required runtime kinds remain unclassified.
+- Fresh review repaired four independently reproduced boundaries while rebuilding the framework: protected routes now match path segments and deny undeclared protected paths; service-role user creation verifies caller branch scope and target branch tenancy; Evolution webhook HMAC fails closed when its secret is absent; inaccessible WhatsApp conversations return a generic denial rather than an existence oracle.
+- Local verification: 69 Vitest files / 368 tests, TypeScript, production build (2,773 modules), 129 migration validations, census/guard/permission contracts, create-user branch authority, Evolution webhook authentication, send-WhatsApp authorization, and `git diff --check` passed. ESLint has zero errors and 13 pre-existing warnings. The disposable-PostgreSQL business-export contract cannot run locally because `POSTGRES_ADMIN_URL` is absent and remains an exact-head CI gate.
+
+### Immediate next executable action
+
+Publish a draft PR stacked on PR #88, require exact-head CI including the disposable-PostgreSQL export authorization contract, repair any failures, then classify the 416 runtime occurrences in the permission matrix. Do not label the census verified until every required runtime surface has an explicit positive and negative authorization disposition.
+
 ## Current checkpoint — PR #88 adversarial inventory authority (2026-09-24 04:22 +03)
 
 - Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. Draft PR #88 remains stacked on PR #87. Exact verified code head is `01b660664f17f8a59d62322857bcd5b2b082071a`. No merge, deployment or release is authorized; offline checkout remains disabled.
