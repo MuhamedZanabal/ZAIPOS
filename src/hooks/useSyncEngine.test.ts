@@ -5,14 +5,14 @@ import { db } from "@/lib/db";
 import { useNetworkStore } from "@/stores/network";
 import { useTenantStore } from "@/stores/tenant";
 
+const authState = vi.hoisted(() => ({ reconciliationAllowed: true }));
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn().mockResolvedValue({ data: "operation-id", error: null }),
-    from: vi.fn(() => ({
-      insert: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: {}, error: null }),
-    })),
+    rpc: vi.fn(async (name: string) => name === 'has_branch_role'
+      ? { data: authState.reconciliationAllowed, error: null }
+      : { data: "operation-id", error: null }),
+    auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'manager-1' } }, error: null })) },
   },
 }));
 
@@ -77,15 +77,19 @@ describe("useSyncEngine", () => {
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0, syncAttentionCount: 0 });
     useTenantStore.setState({ tenantId: "t1", branchId: "b1" });
     const { supabase } = await import("@/integrations/supabase/client");
-    (supabase.rpc as any).mockReset().mockResolvedValue({ data: "operation-id", error: null });
+    (supabase.rpc as any).mockReset().mockImplementation(async (name: string) => name === 'has_branch_role'
+      ? { data: authState.reconciliationAllowed, error: null }
+      : { data: "operation-id", error: null });
+    authState.reconciliationAllowed = true;
   });
 
-  it("exposes queue inspection, discard, and explicit retry controls", () => {
+  it("exposes queue inspection, retry, discard, and reconciliation controls", () => {
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     expect(typeof result.current.processSyncQueue).toBe("function");
     expect(typeof result.current.getQueueItems).toBe("function");
     expect(typeof result.current.discardItem).toBe("function");
     expect(typeof result.current.retryItem).toBe("function");
+    expect(typeof result.current.resolveReviewItem).toBe("function");
   });
 
   it("replays a permitted kitchen command with only SQL arguments, preserving committed evidence", async () => {
@@ -199,12 +203,75 @@ describe("useSyncEngine", () => {
     expect(mockDbStore[0]).toMatchObject({ status: "requires_review", failureCode, retryCount: 1 });
   });
 
+  it.each([null, "corrupt", 42, []])(
+    "quarantines a corrupted persisted payload (%j) without RPC or evidence loss",
+    async (corruptPayload) => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      await enqueue({
+        type: "SEND_TO_KITCHEN",
+        payload: corruptPayload,
+        tenantId: "t1",
+        branchId: "b1",
+        clientMutationId: "corrupt-persisted-operation",
+      });
+      const { result } = renderHook(() => useSyncEngine(), { wrapper });
+      await act(async () => result.current.processSyncQueue());
+      await act(async () => result.current.processSyncQueue());
+
+      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(mockDbStore).toHaveLength(1);
+      expect(mockDbStore[0]).toMatchObject({
+        status: "requires_review",
+        failureCode: "validation",
+        retryCount: 1,
+        clientMutationId: "corrupt-persisted-operation",
+      });
+      expect(mockDbStore[0].payload).toEqual(corruptPayload);
+      expect(mockDbStore[0].error).toMatch(/payload is malformed.*operator review/i);
+      expect(useNetworkStore.getState().syncAttentionCount).toBe(1);
+    },
+  );
+
   it("marks an unknown operation for review instead of deleting it", async () => {
     await enqueue({ type: "UNKNOWN_OPERATION" });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await act(async () => result.current.processSyncQueue());
     expect(mockDbStore).toHaveLength(1);
     expect(mockDbStore[0]).toMatchObject({ status: "requires_review", failureCode: "unknown_operation", retryCount: 1 });
+  });
+
+  it("preserves immutable review evidence while recording an explicit reconciliation disposition", async () => {
+    const payload = { _tenant_id: "t1", _branch_id: "b1", exact: "evidence" };
+    const id = await enqueue({ type: "UNKNOWN_OPERATION", payload });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    await act(async () => result.current.retryItem(id));
+    expect(mockDbStore[0].status).toBe("requires_review");
+    await act(async () => result.current.discardItem(id));
+    expect(mockDbStore).toHaveLength(1);
+    await act(async () => result.current.resolveReviewItem(
+      id, "reconciled_externally", "Matched external reference Z-1042"
+    ));
+    expect(mockDbStore[0]).toMatchObject({
+      status: "resolved",
+      payload,
+      reconciliationDisposition: "reconciled_externally",
+      reconciliationNote: "Matched external reference Z-1042",
+      resolvedAt: expect.any(String),
+      resolvedBy: "manager-1",
+    });
+  });
+
+  it("denies reconciliation to a non-manager without altering evidence", async () => {
+    authState.reconciliationAllowed = false;
+    const id = await enqueue({ type: "UNKNOWN_OPERATION" });
+    const { result } = renderHook(() => useSyncEngine(), { wrapper });
+    await act(async () => result.current.processSyncQueue());
+    await expect(act(async () => result.current.resolveReviewItem(
+      id, "confirmed_not_applied", "Checked server journal"
+    ))).rejects.toThrow(/owner, admin, or manager/i);
+    expect(mockDbStore[0]).toMatchObject({ status: "requires_review" });
+    expect(mockDbStore[0].reconciliationDisposition).toBeUndefined();
   });
 
   it("marks exhausted network retries failed and permits an explicit retry", async () => {

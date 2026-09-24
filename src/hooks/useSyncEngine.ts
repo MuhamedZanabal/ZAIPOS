@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenantStore } from '@/stores/tenant';
+import { assertReconciliationAuthority } from '@/lib/syncReconciliation';
 import {
   CheckoutDeviceCutoverError,
   classifySyncFailure,
@@ -14,6 +15,13 @@ import {
   syncQueueScopeFromPayload,
   UnknownSyncOperationError,
 } from '@/lib/syncQueue';
+
+function requireQueuePayload(item: SyncQueueItem): Record<string, unknown> {
+  if (!item.payload || typeof item.payload !== 'object' || Array.isArray(item.payload)) {
+    throw new Error('Offline queue evidence payload is malformed and requires operator review.');
+  }
+  return item.payload as Record<string, unknown>;
+}
 
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
   if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER'
@@ -25,27 +33,30 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
     throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'SEND_TO_KITCHEN') {
+    const payload = requireQueuePayload(item);
     const { data, error } = await supabase.rpc('transition_table_order_v2' as any, {
-      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
-      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _tenant_id:payload._tenant_id ?? item.tenantId,_branch_id:payload._branch_id ?? item.branchId,
+      _order_id:payload._order_id,_operation_id:payload._client_mutation_id ?? item.clientMutationId,
       _action:'send_to_kitchen',
     });
     if (error) throw error;
     return data;
   }
   if (item.type === 'MARK_ORDER_READY') {
+    const payload = requireQueuePayload(item);
     const { data, error } = await supabase.rpc('transition_table_order_v2' as any, {
-      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
-      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _tenant_id:payload._tenant_id ?? item.tenantId,_branch_id:payload._branch_id ?? item.branchId,
+      _order_id:payload._order_id,_operation_id:payload._client_mutation_id ?? item.clientMutationId,
       _action:'mark_ready',
     });
     if (error) throw error;
     return data;
   }
   if (item.type === 'SEND_TO_CASHIER') {
+    const payload = requireQueuePayload(item);
     const { data, error } = await supabase.rpc('transition_table_order_lifecycle_v2' as any, {
-      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
-      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _tenant_id:payload._tenant_id ?? item.tenantId,_branch_id:payload._branch_id ?? item.branchId,
+      _order_id:payload._order_id,_operation_id:payload._client_mutation_id ?? item.clientMutationId,
       _action:'send_to_cashier',
     });
     if (error) throw error;
@@ -227,7 +238,8 @@ export function useSyncEngine() {
   const discardItem = useCallback(async (id: number) => {
     try {
       const item = await db.sync_queue.get(id);
-      if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)) return;
+      if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)
+        || item.status === 'requires_review' || item.status === 'resolved') return;
       await db.sync_queue.delete(id);
       await updatePendingCount();
     } catch (error) {
@@ -242,7 +254,7 @@ export function useSyncEngine() {
         !item
         || !tenantId
         || !syncQueueItemBelongsToTenant(item, tenantId)
-        || (item.status !== 'failed' && item.status !== 'requires_review')
+        || item.status !== 'failed'
       ) return;
       await db.sync_queue.update(id, {
         status: 'queued',
@@ -257,5 +269,31 @@ export function useSyncEngine() {
     }
   }, [tenantId, updatePendingCount]);
 
-  return { processSyncQueue, getQueueItems, discardItem, retryItem };
+  const resolveReviewItem = useCallback(async (
+    id: number,
+    disposition: 'confirmed_not_applied' | 'reconciled_externally',
+    note: string,
+  ) => {
+    const normalizedNote = note.trim();
+    if (normalizedNote.length < 8) throw new Error('A reconciliation note of at least 8 characters is required.');
+    const item = await db.sync_queue.get(id);
+    if (!item || !tenantId || !syncQueueItemBelongsToTenant(item, tenantId)
+      || item.status !== 'requires_review') return;
+    const resolvedBy = await assertReconciliationAuthority(tenantId, item.branchId);
+    const now = new Date().toISOString();
+    await db.sync_queue.update(id, {
+      status: 'resolved',
+      reconciliationDisposition: disposition,
+      reconciliationNote: normalizedNote,
+      resolvedAt: now,
+      resolvedBy,
+      updatedAt: now,
+    });
+    logger.info('sync_queue_item_reconciled', {
+      id, type: item.type, clientMutationId: item.clientMutationId, disposition,
+    });
+    await updatePendingCount();
+  }, [tenantId, updatePendingCount]);
+
+  return { processSyncQueue, getQueueItems, discardItem, retryItem, resolveReviewItem };
 }

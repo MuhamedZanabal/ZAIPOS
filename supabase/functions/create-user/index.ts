@@ -43,15 +43,39 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    const { data: callerState, error: callerStateError } = await admin.auth.admin.getUserById(callerId);
+    if (callerStateError) return json({ error: "Unable to verify account state" }, 500);
+    const activeCaller = callerState?.user as { deleted_at?: string | null; banned_until?: string | null } | undefined;
+    const bannedUntil = activeCaller?.banned_until ? Date.parse(activeCaller.banned_until) : 0;
+    if (!activeCaller || activeCaller.deleted_at || (Number.isFinite(bannedUntil) && bannedUntil > Date.now())) {
+      return json({ error: "Forbidden" }, 403);
+    }
+
     // Verify caller is owner/admin of that tenant
     const { data: callerRoles, error: rErr } = await admin
       .from("user_roles")
-      .select("role")
+      .select("role,branch_id")
       .eq("user_id", callerId)
       .eq("tenant_id", tenant_id);
     if (rErr) return json({ error: rErr.message }, 500);
-    const isAdmin = (callerRoles ?? []).some((r: any) => ["owner", "admin", "super_admin"].includes(r.role));
-    if (!isAdmin) return json({ error: "Forbidden: solo owner/admin pueden crear users" }, 403);
+    const isAdmin = (callerRoles ?? []).some((r: any) => {
+      if (r.role === "super_admin") return true;
+      if (!["owner", "admin"].includes(r.role)) return false;
+      if (r.branch_id === null || r.branch_id === undefined) return true;
+      return branch_id !== null && branch_id !== undefined && r.branch_id === branch_id;
+    });
+    if (!isAdmin) return json({ error: "Forbidden: owner/admin scope does not authorize this branch" }, 403);
+
+    if (branch_id !== null && branch_id !== undefined) {
+      const { data: branch, error: branchError } = await admin
+        .from("branches")
+        .select("id")
+        .eq("id", branch_id)
+        .eq("tenant_id", tenant_id)
+        .maybeSingle();
+      if (branchError) return json({ error: "Unable to verify branch authorization" }, 500);
+      if (!branch) return json({ error: "Forbidden: branch does not belong to tenant" }, 403);
+    }
 
     // Check existing profile by email
     const { data: existingProfile } = await admin

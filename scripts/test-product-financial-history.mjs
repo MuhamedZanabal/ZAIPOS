@@ -103,6 +103,9 @@ sql(`
   INSERT INTO public.suppliers(id,tenant_id,name,status) VALUES
     ('${I.supplierA}','${I.tenantA}','Financial Supplier','active')
   ON CONFLICT (id) DO NOTHING;
+  INSERT INTO public.devices(tenant_id,branch_id,device_uid,app_version,os,credential_hash,credential_issued_at)
+  VALUES('${I.tenantA}','${I.branchA}','financial-inventory-terminal','1.0.0','ci',extensions.digest(convert_to('${'d'.repeat(64)}','UTF8'),'sha256'),now())
+  ON CONFLICT (tenant_id,device_uid) DO UPDATE SET branch_id=EXCLUDED.branch_id,revoked_at=NULL,credential_hash=EXCLUDED.credential_hash;
 `);
 
 assertEqual("initial selling price captured", scalar(`SELECT amount_fils::text FROM public.product_prices WHERE product_id='${I.productA}'::uuid AND price_type='selling' AND branch_id IS NULL AND channel IS NULL AND effective_to IS NULL;`), "1250");
@@ -142,7 +145,7 @@ sql(`
     ('${I.orderItemA}','${I.orderA}','${I.tenantA}','${I.productA}','Financial Water',2.000,0.650,1.300)
   ON CONFLICT (id) DO NOTHING;
 `);
-const receive = `SELECT public.receive_purchase_order_v2('${I.orderA}'::uuid,'${I.centerA}'::uuid,'financial-receipt-operation-121')::text;`;
+const receive = `SELECT public.receive_purchase_order_v3_device('${I.tenantA}'::uuid,'${I.branchA}'::uuid,'${I.orderA}'::uuid,'${I.centerA}'::uuid,'financial-receipt-operation-121','financial-inventory-terminal','${'d'.repeat(64)}')::text;`;
 const receiptOperation = asUser(I.inventoryA, receive);
 assertEqual("purchase receipt replay", asUser(I.inventoryA, receive), receiptOperation);
 assertEqual("received unit cost fils", scalar(`SELECT cost_price_fils::text FROM public.purchase_order_items WHERE id='${I.orderItemA}'::uuid;`), "650");
