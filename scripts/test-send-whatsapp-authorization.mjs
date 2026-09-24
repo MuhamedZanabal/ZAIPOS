@@ -28,4 +28,3 @@ assert.equal(
 );
 
 console.log("PASS send-whatsapp authorization boundary");
-
