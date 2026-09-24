@@ -86,7 +86,7 @@ jobs:
       - name: Emit exact runtime authorization classification
         run: node scripts/authorization-runtime-contract.mjs authorization-surface-census.json > authorization-runtime-classification.json
       - name: Validate exact runtime classification
-        run: node -e "const x=require('./authorization-runtime-classification.json'); if(x.status!=='verified-runtime-classification'||x.runtime_occurrence_count!==416||x.entries?.length!==416) process.exit(1); console.log({status:x.status,runtime:x.runtime_occurrence_count})"
+        run: node -e "const x=require('./authorization-runtime-classification.json'); if(x.status!=='verified-runtime-classification'||x.runtime_occurrence_count!==419||x.entries?.length!==419) process.exit(1); console.log({status:x.status,runtime:x.runtime_occurrence_count})"
       - uses: actions/upload-artifact@v4
         with:
           name: authorization-surface-census
