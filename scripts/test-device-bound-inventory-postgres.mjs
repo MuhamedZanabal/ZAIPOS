@@ -20,7 +20,7 @@ const I = {
   centerB: 'd2000000-0000-0000-0000-000000000088', inactiveCenter: 'd3000000-0000-0000-0000-000000000088',
   product: 'e1000000-0000-0000-0000-000000000088', output: 'e2000000-0000-0000-0000-000000000088',
   ingredient: 'e3000000-0000-0000-0000-000000000088', purchase: 'f1000000-0000-0000-0000-000000000088',
-  production: 'f2000000-0000-0000-0000-000000000088',
+  production: 'f2000000-0000-0000-0000-000000000088', supplier: 'f3000000-0000-0000-0000-000000000088',
 };
 const uid = 'SEC088-inventory-terminal';
 const copiedUid = 'SEC088-inventory-copied';
@@ -57,10 +57,12 @@ sql(`
     ('${I.tenant}','${I.branch}','${I.centerB}','${I.product}',0.000);
   INSERT INTO public.product_components(tenant_id,parent_product_id,component_product_id,quantity,waste_pct)
     VALUES('${I.tenant}','${I.output}','${I.ingredient}',2.000,0);
-  INSERT INTO public.purchase_orders(id,tenant_id,branch_id,status)
-    VALUES('${I.purchase}','${I.tenant}','${I.branch}','draft');
-  INSERT INTO public.purchase_order_items(order_id,tenant_id,product_id,product_name,quantity)
-    VALUES('${I.purchase}','${I.tenant}','${I.product}','Stock Item',2.000);
+  INSERT INTO public.suppliers(id,tenant_id,name,status)
+    VALUES('${I.supplier}','${I.tenant}','Inventory Device Supplier','active');
+  INSERT INTO public.purchase_orders(id,tenant_id,branch_id,supplier_id,status,total)
+    VALUES('${I.purchase}','${I.tenant}','${I.branch}','${I.supplier}','draft',1.000);
+  INSERT INTO public.purchase_order_items(order_id,tenant_id,product_id,product_name,quantity,cost_price,line_total)
+    VALUES('${I.purchase}','${I.tenant}','${I.product}','Stock Item',2.000,0.500,1.000);
   INSERT INTO public.production_orders(id,tenant_id,branch_id,product_id,planned_quantity)
     VALUES('${I.production}','${I.tenant}','${I.branch}','${I.output}',3.000);
   INSERT INTO public.devices(tenant_id,branch_id,device_uid,app_version,os,credential_hash,credential_issued_at) VALUES
