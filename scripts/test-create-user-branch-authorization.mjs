@@ -79,7 +79,6 @@ test('create-user permits a tenant-wide owner for an existing tenant branch', as
   assert.equal(calls.created, 1);
   assert.equal(calls.inserted, 1);
 });
-
 test('create-user permits a branch-scoped admin only in the same branch', async () => {
   const { status, calls } = await invoke({ callerRole: 'admin', callerBranchId: 'branch-a' });
   assert.equal(status, 200);
@@ -140,4 +139,3 @@ test('create-user fails closed on branch lookup errors before any mutation', asy
   assert.equal(calls.created, 0);
   assert.equal(calls.inserted, 0);
 });
-
