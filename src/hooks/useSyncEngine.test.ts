@@ -5,20 +5,14 @@ import { db } from "@/lib/db";
 import { useNetworkStore } from "@/stores/network";
 import { useTenantStore } from "@/stores/tenant";
 
-const authState = vi.hoisted(() => ({ roles: [{ role: 'manager', branch_id: 'b1' }] }));
+const authState = vi.hoisted(() => ({ reconciliationAllowed: true }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn().mockResolvedValue({ data: "operation-id", error: null }),
+    rpc: vi.fn(async (name: string) => name === 'has_branch_role'
+      ? { data: authState.reconciliationAllowed, error: null }
+      : { data: "operation-id", error: null }),
     auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'manager-1' } }, error: null })) },
-    from: vi.fn(() => {
-      const chain: any = {
-        insert: vi.fn(() => chain), select: vi.fn(() => chain), eq: vi.fn(() => chain),
-        single: vi.fn(async () => ({ data: {}, error: null })),
-        then: (resolve: (value: unknown) => unknown) => resolve({ data: authState.roles, error: null }),
-      };
-      return chain;
-    }),
   },
 }));
 
@@ -83,8 +77,10 @@ describe("useSyncEngine", () => {
     useNetworkStore.setState({ isOnline: true, pendingSyncCount: 0, syncAttentionCount: 0 });
     useTenantStore.setState({ tenantId: "t1", branchId: "b1" });
     const { supabase } = await import("@/integrations/supabase/client");
-    (supabase.rpc as any).mockReset().mockResolvedValue({ data: "operation-id", error: null });
-    authState.roles = [{ role: 'manager', branch_id: 'b1' }];
+    (supabase.rpc as any).mockReset().mockImplementation(async (name: string) => name === 'has_branch_role'
+      ? { data: authState.reconciliationAllowed, error: null }
+      : { data: "operation-id", error: null });
+    authState.reconciliationAllowed = true;
   });
 
   it("exposes queue inspection, retry, discard, and reconciliation controls", () => {
@@ -238,7 +234,7 @@ describe("useSyncEngine", () => {
   });
 
   it("denies reconciliation to a non-manager without altering evidence", async () => {
-    authState.roles = [{ role: 'cashier', branch_id: 'b1' }];
+    authState.reconciliationAllowed = false;
     const id = await enqueue({ type: "UNKNOWN_OPERATION" });
     const { result } = renderHook(() => useSyncEngine(), { wrapper });
     await act(async () => result.current.processSyncQueue());
