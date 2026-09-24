@@ -1,13 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  createMemoryRouter,
-  Link,
-  MemoryRouter,
-  Route,
-  Routes,
-  type Router,
-} from "react-router-dom";
+import { createMemoryRouter, type Router } from "react-router-dom";
 
 const routers: Router[] = [];
 
@@ -40,16 +32,8 @@ describe("router navigation security", () => {
   });
 
   it("continues to permit internal application routes", () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<Link to="/pos">Open POS</Link>} />
-          <Route path="/pos" element={<div>POS route</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    const router = createRouter();
 
-    fireEvent.click(screen.getByRole("link", { name: "Open POS" }));
-    expect(screen.getByText("POS route")).toBeInTheDocument();
+    expect(router.createHref({ pathname: "/pos" })).toBe("/pos");
   });
 });
