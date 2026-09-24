@@ -18,6 +18,10 @@ export interface SyncQueueItem {
   committedAt?: string;
   serverResult?: unknown;
   failureCode?: SyncFailureCode;
+  reconciliationDisposition?: 'confirmed_not_applied' | 'reconciled_externally';
+  reconciliationNote?: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 export type SyncQueueStatus =
@@ -26,7 +30,8 @@ export type SyncQueueStatus =
   | 'committed'
   | 'retrying'
   | 'failed'
-  | 'requires_review';
+  | 'requires_review'
+  | 'resolved';
 
 export interface CachedProduct {
   id: string;
