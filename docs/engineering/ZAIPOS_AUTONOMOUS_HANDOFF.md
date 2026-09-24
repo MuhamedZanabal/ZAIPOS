@@ -2,6 +2,17 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — completed runtime authorization classification review (2026-09-24 10:03 +03)
+
+- Draft PR #89 exact pre-review head `0002231a069e5af78391b9c8c00d4cef2b928218` contains PRs #86, #87 and #88 in its ancestry. All 22 exact-head workflows completed successfully, including CI, Authorization Surface Census, Trusted Device Enforcement, Table Checkout Security and Backup Restore. Offline checkout remains disabled; no merge, deployment or release is authorized.
+- The executable authorization contract classifies all 419 current runtime authorization-sensitive occurrences. It requires explicit positive evidence plus missing-authentication, wrong-tenant, wrong-branch, unauthorized-role, inactive-account and credential-misuse evidence for each policy. All ten Edge Functions and all fifteen privileged-credential detections are accounted for; eleven are runtime custody and four are verification fixtures.
+- Final stack review found no unresolved submitted reviews or inline threads on PRs #86–#89. Local review of the combined exact tree passed 70 Vitest files / 376 tests, 34 authorization/census tests, TypeScript, production build (2,774 modules), ESLint with zero errors / 13 pre-existing warnings, and `git diff --check` after removing eight trailing blank-line defects from PR #89.
+- PR #86 provides explicit operator dispositions and fail-closed corrupt-record quarantine; PR #87 retires renderer-owned restaurant accounting in favor of server-authoritative exact-fils cart mutation; PR #88 device-binds all five remaining inventory financial mutations and supplies adversarial PostgreSQL coverage; PR #89 binds every current runtime occurrence to declared authority and concrete evidence.
+
+### Immediate next executable action
+
+Publish the review cleanup and require the new exact head to pass all workflows. Once green, the reviewed P0 code stack is ready for authorized integration; do not merge autonomously. Packaged Windows operator acceptance, signing, target hardware, production recovery and Bahrain regulatory acceptance remain external.
+
 ## Current checkpoint — Edge Function authority classification (2026-09-24 05:04 +03)
 
 - Draft PR #89 remains stacked on PR #88. Local code head before this documentation update is `db386a4a6229d56875dea4d2fc09c3e2b96fa93e`. No merge, deployment, release, force push or production-data action is authorized. Offline checkout remains disabled.
