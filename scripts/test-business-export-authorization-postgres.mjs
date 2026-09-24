@@ -65,4 +65,3 @@ assert.equal(inventory.row_count, 0);
 assert.equal(inventory.domain, 'inventory');
 assert.throws(() => invoke(actors.manager, tenant, branch, 'unsupported'), /Unsupported export domain/i);
 console.log('PASS: business export authorization matrix enforces role, tenant, branch, account state and domain boundaries.');
-
