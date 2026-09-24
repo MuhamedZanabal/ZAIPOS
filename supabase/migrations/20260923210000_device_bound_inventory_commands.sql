@@ -16,6 +16,10 @@ BEGIN
      AND d.revoked_at IS NULL AND d.credential_hash=extensions.digest(convert_to(_device_credential,'UTF8'),'sha256')
    FOR UPDATE;
   IF _device_id IS NULL THEN RAISE EXCEPTION 'Device credential rejected' USING ERRCODE='42501'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.branches b
+    WHERE b.id=_branch_id AND b.tenant_id=_tenant_id AND b.status='active'
+  ) THEN RAISE EXCEPTION 'Inventory branch is invalid or inactive' USING ERRCODE='42501'; END IF;
   IF NOT public.has_branch_role(_user_id,_tenant_id,_branch_id,ARRAY['owner','admin','manager','inventory','kitchen']::public.app_role[])
   THEN RAISE EXCEPTION 'Device operator not authorized' USING ERRCODE='42501'; END IF;
   RETURN _device_id;
