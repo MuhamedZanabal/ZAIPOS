@@ -27,15 +27,20 @@ function expectedRolesForPath(path) {
   return matching[0]?.roles;
 }
 
-test('permission contract remains explicitly unaccepted until all runtime permissions are reviewed', () => {
+test('permission contract records verified integrated runtime classification without treating the lexical census as enforcement proof', () => {
   assert.equal(contract.schema, 1);
-  assert.equal(contract.status, 'classification-in-progress');
+  assert.equal(contract.status, 'runtime-classification-verified');
   assert.equal(contract.default, 'deny-unclassified');
   assert.deepEqual(contract.roles, expectedRoles);
   assert.deepEqual(contract.dimensions, expectedDimensions);
   assert.deepEqual(contract.required_surface_kinds, expectedKinds);
   assert.ok(contract.surfaces && typeof contract.surfaces === 'object' && !Array.isArray(contract.surfaces));
-  assert.match(contract.meaning, /not proof of enforcement/i);
+  assert.match(contract.meaning, /not.*proof of enforcement/i);
+  assert.equal(contract.runtime_contract?.file, 'scripts/authorization-runtime-contract.mjs');
+  assert.equal(contract.runtime_contract?.integrated_runtime_occurrences, 419);
+  assert.equal(contract.runtime_contract?.original_requested_runtime_occurrences, 416);
+  assert.equal(contract.runtime_contract?.added_by_integrated_offline_recovery, 3);
+  assert.equal(contract.runtime_contract?.default, 'deny-unclassified');
   assert.notEqual(contract.status, 'verified');
 });
 
@@ -101,7 +106,7 @@ test('declared route UI roles match current route guards without claiming server
   }
 });
 
-test('authorization certification cannot become verified while required census kinds remain unclassified', () => {
+test('broader lexical census remains non-certifying even after runtime classification is complete', () => {
   const declaredCounts = Object.keys(contract.surfaces).reduce((counts, key) => {
     const kind = key.split('|', 1)[0];
     counts[kind] = (counts[kind] ?? 0) + 1;
@@ -112,6 +117,7 @@ test('authorization certification cannot become verified while required census k
     assert.ok(Number.isSafeInteger(expected) && expected > 0, `${kind}: missing census baseline`);
     return (declaredCounts[kind] ?? 0) < expected;
   });
-  assert.ok(incomplete.length > 0, 'this guard must be updated deliberately when classification reaches full census coverage');
-  assert.notEqual(contract.status, 'verified', `cannot certify authorization with unclassified required kinds: ${incomplete.join(', ')}`);
+  assert.ok(incomplete.length > 0, 'the summary contract intentionally does not duplicate every migration/support lexical occurrence');
+  assert.equal(contract.status, 'runtime-classification-verified');
+  assert.notEqual(contract.status, 'verified', `lexical census alone cannot certify authorization: ${incomplete.join(', ')}`);
 });
