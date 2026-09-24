@@ -31,7 +31,8 @@ export default function Onboarding() {
 
   const [businessName, setBusinessName] = useState("");
   const [branchName, setBranchName] = useState("Barra principal");
-  const [taxRate, setTaxRate] = useState("19");
+  const [taxRate, setTaxRate] = useState("10");
+  const [businessMode, setBusinessMode] = useState<"RETAIL" | "RESTAURANT">("RETAIL");
 
   const enterTenant = async (tenantId: string, branchId: string | null) => {
     setTenant(tenantId);
@@ -81,10 +82,11 @@ export default function Onboarding() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("bootstrap_tenant" as any, {
+      const { data, error } = await supabase.rpc("bootstrap_tenant_v2" as any, {
         _business_name: businessName.trim(),
         _branch_name: branchName.trim(),
-        _tax_rate: Number(taxRate) / 100,
+        _tax_rate: Number(taxRate),
+        _business_mode: businessMode,
       });
       if (error) throw error;
       const bootstrap = Array.isArray(data) ? data[0] : data;
@@ -203,6 +205,16 @@ export default function Onboarding() {
             <Label>Default tax (%)</Label>
             <Input type="number" min="0" max="100" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
           </div>
+          <fieldset className="space-y-2">
+            <Label asChild><legend>Business type</legend></Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["RETAIL", "RESTAURANT"] as const).map((mode) => (
+                <button key={mode} type="button" aria-pressed={businessMode === mode}
+                  className={businessMode === mode ? "g-btn g-btn-primary" : "g-btn g-btn-ghost"}
+                  onClick={() => setBusinessMode(mode)}>{mode === "RETAIL" ? "Retail" : "Restaurant"}</button>
+              ))}
+            </div>
+          </fieldset>
           <button type="submit" className="g-btn g-btn-primary g-btn-touch w-full" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Create business
