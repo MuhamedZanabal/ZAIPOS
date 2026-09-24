@@ -39,6 +39,7 @@ export const EVIDENCE_CATALOG = {
   'desktop-manager-authority':['src/test/desktop/manager-authorization.test.ts'],
   'paired-main-ipc-authority':['src/test/desktop/trust-boundary.test.ts'],
   'business-export-authorization':['scripts/test-business-export-authorization-postgres.mjs'],
+  'sync-reconciliation-authority':['src/hooks/useSyncEngine.test.ts','src/lib/syncReconciliation.test.ts','scripts/test-canonical-authorization-helpers-postgres.mjs'],
   'external-navigation-contract':['src/test/desktop/trust-boundary.test.ts'],
 };
 
@@ -286,6 +287,19 @@ export const POLICIES = {
       credential_misuse:['not-applicable:no-privileged-credential'],
     },
   },
+  'reconciliation-export': {
+    classification:'manager-authorized-reconciliation-export',
+    authority:'Local queue evidence may be exported only after fresh server-side owner/admin/manager branch authorization.',
+    positive:['sync-reconciliation-authority'],
+    negative:{
+      missing_authentication:['sync-reconciliation-authority'],
+      wrong_tenant:['canonical-authority-helpers','sync-reconciliation-authority'],
+      wrong_branch:['canonical-authority-helpers','sync-reconciliation-authority'],
+      unauthorized_role:['sync-reconciliation-authority'],
+      inactive_account:['canonical-authority-helpers'],
+      credential_misuse:['not-applicable:no-privileged-credential'],
+    },
+  },
   'external-navigation': {
     classification:'external-navigation',
     authority:'URL validation and trusted native sender prevent privileged navigation abuse.',
@@ -344,7 +358,7 @@ export function policyFor(surface) {
     return 'ipc-trusted';
   }
   if (surface.kind === 'ipc-renderer') return 'preload';
-  if (surface.kind === 'data-export') return 'export';
+  if (surface.kind === 'data-export') return surface.path === 'src/lib/syncReconciliation.ts' ? 'reconciliation-export' : 'export';
   if (surface.kind === 'external-navigation') return 'external-navigation';
   if (surface.kind === 'sql-revoke') return 'scanner-false-positive';
   throw new Error(`Unclassified runtime kind: ${surface.kind}`);
