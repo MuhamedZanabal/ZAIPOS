@@ -32,4 +32,3 @@ describe('route permission prefix boundaries', () => {
     expect(canAccessProtectedPath([], '/dashboard')).toBe(false);
   });
 });
-
