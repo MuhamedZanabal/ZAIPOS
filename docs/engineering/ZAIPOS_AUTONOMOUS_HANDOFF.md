@@ -2,6 +2,20 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — business-mode bootstrap hardening (2026-09-24 16:23 +03)
+
+- Main is `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. The authoritative `RETAIL | RESTAURANT` implementation from PR #90 is integrated, but independent post-merge review found two upgrade/bootstrap defects. Draft PR #92 is based directly on that main and remains unmerged.
+- Migration `20260924103000_authoritative_business_mode.sql` no longer treats the historical default `tables` channel as evidence that a legacy tenant is a restaurant. It infers restaurant mode only from persisted restaurant tables/orders/items, removes `tables` from retail channels, and changes the retail default accordingly.
+- `bootstrap_tenant_v2` now takes a transaction-scoped PostgreSQL advisory lock before checking whether any tenant exists. Two concurrent first-run terminals can no longer both observe an empty system and create conflicting authoritative modes.
+- The real PostgreSQL acceptance uses two independent sessions and proves exactly one of competing RETAIL/RESTAURANT bootstrap requests succeeds. The test intentionally resets the disposable database, so CI runs it after every shared PostgreSQL contract to preserve structural and financial fixtures.
+- Exact verified code head `34b83d52d8870c7bea517272ded1735212e5507f` completed 22/22 workflows successfully. CI run `36004340475` passed quality job `107648537740`, including all 131 migrations, tenant/branch integrity, business-mode authority/concurrency, lint, full Vitest and production build; unsigned Windows packaging job `107650182533` also passed. Authorization Census, Trusted Device, Table Checkout, Backup Restore and all other independent contracts passed on the same SHA.
+- Failure history: head `6ce42fe6860ae3968a110f83b9bb599334b8657e` exposed migration-chain fixture contamination in the new contention contract. Head `153a122af008f0e80f2949f51071aa21d2552673` proved the business-mode test but then invalidated a later tenant-integrity fixture. Both were repaired without weakening assertions or authorization.
+- PR #92 is draft, mergeable, and has no submitted reviews or inline threads. Offline checkout remains disabled. No merge, deployment, release, force push or production-data operation occurred.
+
+### Immediate next executable action
+
+Review PR #92 and integrate it only through authorized normal review, verifying expected head `34b83d52d8870c7bea517272ded1735212e5507f` or a documentation-only successor. Then require the complete post-merge workflow matrix on main. Signed Windows installation, physical hardware, production recovery and Bahrain regulatory acceptance remain external.
+
 ## Current checkpoint — React Router advisory remediation (2026-09-24 17:16 +03)
 
 - Main remains `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. Draft PR #93 is an independent branch directly on main; it does not depend on the separate business-mode bootstrap PR #92 and remains unmerged.
