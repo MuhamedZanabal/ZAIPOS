@@ -34,22 +34,16 @@ function getRetryAfterSeconds(error: unknown): number {
   return 60
 }
 
-function parseJwtClaims(token: string): Record<string, unknown> | null {
-  const parts = token.split('.')
-  if (parts.length < 2) {
-    return null
+function constantTimeTextEqual(left: string, right: string): boolean {
+  const encoder = new TextEncoder()
+  const a = encoder.encode(left)
+  const b = encoder.encode(right)
+  let difference = a.length ^ b.length
+  const length = Math.max(a.length, b.length)
+  for (let index = 0; index < length; index += 1) {
+    difference |= (a[index] ?? 0) ^ (b[index] ?? 0)
   }
-
-  try {
-    const payload = parts[1]
-      .replaceAll('-', '+')
-      .replaceAll('_', '/')
-      .padEnd(Math.ceil(parts[1].length / 4) * 4, '=')
-
-    return JSON.parse(atob(payload)) as Record<string, unknown>
-  } catch {
-    return null
-  }
+  return difference === 0
 }
 
 // Move a message to the dead letter queue and log the reason.
@@ -99,15 +93,13 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Defense in depth: verify_jwt=true already requires a valid JWT at the
-  // gateway layer. This adds an explicit role check so only service-role
-  // callers can trigger queue processing.
+  // Do not trust an attacker-controlled decoded JWT role claim. This worker
+  // accepts only the exact server-held service-role credential.
   const token = authHeader.slice('Bearer '.length).trim()
-  const claims = parseJwtClaims(token)
-  if (claims?.role !== 'service_role') {
+  if (!constantTimeTextEqual(token, supabaseServiceKey)) {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
+      { status: 403, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
     )
   }
 
