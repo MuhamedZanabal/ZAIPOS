@@ -16,6 +16,13 @@ import {
   UnknownSyncOperationError,
 } from '@/lib/syncQueue';
 
+function requireQueuePayload(item: SyncQueueItem): Record<string, unknown> {
+  if (!item.payload || typeof item.payload !== 'object' || Array.isArray(item.payload)) {
+    throw new Error('Offline queue evidence payload is malformed and requires operator review.');
+  }
+  return item.payload as Record<string, unknown>;
+}
+
 async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
   if (item.type === 'CHECKOUT_SALE_V2' || item.type === 'CHECKOUT_SALE' || item.type === 'CHECKOUT_TABLE_ORDER'
     || item.type === 'APPLY_INVENTORY_MOVEMENT' || item.type === 'ADD_TABLE_ORDER_ITEMS'
@@ -26,27 +33,30 @@ async function executeQueueItem(item: SyncQueueItem): Promise<unknown> {
     throw new CheckoutDeviceCutoverError();
   }
   if (item.type === 'SEND_TO_KITCHEN') {
+    const payload = requireQueuePayload(item);
     const { data, error } = await supabase.rpc('transition_table_order_v2' as any, {
-      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
-      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _tenant_id:payload._tenant_id ?? item.tenantId,_branch_id:payload._branch_id ?? item.branchId,
+      _order_id:payload._order_id,_operation_id:payload._client_mutation_id ?? item.clientMutationId,
       _action:'send_to_kitchen',
     });
     if (error) throw error;
     return data;
   }
   if (item.type === 'MARK_ORDER_READY') {
+    const payload = requireQueuePayload(item);
     const { data, error } = await supabase.rpc('transition_table_order_v2' as any, {
-      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
-      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _tenant_id:payload._tenant_id ?? item.tenantId,_branch_id:payload._branch_id ?? item.branchId,
+      _order_id:payload._order_id,_operation_id:payload._client_mutation_id ?? item.clientMutationId,
       _action:'mark_ready',
     });
     if (error) throw error;
     return data;
   }
   if (item.type === 'SEND_TO_CASHIER') {
+    const payload = requireQueuePayload(item);
     const { data, error } = await supabase.rpc('transition_table_order_lifecycle_v2' as any, {
-      _tenant_id:item.payload._tenant_id ?? item.tenantId,_branch_id:item.payload._branch_id ?? item.branchId,
-      _order_id:item.payload._order_id,_operation_id:item.payload._client_mutation_id ?? item.clientMutationId,
+      _tenant_id:payload._tenant_id ?? item.tenantId,_branch_id:payload._branch_id ?? item.branchId,
+      _order_id:payload._order_id,_operation_id:payload._client_mutation_id ?? item.clientMutationId,
       _action:'send_to_cashier',
     });
     if (error) throw error;
