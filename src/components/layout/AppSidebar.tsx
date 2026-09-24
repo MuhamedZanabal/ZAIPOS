@@ -23,6 +23,7 @@ type Item = {
   icon: LucideIcon;
   roles?: AppRole[];
   channel?: Database["public"]["Enums"]["sales_channel"];
+  modes?: Array<"RETAIL" | "RESTAURANT">;
 };
 type Section = { label: string; items: Item[] };
 
@@ -37,8 +38,8 @@ const sections: Section[] = [
     items: [
       { title: "Dashboard",   url: "/dashboard",      icon: LayoutDashboard, roles: ["owner","admin","manager","cashier","waiter","kitchen","inventory","courier","staff"] },
       { title: "POS",         url: "/pos",            icon: ShoppingCart,    roles: ["owner","admin","manager","cashier"], channel: "pos" },
-      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables" },
-      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables" },
+      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables", modes: ["RESTAURANT"] },
+      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables", modes: ["RESTAURANT"] },
       { title: "Delivery",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery" },
       { title: "Courier",     url: "/courier",        icon: Bike,            roles: ["courier","staff"], channel: "delivery" },
       { title: "Cash Register",        url: "/cash",           icon: Wallet,          roles: ["owner","admin","manager","cashier"] },
@@ -51,7 +52,7 @@ const sections: Section[] = [
     items: [
       { title: "Products",   url: "/products",   icon: Package,   roles: ["owner","admin","manager"] },
       { title: "Pricing policies", url: "/pricing-policy", icon: BarChart3, roles: ["owner","admin","manager"] },
-      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
+      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], modes: ["RESTAURANT"] },
     ],
   },
   {
@@ -59,7 +60,7 @@ const sections: Section[] = [
     items: [
       { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"] },
       { title: "Production",  url: "/production", icon: Factory,   roles: ["owner","admin","manager","kitchen"] },
-      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"] },
+      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], modes: ["RESTAURANT"] },
       { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"] },
     ],
   },
@@ -94,7 +95,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
-  const { roles, activeChannels, branchId, branches } = useTenantContext();
+  const { roles, activeChannels, branchId, branches, businessMode } = useTenantContext();
   const { unreadCount } = useWhatsAppNotifs();
   const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
@@ -104,6 +105,7 @@ export function AppSidebar() {
   const initials = userRole.slice(0, 2).toUpperCase() || "U";
 
   const canSee = (item: Item) => {
+    if (item.modes && !item.modes.includes(businessMode)) return false;
     if (item.channel && !activeChannels.includes(item.channel)) return false;
     return canAccessRoles(roles, item.roles);
   };
