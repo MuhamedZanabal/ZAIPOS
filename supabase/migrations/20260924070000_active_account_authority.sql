@@ -119,4 +119,25 @@ GRANT EXECUTE ON FUNCTION public.has_any_role(uuid,uuid,public.app_role[]) TO au
 GRANT EXECUTE ON FUNCTION public.is_tenant_member(uuid,uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.has_branch_role(uuid,uuid,uuid,public.app_role[]) TO authenticated, service_role;
 
+-- Return-evidence storage originally read user_roles directly, bypassing the
+-- active-account gate above. Keep the tenant-folder model but route it through
+-- the canonical membership helper.
+DROP POLICY IF EXISTS "return_evidence_tenant_select" ON storage.objects;
+CREATE POLICY "return_evidence_tenant_select"
+ON storage.objects
+FOR SELECT TO authenticated
+USING (
+  bucket_id = 'return-evidence'
+  AND public.is_tenant_member(auth.uid(), (storage.foldername(name))[1]::uuid)
+);
+
+DROP POLICY IF EXISTS "return_evidence_tenant_insert" ON storage.objects;
+CREATE POLICY "return_evidence_tenant_insert"
+ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'return-evidence'
+  AND public.is_tenant_member(auth.uid(), (storage.foldername(name))[1]::uuid)
+);
+
 COMMIT;
