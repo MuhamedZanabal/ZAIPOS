@@ -14,6 +14,9 @@ const restaurant='aa000000-0000-0000-0000-000000000902';
 const retailBranch='bb000000-0000-0000-0000-000000000901';
 const restaurantBranch='bb000000-0000-0000-0000-000000000902';
 
+// The migration-chain harness may leave supported-upgrade fixtures behind.
+// This contract owns the disposable database from this point forward.
+sql('TRUNCATE public.tenants CASCADE');
 sql(`INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
  ('${bootstrapUserA}','mode-bootstrap-a@zaipos.test','{}'),
  ('${bootstrapUserB}','mode-bootstrap-b@zaipos.test','{}');`);
