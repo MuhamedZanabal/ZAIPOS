@@ -2,6 +2,19 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — PR #88 adversarial inventory authority (2026-09-24 04:22 +03)
+
+- Main remains `31c81f69bac26690cb12bc897759db056dbc6642`. Draft PR #88 remains stacked on PR #87. Exact verified code head is `01b660664f17f8a59d62322857bcd5b2b082071a`. No merge, deployment or release is authorized; offline checkout remains disabled.
+- Added `scripts/test-device-bound-inventory-postgres.mjs` to the Trusted Device workflow. It proves legacy v2 grant denial and zero-effect missing, copied, mismatched, inactive-branch, wrong-role and revoked credential failures for all five inventory commands. It also proves four-way concurrent convergence, lost-response replay and payload-substitution rejection for batch, reconciliation, transfer, purchase receiving and production completion.
+- Hardened `require_inventory_device_v1` to reject inactive branches before reaching any core mutation.
+- The new real-PostgreSQL contract exposed a live core defect: production completion referenced removed `inventory_centers.is_default`. The current migration replaces that selection with deterministic active-center selection matching `apply_inventory_movement`, without weakening atomicity, role checks, exact thousandths, idempotency or audit.
+- Failure history: `d46b06d` failed because restricted database diagnostics were intentionally redacted from assertions; `8ed232a` then exposed missing payable supplier fixture data; `1ea72f0` exposed the removed production-center column. These are not passing evidence. Exact head `01b6606` has passed the complete 129-migration quality job and the dedicated Trusted Device workflow, including the new matrix. Unsigned Windows packaging remained in progress at final observation.
+- Local verification: 68 Vitest files / 364 tests; TypeScript; production build (2,773 modules); 129 migrations; inventory client cutover; credential vault; ESLint zero errors (13 pre-existing warnings); `git diff --check`.
+
+### Immediate next executable action
+
+Confirm exact-head Windows packaging, then rebuild the authorization census against current main plus PRs #86–#88. Review #86, #87 and #88 normally; do not merge autonomously.
+
 ## Current checkpoint — draft PR #88 device-bound inventory commands (2026-09-24 01:20 +03)
 
 - Draft PR #88 is stacked on PR #87. Exact code head `3ddf09b3919af0bc7d71d675ce493bb06da296d9`; base `7c2a1ba07faeb2ae0616a08505d7c1c13f7f55af`. No merge, deployment or release is authorized. Offline checkout remains disabled.
