@@ -2448,6 +2448,7 @@ export type Database = {
           theme_kind: string | null
           updated_at: string
           active_channels: Database["public"]["Enums"]["sales_channel"][] | null
+          business_mode: "RETAIL" | "RESTAURANT"
         }
         Insert: {
           allow_negative_stock?: boolean
@@ -2468,6 +2469,7 @@ export type Database = {
           theme_kind?: string | null
           updated_at?: string
           active_channels?: Database["public"]["Enums"]["sales_channel"][] | null
+          business_mode?: "RETAIL" | "RESTAURANT"
         }
         Update: {
           allow_negative_stock?: boolean
@@ -2488,6 +2490,7 @@ export type Database = {
           theme_kind?: string | null
           updated_at?: string
           active_channels?: Database["public"]["Enums"]["sales_channel"][] | null
+          business_mode?: "RETAIL" | "RESTAURANT"
         }
         Relationships: []
       }
