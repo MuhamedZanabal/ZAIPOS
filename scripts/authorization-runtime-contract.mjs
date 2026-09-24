@@ -12,6 +12,36 @@ export const REQUIRED_NEGATIVE_DIMENSIONS = [
   'credential_misuse',
 ];
 
+export const EVIDENCE_CATALOG = {
+  'device-activation-edge':['scripts/test-device-activation-edge-contract.mjs'],
+  'device-enrollment-postgres':['scripts/test-device-enrollment-approval-postgres.mjs'],
+  'ai-order-edge-disabled':['scripts/test-ai-order-agent-authorization.mjs'],
+  'create-user-edge':['scripts/test-create-user-branch-authorization.mjs'],
+  'embed-knowledge-edge':['scripts/test-embed-knowledge-authorization.mjs'],
+  'canonical-authority-helpers':['scripts/test-canonical-authorization-helpers-postgres.mjs'],
+  'evolution-webhook-hmac':['scripts/test-evolution-webhook-authentication.mjs'],
+  'pos-pin-edge':['scripts/test-pos-pin-edge-contract.mjs'],
+  'pos-pin-postgres':['scripts/test-pos-pin.mjs'],
+  'email-worker-service-secret':['scripts/test-process-email-queue-authorization.mjs'],
+  'process-invoice-edge':['scripts/test-process-invoice-authorization.mjs'],
+  'device-rotation-edge':['scripts/test-device-rotation-edge-contract.mjs'],
+  'device-rotation-postgres':['scripts/test-device-credential-rotation-postgres.mjs'],
+  'send-whatsapp-edge':['scripts/test-send-whatsapp-authorization.mjs'],
+  'privileged-credential-custody':['scripts/authorization-runtime-contract.test.mjs'],
+  'device-credential-postgres':['scripts/test-trusted-device-enforcement-postgres.mjs'],
+  'postgres-rpc-authority':['scripts/test-transaction-auth-audit.mjs','scripts/test-canonical-authorization-helpers-postgres.mjs'],
+  'rls-authority':['scripts/test-checkout-operations-rls.mjs','scripts/test-return-void-access-rls.mjs','scripts/test-transaction-auth-audit.mjs'],
+  'storage-policy-authority':['supabase/migrations/20260510081855_core_security_omnichannel_ai_rpc.sql'],
+  'route-guard-contract':['src/lib/roles-boundary.test.ts'],
+  'edge-function-specific-contract':['scripts/authorization-runtime-contract.test.mjs'],
+  'census-classifier-contract':['scripts/authorization-surface-census.test.mjs'],
+  'desktop-trust-boundary':['src/test/desktop/trust-boundary.test.ts'],
+  'desktop-manager-authority':['src/test/desktop/manager-authorization.test.ts'],
+  'paired-main-ipc-authority':['src/test/desktop/trust-boundary.test.ts'],
+  'business-export-authorization':['scripts/test-business-export-authorization-postgres.mjs'],
+  'external-navigation-contract':['src/test/desktop/trust-boundary.test.ts'],
+};
+
 export const EDGE_FUNCTION_AUTHORITY = {
   'supabase/functions/activate-device/index.ts': {
     authentication:'user-jwt', roles:['owner','admin','manager'], serviceRole:true,
@@ -344,22 +374,34 @@ export function classifyRuntimeSurfaces(surfaces) {
   });
 }
 
+function validateEvidenceReferences(refs, context) {
+  for (const ref of refs) {
+    if (typeof ref !== 'string' || !ref) throw new Error(`${context}: empty evidence reference`);
+    if (ref.startsWith('not-applicable:')) continue;
+    if (!EVIDENCE_CATALOG[ref]) throw new Error(`${context}: unknown evidence reference ${ref}`);
+  }
+}
+
 export function validatePolicies() {
   for (const [name, policy] of Object.entries(POLICIES)) {
     if (!policy.classification || !policy.authority || !Array.isArray(policy.positive) || policy.positive.length === 0) {
       throw new Error(`${name}: incomplete authority declaration`);
     }
+    validateEvidenceReferences(policy.positive, `${name}: positive`);
     for (const dimension of REQUIRED_NEGATIVE_DIMENSIONS) {
       if (!Array.isArray(policy.negative?.[dimension]) || policy.negative[dimension].length === 0) {
         throw new Error(`${name}: missing negative evidence for ${dimension}`);
       }
+      validateEvidenceReferences(policy.negative[dimension], `${name}: ${dimension}`);
     }
   }
   for (const [path, authority] of Object.entries(EDGE_FUNCTION_AUTHORITY)) {
+    validateEvidenceReferences(authority.positive, `${path}: positive`);
     for (const dimension of REQUIRED_NEGATIVE_DIMENSIONS) {
       if (!Array.isArray(authority.negative?.[dimension]) || authority.negative[dimension].length === 0) {
         throw new Error(`${path}: missing Edge evidence for ${dimension}`);
       }
+      validateEvidenceReferences(authority.negative[dimension], `${path}: ${dimension}`);
     }
   }
 }
