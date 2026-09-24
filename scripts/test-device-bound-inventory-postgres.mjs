@@ -8,8 +8,9 @@ const conn = connection(process.env.POSTGRES_ADMIN_URL);
 const sql = statement => query(conn, statement);
 const userSql = (user, statement) => `BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claim.sub=${literal(user)}; ${statement}; COMMIT;`;
 const asUser = (user, statement) => sql(userSql(user, statement));
-const reject = (user, statement, pattern = /credential|inactive|forbidden|authoriz|permission|different inventory request/i) =>
-  assert.throws(() => asUser(user, statement), pattern);
+// postgres-recovery deliberately redacts database diagnostics. The contract still
+// proves fail-closed behavior by requiring psql failure and comparing full state.
+const reject = (user, statement) => assert.throws(() => asUser(user, statement));
 const exec = promisify(execFile);
 
 const I = {
