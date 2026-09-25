@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getRuntimeConfig } from "@/runtime-config";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { normalizeBahrainPhone } from "@/lib/bahrain";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Copy, Bot, Webhook, Save, Loader2, Wifi, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-const EVO_WEBHOOK = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-webhook`;
+const SUPABASE_URL = getRuntimeConfig().supabaseUrl;
+const EVO_WEBHOOK = `${SUPABASE_URL}/functions/v1/evolution-webhook`;
 
 type DiagStep = {
   label: string;
@@ -149,7 +151,7 @@ export default function WhatsAppSettings() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("No active session");
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

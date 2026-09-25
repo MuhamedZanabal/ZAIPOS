@@ -2,6 +2,19 @@
 
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
+## Current checkpoint — first-run Supabase connector (2026-09-25 08:38 +03)
+
+- Reproduced the packaged Windows white screen from operator evidence: the renderer synchronously constructed the Supabase client with absent build-time values and threw `supabaseUrl is required` before React mounted.
+- Added a first-run desktop connector that accepts only a Supabase project URL and public publishable key, validates HTTPS/loopback constraints, rejects credential-bearing URLs and service-role labels, verifies the live `/auth/v1/settings` endpoint from Electron main, stores the public connection data in a dedicated local Electron store and locks the first configuration against silent replacement.
+- Renderer startup now resolves bundled or native-stored configuration before dynamically loading application modules. Missing configuration opens the setup UI instead of a white screen. Electron device/financial IPC remains unregistered until a backend is validated; offline financial checkout remains disabled.
+- All renderer and native Supabase URL consumers now use the resolved runtime configuration, including manager authorization and WhatsApp Edge Function routes.
+- Local verification: 73 Vitest files / 389 tests passed; TypeScript passed; ESLint zero errors / 13 pre-existing warnings; web and Electron builds passed without bundled Supabase values; release contract and `git diff --check` passed.
+- Manual public-key connection is implemented. Automatic Supabase account/project discovery and database creation remain blocked on an externally registered Supabase OAuth integration plus a server-side token exchange. OAuth client secrets, Management API tokens, database passwords and service-role keys must not be embedded in the desktop renderer.
+
+### Next exact action
+
+Review and integrate the connector PR, verify its exact-head Windows artifact displays the setup wizard, then register the ZAIPOS OAuth integration and protected callback broker before implementing scoped `projects:read`, `secrets:read` and `database:write` Management API provisioning.
+
 
 ## Current checkpoint — P0/P1 code integration complete (2026-09-25 07:29 +03)
 

@@ -2,18 +2,21 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { IpcMainInvokeEvent } from 'electron';
 import { handleTrustedIpc } from './security.js';
 import { log } from './logger.js';
-import type { ManagerAuthorization } from './types.js';
+import type { BackendConfig, ManagerAuthorization } from './types.js';
 
 export type ManagerAction = 'settings' | 'kiosk' | 'download_update' | 'install_update';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const denied = () => new Error('Online manager authorization is required for this desktop action.');
+let backendConfig: BackendConfig | null = null;
+
+export const configureManagerAuthorization = (config: BackendConfig): void => { backendConfig = config; };
 
 async function authorize(action: ManagerAction, payload: unknown, input: unknown): Promise<string> {
   const auth = input as ManagerAuthorization | undefined;
   if (!auth || typeof auth.accessToken !== 'string' || auth.accessToken.length < 16 || auth.accessToken.length > 8192 ||
       /\s/.test(auth.accessToken) || !uuid.test(auth.tenantId ?? '') || !uuid.test(auth.branchId ?? '')) throw denied();
-  const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const configuredUrl = backendConfig?.supabaseUrl ?? import.meta.env.VITE_SUPABASE_URL;
+  const key = backendConfig?.supabasePublishableKey ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   let endpoint: URL;
   try {
     endpoint = new URL(configuredUrl);

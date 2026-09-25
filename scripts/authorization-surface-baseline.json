@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "meaning": "Census fingerprint only; this is NOT an authorization approval. Reviewed against the integrated PR87→PR88→PR86→PR89 P0 tree; runtime occurrence authority is declared separately in authorization-runtime-contract.mjs.",
+  "meaning": "Census fingerprint only; this is NOT an authorization approval. Reviewed through PR #94 Supabase first-run connector: runtime additions are two trusted main-process IPC handlers, two preload IPC exposures, and one external navigation surface; runtime authority remains declared separately in authorization-runtime-contract.mjs.",
   "kinds": {
     "application-route": {
       "count": 36,
@@ -19,16 +19,16 @@
       "sha256": "a4b11226d32f301ad9230398a92662d77c1b316f9e7a4d336e37f97c766c6fd7"
     },
     "external-navigation": {
-      "count": 3,
-      "sha256": "241ed1c994c681774200d6791116173f546fae5c2afac1a7f9acc59edb5f8df3"
+      "count": 4,
+      "sha256": "e168292075705e1db560eb5894ae977008a4b376690cda9b6e2e839875113094"
     },
     "ipc-main": {
-      "count": 32,
-      "sha256": "5f22efd2d750d7230674e9830ff0a6d9ddd477730ef5c922130b8f45baa72b33"
+      "count": 34,
+      "sha256": "5b2d0dd5dd4bbdee0b8c00f99645ce63c4812f142e53c459bb9d94a833fbb59a"
     },
     "ipc-renderer": {
-      "count": 27,
-      "sha256": "439fa2049cb3a4b7c2992e230919ec9a6ef80dd087c8937d684fc7627ca5fbc5"
+      "count": 29,
+      "sha256": "ffbd18481f48eb7dba98e57faca7bc9b0c02252e86701ecb7da07a8fcb66e185"
     },
     "privileged-credential": {
       "count": 15,
