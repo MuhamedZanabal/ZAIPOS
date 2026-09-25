@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "meaning": "Census fingerprint only; this is NOT an authorization approval. Reviewed for the local-runtime IPC connection: four trusted main-process handlers and five preload exposures. Runtime authority remains declared separately in authorization-runtime-contract.mjs.",
+  "meaning": "Census fingerprint only; this is NOT an authorization approval. Reviewed through the local-runtime transition: prior runtime IPC surfaces plus the local PostgreSQL compatibility/identity SQL support additions. Runtime authority remains declared separately in authorization-runtime-contract.mjs.",
   "kinds": {
     "application-route": {
       "count": 36,
@@ -51,12 +51,12 @@
       "sha256": "4f12eefd10f40acca85ac4755054de18232b1dcaa4a9c03f99f442527d0a6d39"
     },
     "sql-function": {
-      "count": 317,
-      "sha256": "9202f80c3ecce0eb933c45fe6bc23e1bb2b0fe5e64170035a7fb8afecfb76273"
+      "count": 330,
+      "sha256": "ec5eca2260dc2585ef72b2a6ca5f4a46a1d3bc7263fecd79cf27566075f48051"
     },
     "sql-grant": {
-      "count": 210,
-      "sha256": "6266f4fd86d99a5f4fa2559a6396c847a7a5a4da8d4e5c5072a89136ad730d61"
+      "count": 211,
+      "sha256": "3cb97640b799dca2bd68c11f8b7fca8b86ba4796d28c6cd57c93002db367e2f7"
     },
     "sql-revoke": {
       "count": 330,
