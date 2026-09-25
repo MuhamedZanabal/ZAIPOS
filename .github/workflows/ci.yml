@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Reject a production Supabase SDK
+        run: node scripts/verify-no-supabase-runtime.mjs
+
       - name: Ensure PostgreSQL client
         run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
 

@@ -4,10 +4,15 @@
 //! PostgreSQL credentials. Health responses and `Debug` output must not
 //! disclose them.
 
+pub mod attachments;
+pub mod backup;
+pub mod commands;
 pub mod config;
 pub mod db;
 pub mod device;
+pub mod events;
 pub mod http;
+pub mod import;
 pub mod provisioning;
 
 pub use config::{ConfigError, ServiceConfig, ServicePaths};

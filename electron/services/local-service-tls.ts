@@ -6,13 +6,13 @@ export interface PinnedResponse {
   body: unknown;
 }
 
-export async function pinnedRequest(profile: ServerProfile, path: string, signal?: AbortSignal): Promise<PinnedResponse> {
+export async function pinnedRequest(profile: ServerProfile, path: string, signal?: AbortSignal, body?: unknown): Promise<PinnedResponse> {
   if (!path.startsWith('/v1/') || path.includes('..') || path.includes('?') || path.includes('#')) {
     throw new LocalServiceError('LOCAL_PROFILE_INVALID');
   }
   const socket = await openPinnedSocket(profile, signal);
   try {
-    return await readHttp(socket, new URL(profile.origin).hostname, path);
+    return await readHttp(socket, new URL(profile.origin).hostname, path, body);
   } finally {
     socket.end();
   }
@@ -74,7 +74,9 @@ function normalizeAddress(value: string | undefined): string {
   return lower.startsWith('::ffff:') ? lower.slice('::ffff:'.length) : lower;
 }
 
-function readHttp(socket: tls.TLSSocket, host: string, path: string): Promise<PinnedResponse> {
+function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unknown): Promise<PinnedResponse> {
+  const payload = body === undefined ? '' : JSON.stringify(body);
+  const method = body === undefined ? 'GET' : 'POST';
   return new Promise((resolve, reject) => {
     let raw = '';
     const fail = (error: Error) => {
@@ -86,7 +88,7 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string): Promise<Pi
       const split = raw.indexOf('\r\n\r\n');
       if (split < 0) return;
       const header = raw.slice(0, split);
-      const body = raw.slice(split + 4);
+      const responseBody = raw.slice(split + 4);
       const [statusLine, ...lines] = header.split('\r\n');
       const status = Number(statusLine?.split(' ')[1]);
       if (!Number.isInteger(status) || status < 200 || status >= 300) {
@@ -99,14 +101,21 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string): Promise<Pi
       }
       const lengthHeader = lines.find((line) => line.toLowerCase().startsWith('content-length:'));
       const length = Number(lengthHeader?.split(':')[1]?.trim());
-      if (!Number.isInteger(length) || length < 0 || length > 1_048_576 || body.length < length) return;
+      if (!Number.isInteger(length) || length < 0 || length > 1_048_576 || responseBody.length < length) return;
       try {
-        resolve({ status, body: JSON.parse(body.slice(0, length)) });
+        resolve({ status, body: JSON.parse(responseBody.slice(0, length)) });
       } catch {
         fail(new LocalServiceError('LOCAL_RUNTIME_UNAVAILABLE'));
       }
     });
     socket.once('error', () => fail(new LocalServiceError('LOCAL_RUNTIME_UNAVAILABLE')));
-    socket.write(`GET ${path} HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\nAccept: application/json\r\n\r\n`);
+    const headers = [
+      `${method} ${path} HTTP/1.1`,
+      `Host: ${host}`,
+      'Connection: close',
+      'Accept: application/json',
+    ];
+    if (payload) headers.push('Content-Type: application/json', `Content-Length: ${Buffer.byteLength(payload)}`);
+    socket.write(`${headers.join('\r\n')}\r\n\r\n${payload}`);
   });
 }

@@ -34,7 +34,7 @@ const electronAPI = {
   platform: process.platform as NodeJS.Platform,
   localStatus: () => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_STATUS),
   enrollLocalTerminal: () => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_ENROLL),
-  localRequest: (path: string) => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_REQUEST, path),
+  localRequest: (path: string, body?: unknown) => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_REQUEST, path, body),
   subscribeLocalEvents: (callback: (payload: { state: 'not_configured' }) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: { state: 'not_configured' }) => callback(payload);
     ipcRenderer.on(IPC_EVENTS.LOCAL_SERVICE_EVENT, handler);

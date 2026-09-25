@@ -9,7 +9,7 @@ export interface LocalProfileStore {
 }
 
 export interface LocalTransport {
-  request(profile: ServerProfile, path: string, signal?: AbortSignal): Promise<{ status: number; body: unknown }>;
+  request(profile: ServerProfile, path: string, signal?: AbortSignal, body?: unknown): Promise<{ status: number; body: unknown }>;
 }
 
 export interface LocalRuntimeStatus {
@@ -41,13 +41,14 @@ export function createLocalRuntime(store: LocalProfileStore, transport: LocalTra
       store.write(profile);
       return this.status();
     },
-    async request(path: string, signal?: AbortSignal): Promise<unknown> {
+    async request(path: string, signal?: AbortSignal, body?: unknown): Promise<unknown> {
       const profile = store.read();
       if (!profile) throw new LocalServiceError('LOCAL_RUNTIME_NOT_CONFIGURED');
-      if (profile.deviceCertificateRef === 'unenrolled' && path !== '/v1/health') {
+      const openBeforeEnrollment = path === '/v1/health' || path.startsWith('/v1/auth/');
+      if (profile.deviceCertificateRef === 'unenrolled' && !openBeforeEnrollment) {
         throw new LocalServiceError('LOCAL_RUNTIME_NOT_CONFIGURED');
       }
-      const response = await transport.request(profile, path, signal);
+      const response = await transport.request(profile, path, signal, body);
       return response.body;
     },
     enroll(): { certificateRef: string } {

@@ -2,7 +2,7 @@ use axum::body::Body;
 use axum::extract::State;
 use axum::http::{Request, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use http_body_util::BodyExt;
 use serde::Serialize;
@@ -36,6 +36,9 @@ impl AppState {
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/v1/health", get(health))
+        .route("/v1/backend", post(backend))
+        .route("/v1/auth/login", post(login))
+        .route("/v1/auth/logout", post(logout))
         .fallback(not_found)
         .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BYTES))
         .with_state(state)
@@ -62,6 +65,58 @@ async fn health(
         return Err(StatusCode::PAYLOAD_TOO_LARGE);
     }
     Ok(Json(state.health.clone()))
+}
+
+async fn backend(
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    reject_until_database(request).await
+}
+
+async fn login(
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    reject_until_database(request).await
+}
+
+async fn logout(
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    reject_until_database(request).await
+}
+
+async fn reject_until_database(
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    let bytes = limited_body(request).await?;
+    let value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
+    crate::commands::validate_backend(&value).map_err(|_| StatusCode::BAD_REQUEST)?;
+    Ok((
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(serde_json::json!({"error": "LOCAL_RUNTIME_NOT_CONFIGURED"})),
+    ))
+}
+
+async fn limited_body(request: axum::extract::Request) -> Result<Vec<u8>, StatusCode> {
+    let advertised = request
+        .headers()
+        .get(http::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<usize>().ok());
+    if advertised.is_some_and(|length| length > MAX_REQUEST_BYTES) {
+        return Err(StatusCode::PAYLOAD_TOO_LARGE);
+    }
+    let received = request
+        .into_body()
+        .collect()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    let bytes = received.to_bytes();
+    if bytes.len() > MAX_REQUEST_BYTES {
+        return Err(StatusCode::PAYLOAD_TOO_LARGE);
+    }
+    Ok(bytes.to_vec())
 }
 
 async fn not_found() -> impl IntoResponse {
