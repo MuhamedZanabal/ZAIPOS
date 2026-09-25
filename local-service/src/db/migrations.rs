@@ -5,6 +5,7 @@ use thiserror::Error;
 use super::Database;
 
 pub const MIGRATION_LOCK: i64 = 7_820_192_509;
+const HISTORICAL_DEMO_SEED: &str = "20260508120000_seed_bahrain_tenant.sql";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Migration {
@@ -162,13 +163,38 @@ impl MigrationRunner {
             })
             .collect::<Vec<_>>();
         let pending = self.plan(&applied)?;
-        let skipped = applied
+        let fresh_local_database = applied.is_empty();
+        let mut skipped = applied
             .iter()
             .map(|(filename, _)| filename.clone())
-            .collect();
+            .collect::<Vec<_>>();
         let mut applied_now = Vec::new();
         for migration in pending {
             let mut tx = pool.begin().await.map_err(|_| MigrationError::Database)?;
+            // Historical bytes are immutable, but a new self-hosted ZAIPOS store
+            // must not install the old demonstration business. Record its exact
+            // checksum in the local ledger so later verification still detects
+            // tampering, while leaving the fresh database eligible for bootstrap.
+            if fresh_local_database && migration.filename == HISTORICAL_DEMO_SEED {
+                sqlx::query(
+                    "insert into public.zaipos_schema_migrations
+                     (filename, sha256, app_version, started_at, completed_at)
+                     values ($1, $2, $3, now(), now())",
+                )
+                .bind(&migration.filename)
+                .bind(&migration.sha256)
+                .bind(env!("CARGO_PKG_VERSION"))
+                .execute(&mut *tx)
+                .await
+                .map_err(|_| MigrationError::Apply {
+                    filename: migration.filename.clone(),
+                })?;
+                tx.commit().await.map_err(|_| MigrationError::Apply {
+                    filename: migration.filename.clone(),
+                })?;
+                skipped.push(migration.filename.clone());
+                continue;
+            }
             sqlx::query(
                 "insert into public.zaipos_schema_migrations (filename, sha256, app_version, started_at)
                  values ($1, $2, $3, now())",
