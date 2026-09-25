@@ -4,7 +4,7 @@ import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createLocalRuntime, type LocalProfileStore, type LocalTransport } from '../../../electron/services/local-runtime';
+import { createLocalRuntime, adoptInstalledProfile, type LocalProfileStore, type LocalTransport } from '../../../electron/services/local-runtime';
 import type { ServerProfile } from '../../../electron/services/local-service-client';
 import { pinnedRequest } from '../../../electron/services/local-service-tls';
 
@@ -49,6 +49,31 @@ describe('installed local runtime', () => {
     expect(JSON.stringify(enrolled)).not.toMatch(/PRIVATE|privateKey/);
     expect(runtime.signChallenge(new TextEncoder().encode('challenge')).byteLength).toBeGreaterThan(0);
     expect(() => runtime.subscribe()).toThrow('LOCAL_RUNTIME_NOT_CONFIGURED');
+  });
+
+  it('adopts the installed server profile and keeps an existing terminal profile', () => {
+    const installed = { origin: 'https://127.0.0.1:58321' as const, caFingerprint: GOOD_PIN, deviceCertificateRef: 'local-server-terminal' };
+    expect(adoptInstalledProfile(null, installed)).toEqual({ profile: installed, persist: true });
+    expect(adoptInstalledProfile(installed, { ...installed, origin: 'https://10.1.1.8:58321' }).persist).toBe(false);
+    expect(adoptInstalledProfile(null, { origin: 'https://8.8.8.8' }).profile).toBeNull();
+  });
+
+  it('sends the renderer session as a request header instead of the service body', async () => {
+    const store = memoryStore();
+    store.write({ origin: 'https://127.0.0.1:58321', caFingerprint: GOOD_PIN, deviceCertificateRef: 'local-server-terminal' });
+    const seen: Array<{ path: string; body: unknown; authorization?: string }> = [];
+    const transport: LocalTransport = {
+      request: async (_profile, path, _signal, body, authorization) => {
+        seen.push({ path, body, authorization });
+        return { status: 200, body: { data: [] } };
+      },
+    };
+    const token = 'a'.repeat(64);
+    await createLocalRuntime(store, transport).request('/v1/backend', undefined, {
+      zaiposSession: token,
+      zaiposPayload: { kind: 'rpc', fn: 'ping_local', args: {} },
+    });
+    expect(seen).toEqual([{ path: '/v1/backend', body: { kind: 'rpc', fn: 'ping_local', args: {} }, authorization: token }]);
   });
 
   it('talks only to the pinned local certificate and does not send HTTP to the wrong one', async () => {

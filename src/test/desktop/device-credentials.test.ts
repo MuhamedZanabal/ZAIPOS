@@ -75,7 +75,7 @@ describe('native device credential custody', () => {
 
     await expect(service.cashMovement(payload, authorization)).resolves.toBe(movementId);
     const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
-    expect(url).toContain('/rest/v1/rpc/record_cash_movement_v3_device');
+    expect(url).toContain('/v1/commands/record_cash_movement_v3_device');
     expect(JSON.parse(String(request.body))).toMatchObject({
       ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
@@ -120,13 +120,13 @@ describe('native device credential custody', () => {
       _counted_card: null, _counted_transfer: null, _counted_qr: null, _notes: null,
     };
     await expect(service.cashSession(base, authorization)).resolves.toBe(sessionId);
-    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toContain('/rest/v1/rpc/open_cash_session_v2_device');
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toContain('/v1/commands/open_cash_session_v2_device');
     expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toMatchObject({
       _opening_amount: '1.001', _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
     const close = { ...base, _session_id: sessionId, _opening_amount: null, _counted_amount: '1.001', _counted_card: '0.000', _counted_transfer: '0.000', _counted_qr: '0.000' };
     await expect(service.cashSession(close, authorization, true)).resolves.toBe(sessionId);
-    expect((fetchMock.mock.calls[1] as unknown as [string])[0]).toContain('/rest/v1/rpc/close_cash_session_v2_device');
+    expect((fetchMock.mock.calls[1] as unknown as [string])[0]).toContain('/v1/commands/close_cash_session_v2_device');
     await expect(service.cashSession({ ...base, _branch_id: otherBranchId }, authorization)).rejects.toThrow(/scope/i);
     await expect(service.cashSession({ ...base, _opening_amount: '1.0001' }, authorization)).rejects.toThrow(/opening cash/i);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -150,7 +150,7 @@ describe('native device credential custody', () => {
 
     await expect(service.customerCreditPayment(payload, authorization)).resolves.toBe(entryId);
     const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
-    expect(url).toContain('/rest/v1/rpc/record_customer_credit_payment_v2_device');
+    expect(url).toContain('/v1/commands/record_customer_credit_payment_v2_device');
     expect(JSON.parse(String(request.body))).toEqual({
       ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
@@ -180,7 +180,7 @@ describe('native device credential custody', () => {
 
     await expect(service.supplierPayment(payload, authorization)).resolves.toBe(entryId);
     const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
-    expect(url).toContain('/rest/v1/rpc/record_supplier_payment_v2_device');
+    expect(url).toContain('/v1/commands/record_supplier_payment_v2_device');
     expect(JSON.parse(String(request.body))).toEqual({
       ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
@@ -212,7 +212,7 @@ describe('native device credential custody', () => {
 
     await expect(service.collectDeliveryPayment(payload, authorization)).resolves.toBe(collectionId);
     const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
-    expect(url).toContain('/rest/v1/rpc/collect_delivery_payment_v3_device');
+    expect(url).toContain('/v1/commands/collect_delivery_payment_v3_device');
     expect(JSON.parse(String(request.body))).toEqual({
       ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
@@ -242,7 +242,7 @@ describe('native device credential custody', () => {
 
     await expect(service.checkoutTableOrder(payload, authorization)).resolves.toBe(saleId);
     const [url, request] = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
-    expect(url).toContain('/rest/v1/rpc/checkout_table_order_v2_device');
+    expect(url).toContain('/v1/commands/checkout_table_order_v2_device');
     expect(JSON.parse(String(request.body))).toEqual({
       ...payload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
@@ -286,8 +286,8 @@ describe('native device credential custody', () => {
     await expect(service.voidSale(voidPayload, authorization)).resolves.toBe(voidId);
 
     const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
-    expect(calls[0][0]).toContain('/rest/v1/rpc/process_sale_return_v3_device');
-    expect(calls[1][0]).toContain('/rest/v1/rpc/process_sale_void_v3_device');
+    expect(calls[0][0]).toContain('/v1/commands/process_sale_return_v3_device');
+    expect(calls[1][0]).toContain('/v1/commands/process_sale_void_v3_device');
     expect(JSON.parse(String(calls[0][1].body))).toMatchObject({
       ...returnPayload, _device_uid: 'terminal-1', _device_credential: 'b'.repeat(64),
     });
@@ -364,7 +364,7 @@ describe('native device credential custody', () => {
 
     await expect(service.rotate('rotation-approval', authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/functions/v1/rotate-device-credential');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/v1/commands/rotate-device-credential');
     const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0][1];
     expect(JSON.parse(String(request.body))).toEqual({ approval_id: 'rotation-approval', device_uid: 'terminal-1' });
     expect(request.headers).toMatchObject({ authorization: 'Bearer operator-token' });

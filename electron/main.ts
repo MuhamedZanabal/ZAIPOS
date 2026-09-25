@@ -2,6 +2,7 @@
  * electron/main.ts
  * Electron main process for ZAIPOS.
  */
+import { readFileSync } from 'node:fs';
 import { app, BrowserWindow, shell, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -21,6 +22,7 @@ import { createDeviceOfflineOrchestrator } from './services/device-offline-orche
 import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
 import { validateBackendConfig, verifyBackendConnection } from './services/backend-config.js';
 import { registerLocalRuntimeIpc } from './services/local-runtime-ipc.js';
+import { adoptInstalledProfile } from './services/local-runtime.js';
 import { parseServerProfile } from './services/local-service-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +33,29 @@ let backendConfigStore: any = null;
 let localRuntimeStore: any = null;
 async function initStore(): Promise<void> { const { default: ElectronStore } = await import('electron-store'); store = new ElectronStore({ name: 'pos-settings', defaults: DEFAULT_SETTINGS }); credentialStore = new ElectronStore({ name: 'device-credentials' }); backendConfigStore = new ElectronStore({ name: 'backend-config' }); localRuntimeStore = new ElectronStore({ name: 'local-runtime' }); }
 function getSettings(): AppSettings { return store ? (store.store as AppSettings) : DEFAULT_SETTINGS; }
+function installedServiceRoot(): string {
+  if (process.env.ZAIPOS_SERVICE_ROOT) return process.env.ZAIPOS_SERVICE_ROOT;
+  return process.platform === 'win32' ? 'C:\\ProgramData\\ZAIPOS' : '/var/lib/zaipos';
+}
+
+function readInstalledProfile(): unknown {
+  try {
+    return JSON.parse(readFileSync(path.join(installedServiceRoot(), 'server-profile.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function localAuthority(): BackendConfig | null {
+  const stored = localRuntimeStore?.get('profile');
+  if (!stored) return null;
+  try {
+    const profile = parseServerProfile(stored);
+    return { supabaseUrl: profile.origin, supabasePublishableKey: 'zaipos-local' };
+  } catch {
+    return null;
+  }
+}
 function getBackendConfig(): BackendConfig | null {
   const bundled = { supabaseUrl: import.meta.env.VITE_SUPABASE_URL, supabasePublishableKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY };
   try { return validateBackendConfig(bundled); } catch { /* use first-run configuration */ }
@@ -106,6 +131,8 @@ function setupGlobalHandlers(config: BackendConfig): void {
 
 async function bootstrap(): Promise<void> {
   await initStore();
+  const adopted = adoptInstalledProfile(localRuntimeStore?.get('profile'), readInstalledProfile());
+  if (adopted.persist && adopted.profile) localRuntimeStore?.set('profile', adopted.profile);
   registerLocalRuntimeIpc({
     read() {
       const stored = localRuntimeStore?.get('profile');
@@ -115,7 +142,7 @@ async function bootstrap(): Promise<void> {
     write(profile) { localRuntimeStore?.set('profile', profile); },
   });
   const settings = getSettings();
-  const backendConfig = getBackendConfig();
+  const backendConfig = localAuthority() ?? getBackendConfig();
   log('info', 'settings_loaded', { kiosk: settings.kiosk, printerType: settings.printer?.connectionType, barcodeMode: settings.barcode?.mode, backendConfigured: Boolean(backendConfig) });
   handleTrustedIpc(IPC_HANDLERS.GET_BACKEND_CONFIG, () => getBackendConfig());
   handleTrustedIpc(IPC_HANDLERS.SAVE_INITIAL_BACKEND_CONFIG, async (_event, candidate: unknown) => {

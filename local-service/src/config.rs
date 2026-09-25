@@ -98,7 +98,7 @@ impl ServiceConfig {
     }
 
     pub fn has_database_secret(&self) -> bool {
-        !self.database_secret.is_empty()
+        !self.database_secret().is_empty()
     }
 
     pub(crate) fn database_secret(&self) -> &[u8] {
@@ -124,7 +124,10 @@ impl ServiceConfig {
             if !secret_path.exists() {
                 let mut random = [0u8; 32];
                 getrandom::fill(&mut random).map_err(|_| ConfigError::MissingSecret)?;
-                let secret = random.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+                let secret = random
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>();
                 write_private(&secret_path, secret.as_bytes())?;
             }
             let value = serde_json::json!({
@@ -195,7 +198,9 @@ fn is_allowed_v4(ip: Ipv4Addr) -> bool {
 }
 
 fn is_allowed_v6(ip: Ipv6Addr) -> bool {
-    ip.is_loopback() || (ip.segments()[0] & 0xfe00) == 0xfc00 || (ip.segments()[0] & 0xffc0) == 0xfe80
+    ip.is_loopback()
+        || (ip.segments()[0] & 0xfe00) == 0xfc00
+        || (ip.segments()[0] & 0xffc0) == 0xfe80
 }
 
 fn secret_path(root: &Path, relative: &str) -> Result<PathBuf, ConfigError> {
@@ -246,7 +251,8 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), ConfigError> {
         options.mode(0o600);
     }
     let mut file = options.open(path).map_err(|_| ConfigError::MissingSecret)?;
-    file.write_all(bytes).map_err(|_| ConfigError::MissingSecret)
+    file.write_all(bytes)
+        .map_err(|_| ConfigError::MissingSecret)
 }
 
 fn ensure_private_permissions(path: &Path) -> Result<(), ConfigError> {

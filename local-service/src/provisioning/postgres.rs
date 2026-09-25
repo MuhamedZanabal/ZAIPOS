@@ -114,8 +114,8 @@ impl PostgresProvisioner {
         fs::create_dir_all(&self.database_root).map_err(|_| ProvisionError::CommandFailed)?;
         let credential_path = self.database_root.join("zaipos_service.secret");
         let credential = if credential_path.exists() {
-            let value =
-                fs::read_to_string(&credential_path).map_err(|_| ProvisionError::UnsafeCredential)?;
+            let value = fs::read_to_string(&credential_path)
+                .map_err(|_| ProvisionError::UnsafeCredential)?;
             if !is_hex_secret(value.trim()) {
                 return Err(ProvisionError::UnsafeCredential);
             }
@@ -125,6 +125,13 @@ impl PostgresProvisioner {
             write_private(&credential_path, generated.expose_secret().as_bytes())?;
             generated
         };
+        fs::write(
+            self.database_root.join("postgresql.conf"),
+            &policy.postgresql_conf,
+        )
+        .map_err(|_| ProvisionError::CommandFailed)?;
+        fs::write(self.database_root.join("pg_hba.conf"), &policy.pg_hba_conf)
+            .map_err(|_| ProvisionError::CommandFailed)?;
 
         let bin_dir = resolve_bin_dir(self.bin_dir.as_deref())?;
         let initdb = find_binary(&bin_dir, "initdb").ok_or(ProvisionError::BinariesMissing)?;
@@ -232,7 +239,10 @@ fn generate_password() -> Result<SecretString, ProvisionError> {
     let mut bytes = [0u8; 32];
     getrandom::fill(&mut bytes).map_err(|_| ProvisionError::CommandFailed)?;
     Ok(SecretString::from(
-        bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
+        bytes
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>(),
     ))
 }
 
@@ -244,11 +254,9 @@ fn ensure_tls_material(root: &Path) -> Result<(PathBuf, PathBuf, String), Provis
     let cert_path = root.join("server.crt");
     let key_path = root.join("server.key");
     if !cert_path.exists() || !key_path.exists() {
-        let CertifiedKey { cert, signing_key } = generate_simple_self_signed(vec![
-            "localhost".to_string(),
-            "127.0.0.1".to_string(),
-        ])
-        .map_err(|_| ProvisionError::Tls)?;
+        let CertifiedKey { cert, signing_key } =
+            generate_simple_self_signed(vec!["localhost".to_string(), "127.0.0.1".to_string()])
+                .map_err(|_| ProvisionError::Tls)?;
         fs::write(&cert_path, cert.pem()).map_err(|_| ProvisionError::Tls)?;
         write_private(&key_path, signing_key.serialize_pem().as_bytes())?;
     }

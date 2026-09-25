@@ -33,8 +33,10 @@ function writeSession(session: LocalSession | null): void {
 async function localDispatch(path: string, payload: Record<string, unknown>): Promise<LocalResult> {
   const bridge = typeof window === 'undefined' ? undefined : window.electron?.localRequest;
   if (!bridge) return { data: null, error: { message: 'LOCAL_RUNTIME_NOT_CONFIGURED' } };
+  const token = readSession()?.access_token;
+  const transmitted = token ? { zaiposSession: token, zaiposPayload: payload } : payload;
   try {
-    const body = await bridge(path, payload);
+    const body = await bridge(path, transmitted);
     if (!body || typeof body !== 'object') return { data: null, error: { message: 'LOCAL_RUNTIME_UNAVAILABLE' } };
     const record = body as { data?: unknown; error?: string; access_token?: string; user?: LocalUser };
     if (typeof record.error === 'string') return { data: null, error: { message: record.error } };
@@ -108,6 +110,15 @@ export function createLocalClient() {
         await localDispatch('/v1/auth/logout', { kind: 'auth', action: 'logout' });
         writeSession(null);
         return { error: null };
+      },
+      bootstrapOwner: async ({ email, password, tenantName, branchName }: { email: string; password: string; tenantName: string; branchName: string }) => {
+        const result = await localDispatch('/v1/auth/bootstrap', { kind: 'auth', action: 'bootstrap', email, password, tenant_name: tenantName, branch_name: branchName });
+        const session = (result.data as { session?: LocalSession } | null)?.session;
+        if (result.error || !session?.access_token || session.access_token === password) {
+          return { data: { user: null, session: null }, error: result.error ?? { message: 'LOCAL_RUNTIME_NOT_CONFIGURED' } };
+        }
+        writeSession(session);
+        return { data: { user: session.user, session }, error: null };
       },
     },
   };

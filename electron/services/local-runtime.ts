@@ -9,7 +9,7 @@ export interface LocalProfileStore {
 }
 
 export interface LocalTransport {
-  request(profile: ServerProfile, path: string, signal?: AbortSignal, body?: unknown): Promise<{ status: number; body: unknown }>;
+  request(profile: ServerProfile, path: string, signal?: AbortSignal, body?: unknown, authorization?: string): Promise<{ status: number; body: unknown }>;
 }
 
 export interface LocalRuntimeStatus {
@@ -48,7 +48,8 @@ export function createLocalRuntime(store: LocalProfileStore, transport: LocalTra
       if (profile.deviceCertificateRef === 'unenrolled' && !openBeforeEnrollment) {
         throw new LocalServiceError('LOCAL_RUNTIME_NOT_CONFIGURED');
       }
-      const response = await transport.request(profile, path, signal, body);
+      const { payload, authorization } = unwrapSession(body);
+      const response = await transport.request(profile, path, signal, payload, authorization);
       return response.body;
     },
     enroll(): { certificateRef: string } {
@@ -67,6 +68,34 @@ export function createLocalRuntime(store: LocalProfileStore, transport: LocalTra
       throw new LocalServiceError('LOCAL_RUNTIME_NOT_CONFIGURED');
     },
   };
+}
+
+export function adoptInstalledProfile(stored: unknown, installed: unknown): { profile: ServerProfile | null; persist: boolean } {
+  if (stored) {
+    try {
+      return { profile: parseServerProfile(stored), persist: false };
+    } catch {
+      return { profile: null, persist: false };
+    }
+  }
+  if (!installed) return { profile: null, persist: false };
+  try {
+    return { profile: parseServerProfile(installed), persist: true };
+  } catch {
+    return { profile: null, persist: false };
+  }
+}
+
+function unwrapSession(body: unknown): { payload: unknown; authorization?: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { payload: body };
+  const record = body as Record<string, unknown>;
+  if (Object.keys(record).length !== 2 || typeof record.zaiposSession !== 'string' || !('zaiposPayload' in record)) {
+    return { payload: body };
+  }
+  if (record.zaiposSession.length < 32 || record.zaiposSession.length > 4096 || /[^\x21-\x7e]/.test(record.zaiposSession)) {
+    throw new LocalServiceError('LOCAL_PROFILE_INVALID');
+  }
+  return { payload: record.zaiposPayload, authorization: record.zaiposSession };
 }
 
 function isHealth(value: unknown): boolean {

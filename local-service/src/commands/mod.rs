@@ -3,7 +3,7 @@ mod read_model;
 use serde_json::Value;
 use thiserror::Error;
 
-pub use read_model::{ExecError, execute_backend};
+pub use read_model::{ExecError, execute_backend, execute_command};
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum CommandError {
@@ -50,6 +50,10 @@ pub fn validate_backend(value: &Value) -> Result<(), CommandError> {
         Some("auth") => Ok(()),
         _ => Err(CommandError::Invalid),
     }
+}
+
+pub(crate) fn valid_command_name(name: &str) -> Result<(), CommandError> {
+    validate_name(name)
 }
 
 pub(crate) fn validate_table_name(table: &str) -> Result<(), CommandError> {
