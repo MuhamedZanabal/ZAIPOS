@@ -3,6 +3,31 @@
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
 
+## Current checkpoint — P0/P1 code integration complete (2026-09-25 07:29 +03)
+
+- Authorized normal merge of PR #92 used expected documentation head `2401e99fc877791d404aadd0c660d110874e7146`. Merge commit: `b652c015ac8c0fd2a4a498bfa1831b668131c996`.
+- PR #92 post-merge verification completed 19/19 push workflows successfully. CI run `36093291210`: quality job `107940064371` success; unsigned Windows package job `107940751506` success. Backup/restore, table-checkout, cash, inventory, supplier, reporting, customer, AI, delivery and operational contracts all passed on the same exact merge SHA.
+- PR #93 was retargeted to `main` after PR #92. Normal two-parent synchronization commit `c0725694ff97db54e198e55722f63a09041a89ff` preserved the already verified four-file router-security tree without force pushing.
+- Synchronized PR #93 exact-head evidence passed: Authorization Surface Census run `36093816484`, job `107941669146`; CI run `36093816502`, quality job `107941669426`; unsigned Windows package job `107942135245`.
+- Authorized normal merge of PR #93 used expected synchronized head `c0725694ff97db54e198e55722f63a09041a89ff`. Merge commit and final code-bearing `main` SHA: `298d62752d76f30100fcd301bb97fdd71b90c967`.
+- Final code-bearing `main` verification passed CI run `36094185991`: quality job `107942821562` and unsigned Windows package job `107943466446`. The quality job passed all 131 migrations, production PostgreSQL chain, authoritative RETAIL/RESTAURANT mode, exact-money and authorization contracts, production dependency audit with zero findings, lint, full Vitest and production build.
+- P0 code scope and P1 authoritative business-mode/router-security code scope are integrated. Offline financial checkout remains disabled.
+- No deployment, release, production-data mutation, provider action, payment authorization or force push occurred.
+
+### Remaining external acceptance gates
+
+- Signed Windows installation, upgrade, rollback, uninstall/reinstall and data-preservation acceptance.
+- Packaged-desktop offline/reconciliation operator acceptance.
+- Physical barcode scanner, receipt printer and cash-drawer acceptance.
+- Production-like disaster-recovery exercise with measured RPO/RTO.
+- Accessibility, keyboard/touch and real multi-terminal operator acceptance.
+- Authorized provider integration and Bahrain tax/regulatory acceptance.
+
+### Next exact action
+
+Perform the external acceptance gates on authorized target Windows hardware and production-like infrastructure. Do not enable offline financial checkout until packaged-desktop authority, recovery, contention and operator-reconciliation acceptance is independently evidenced.
+
+
 ## Current checkpoint — synchronized business-mode/router-security stack (2026-09-24 22:01 +03)
 
 - Main remains `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. PR #92 remains its direct child at `2401e99fc877791d404aadd0c660d110874e7146`; PR #93 is now correctly stacked on PR #92.
