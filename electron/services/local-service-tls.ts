@@ -6,13 +6,16 @@ export interface PinnedResponse {
   body: unknown;
 }
 
-export async function pinnedRequest(profile: ServerProfile, path: string, signal?: AbortSignal, body?: unknown): Promise<PinnedResponse> {
+export async function pinnedRequest(profile: ServerProfile, path: string, signal?: AbortSignal, body?: unknown, authorization?: string): Promise<PinnedResponse> {
   if (!path.startsWith('/v1/') || path.includes('..') || path.includes('?') || path.includes('#')) {
+    throw new LocalServiceError('LOCAL_PROFILE_INVALID');
+  }
+  if (authorization && (authorization.length > 4096 || /[^\x21-\x7e]/.test(authorization))) {
     throw new LocalServiceError('LOCAL_PROFILE_INVALID');
   }
   const socket = await openPinnedSocket(profile, signal);
   try {
-    return await readHttp(socket, new URL(profile.origin).hostname, path, body);
+    return await readHttp(socket, new URL(profile.origin).hostname, path, body, authorization);
   } finally {
     socket.end();
   }
@@ -74,7 +77,7 @@ function normalizeAddress(value: string | undefined): string {
   return lower.startsWith('::ffff:') ? lower.slice('::ffff:'.length) : lower;
 }
 
-function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unknown): Promise<PinnedResponse> {
+function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unknown, authorization?: string): Promise<PinnedResponse> {
   const payload = body === undefined ? '' : JSON.stringify(body);
   const method = body === undefined ? 'GET' : 'POST';
   return new Promise((resolve, reject) => {
@@ -91,7 +94,7 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unkn
       const responseBody = raw.slice(split + 4);
       const [statusLine, ...lines] = header.split('\r\n');
       const status = Number(statusLine?.split(' ')[1]);
-      if (!Number.isInteger(status) || status < 200 || status >= 300) {
+      if (!Number.isInteger(status) || status < 200 || status > 599) {
         fail(new LocalServiceError('LOCAL_RUNTIME_UNAVAILABLE'));
         return;
       }
@@ -102,11 +105,23 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unkn
       const lengthHeader = lines.find((line) => line.toLowerCase().startsWith('content-length:'));
       const length = Number(lengthHeader?.split(':')[1]?.trim());
       if (!Number.isInteger(length) || length < 0 || length > 1_048_576 || responseBody.length < length) return;
+      const slice = responseBody.slice(0, length);
+      let parsed: unknown;
       try {
-        resolve({ status, body: JSON.parse(responseBody.slice(0, length)) });
+        parsed = JSON.parse(slice);
       } catch {
         fail(new LocalServiceError('LOCAL_RUNTIME_UNAVAILABLE'));
+        return;
       }
+      if (status >= 200 && status < 300) {
+        resolve({ status, body: parsed });
+        return;
+      }
+      if (((status >= 400 && status < 500) || status === 503) && parsed && typeof parsed === 'object') {
+        resolve({ status, body: parsed });
+        return;
+      }
+      fail(new LocalServiceError('LOCAL_RUNTIME_UNAVAILABLE'));
     });
     socket.once('error', () => fail(new LocalServiceError('LOCAL_RUNTIME_UNAVAILABLE')));
     const headers = [
@@ -116,6 +131,7 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unkn
       'Accept: application/json',
     ];
     if (payload) headers.push('Content-Type: application/json', `Content-Length: ${Buffer.byteLength(payload)}`);
+    if (authorization) headers.push(`Authorization: Bearer ${authorization}`);
     socket.write(`${headers.join('\r\n')}\r\n\r\n${payload}`);
   });
 }

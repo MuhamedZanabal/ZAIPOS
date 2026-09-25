@@ -22,8 +22,8 @@ function requiredUuid(value: unknown, label: string): string {
 }
 function rpcUrl(baseUrl: string, functionName: string): string {
   const parsed = new URL(requiredString(baseUrl, 'Supabase URL', 2048));
-  if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Supabase URL must use HTTPS');
-  parsed.pathname = `/rest/v1/rpc/${functionName}`;
+  if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Local service origin must use HTTPS');
+  parsed.pathname = `/v1/commands/${functionName}`;
   parsed.search = '';
   parsed.hash = '';
   return parsed.href;
@@ -79,7 +79,7 @@ export function createDeviceOfflineAuthority(store: CredentialStore, baseUrl: st
       const { deviceUid, credential } = readEnrollment(authorization);
       const response = await fetch(rpcUrl(baseUrl, 'issue_device_offline_lease'), {
         method: 'POST',
-        headers: { apikey: requiredString(publishableKey, 'Supabase publishable key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+        headers: { apikey: requiredString(publishableKey, 'local service key', 8192), authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
         body: JSON.stringify({ _tenant_id: tenantId, _branch_id: branchId, _device_uid: deviceUid, _device_credential: credential }),
       });
       const text = await response.text();

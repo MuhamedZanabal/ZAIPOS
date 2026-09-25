@@ -8,12 +8,17 @@ if ($DataRoot -notmatch '^[A-Za-z]:\\ProgramData\\ZAIPOS(?:\\)?$') {
   throw 'WINDOWS_DATA_ROOT_UNSAFE'
 }
 
-Write-Output 'Preserve ZAIPOS business data unless the operator explicitly declines.'
-& sc.exe stop ZAIPOSLocalService
-& sc.exe delete ZAIPOSLocalService
+$service = Get-Service -Name 'ZAIPOSLocalService' -ErrorAction SilentlyContinue
+if ($service) {
+  if ($service.Status -ne 'Stopped') {
+    Stop-Service -Name 'ZAIPOSLocalService' -Force -ErrorAction SilentlyContinue
+    $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+  }
+  & sc.exe delete ZAIPOSLocalService | Out-Null
+}
 
+Write-Output 'ZAIPOS business data is preserved by default.'
 if ($PreserveData) { return }
-$target = $DataRoot
-if ($target -and (Test-Path -LiteralPath $target)) {
-  Remove-Item -LiteralPath $target -Recurse -Force
+if ($DataRoot -and (Test-Path -LiteralPath $DataRoot)) {
+  Remove-Item -LiteralPath $DataRoot -Recurse -Force
 }

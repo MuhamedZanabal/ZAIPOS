@@ -136,8 +136,8 @@ function authorityFailureReason(error: unknown): string {
 }
 function rpcUrl(baseUrl: string): string {
   const parsed = new URL(baseUrl);
-  if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Supabase URL must use HTTPS');
-  parsed.pathname = '/rest/v1/rpc/reconcile_offline_checkout'; parsed.search = ''; parsed.hash = '';
+  if (parsed.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Local service origin must use HTTPS');
+  parsed.pathname = '/v1/commands/reconcile_offline_checkout'; parsed.search = ''; parsed.hash = '';
   return parsed.href;
 }
 

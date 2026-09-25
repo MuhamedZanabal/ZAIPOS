@@ -145,11 +145,110 @@ async fn checksum_failure_imports_zero_rows_and_outbox_is_isolated() {
     database.close().await;
 }
 
+#[tokio::test]
+async fn first_owner_login_and_command_do_not_echo_secrets() {
+    let Some(database) = EphemeralDatabase::open().await else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        return;
+    };
+    auth::ensure_identity(database.database()).await.unwrap();
+    database
+        .database()
+        .exec(
+            "create function public.ping_local(note text) returns text language sql as $$ select note $$",
+        )
+        .await
+        .unwrap();
+    database
+        .database()
+        .exec(
+            "create function public.echo_local(_device_credential text) returns text language sql as $$ select _device_credential $$",
+        )
+        .await
+        .unwrap();
+    let password = "owner-password";
+    let app = build_router(AppState::ready(database.database().clone()));
+    let created = app
+        .clone()
+        .oneshot(post(
+            "/v1/auth/bootstrap",
+            &format!(
+                r#"{{"kind":"auth","email":"owner@shop.test","password":"{password}","tenant_name":"Karama","branch_name":"Front"}}"#
+            ),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(created.status(), axum::http::StatusCode::OK);
+    let created_body = body(created).await;
+    assert!(!created_body.contains(password));
+    let token = created_body
+        .split("\"access_token\":\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .expect("session token");
+    let duplicate = app
+        .clone()
+        .oneshot(post(
+            "/v1/auth/bootstrap",
+            &format!(
+                r#"{{"kind":"auth","email":"other@shop.test","password":"{password}","tenant_name":"Other","branch_name":"Back"}}"#
+            ),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(duplicate.status(), axum::http::StatusCode::FORBIDDEN);
+    let signed_in = app
+        .clone()
+        .oneshot(post(
+            "/v1/auth/login",
+            &format!(r#"{{"kind":"auth","email":"owner@shop.test","password":"{password}"}}"#),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(signed_in.status(), axum::http::StatusCode::OK);
+    assert!(!body(signed_in).await.contains(password));
+    let command = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/commands/ping_local",
+            r#"{"note":"ready"}"#,
+            token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(command.status(), axum::http::StatusCode::OK);
+    assert_eq!(body(command).await, "\"ready\"");
+    let secret = "c".repeat(64);
+    let echoed = app
+        .oneshot(post_auth(
+            "/v1/commands/echo_local",
+            &format!(r#"{{"_device_credential":"{secret}"}}"#),
+            token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(echoed.status(), axum::http::StatusCode::SERVICE_UNAVAILABLE);
+    assert!(!body(echoed).await.contains(&secret));
+    database.close().await;
+}
+
 fn post(path: &str, body: &str) -> axum::http::Request<axum::body::Body> {
     axum::http::Request::builder()
         .method("POST")
         .uri(path)
         .header("content-type", "application/json")
+        .body(axum::body::Body::from(body.to_string()))
+        .unwrap()
+}
+
+fn post_auth(path: &str, body: &str, token: &str) -> axum::http::Request<axum::body::Body> {
+    axum::http::Request::builder()
+        .method("POST")
+        .uri(path)
+        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {token}"))
         .body(axum::body::Body::from(body.to_string()))
         .unwrap()
 }

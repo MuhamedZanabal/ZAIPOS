@@ -9,6 +9,7 @@ use super::CommandError;
 pub enum ExecError {
     Rejected,
     Unavailable,
+    Failed { code: String, message: String },
 }
 
 pub async fn execute_backend(db: &Database, value: &Value) -> Result<Value, ExecError> {
@@ -236,6 +237,85 @@ pub fn format_bhd_millis(millis: i64) -> String {
     let sign = if millis < 0 { "-" } else { "" };
     let millis = millis.unsigned_abs();
     format!("{sign}{}.{:03}", millis / 1000, millis % 1000)
+}
+
+pub async fn execute_command(
+    db: &Database,
+    name: &str,
+    arguments: &Value,
+    user_id: &str,
+) -> Result<Value, ExecError> {
+    super::valid_command_name(name).map_err(|_| ExecError::Rejected)?;
+    let arguments = arguments.as_object().ok_or(ExecError::Rejected)?;
+    if arguments.keys().any(|key| !is_ident(key)) {
+        return Err(ExecError::Rejected);
+    }
+    let mut tx = db.pool().begin().await.map_err(map_db)?;
+    sqlx::query("select set_config('request.jwt.claim.sub', $1, true)")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_db)?;
+    sqlx::query("select set_config('request.jwt.claim.role', 'authenticated', true)")
+        .execute(&mut *tx)
+        .await
+        .map_err(map_db)?;
+    let mut builder = QueryBuilder::new(format!("select to_jsonb(public.{name}("));
+    let mut first = true;
+    for (key, value) in arguments {
+        if !first {
+            builder.push(", ");
+        }
+        first = false;
+        builder.push(format!("{key} := "));
+        push_bound(&mut builder, value)?;
+    }
+    builder.push("))");
+    let row: Option<(Value,)> = builder
+        .build_query_as()
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_command)?;
+    tx.commit().await.map_err(map_command)?;
+    Ok(row.map(|(value,)| value).unwrap_or(Value::Null))
+}
+
+fn push_bound<'a>(
+    builder: &mut QueryBuilder<'a, sqlx::Postgres>,
+    value: &'a Value,
+) -> Result<(), ExecError> {
+    match value {
+        Value::Null => {
+            builder.push("null");
+        }
+        Value::Bool(flag) => {
+            builder.push_bind(*flag);
+        }
+        Value::Number(number) => {
+            let integer = number.as_i64().ok_or(ExecError::Rejected)?;
+            builder.push_bind(integer);
+        }
+        Value::String(text) => {
+            builder.push_bind(text.as_str());
+        }
+        Value::Object(_) | Value::Array(_) => {
+            builder.push_bind(value);
+        }
+    }
+    Ok(())
+}
+
+fn map_command(error: sqlx::Error) -> ExecError {
+    if let sqlx::Error::Database(db) = &error {
+        return ExecError::Failed {
+            code: db
+                .code()
+                .map(|code| code.to_string())
+                .unwrap_or_else(|| "ZX000".to_string()),
+            message: db.message().to_string(),
+        };
+    }
+    ExecError::Unavailable
 }
 
 fn map_db(error: sqlx::Error) -> ExecError {

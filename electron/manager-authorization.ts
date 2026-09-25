@@ -21,7 +21,7 @@ async function authorize(action: ManagerAction, payload: unknown, input: unknown
   try {
     endpoint = new URL(configuredUrl);
     if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash || !key) throw denied();
-    endpoint.pathname = '/rest/v1/rpc/authorize_desktop_action';
+    endpoint.pathname = '/v1/commands/authorize_desktop_action';
   } catch { throw denied(); }
   const serialized = JSON.stringify(payload ?? null);
   if (serialized.length > 262144) throw denied();

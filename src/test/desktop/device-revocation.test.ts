@@ -31,7 +31,7 @@ describe('authoritative device revocation custody', () => {
 
     await expect(service.revoke(deviceId, authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: false, revoked: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/rest/v1/rpc/revoke_device_enrollment');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/v1/commands/revoke_device_enrollment');
     const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0][1];
     expect(request.headers).toMatchObject({ authorization: 'Bearer manager-token' });
     expect(JSON.parse(String(request.body))).toEqual({ _tenant_id: tenantId, _device_id: deviceId, _reason: 'manager_console_revocation' });

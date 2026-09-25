@@ -35,7 +35,7 @@ describe('native bounded offline authority', () => {
     expect(result).toMatchObject({ leaseId: '33333333-3333-4333-8333-333333333333', expiresAt });
     expect(JSON.stringify(result)).not.toContain(leaseToken);
     const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0];
-    expect(request[0]).toContain('/rest/v1/rpc/issue_device_offline_lease');
+    expect(request[0]).toContain('/v1/commands/issue_device_offline_lease');
     expect(JSON.parse(String(request[1].body))).toMatchObject({ _tenant_id: tenantId, _branch_id: branchId, _device_uid: 'terminal-1', _device_credential: credential });
     const persisted = String(values.get('offline-lease'));
     expect(persisted).not.toContain(leaseToken);
