@@ -53,7 +53,13 @@ export function parseServerProfile(value: unknown): ServerProfile {
 
 export function fingerprintsEqual(left: string, right: string): boolean {
   if (left.length !== right.length || left.length === 0) return false;
-  return timingSafeEqual(Buffer.from(left), Buffer.from(right));
+  return timingSafeEqual(byteString(left), byteString(right));
+}
+
+function byteString(value: string): Uint8Array {
+  const bytes = new Uint8Array(value.length);
+  for (let index = 0; index < value.length; index += 1) bytes[index] = value.charCodeAt(index);
+  return bytes;
 }
 
 export function createLocalServiceClient(profile: ServerProfile, tls: PinnedTls) {

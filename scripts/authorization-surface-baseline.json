@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "meaning": "Census fingerprint only; this is NOT an authorization approval. Reviewed through PR #94 Supabase first-run connector: runtime additions are two trusted main-process IPC handlers, two preload IPC exposures, and one external navigation surface; runtime authority remains declared separately in authorization-runtime-contract.mjs.",
+  "meaning": "Census fingerprint only; this is NOT an authorization approval. Reviewed for the local-runtime IPC connection: four trusted main-process handlers and five preload exposures. Runtime authority remains declared separately in authorization-runtime-contract.mjs.",
   "kinds": {
     "application-route": {
       "count": 36,
@@ -23,12 +23,12 @@
       "sha256": "e168292075705e1db560eb5894ae977008a4b376690cda9b6e2e839875113094"
     },
     "ipc-main": {
-      "count": 34,
-      "sha256": "5b2d0dd5dd4bbdee0b8c00f99645ce63c4812f142e53c459bb9d94a833fbb59a"
+      "count": 38,
+      "sha256": "276169c4b923fe56e12f8805ca81be4d006d2b754c7bf14075fbf0852b09d066"
     },
     "ipc-renderer": {
-      "count": 29,
-      "sha256": "ffbd18481f48eb7dba98e57faca7bc9b0c02252e86701ecb7da07a8fcb66e185"
+      "count": 34,
+      "sha256": "b549dad5d68884e05a29032a680abd6b13012871b95c50f287acf95b83d8fb2c"
     },
     "privileged-credential": {
       "count": 15,
