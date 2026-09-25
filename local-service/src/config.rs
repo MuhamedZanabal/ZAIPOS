@@ -1,4 +1,5 @@
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Component, Path, PathBuf};
 
@@ -22,8 +23,6 @@ impl ServicePaths {
         }
     }
 
-    /// Test-only root that still rejects user profiles, relative paths, and `..`.
-    /// Production builds do not compile this constructor.
     #[cfg(feature = "test-utils")]
     pub fn test_root(root: impl Into<String>) -> Self {
         Self {
@@ -55,8 +54,9 @@ pub enum ConfigError {
     UnsafeSecretPermissions,
 }
 
-/// Validated service configuration. Secret bytes are never exposed through `Debug`.
+/// Validated service configuration. Secret bytes are never exposed through Debug.
 pub struct ServiceConfig {
+    root: PathBuf,
     listen: SocketAddr,
     database_secret: Vec<u8>,
 }
@@ -65,6 +65,7 @@ impl std::fmt::Debug for ServiceConfig {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("ServiceConfig")
+            .field("root", &self.root)
             .field("listen", &self.listen)
             .field("database_secret", &"<redacted>")
             .finish()
@@ -76,13 +77,67 @@ impl ServiceConfig {
         self.listen
     }
 
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    pub fn database_root(&self) -> PathBuf {
+        self.root.join("database")
+    }
+
+    pub fn tls_cert_path(&self) -> PathBuf {
+        self.root.join("server.crt")
+    }
+
+    pub fn tls_key_path(&self) -> PathBuf {
+        self.root.join("server.key")
+    }
+
+    pub fn server_profile_path(&self) -> PathBuf {
+        self.root.join("server-profile.json")
+    }
+
     pub fn has_database_secret(&self) -> bool {
         !self.database_secret.is_empty()
+    }
+
+    pub(crate) fn database_secret(&self) -> &[u8] {
+        &self.database_secret
     }
 
     pub fn load(paths: ServicePaths) -> Result<Self, ConfigError> {
         let root = approved_root(&paths)?;
         let config_path = root.join("config.json");
+        let bytes = fs::read(&config_path).map_err(|_| ConfigError::MissingConfig)?;
+        parse_config(&root, &bytes)
+    }
+
+    /// Initialize a secure loopback profile for a server+terminal installation,
+    /// then load it through the same strict parser used on every later start.
+    pub fn load_or_initialize(paths: ServicePaths) -> Result<Self, ConfigError> {
+        let root = approved_root(&paths)?;
+        fs::create_dir_all(&root).map_err(|_| ConfigError::MissingConfig)?;
+        let config_path = root.join("config.json");
+        if !config_path.exists() {
+            let secret_name = "zaipos_service.secret";
+            let secret_path = root.join(secret_name);
+            if !secret_path.exists() {
+                let mut random = [0u8; 32];
+                getrandom::fill(&mut random).map_err(|_| ConfigError::MissingSecret)?;
+                let secret = random.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+                write_private(&secret_path, secret.as_bytes())?;
+            }
+            let value = serde_json::json!({
+                "listen": "127.0.0.1:58321",
+                "tls": "required",
+                "database_secret_file": secret_name
+            });
+            fs::write(
+                &config_path,
+                serde_json::to_vec_pretty(&value).map_err(|_| ConfigError::InvalidConfig)?,
+            )
+            .map_err(|_| ConfigError::MissingConfig)?;
+        }
         let bytes = fs::read(&config_path).map_err(|_| ConfigError::MissingConfig)?;
         parse_config(&root, &bytes)
     }
@@ -115,6 +170,7 @@ fn parse_config(root: &Path, bytes: &[u8]) -> Result<ServiceConfig, ConfigError>
     let secret_path = secret_path(root, &raw.database_secret_file)?;
     let database_secret = read_private_secret(&secret_path)?;
     Ok(ServiceConfig {
+        root: root.to_path_buf(),
         listen,
         database_secret,
     })
@@ -139,15 +195,7 @@ fn is_allowed_v4(ip: Ipv4Addr) -> bool {
 }
 
 fn is_allowed_v6(ip: Ipv6Addr) -> bool {
-    ip.is_loopback() || is_unique_local(ip) || is_link_local_v6(ip)
-}
-
-fn is_unique_local(ip: Ipv6Addr) -> bool {
-    (ip.segments()[0] & 0xfe00) == 0xfc00
-}
-
-fn is_link_local_v6(ip: Ipv6Addr) -> bool {
-    (ip.segments()[0] & 0xffc0) == 0xfe80
+    ip.is_loopback() || (ip.segments()[0] & 0xfe00) == 0xfc00 || (ip.segments()[0] & 0xffc0) == 0xfe80
 }
 
 fn secret_path(root: &Path, relative: &str) -> Result<PathBuf, ConfigError> {
@@ -167,9 +215,10 @@ fn secret_path(root: &Path, relative: &str) -> Result<PathBuf, ConfigError> {
         return Err(ConfigError::InvalidConfig);
     }
     let candidate = root.join(relative_path);
-    let root_text = root.to_string_lossy();
-    let candidate_text = candidate.to_string_lossy();
-    if !candidate_text.starts_with(root_text.as_ref()) {
+    if !candidate
+        .to_string_lossy()
+        .starts_with(root.to_string_lossy().as_ref())
+    {
         return Err(ConfigError::InvalidConfig);
     }
     Ok(candidate)
@@ -186,6 +235,18 @@ fn read_private_secret(path: &Path) -> Result<Vec<u8>, ConfigError> {
         return Err(ConfigError::MissingSecret);
     }
     Ok(bytes)
+}
+
+fn write_private(path: &Path, bytes: &[u8]) -> Result<(), ConfigError> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path).map_err(|_| ConfigError::MissingSecret)?;
+    file.write_all(bytes).map_err(|_| ConfigError::MissingSecret)
 }
 
 fn ensure_private_permissions(path: &Path) -> Result<(), ConfigError> {
@@ -214,13 +275,20 @@ fn approved_root(paths: &ServicePaths) -> Result<PathBuf, ConfigError> {
     }
     let windows = raw.replace('/', "\\");
     let windows_lower = windows.to_ascii_lowercase();
-    if is_user_profile(&windows_lower, raw) {
+    if windows_lower.contains("\\users\\")
+        || windows_lower.contains("\\documents and settings\\")
+        || raw.starts_with("/home/")
+        || raw.starts_with("/Users/")
+        || raw == "/root"
+        || raw.starts_with("/root/")
+    {
         return Err(ConfigError::UnsafeRoot);
     }
-    if is_program_data(&windows_lower) {
+    let prefix = "c:\\programdata\\zaipos";
+    if windows_lower == prefix || windows_lower.starts_with(&(prefix.to_string() + "\\")) {
         return Ok(PathBuf::from(windows));
     }
-    if is_var_lib(raw) {
+    if raw == "/var/lib/zaipos" || raw.starts_with("/var/lib/zaipos/") {
         return Ok(PathBuf::from(raw));
     }
     #[cfg(feature = "test-utils")]
@@ -228,24 +296,6 @@ fn approved_root(paths: &ServicePaths) -> Result<PathBuf, ConfigError> {
         return Ok(PathBuf::from(raw));
     }
     Err(ConfigError::UnsafeRoot)
-}
-
-fn is_user_profile(windows_lower: &str, raw: &str) -> bool {
-    windows_lower.contains("\\users\\")
-        || windows_lower.contains("\\documents and settings\\")
-        || raw.starts_with("/home/")
-        || raw.starts_with("/Users/")
-        || raw == "/root"
-        || raw.starts_with("/root/")
-}
-
-fn is_program_data(windows_lower: &str) -> bool {
-    let prefix = "c:\\programdata\\zaipos";
-    windows_lower == prefix || windows_lower.starts_with(&(prefix.to_string() + "\\"))
-}
-
-fn is_var_lib(raw: &str) -> bool {
-    raw == "/var/lib/zaipos" || raw.starts_with("/var/lib/zaipos/")
 }
 
 #[cfg(feature = "test-utils")]
