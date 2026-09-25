@@ -17,6 +17,7 @@ export interface PrinterConfig { connectionType: PrinterConnectionType; devicePa
 export type BarcodeScannerMode = 'hid' | 'serial';
 export interface BarcodeConfig { mode: BarcodeScannerMode; serialPort?: string; baudRate?: number; }
 export interface AppSettings { kiosk: boolean; updateChannel: 'stable' | 'beta'; printer: PrinterConfig; barcode: BarcodeConfig; }
+export interface BackendConfig { supabaseUrl: string; supabasePublishableKey: string; }
 export const DEFAULT_SETTINGS: AppSettings = { kiosk: false, updateChannel: 'stable', printer: { connectionType: 'usb', devicePath: process.platform === 'win32' ? '\\\\.\\COM1' : '/dev/usb/lp0', width: 42, characterSet: 'SLOVENIA' }, barcode: { mode: 'hid', baudRate: 9600 } };
 
 export interface DeviceCredentialIdentity { tenantId: string; branchId: string; deviceUid: string; }
@@ -26,7 +27,7 @@ export interface DeviceOfflineLease { leaseId: string; token: string; issuedAt: 
 
 export const IPC_EVENTS = { BARCODE_SCANNED: 'barcode-scanned', UPDATE_AVAILABLE: 'update-available', UPDATE_DOWNLOADED: 'update-downloaded', DOWNLOAD_PROGRESS: 'download-progress' } as const;
 export const IPC_HANDLERS = {
-  PRINT_TICKET: 'print-ticket', OPEN_DRAWER: 'open-drawer', GET_SETTINGS: 'get-settings', SAVE_SETTINGS: 'save-settings', SET_KIOSK: 'set-kiosk', DOWNLOAD_UPDATE: 'download-update', INSTALL_UPDATE: 'install-update', OPEN_EXTERNAL: 'open-external', GET_APP_VERSION: 'get-app-version', GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status', GET_DEVICE_IDENTITY: 'get-device-identity', ACTIVATE_DEVICE: 'activate-device', ROTATE_DEVICE_CREDENTIAL: 'rotate-device-credential', REVOKE_DEVICE: 'revoke-device', DEVICE_CHECKOUT: 'device-checkout', DEVICE_CASH_MOVEMENT: 'device-cash-movement', DEVICE_CASH_SESSION: 'device-cash-session', DEVICE_SALE_RETURN: 'device-sale-return', DEVICE_SALE_VOID: 'device-sale-void', DEVICE_DELIVERY_COLLECTION: 'device-delivery-collection', DEVICE_TABLE_CHECKOUT: 'device-table-checkout', DEVICE_INVENTORY_COMMAND: 'device-inventory-command'
+  PRINT_TICKET: 'print-ticket', OPEN_DRAWER: 'open-drawer', GET_SETTINGS: 'get-settings', SAVE_SETTINGS: 'save-settings', SET_KIOSK: 'set-kiosk', DOWNLOAD_UPDATE: 'download-update', INSTALL_UPDATE: 'install-update', OPEN_EXTERNAL: 'open-external', GET_APP_VERSION: 'get-app-version', GET_BACKEND_CONFIG: 'get-backend-config', SAVE_INITIAL_BACKEND_CONFIG: 'save-initial-backend-config', GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status', GET_DEVICE_IDENTITY: 'get-device-identity', ACTIVATE_DEVICE: 'activate-device', ROTATE_DEVICE_CREDENTIAL: 'rotate-device-credential', REVOKE_DEVICE: 'revoke-device', DEVICE_CHECKOUT: 'device-checkout', DEVICE_CASH_MOVEMENT: 'device-cash-movement', DEVICE_CASH_SESSION: 'device-cash-session', DEVICE_SALE_RETURN: 'device-sale-return', DEVICE_SALE_VOID: 'device-sale-void', DEVICE_DELIVERY_COLLECTION: 'device-delivery-collection', DEVICE_TABLE_CHECKOUT: 'device-table-checkout', DEVICE_INVENTORY_COMMAND: 'device-inventory-command'
 } as const;
 export interface ManagerAuthorization { accessToken: string; tenantId: string; branchId: string; }
 export interface DeviceAuthorization extends ManagerAuthorization {}

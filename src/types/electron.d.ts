@@ -1,5 +1,5 @@
 import type { ManagerAuthorization } from '../../electron/types';
-import type { TicketData, AppSettings } from '../../electron/types';
+import type { TicketData, AppSettings, BackendConfig } from '../../electron/types';
 
 export interface ElectronBridge {
   printTicket: (data: TicketData) => Promise<{ ok: boolean; error?: string }>;
@@ -15,6 +15,8 @@ export interface ElectronBridge {
   onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
   openExternal: (url: string) => Promise<void>;
   getAppVersion: () => Promise<string>;
+  getBackendConfig: () => Promise<BackendConfig | null>;
+  saveInitialBackendConfig: (config: BackendConfig) => Promise<void>;
   getDeviceIdentity: () => Promise<{ deviceUid: string; provisioned: boolean }>;
   activateDevice: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;
   rotateDeviceCredential: (approvalId: string, authorization: ManagerAuthorization) => Promise<{ deviceUid: string; provisioned: true }>;

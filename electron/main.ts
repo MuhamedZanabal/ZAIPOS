@@ -6,26 +6,33 @@ import { app, BrowserWindow, shell, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { configureTrustedWindow, handleTrustedIpc, safeExternalUrl } from './security.js';
-import type { AppSettings } from './types.js';
+import type { AppSettings, BackendConfig } from './types.js';
 import { DEFAULT_SETTINGS, IPC_HANDLERS } from './types.js';
 import { setupPrinterHandlers } from './services/printer.js';
 import { setupBarcodeScanner, closeBarcodeScanner, restartBarcodeScanner } from './services/barcode.js';
 import { setupUpdater } from './services/updater.js';
 import { validateSettings, validateSettingsPatch } from './hardware-security.js';
-import { handleManagerIpc } from './manager-authorization.js';
+import { configureManagerAuthorization, handleManagerIpc } from './manager-authorization.js';
 import { log } from './logger.js';
 import { createDeviceCredentialService } from './services/device-credentials.js';
 import { createDeviceOfflineAuthority } from './services/device-offline-authority.js';
 import { createDeviceOfflineQueue } from './services/device-offline-queue.js';
 import { createDeviceOfflineOrchestrator } from './services/device-offline-orchestrator.js';
 import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
+import { validateBackendConfig, verifyBackendConnection } from './services/backend-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let store: any = null;
 let credentialStore: any = null;
-async function initStore(): Promise<void> { const { default: ElectronStore } = await import('electron-store'); store = new ElectronStore({ name: 'pos-settings', defaults: DEFAULT_SETTINGS }); credentialStore = new ElectronStore({ name: 'device-credentials' }); }
+let backendConfigStore: any = null;
+async function initStore(): Promise<void> { const { default: ElectronStore } = await import('electron-store'); store = new ElectronStore({ name: 'pos-settings', defaults: DEFAULT_SETTINGS }); credentialStore = new ElectronStore({ name: 'device-credentials' }); backendConfigStore = new ElectronStore({ name: 'backend-config' }); }
 function getSettings(): AppSettings { return store ? (store.store as AppSettings) : DEFAULT_SETTINGS; }
+function getBackendConfig(): BackendConfig | null {
+  const bundled = { supabaseUrl: import.meta.env.VITE_SUPABASE_URL, supabasePublishableKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY };
+  try { return validateBackendConfig(bundled); } catch { /* use first-run configuration */ }
+  try { return validateBackendConfig(backendConfigStore?.store); } catch { return null; }
+}
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(settings: AppSettings): BrowserWindow {
@@ -39,9 +46,9 @@ function createWindow(settings: AppSettings): BrowserWindow {
   return win;
 }
 
-function setupGlobalHandlers(): void {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+function setupGlobalHandlers(config: BackendConfig): void {
+  const { supabaseUrl, supabasePublishableKey: publishableKey } = config;
+  configureManagerAuthorization(config);
   const deviceCredentials = createDeviceCredentialService(credentialStore, supabaseUrl, publishableKey);
   const offlineAuthority = createDeviceOfflineAuthority(credentialStore, supabaseUrl, publishableKey);
   // Recovery runs in Electron main before any renderer can request financial work.
@@ -94,7 +101,27 @@ function setupGlobalHandlers(): void {
   log('info', 'ipc_handlers_registered');
 }
 
-async function bootstrap(): Promise<void> { await initStore(); const settings = getSettings(); log('info', 'settings_loaded', { kiosk: settings.kiosk, printerType: settings.printer?.connectionType, barcodeMode: settings.barcode?.mode }); setupGlobalHandlers(); setupPrinterHandlers(() => getSettings().printer); mainWindow = createWindow(settings); mainWindow.once('ready-to-show', async () => { if (mainWindow) await setupBarcodeScanner(settings.barcode, mainWindow); }); if (mainWindow) await setupUpdater(mainWindow, settings.updateChannel); mainWindow.on('closed', () => { closeBarcodeScanner(); mainWindow = null; }); }
+async function bootstrap(): Promise<void> {
+  await initStore();
+  const settings = getSettings();
+  const backendConfig = getBackendConfig();
+  log('info', 'settings_loaded', { kiosk: settings.kiosk, printerType: settings.printer?.connectionType, barcodeMode: settings.barcode?.mode, backendConfigured: Boolean(backendConfig) });
+  handleTrustedIpc(IPC_HANDLERS.GET_BACKEND_CONFIG, () => getBackendConfig());
+  handleTrustedIpc(IPC_HANDLERS.SAVE_INITIAL_BACKEND_CONFIG, async (_event, candidate: unknown) => {
+    if (getBackendConfig()) throw new Error('Backend configuration is already locked');
+    const validated = validateBackendConfig(candidate);
+    await verifyBackendConnection(validated);
+    backendConfigStore.set(validated);
+    setupGlobalHandlers(validated);
+    log('info', 'backend_configured', { origin: new URL(validated.supabaseUrl).origin });
+  });
+  if (backendConfig) setupGlobalHandlers(backendConfig);
+  setupPrinterHandlers(() => getSettings().printer);
+  mainWindow = createWindow(settings);
+  mainWindow.once('ready-to-show', async () => { if (mainWindow && backendConfig) await setupBarcodeScanner(settings.barcode, mainWindow); });
+  if (mainWindow) await setupUpdater(mainWindow, settings.updateChannel);
+  mainWindow.on('closed', () => { closeBarcodeScanner(); mainWindow = null; });
+}
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) { log('error', 'single_instance_lock_failed'); app.quit(); } else app.on('second-instance', () => { if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
 app.whenReady().then(bootstrap).catch((err) => { log('error', 'bootstrap_failed', { error: err?.message ?? String(err) }); dialog.showErrorBox('Error starting ZAIPOS', `Unexpected error: ${err?.message ?? err}`); app.quit(); });

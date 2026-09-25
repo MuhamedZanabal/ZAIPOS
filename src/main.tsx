@@ -1,8 +1,26 @@
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
 import "./index.css";
-import { registerPWA } from "./pwa";
+import { initializeRuntimeConfig } from "./runtime-config";
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+if (!rootElement) throw new Error("ZAIPOS root element is unavailable");
 
-registerPWA();
+const bootstrap = async () => {
+  const runtimeConfig = await initializeRuntimeConfig();
+
+  if (!runtimeConfig.ok) {
+    document.title = "ZAIPOS — Connect Supabase";
+    const { default: SupabaseConnector } = await import('./components/setup/SupabaseConnector.tsx');
+    createRoot(rootElement).render(<SupabaseConnector onConfigured={() => window.location.reload()} />);
+  } else {
+    const [{ default: App }, { registerPWA }] = await Promise.all([
+      import("./App.tsx"),
+      import("./pwa"),
+    ]);
+
+    createRoot(rootElement).render(<App />);
+    registerPWA();
+  }
+};
+
+void bootstrap();

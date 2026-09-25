@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getRuntimeConfig } from "@/runtime-config";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useWhatsAppNotifs } from "@/contexts/WhatsAppNotifsContext";
 import { Badge } from "@/components/ui/badge";
@@ -153,7 +154,7 @@ export default function WhatsAppInbox() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-message`,
+        `${getRuntimeConfig().supabaseUrl}/functions/v1/send-whatsapp-message`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
@@ -199,7 +200,7 @@ export default function WhatsAppInbox() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-order-agent`,
+        `${getRuntimeConfig().supabaseUrl}/functions/v1/ai-order-agent`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },

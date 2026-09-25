@@ -1,6 +1,6 @@
 /** Secure renderer bridge for explicitly allowed Electron operations. */
 import { contextBridge, ipcRenderer } from 'electron';
-import type { TicketData, AppSettings, ManagerAuthorization } from './types.js';
+import type { TicketData, AppSettings, BackendConfig, ManagerAuthorization } from './types.js';
 import { IPC_EVENTS, IPC_HANDLERS } from './types.js';
 
 const electronAPI = {
@@ -17,6 +17,8 @@ const electronAPI = {
   onUpdateDownloaded: (callback: (info: { version: string }) => void): (() => void) => { const handler = (_: any, info: any) => callback(info); ipcRenderer.on(IPC_EVENTS.UPDATE_DOWNLOADED, handler); return () => ipcRenderer.removeListener(IPC_EVENTS.UPDATE_DOWNLOADED, handler); },
   openExternal: (url: string) => ipcRenderer.invoke(IPC_HANDLERS.OPEN_EXTERNAL, url),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.GET_APP_VERSION),
+  getBackendConfig: (): Promise<BackendConfig | null> => ipcRenderer.invoke(IPC_HANDLERS.GET_BACKEND_CONFIG),
+  saveInitialBackendConfig: (config: BackendConfig): Promise<void> => ipcRenderer.invoke(IPC_HANDLERS.SAVE_INITIAL_BACKEND_CONFIG, config),
   getDeviceIdentity: (): Promise<{ deviceUid: string; provisioned: boolean }> => ipcRenderer.invoke(IPC_HANDLERS.GET_DEVICE_IDENTITY),
   activateDevice: (approvalId: string, authorization: ManagerAuthorization) => ipcRenderer.invoke(IPC_HANDLERS.ACTIVATE_DEVICE, approvalId, authorization),
   rotateDeviceCredential: (approvalId: string, authorization: ManagerAuthorization): Promise<{ deviceUid: string; provisioned: true }> => ipcRenderer.invoke(IPC_HANDLERS.ROTATE_DEVICE_CREDENTIAL, approvalId, authorization),
