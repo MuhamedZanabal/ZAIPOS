@@ -1,0 +1,11 @@
+listen_addresses = '127.0.0.1'
+port = __ZAIPOS_PORT__
+password_encryption = scram-sha-256
+ssl = on
+ssl_cert_file = 'server.crt'
+ssl_key_file = 'server.key'
+ssl_min_protocol_version = 'TLSv1.2'
+unix_socket_directories = ''
+log_hostname = off
+log_connections = on
+log_disconnections = on

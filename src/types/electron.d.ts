@@ -29,6 +29,10 @@ export interface ElectronBridge {
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   checkoutTableOrder: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   inventoryCommand: (command: string, payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
+  localStatus: () => Promise<{ state: 'not_configured' | 'configured'; origin?: string; caFingerprint?: string; deviceCertificateRef?: string | null }>;
+  enrollLocalTerminal: () => Promise<{ certificateRef: string }>;
+  localRequest: (path: string, body?: unknown) => Promise<unknown>;
+  subscribeLocalEvents: (callback: (payload: { state: 'not_configured' }) => void) => () => void;
   platform: NodeJS.Platform;
 }
 

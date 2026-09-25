@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const EXPECTED_RUNTIME_OCCURRENCES = 424;
+export const EXPECTED_RUNTIME_OCCURRENCES = 433;
 export const REQUIRED_NEGATIVE_DIMENSIONS = [
   'missing_authentication',
   'wrong_tenant',

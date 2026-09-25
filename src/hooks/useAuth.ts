@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import type { LocalUser } from "@/backend/session";
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -11,9 +11,6 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      // INITIAL_SESSION ya lo maneja getSession; ignorarlo evita un flash
-      // user=null si el listener dispara antes que getSession resuelva con
-      // la sesión persistida en localStorage.
       if (event === "INITIAL_SESSION") return;
       setUser(session?.user ?? null);
       setLoading(false);

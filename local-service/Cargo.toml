@@ -1,0 +1,47 @@
+[package]
+name = "zaipos-local-service"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "ZAIPOS Local Service: the only process allowed to hold store database credentials"
+build = "build.rs"
+
+[dependencies]
+aes-gcm = "0.10"
+argon2 = "0.5"
+axum = "0.8"
+http = "1"
+http-body-util = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+getrandom = "0.3"
+p256 = { version = "0.13", features = ["ecdsa", "pem"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+secrecy = "0.10"
+sha2 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls", "json"] }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["limit"] }
+unicode-normalization = "0.1"
+
+[build-dependencies]
+sha2 = "0.10"
+
+[features]
+test-utils = []
+
+[[test]]
+name = "health"
+required-features = ["test-utils"]
+
+[[test]]
+name = "migration_chain"
+required-features = ["test-utils"]
+
+[[test]]
+name = "local_reads"
+required-features = ["test-utils"]
