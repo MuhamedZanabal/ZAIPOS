@@ -35,8 +35,7 @@ export default defineConfig(async ({ mode }) => {
           // navigateFallbackDenylist solo tiene efecto cuando navigateFallback está activo.
           navigateFallback: "index.html",
           // Excluye rutas de API local (si las hubiera) para que no sirvan index.html.
-          // Las llamadas a Supabase son cross-origin y el SW nunca las intercepta,
-          // por lo que no es necesario listarlas aquí.
+          // Local runtime API calls are native/Electron-owned and are never intercepted here.
           navigateFallbackDenylist: [/^\/api\//],
         },
         devOptions: {
@@ -163,7 +162,6 @@ export default defineConfig(async ({ mode }) => {
         output: {
           manualChunks: {
             react: ["react", "react-dom", "react-router-dom"],
-            supabase: ["@supabase/supabase-js"],
             query: ["@tanstack/react-query", "@tanstack/react-query-persist-client"],
             ui: ["@radix-ui/react-dialog", "@radix-ui/react-select", "@radix-ui/react-tabs", "lucide-react"],
           },

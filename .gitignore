@@ -38,6 +38,10 @@ supabase/.temp/
 .agents/
 .lovable/
 
+# Rust local-service build output
+/target/
+
+
 # Archives and handoff bundles
 *.zip
 poss360t-v1-handoff/

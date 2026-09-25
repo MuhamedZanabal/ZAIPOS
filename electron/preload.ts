@@ -32,6 +32,15 @@ const electronAPI = {
   checkoutTableOrder: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_TABLE_CHECKOUT, payload, authorization),
   inventoryCommand: (command: string, payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_INVENTORY_COMMAND, command, payload, authorization),
   platform: process.platform as NodeJS.Platform,
+  localStatus: () => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_STATUS),
+  enrollLocalTerminal: () => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_ENROLL),
+  localRequest: (path: string, body?: unknown) => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_REQUEST, path, body),
+  subscribeLocalEvents: (callback: (payload: { state: 'not_configured' }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: { state: 'not_configured' }) => callback(payload);
+    ipcRenderer.on(IPC_EVENTS.LOCAL_SERVICE_EVENT, handler);
+    void ipcRenderer.invoke(IPC_HANDLERS.LOCAL_SUBSCRIBE).catch(() => undefined);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.LOCAL_SERVICE_EVENT, handler);
+  },
 };
 contextBridge.exposeInMainWorld('electron', electronAPI);
 export type ElectronAPI = typeof electronAPI;

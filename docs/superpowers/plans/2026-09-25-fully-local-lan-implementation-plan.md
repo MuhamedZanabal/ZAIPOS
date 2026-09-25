@@ -74,7 +74,7 @@
 - Consumes: environment-independent paths supplied by the Windows service launcher.
 - Produces: `ServiceConfig::load(ServicePaths) -> Result<ServiceConfig, ConfigError>`, `build_router(AppState) -> axum::Router`, and `GET /v1/health` returning `HealthResponse`.
 
-- [ ] **Step 1: Write the failing health and configuration tests**
+- [x] **Step 1: Write the failing health and configuration tests**
 
 ```rust
 #[tokio::test]
@@ -94,13 +94,13 @@ fn rejects_config_outside_program_data() {
 }
 ```
 
-- [ ] **Step 2: Run the tests and confirm the missing crate failure**
+- [x] **Step 2: Run the tests and confirm the missing crate failure**
 
 Run: `cargo test -p zaipos-local-service --test health`
 
 Expected: FAIL because `zaipos-local-service` and its exported test helpers do not exist.
 
-- [ ] **Step 3: Add the workspace, strict configuration parser, error envelope, and loopback-only health router**
+- [x] **Step 3: Add the workspace, strict configuration parser, error envelope, and loopback-only health router**
 
 ```rust
 #[derive(Clone, Serialize)]
@@ -119,13 +119,13 @@ pub fn build_router(state: AppState) -> Router {
 
 The configuration parser must reject relative roots, user-profile roots, wildcard listen addresses, plaintext LAN mode, missing ACL-protected secret files, and unknown configuration keys.
 
-- [ ] **Step 4: Run service checks**
+- [x] **Step 4: Run service checks**
 
 Run: `cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Cargo.toml local-service .github/workflows/ci.yml
@@ -147,7 +147,7 @@ git commit -m "feat(local): establish fail-closed local service"
 - Consumes: `ServiceConfig.database_root`, a generated 32-byte password, and bundled PostgreSQL 17 binaries.
 - Produces: `PostgresProvisioner::ensure_cluster() -> Result<ProvisionedDatabase, ProvisionError>` and `Database::connect(&ProvisionedDatabase) -> Result<Database, DbError>`.
 
-- [ ] **Step 1: Write failing provisioning-policy tests**
+- [x] **Step 1: Write failing provisioning-policy tests**
 
 ```rust
 #[test]
@@ -164,9 +164,9 @@ fn generated_postgres_policy_is_loopback_and_scram_only() {
 
 Run: `cargo test -p zaipos-local-service --test postgres_provisioning`
 
-Expected: FAIL with unresolved `render_postgres_policy`.
+Expected: FAIL with unresolved `render_postgres_policy`. The policy tests were added together with the renderer, so this red run was not captured separately.
 
-- [ ] **Step 3: Implement cluster initialization and restricted roles**
+- [x] **Step 3: Implement cluster initialization and restricted roles**
 
 ```rust
 pub struct ProvisionedDatabase {

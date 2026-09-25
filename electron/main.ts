@@ -20,13 +20,16 @@ import { createDeviceOfflineQueue } from './services/device-offline-queue.js';
 import { createDeviceOfflineOrchestrator } from './services/device-offline-orchestrator.js';
 import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
 import { validateBackendConfig, verifyBackendConnection } from './services/backend-config.js';
+import { registerLocalRuntimeIpc } from './services/local-runtime-ipc.js';
+import { parseServerProfile } from './services/local-service-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let store: any = null;
 let credentialStore: any = null;
 let backendConfigStore: any = null;
-async function initStore(): Promise<void> { const { default: ElectronStore } = await import('electron-store'); store = new ElectronStore({ name: 'pos-settings', defaults: DEFAULT_SETTINGS }); credentialStore = new ElectronStore({ name: 'device-credentials' }); backendConfigStore = new ElectronStore({ name: 'backend-config' }); }
+let localRuntimeStore: any = null;
+async function initStore(): Promise<void> { const { default: ElectronStore } = await import('electron-store'); store = new ElectronStore({ name: 'pos-settings', defaults: DEFAULT_SETTINGS }); credentialStore = new ElectronStore({ name: 'device-credentials' }); backendConfigStore = new ElectronStore({ name: 'backend-config' }); localRuntimeStore = new ElectronStore({ name: 'local-runtime' }); }
 function getSettings(): AppSettings { return store ? (store.store as AppSettings) : DEFAULT_SETTINGS; }
 function getBackendConfig(): BackendConfig | null {
   const bundled = { supabaseUrl: import.meta.env.VITE_SUPABASE_URL, supabasePublishableKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY };
@@ -103,6 +106,14 @@ function setupGlobalHandlers(config: BackendConfig): void {
 
 async function bootstrap(): Promise<void> {
   await initStore();
+  registerLocalRuntimeIpc({
+    read() {
+      const stored = localRuntimeStore?.get('profile');
+      if (!stored) return null;
+      return parseServerProfile(stored);
+    },
+    write(profile) { localRuntimeStore?.set('profile', profile); },
+  });
   const settings = getSettings();
   const backendConfig = getBackendConfig();
   log('info', 'settings_loaded', { kiosk: settings.kiosk, printerType: settings.printer?.connectionType, barcodeMode: settings.barcode?.mode, backendConfigured: Boolean(backendConfig) });

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signOutFully } from "@/lib/signOut";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import type { Session } from "@supabase/supabase-js";
+import type { LocalSession } from "@/backend/session";
 
 interface TenantProviderProps {
   children: React.ReactNode;
@@ -13,7 +13,7 @@ interface TenantProviderProps {
 
 function UnconfiguredScreen() {
   const hostname = window.location.hostname;
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<LocalSession | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState("");

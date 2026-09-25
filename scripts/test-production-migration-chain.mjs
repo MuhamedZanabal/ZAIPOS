@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -219,6 +219,22 @@ function recreateDatabase(name) {
       SELECT COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
     $$;
     GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+    CREATE OR REPLACE FUNCTION auth.role()
+    RETURNS text LANGUAGE sql STABLE AS $$
+      SELECT COALESCE(
+        NULLIF(current_setting('request.jwt.claim.role', true), ''),
+        NULLIF(current_setting('role', true), ''),
+        current_user
+      )
+    $$;
+    CREATE SCHEMA IF NOT EXISTS extensions;
+    CREATE OR REPLACE FUNCTION extensions.digest(data bytea, type text)
+    RETURNS bytea LANGUAGE sql IMMUTABLE AS $$ SELECT public.digest(data, type) $$;
+    CREATE OR REPLACE FUNCTION extensions.digest(data text, type text)
+    RETURNS bytea LANGUAGE sql IMMUTABLE AS $$ SELECT public.digest(convert_to(data, 'UTF8'), type) $$;
+    CREATE OR REPLACE FUNCTION extensions.gen_random_bytes(length integer)
+    RETURNS bytea LANGUAGE sql VOLATILE AS $$ SELECT public.gen_random_bytes(length) $$;
+    GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
   `);
   ensureSupabaseStorageFixture(name);
 }
@@ -357,6 +373,25 @@ function verifyFinalShape(database) {
   }
 }
 
+function installCompatExtensions() {
+  // Vanilla PostgreSQL has no pg_net, pgmq, or supabase_vault. pg_cron also
+  // refuses to be created in both rehearsal databases unless it is preloaded
+  // into exactly one of them. These SQL stubs let the historical chain apply
+  // outside the Supabase image. The platform CI path does not use them.
+  if (usePlatformDatabase) return;
+  const sharedir = execFileSync("pg_config", ["--sharedir"], { encoding: "utf8" }).trim();
+  const source = path.join(root, "local-service", "postgres-compat", "extension");
+  const destination = path.join(sharedir, "extension");
+  for (const name of readdirSync(source)) {
+    const target = path.join(destination, name);
+    copyFileSync(path.join(source, name), target);
+  }
+  if (!existsSync(path.join(destination, "pg_cron.control"))) {
+    throw new Error("postgresql pg_cron must be installed before the vanilla migration chain");
+  }
+}
+
+installCompatExtensions();
 createClusterRoles();
 
 if (usePlatformDatabase) {
