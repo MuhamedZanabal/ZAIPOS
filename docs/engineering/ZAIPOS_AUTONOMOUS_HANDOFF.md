@@ -3,6 +3,19 @@
 This is the durable recovery checkpoint for scheduled ZAIPOS production-completion runs. Verify every identifier against live GitHub before acting; later exact-head evidence supersedes this file.
 
 
+## Current checkpoint — synchronized business-mode/router-security stack (2026-09-24 22:01 +03)
+
+- Main remains `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. PR #92 remains its direct child at `2401e99fc877791d404aadd0c660d110874e7146`; PR #93 is now correctly stacked on PR #92.
+- Independent combined-tree discovery reproduced a real documentation conflict between the two individually green branches. Two-parent synchronization commit `9540da7e9a7b2ee6c02f4dd62718045a3d4637f4` resolves that conflict while preserving both code lines and both historical checkpoints.
+- PR #93 is directly ahead of PR #92 by six commits and behind by zero. Its scoped diff remains four files: the React Router package/lock updates, adversarial route test, and handoff.
+- Exact synchronized head `9540da7e9a7b2ee6c02f4dd62718045a3d4637f4` completed 22/22 workflows successfully. CI run `36017697969` passed quality job `107694342308` and unsigned Windows packaging job `107695632153`; all independent authorization, financial, backup, inventory, supplier, reporting, trusted-device and table-checkout workflows passed.
+- Combined local evidence: 71 Vitest files / 382 tests, TypeScript, ESLint zero errors / 13 pre-existing warnings, production build (2,782 modules), 131 migration validations, authoritative business-mode static contract, authorization census at 1,860 occurrences / 419 runtime surfaces, zero production dependency audit findings, and `git diff --check`.
+- PR #93 is draft, mergeable, and has no submitted reviews or inline threads. Offline checkout remains disabled. No main merge, deployment, release, force push or production-data operation occurred.
+
+### Immediate next executable action
+
+An authorized maintainer should review and integrate PR #92 first at expected head `2401e99fc877791d404aadd0c660d110874e7146`, then PR #93 at synchronized head `9540da7e9a7b2ee6c02f4dd62718045a3d4637f4` or this documentation-only successor. Require the complete post-merge workflow matrix on main after each integration. External signing, hardware, production recovery and Bahrain regulatory acceptance remain outside repository completion.
+
 ## Current checkpoint — business-mode bootstrap hardening (2026-09-24 16:23 +03)
 
 - Main is `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. The authoritative `RETAIL | RESTAURANT` implementation from PR #90 is integrated, but independent post-merge review found two upgrade/bootstrap defects. Draft PR #92 is based directly on that main and remains unmerged.
@@ -16,6 +29,20 @@ This is the durable recovery checkpoint for scheduled ZAIPOS production-completi
 ### Immediate next executable action
 
 Review PR #92 and integrate it only through authorized normal review, verifying expected head `34b83d52d8870c7bea517272ded1735212e5507f` or a documentation-only successor. Then require the complete post-merge workflow matrix on main. Signed Windows installation, physical hardware, production recovery and Bahrain regulatory acceptance remain external.
+
+## Current checkpoint — React Router advisory remediation (2026-09-24 17:16 +03)
+
+- Main remains `093dd1f87ab3c3643a31fa23552bbac3cc99221d`. Draft PR #93 is an independent branch directly on main; it does not depend on the separate business-mode bootstrap PR #92 and remains unmerged.
+- Production `react-router-dom` and transitive `react-router` moved from affected `6.30.6` to exactly pinned patched `7.18.4`. `npm audit --audit-level=moderate --omit=dev` now reports zero vulnerabilities.
+- ZAIPOS uses declarative `BrowserRouter` mode, so GHSA-337j-9hxr-rhxg's manual SSR/hydration precondition was not present. GHSA-wrjc-x8rr-h8h6 applies to common navigation primitives; adversarial coverage now proves backslash, protocol-relative and absolute external targets are rejected while internal route construction remains available.
+- Exact verified code head `76f9769176228cdfffbd37421a2102def7e87523` completed both triggered workflows successfully. CI run `36010743215` passed quality job `107670496328` and unsigned Windows packaging job `107671784746`. Authorization Surface Census run `36010743216` passed unchanged at 1,860 occurrences across 17 kinds.
+- Fresh local evidence: focused router security 4/4, full Vitest 71 files / 382 tests, TypeScript, production build (2,782 modules), ESLint zero errors / 13 pre-existing warnings, production dependency audit zero findings, census guard unchanged and `git diff --check` passed.
+- Initial head `ab8bac1f561cee166af083a95e3eb691ec9f74e6` failed only because JSX route fixtures in the new verification file appeared in the exhaustive census. The test was rewritten to retain positive evidence without adding test-only runtime route declarations; the census guard was not weakened and its baseline was not advanced.
+- Offline checkout remains disabled. No merge, deployment, release, force push or production-data operation occurred. Unsigned packaging is not signed installation or physical acceptance.
+
+### Immediate next executable action
+
+Review PR #92 and PR #93 independently. Integrate each only through authorized normal review using its verified expected head, then require the complete post-merge workflow matrix on main. Preserve offline checkout as disabled.
 
 ## Current checkpoint — external acceptance only (2026-09-24 12:24 +03)
 
