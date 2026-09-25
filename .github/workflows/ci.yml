@@ -234,6 +234,31 @@ jobs:
       - name: Build
         run: npm run build
 
+  local-service:
+    name: local-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --all-features
+
   windows-package:
     name: windows-package
     needs: quality
