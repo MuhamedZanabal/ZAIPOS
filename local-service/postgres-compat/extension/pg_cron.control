@@ -1,0 +1,4 @@
+comment = 'ZAIPOS compatibility stub for pg_cron'
+default_version = '1.6'
+relocatable = false
+superuser = true

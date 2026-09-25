@@ -6,8 +6,13 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use http_body_util::BodyExt;
 use serde::Serialize;
+use serde_json::Value;
 use tower::ServiceExt;
 use tower_http::limit::RequestBodyLimitLayer;
+
+use crate::auth::{self, AuthError};
+use crate::commands::{self, ExecError, execute_backend};
+use crate::db::Database;
 
 pub const MAX_REQUEST_BYTES: usize = 1_048_576;
 
@@ -20,6 +25,7 @@ pub struct HealthResponse {
 #[derive(Clone, Debug)]
 pub struct AppState {
     health: HealthResponse,
+    database: Option<Database>,
 }
 
 impl AppState {
@@ -29,6 +35,17 @@ impl AppState {
                 status: "starting",
                 database: "unavailable",
             },
+            database: None,
+        }
+    }
+
+    pub fn ready(database: Database) -> Self {
+        Self {
+            health: HealthResponse {
+                status: "ready",
+                database: "ready",
+            },
+            database: Some(database),
         }
     }
 }
@@ -48,54 +65,82 @@ async fn health(
     State(state): State<AppState>,
     request: axum::extract::Request,
 ) -> Result<Json<HealthResponse>, StatusCode> {
-    let advertised = request
-        .headers()
-        .get(http::header::CONTENT_LENGTH)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse::<usize>().ok());
-    if advertised.is_some_and(|length| length > MAX_REQUEST_BYTES) {
-        return Err(StatusCode::PAYLOAD_TOO_LARGE);
-    }
-    let received = request
-        .into_body()
-        .collect()
-        .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
-    if received.to_bytes().len() > MAX_REQUEST_BYTES {
-        return Err(StatusCode::PAYLOAD_TOO_LARGE);
-    }
+    let _ = limited_body(request).await?;
     Ok(Json(state.health.clone()))
 }
 
 async fn backend(
+    State(state): State<AppState>,
     request: axum::extract::Request,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    reject_until_database(request).await
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    let value = json_body(request).await?;
+    commands::validate_backend(&value).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let Some(database) = state.database.as_ref() else {
+        return Ok(unavailable());
+    };
+    match execute_backend(database, &value).await {
+        Ok(data) => Ok((StatusCode::OK, Json(serde_json::json!({"data": data})))),
+        Err(ExecError::Rejected) => Err(StatusCode::BAD_REQUEST),
+        Err(ExecError::Unavailable) => Ok(unavailable()),
+    }
 }
 
 async fn login(
+    State(state): State<AppState>,
     request: axum::extract::Request,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    reject_until_database(request).await
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    let value = json_body(request).await?;
+    commands::validate_backend(&value).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let Some(database) = state.database.as_ref() else {
+        return Ok(unavailable());
+    };
+    match auth::login(database, &value).await {
+        Ok(data) => {
+            let rendered = data.to_string();
+            if value
+                .get("password")
+                .and_then(Value::as_str)
+                .is_some_and(|password| rendered.contains(password))
+            {
+                return Ok(unavailable());
+            }
+            Ok((StatusCode::OK, Json(serde_json::json!({"data": data}))))
+        }
+        Err(AuthError::Unauthorized) => Ok((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error":"invalid_credentials"})),
+        )),
+        Err(AuthError::Forbidden) => Ok((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error":"forbidden"})),
+        )),
+        Err(AuthError::Rejected) => Err(StatusCode::BAD_REQUEST),
+        Err(AuthError::Unavailable) => Ok(unavailable()),
+    }
 }
 
 async fn logout(
+    State(state): State<AppState>,
     request: axum::extract::Request,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    reject_until_database(request).await
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    let value = json_body(request).await?;
+    commands::validate_backend(&value).map_err(|_| StatusCode::BAD_REQUEST)?;
+    if state.database.is_none() {
+        return Ok(unavailable());
+    }
+    Ok((StatusCode::OK, Json(serde_json::json!({"data":"ok"}))))
 }
 
-async fn reject_until_database(
-    request: axum::extract::Request,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let bytes = limited_body(request).await?;
-    let value: serde_json::Value =
-        serde_json::from_slice(&bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
-    crate::commands::validate_backend(&value).map_err(|_| StatusCode::BAD_REQUEST)?;
-    Ok((
+fn unavailable() -> (StatusCode, Json<Value>) {
+    (
         StatusCode::SERVICE_UNAVAILABLE,
         Json(serde_json::json!({"error": "LOCAL_RUNTIME_NOT_CONFIGURED"})),
-    ))
+    )
+}
+
+async fn json_body(request: axum::extract::Request) -> Result<Value, StatusCode> {
+    let bytes = limited_body(request).await?;
+    serde_json::from_slice(&bytes).map_err(|_| StatusCode::BAD_REQUEST)
 }
 
 async fn limited_body(request: axum::extract::Request) -> Result<Vec<u8>, StatusCode> {
@@ -122,7 +167,7 @@ async fn limited_body(request: axum::extract::Request) -> Result<Vec<u8>, Status
 async fn not_found() -> impl IntoResponse {
     (
         StatusCode::NOT_FOUND,
-        Json(serde_json::json!({"error": "not_found"})),
+        Json(serde_json::json!({"error":"not_found"})),
     )
 }
 

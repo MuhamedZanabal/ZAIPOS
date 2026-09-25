@@ -1,3 +1,7 @@
+use sqlx::Row;
+
+use crate::db::{Database, DbError};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OutboxEvent {
     pub sequence: u64,
@@ -41,6 +45,77 @@ impl Outbox {
             .cloned()
             .collect()
     }
+}
+
+pub async fn ensure_durable(db: &Database) -> Result<(), DbError> {
+    sqlx::raw_sql(
+        "create table if not exists public.zaipos_outbox (
+            sequence bigint generated always as identity primary key,
+            tenant_id text not null,
+            branch_key text not null,
+            kind text not null
+        )",
+    )
+    .execute(db.pool())
+    .await
+    .map(|_| ())
+    .map_err(|_| DbError::Connection)
+}
+
+pub async fn append_durable(
+    db: &Database,
+    tenant_id: &str,
+    branch_id: &str,
+    kind: &str,
+) -> Result<u64, DbError> {
+    if tenant_id.is_empty() || branch_id.is_empty() || kind.is_empty() {
+        return Err(DbError::Connection);
+    }
+    let row = sqlx::query(
+        "insert into public.zaipos_outbox (tenant_id, branch_key, kind)
+         values ($1, $2, $3)
+         returning sequence",
+    )
+    .bind(tenant_id)
+    .bind(branch_id)
+    .bind(kind)
+    .fetch_one(db.pool())
+    .await
+    .map_err(|_| DbError::Connection)?;
+    let sequence: i64 = row.get("sequence");
+    u64::try_from(sequence).map_err(|_| DbError::Connection)
+}
+
+pub async fn read_durable(
+    db: &Database,
+    tenant_id: &str,
+    branch_id: &str,
+    cursor: u64,
+) -> Result<Vec<OutboxEvent>, DbError> {
+    let cursor = i64::try_from(cursor).map_err(|_| DbError::Connection)?;
+    let rows = sqlx::query(
+        "select sequence, tenant_id, branch_key, kind
+           from public.zaipos_outbox
+          where tenant_id = $1 and branch_key = $2 and sequence > $3
+          order by sequence",
+    )
+    .bind(tenant_id)
+    .bind(branch_id)
+    .bind(cursor)
+    .fetch_all(db.pool())
+    .await
+    .map_err(|_| DbError::Connection)?;
+    rows.into_iter()
+        .map(|row| {
+            let sequence: i64 = row.get("sequence");
+            Ok(OutboxEvent {
+                sequence: u64::try_from(sequence).map_err(|_| DbError::Connection)?,
+                tenant_id: row.get("tenant_id"),
+                branch_id: row.get("branch_key"),
+                kind: row.get("kind"),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

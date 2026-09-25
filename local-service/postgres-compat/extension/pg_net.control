@@ -1,0 +1,4 @@
+comment = 'ZAIPOS compatibility stub for pg_net'
+default_version = '0.0.1'
+relocatable = false
+superuser = true

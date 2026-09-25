@@ -5,6 +5,7 @@
 //! disclose them.
 
 pub mod attachments;
+pub mod auth;
 pub mod backup;
 pub mod commands;
 pub mod config;

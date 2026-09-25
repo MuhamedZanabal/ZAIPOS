@@ -1,3 +1,3 @@
 mod store;
 
-pub use store::AttachmentStore;
+pub use store::{AttachmentStore, DurableAttachmentStore};
