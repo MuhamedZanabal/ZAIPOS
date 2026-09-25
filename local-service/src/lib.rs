@@ -5,7 +5,9 @@
 //! disclose them.
 
 pub mod config;
+pub mod db;
 pub mod http;
+pub mod provisioning;
 
 pub use config::{ConfigError, ServiceConfig, ServicePaths};
 pub use http::{AppState, HealthResponse, build_router};

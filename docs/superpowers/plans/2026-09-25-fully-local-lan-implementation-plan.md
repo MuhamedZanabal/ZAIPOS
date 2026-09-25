@@ -147,7 +147,7 @@ git commit -m "feat(local): establish fail-closed local service"
 - Consumes: `ServiceConfig.database_root`, a generated 32-byte password, and bundled PostgreSQL 17 binaries.
 - Produces: `PostgresProvisioner::ensure_cluster() -> Result<ProvisionedDatabase, ProvisionError>` and `Database::connect(&ProvisionedDatabase) -> Result<Database, DbError>`.
 
-- [ ] **Step 1: Write failing provisioning-policy tests**
+- [x] **Step 1: Write failing provisioning-policy tests**
 
 ```rust
 #[test]
@@ -164,9 +164,9 @@ fn generated_postgres_policy_is_loopback_and_scram_only() {
 
 Run: `cargo test -p zaipos-local-service --test postgres_provisioning`
 
-Expected: FAIL with unresolved `render_postgres_policy`.
+Expected: FAIL with unresolved `render_postgres_policy`. The policy tests were added together with the renderer, so this red run was not captured separately.
 
-- [ ] **Step 3: Implement cluster initialization and restricted roles**
+- [x] **Step 3: Implement cluster initialization and restricted roles**
 
 ```rust
 pub struct ProvisionedDatabase {
