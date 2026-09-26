@@ -234,6 +234,155 @@ async fn first_owner_login_and_command_do_not_echo_secrets() {
     database.close().await;
 }
 
+#[tokio::test]
+async fn local_sessions_revoke_and_revalidate_user_and_device_authority() {
+    let Some(database) = EphemeralDatabase::open().await else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        return;
+    };
+    auth::ensure_identity(database.database()).await.unwrap();
+    database
+        .database()
+        .exec(
+            "create function public.ping_local(note text) returns text language sql as 'select note'",
+        )
+        .await
+        .unwrap();
+
+    let password = "cashier-password";
+    let hash = hash_password(password).unwrap().replace('\'', "''");
+    database
+        .database()
+        .exec(
+            "insert into zaipos_local_devices (id, tenant_id, branch_id, revoked) values
+             ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', false)",
+        )
+        .await
+        .unwrap();
+    database
+        .database()
+        .exec(&format!(
+            "insert into zaipos_local_users (id, tenant_id, branch_id, username, password_hash, active) values
+             ('44444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'cashier', '{hash}', true)"
+        ))
+        .await
+        .unwrap();
+
+    let app = build_router(AppState::ready(database.database().clone()));
+    let login_payload = format!(
+        r#"{{"kind":"auth","email":"cashier","password":"{password}","tenant_id":"22222222-2222-2222-2222-222222222222","branch_id":"33333333-3333-3333-3333-333333333333","device_id":"11111111-1111-1111-1111-111111111111"}}"#
+    );
+
+    let login = app
+        .clone()
+        .oneshot(post("/v1/auth/login", &login_payload))
+        .await
+        .unwrap();
+    assert_eq!(login.status(), axum::http::StatusCode::OK);
+    let login_json: serde_json::Value = serde_json::from_str(&body(login).await).unwrap();
+    let token = login_json["data"]["session"]["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let before_logout = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/commands/ping_local",
+            r#"{"note":"before-logout"}"#,
+            &token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(before_logout.status(), axum::http::StatusCode::OK);
+
+    let logout = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/auth/logout",
+            r#"{"kind":"auth","action":"logout"}"#,
+            &token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(logout.status(), axum::http::StatusCode::OK);
+
+    let after_logout = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/commands/ping_local",
+            r#"{"note":"after-logout"}"#,
+            &token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(after_logout.status(), axum::http::StatusCode::UNAUTHORIZED);
+
+    let login = app
+        .clone()
+        .oneshot(post("/v1/auth/login", &login_payload))
+        .await
+        .unwrap();
+    let login_json: serde_json::Value = serde_json::from_str(&body(login).await).unwrap();
+    let active_token = login_json["data"]["session"]["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    database
+        .database()
+        .exec("update zaipos_local_users set active = false where username = 'cashier'")
+        .await
+        .unwrap();
+
+    let inactive = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/commands/ping_local",
+            r#"{"note":"inactive"}"#,
+            &active_token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(inactive.status(), axum::http::StatusCode::UNAUTHORIZED);
+
+    database
+        .database()
+        .exec("update zaipos_local_users set active = true where username = 'cashier'")
+        .await
+        .unwrap();
+    let login = app
+        .clone()
+        .oneshot(post("/v1/auth/login", &login_payload))
+        .await
+        .unwrap();
+    let login_json: serde_json::Value = serde_json::from_str(&body(login).await).unwrap();
+    let device_token = login_json["data"]["session"]["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    database
+        .database()
+        .exec("update zaipos_local_devices set revoked = true where id = '11111111-1111-1111-1111-111111111111'")
+        .await
+        .unwrap();
+
+    let revoked_device = app
+        .oneshot(post_auth(
+            "/v1/commands/ping_local",
+            r#"{"note":"revoked-device"}"#,
+            &device_token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        revoked_device.status(),
+        axum::http::StatusCode::UNAUTHORIZED
+    );
+    database.close().await;
+}
+
 fn post(path: &str, body: &str) -> axum::http::Request<axum::body::Body> {
     axum::http::Request::builder()
         .method("POST")
