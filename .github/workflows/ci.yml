@@ -319,6 +319,21 @@ jobs:
             if (-not (Test-Path -LiteralPath $path)) { throw "PACKAGED_RUNTIME_MISSING: $path" }
           }
 
+      - name: Clean-install and launch-test Windows runtime
+        shell: pwsh
+        run: ./scripts/test-windows-installed-runtime.ps1
+
+      - name: Preserve installed-runtime diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAIPOS-${{ github.sha }}-windows-runtime-diagnostics
+          path: |
+            C:\ProgramData\ZAIPOS\postgres.log
+            C:\ProgramData\ZAIPOS\server-profile.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Preserve validation artifact
         uses: actions/upload-artifact@v4
         with:
