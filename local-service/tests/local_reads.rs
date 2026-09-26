@@ -246,7 +246,7 @@ async fn local_sessions_revoke_and_revalidate_user_and_device_authority() {
     database
         .database()
         .exec(
-            "create function public.ping_local(note text) returns text language sql as $ select note $",
+            "create function public.ping_local(note text) returns text language sql as 'select note'",
         )
         .await
         .unwrap();
