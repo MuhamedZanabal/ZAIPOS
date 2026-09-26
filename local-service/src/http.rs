@@ -277,14 +277,20 @@ fn session_response(value: &Value, data: Value) -> Result<(StatusCode, Json<Valu
 
 async fn logout(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     request: axum::extract::Request,
 ) -> Result<(StatusCode, Json<Value>), StatusCode> {
     let value = json_body(request).await?;
     commands::validate_backend(&value).map_err(|_| StatusCode::BAD_REQUEST)?;
-    if state.database.is_none() {
+    let Some(database) = state.database.as_ref() else {
         return Ok(unavailable());
+    };
+    let token = bearer_token(&headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    match auth::revoke_session(database, &token).await {
+        Ok(()) => Ok((StatusCode::OK, Json(serde_json::json!({"data":"ok"})))),
+        Err(AuthError::Unauthorized | AuthError::Forbidden | AuthError::Rejected | AuthError::SetupRequired) => Err(StatusCode::UNAUTHORIZED),
+        Err(AuthError::Unavailable) => Ok(unavailable()),
     }
-    Ok((StatusCode::OK, Json(serde_json::json!({"data":"ok"}))))
 }
 
 fn unavailable() -> (StatusCode, Json<Value>) {
