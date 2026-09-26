@@ -318,10 +318,7 @@ async fn local_sessions_revoke_and_revalidate_user_and_device_authority() {
         ))
         .await
         .unwrap();
-    assert_eq!(
-        after_logout.status(),
-        axum::http::StatusCode::UNAUTHORIZED
-    );
+    assert_eq!(after_logout.status(), axum::http::StatusCode::UNAUTHORIZED);
 
     let login = app
         .clone()
