@@ -282,7 +282,7 @@ jobs:
     name: windows-package
     needs: quality
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
@@ -293,11 +293,31 @@ jobs:
           node-version: "24"
           cache: npm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install dependencies
         run: npm ci
 
+      - name: Stage local service and PostgreSQL 17
+        shell: pwsh
+        run: ./scripts/stage-windows-runtime.ps1
+
       - name: Package unsigned Windows validation installer
         run: npm run package:windows
+
+      - name: Require packaged service and PostgreSQL
+        shell: pwsh
+        run: |
+          foreach ($path in @(
+            'release\win-unpacked\resources\runtime\zaipos-local-service.exe',
+            'release\win-unpacked\resources\runtime\install-local-service.ps1',
+            'release\win-unpacked\resources\runtime\postgres\bin\initdb.exe',
+            'release\win-unpacked\resources\runtime\postgres\bin\pg_ctl.exe',
+            'release\win-unpacked\resources\runtime\postgres\bin\postgres.exe'
+          )) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "PACKAGED_RUNTIME_MISSING: $path" }
+          }
 
       - name: Preserve validation artifact
         uses: actions/upload-artifact@v4

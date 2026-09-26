@@ -12,6 +12,7 @@ dist
 dist-ssr
 dist-electron
 release
+.runtime-stage/
 *.local
 
 # Secrets — never commit real .env files
