@@ -144,6 +144,9 @@ fn run_windows_service() -> ExitCode {
         }
         _ => {}
     });
+    // Service owns the callback, which borrows the worker handles. Drop the
+    // dispatcher before touching those handles again so the callback lifetime ends.
+    drop(service);
 
     if let Some(tx) = stop_tx.take() {
         let _ = tx.send(true);
