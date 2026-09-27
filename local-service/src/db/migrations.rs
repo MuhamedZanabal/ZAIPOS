@@ -6,6 +6,9 @@ use super::Database;
 
 pub const MIGRATION_LOCK: i64 = 7_820_192_509;
 const HISTORICAL_DEMO_SEED: &str = "20260508120000_seed_bahrain_tenant.sql";
+const HISTORICAL_SUPER_ADMIN_ROLE: &str = "20260507110000_super_admin_role.sql";
+const SUPER_ADMIN_ENUM_PRELUDE: &str =
+    "alter type public.app_role add value if not exists 'super_admin'";
 const MIGRATION_ERROR_DETAIL_MAX_CHARS: usize = 512;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -171,6 +174,7 @@ impl MigrationRunner {
             .collect::<Vec<_>>();
         let mut applied_now = Vec::new();
         for migration in pending {
+            apply_historical_autocommit_prelude(pool, migration).await?;
             let mut tx = pool.begin().await.map_err(|_| MigrationError::Database)?;
             // Historical bytes are immutable, but a new self-hosted ZAIPOS store
             // must not install the old demonstration business. Record its exact
@@ -224,6 +228,33 @@ impl MigrationRunner {
             applied: applied_now,
             skipped,
         })
+    }
+}
+
+async fn apply_historical_autocommit_prelude(
+    pool: &sqlx::PgPool,
+    migration: &Migration,
+) -> Result<(), MigrationError> {
+    let Some(sql) = historical_autocommit_prelude(&migration.filename) else {
+        return Ok(());
+    };
+    // PostgreSQL does not allow a newly-added enum value to be referenced
+    // before the transaction that added it commits (SQLSTATE 55P04). The
+    // historical Supabase migration adds `super_admin` and immediately uses
+    // it in function bodies. Commit that idempotent enum addition first, then
+    // replay the immutable migration bytes normally; its own IF NOT EXISTS is
+    // then a no-op and the migration remains checksum-verifiable.
+    sqlx::query(sql)
+        .execute(pool)
+        .await
+        .map(|_| ())
+        .map_err(|error| migration_apply_error(&migration.filename, error))
+}
+
+fn historical_autocommit_prelude(filename: &str) -> Option<&'static str> {
+    match filename {
+        HISTORICAL_SUPER_ADMIN_ROLE => Some(SUPER_ADMIN_ENUM_PRELUDE),
+        _ => None,
     }
 }
 
@@ -320,6 +351,15 @@ mod tests {
                 .windows(2)
                 .all(|pair| pair[0].filename < pair[1].filename)
         );
+    }
+
+    #[test]
+    fn super_admin_role_migration_uses_autocommit_enum_prelude() {
+        assert_eq!(
+            historical_autocommit_prelude(HISTORICAL_SUPER_ADMIN_ROLE),
+            Some(SUPER_ADMIN_ENUM_PRELUDE)
+        );
+        assert_eq!(historical_autocommit_prelude("unrelated.sql"), None);
     }
 
     #[test]
