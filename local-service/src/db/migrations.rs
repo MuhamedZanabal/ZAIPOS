@@ -6,6 +6,7 @@ use super::Database;
 
 pub const MIGRATION_LOCK: i64 = 7_820_192_509;
 const HISTORICAL_DEMO_SEED: &str = "20260508120000_seed_bahrain_tenant.sql";
+const MIGRATION_ERROR_DETAIL_MAX_CHARS: usize = 512;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Migration {
@@ -22,8 +23,8 @@ pub enum MigrationError {
     InvalidName,
     #[error("migration filename is duplicated")]
     Duplicate,
-    #[error("migration failed")]
-    Apply { filename: String },
+    #[error("migration {filename} failed: {detail}")]
+    Apply { filename: String, detail: String },
     #[error("database unavailable")]
     Database,
 }
@@ -186,12 +187,10 @@ impl MigrationRunner {
                 .bind(env!("CARGO_PKG_VERSION"))
                 .execute(&mut *tx)
                 .await
-                .map_err(|_| MigrationError::Apply {
-                    filename: migration.filename.clone(),
-                })?;
-                tx.commit().await.map_err(|_| MigrationError::Apply {
-                    filename: migration.filename.clone(),
-                })?;
+                .map_err(|error| migration_apply_error(&migration.filename, error))?;
+                tx.commit()
+                    .await
+                    .map_err(|error| migration_apply_error(&migration.filename, error))?;
                 skipped.push(migration.filename.clone());
                 continue;
             }
@@ -204,33 +203,59 @@ impl MigrationRunner {
             .bind(env!("CARGO_PKG_VERSION"))
             .execute(&mut *tx)
             .await
-            .map_err(|_| MigrationError::Apply {
-                filename: migration.filename.clone(),
-            })?;
+            .map_err(|error| migration_apply_error(&migration.filename, error))?;
             sqlx::raw_sql(&migration.sql)
                 .execute(&mut *tx)
                 .await
-                .map_err(|_| MigrationError::Apply {
-                    filename: migration.filename.clone(),
-                })?;
+                .map_err(|error| migration_apply_error(&migration.filename, error))?;
             sqlx::query(
                 "update public.zaipos_schema_migrations set completed_at = now(), failure_detail = null where filename = $1",
             )
             .bind(&migration.filename)
             .execute(&mut *tx)
             .await
-            .map_err(|_| MigrationError::Apply {
-                filename: migration.filename.clone(),
-            })?;
-            tx.commit().await.map_err(|_| MigrationError::Apply {
-                filename: migration.filename.clone(),
-            })?;
+            .map_err(|error| migration_apply_error(&migration.filename, error))?;
+            tx.commit()
+                .await
+                .map_err(|error| migration_apply_error(&migration.filename, error))?;
             applied_now.push(migration.filename.clone());
         }
         Ok(MigrationReport {
             applied: applied_now,
             skipped,
         })
+    }
+}
+
+fn migration_apply_error(filename: &str, error: sqlx::Error) -> MigrationError {
+    let detail = match error {
+        sqlx::Error::Database(database) => {
+            let code = database
+                .code()
+                .map(|value| value.into_owned())
+                .unwrap_or_else(|| "UNKNOWN".to_string());
+            let message = bounded_database_message(database.message());
+            format!("SQLSTATE {code}: {message}")
+        }
+        _ => "database execution failed before PostgreSQL returned an error".to_string(),
+    };
+    MigrationError::Apply {
+        filename: filename.to_string(),
+        detail,
+    }
+}
+
+fn bounded_database_message(message: &str) -> String {
+    let sanitized = message
+        .chars()
+        .take(MIGRATION_ERROR_DETAIL_MAX_CHARS)
+        .map(|ch| if ch.is_control() { ' ' } else { ch })
+        .collect::<String>();
+    let compact = sanitized.split_whitespace().collect::<Vec<_>>().join(" ");
+    if compact.is_empty() {
+        "database error".to_string()
+    } else {
+        compact
     }
 }
 
@@ -295,5 +320,15 @@ mod tests {
                 .windows(2)
                 .all(|pair| pair[0].filename < pair[1].filename)
         );
+    }
+
+    #[test]
+    fn database_error_message_is_bounded_and_single_line() {
+        let input = format!("first line\r\nsecond line\t{}", "x".repeat(700));
+        let detail = bounded_database_message(&input);
+        assert!(!detail.contains('\n'));
+        assert!(!detail.contains('\r'));
+        assert!(!detail.contains('\t'));
+        assert!(detail.chars().count() <= MIGRATION_ERROR_DETAIL_MAX_CHARS);
     }
 }
