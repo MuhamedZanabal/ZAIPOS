@@ -8,6 +8,8 @@ use crate::provisioning::ProvisionedDatabase;
 pub enum DbError {
     #[error("postgres connection failed")]
     Connection,
+    #[error("postgres compatibility failed: {0}")]
+    Compatibility(String),
     #[error("postgres table is not present")]
     UndefinedTable,
 }
@@ -146,7 +148,7 @@ impl Database {
         sqlx::raw_sql(sql)
             .execute(&self.pool)
             .await
-            .map_err(|_| DbError::Connection)?;
+            .map_err(compatibility_error)?;
         self.ensure_supabase_realtime_publication().await
     }
 
@@ -282,6 +284,28 @@ impl EphemeralDatabase {
         let _ = sqlx::query(&format!("drop database if exists {}", self.name))
             .execute(&self.admin)
             .await;
+    }
+}
+
+fn compatibility_error(error: sqlx::Error) -> DbError {
+    match error {
+        sqlx::Error::Database(database) => {
+            let code = database
+                .code()
+                .map(|value| value.into_owned())
+                .unwrap_or_else(|| "UNKNOWN".to_string());
+            let detail = database
+                .message()
+                .chars()
+                .take(512)
+                .map(|ch| if ch.is_control() { ' ' } else { ch })
+                .collect::<String>()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
+            DbError::Compatibility(format!("SQLSTATE {code}: {detail}"))
+        }
+        _ => DbError::Compatibility("database execution failed before PostgreSQL returned an error".to_string()),
     }
 }
 
