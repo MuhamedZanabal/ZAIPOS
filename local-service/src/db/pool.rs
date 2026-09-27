@@ -152,9 +152,7 @@ impl Database {
             .await
         {
             Ok(_) => Ok(()),
-            Err(sqlx::Error::Database(database))
-                if database.code().as_deref() == Some("42710") =>
-            {
+            Err(sqlx::Error::Database(database)) if database.code().as_deref() == Some("42710") => {
                 // Another local-service startup won the idempotent creation race.
                 Ok(())
             }
