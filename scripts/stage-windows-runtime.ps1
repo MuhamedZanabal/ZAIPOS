@@ -44,6 +44,28 @@ try {
   foreach ($directory in @('bin', 'lib', 'share')) {
     Copy-Item -LiteralPath (Join-Path $source $directory) -Destination (Join-Path $postgres $directory) -Recurse
   }
+  # Historical migrations reference Supabase-provided SQL extensions that are
+  # not part of stock PostgreSQL. ZAIPOS owns SQL-only compatibility stubs for
+  # local operation; install them into PostgreSQL's extension catalog without
+  # changing immutable migration bytes.
+  $compatSource = Join-Path $repo 'local-service\postgres-compat\extension'
+  $extensionTarget = Join-Path $postgres 'share\extension'
+  $compatFiles = @(
+    'pg_net.control',
+    'pg_net--0.0.1.sql',
+    'pgmq.control',
+    'pgmq--0.0.1.sql',
+    'supabase_vault.control',
+    'supabase_vault--0.0.1.sql',
+    'pg_cron.control',
+    'pg_cron--1.6.sql'
+  )
+  foreach ($file in $compatFiles) {
+    $sourceFile = Join-Path $compatSource $file
+    if (-not (Test-Path -LiteralPath $sourceFile)) { throw "POSTGRES_COMPAT_EXTENSION_MISSING:$file" }
+    Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $extensionTarget $file) -Force
+  }
+
   if (-not (Test-Path -LiteralPath (Join-Path $postgres 'bin\initdb.exe'))) { throw 'POSTGRES_INITDB_MISSING' }
 }
 finally {
