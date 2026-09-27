@@ -4,7 +4,7 @@ import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createLocalRuntime, adoptInstalledProfile, type LocalProfileStore, type LocalTransport } from '../../../electron/services/local-runtime';
+import { createLocalRuntime, adoptInstalledProfile, parseServiceNotice, type LocalProfileStore, type LocalTransport } from '../../../electron/services/local-runtime';
 import type { ServerProfile } from '../../../electron/services/local-service-client';
 import { pinnedRequest } from '../../../electron/services/local-service-tls';
 
@@ -56,6 +56,15 @@ describe('installed local runtime', () => {
     expect(adoptInstalledProfile(null, installed)).toEqual({ profile: installed, persist: true });
     expect(adoptInstalledProfile(installed, { ...installed, origin: 'https://10.1.1.8:58321' }).persist).toBe(false);
     expect(adoptInstalledProfile(null, { origin: 'https://8.8.8.8' }).profile).toBeNull();
+  });
+
+  it('accepts only a bounded service notice and drops anything that could carry a secret', () => {
+    expect(parseServiceNotice({ code: 'DATABASE_STARTING' })).toBe('DATABASE_STARTING');
+    expect(parseServiceNotice({ code: 'POSTGRES_PROVISIONING_FAILED' })).toBe('POSTGRES_PROVISIONING_FAILED');
+    expect(parseServiceNotice({ code: 'READY' })).toBeNull();
+    expect(parseServiceNotice({ code: 'DATABASE_STARTING', detail: 'postgres://zaipos_service:secret@127.0.0.1/zaipos' })).toBeNull();
+    expect(parseServiceNotice({ code: 'password=secret' })).toBeNull();
+    expect(parseServiceNotice('DATABASE_STARTING')).toBeNull();
   });
 
   it('sends the renderer session as a request header instead of the service body', async () => {

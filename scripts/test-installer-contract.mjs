@@ -21,6 +21,14 @@ test('installer offers both roles and does not delete data by default', () => {
   assert.match(service, /sc\.exe create ZAIPOSLocalService/);
   assert.match(installer, /sc\.exe create ZAIPOSLocalService/);
   assert.match(installer, /WINDOWS_DATA_ROOT_UNSAFE/);
+  assert.match(installer, /\*S-1-5-18:\(OI\)\(CI\)F/);
+  assert.match(installer, /\*S-1-5-32-544:\(OI\)\(CI\)F/);
+  assert.match(installer, /\*S-1-5-32-545:\(X\)/);
+  assert.match(installer, /\*S-1-5-32-545:R/);
+  assert.match(installer, /server-profile\.json/);
+  assert.match(installer, /Stop-Service -Name 'ZAIPOSLocalService'/);
+  assert.doesNotMatch(installer, /Users:\(OI\)\(CI\)/);
+  assert.doesNotMatch(installer, /Administrators:\(OI\)\(CI\)F/);
 });
 
 test('windows package bundles the local service and PostgreSQL 17 binaries', () => {

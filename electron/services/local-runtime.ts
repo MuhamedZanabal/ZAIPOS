@@ -17,6 +17,28 @@ export interface LocalRuntimeStatus {
   origin?: string;
   caFingerprint?: string;
   deviceCertificateRef?: string | null;
+  reason?: ServiceNoticeCode;
+}
+
+const SERVICE_NOTICE_CODES = [
+  'DATABASE_STARTING',
+  'POSTGRES_PROVISIONING_FAILED',
+  'DATABASE_CONNECTION_FAILED',
+  'MIGRATION_FAILED',
+  'TLS_FAILED',
+  'PROFILE_FAILED',
+  'RUNTIME_FAILED',
+] as const;
+
+export type ServiceNoticeCode = (typeof SERVICE_NOTICE_CODES)[number];
+
+/** Accept only a one-field status document. Anything else, including secrets, is ignored. */
+export function parseServiceNotice(value: unknown): ServiceNoticeCode | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+  if (keys.length !== 1 || keys[0] !== 'code' || typeof record.code !== 'string') return null;
+  return (SERVICE_NOTICE_CODES as readonly string[]).includes(record.code) ? record.code as ServiceNoticeCode : null;
 }
 
 export function createLocalRuntime(store: LocalProfileStore, transport: LocalTransport = { request: pinnedRequest }) {
