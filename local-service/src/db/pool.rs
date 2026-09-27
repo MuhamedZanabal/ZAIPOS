@@ -127,8 +127,39 @@ impl Database {
         sqlx::raw_sql(sql)
             .execute(&self.pool)
             .await
-            .map(|_| ())
-            .map_err(|_| DbError::Connection)
+            .map_err(|_| DbError::Connection)?;
+        self.ensure_supabase_realtime_publication().await
+    }
+
+    async fn ensure_supabase_realtime_publication(&self) -> Result<(), DbError> {
+        // Historical Supabase migrations add tables to this publication. A
+        // self-hosted ZAIPOS database has no Supabase control plane to create it,
+        // so define the empty PostgreSQL-native publication before replaying the
+        // immutable migration chain. This does not create a subscription or
+        // expose PostgreSQL beyond the existing loopback-only policy.
+        let (exists,): (bool,) = sqlx::query_as(
+            "select exists(select 1 from pg_publication where pubname = 'supabase_realtime')",
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|_| DbError::Connection)?;
+        if exists {
+            return Ok(());
+        }
+
+        match sqlx::query("create publication supabase_realtime")
+            .execute(&self.pool)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(sqlx::Error::Database(database))
+                if database.code().as_deref() == Some("42710") =>
+            {
+                // Another local-service startup won the idempotent creation race.
+                Ok(())
+            }
+            Err(_) => Err(DbError::Connection),
+        }
     }
 
     pub async fn is_ready(&self) -> Result<(), DbError> {
