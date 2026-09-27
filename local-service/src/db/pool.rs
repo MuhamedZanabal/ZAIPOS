@@ -46,6 +46,25 @@ impl Database {
         create schema if not exists extensions;
         create extension if not exists pgcrypto with schema extensions;
 
+        -- Supabase exposes pgcrypto through a search path that includes the
+        -- extensions schema. Some immutable historical migrations call these
+        -- functions unqualified while also defining SECURITY DEFINER functions
+        -- with search_path = public. Keep pgcrypto owned by extensions and
+        -- provide narrow public wrappers so those bytes replay on vanilla
+        -- PostgreSQL without broadening the database search path.
+        create or replace function public.gen_salt(_type text)
+        returns text language sql volatile parallel safe as $
+          select extensions.gen_salt(_type)
+        $;
+        create or replace function public.gen_salt(_type text, _rounds integer)
+        returns text language sql volatile parallel safe as $
+          select extensions.gen_salt(_type, _rounds)
+        $;
+        create or replace function public.crypt(_password text, _salt text)
+        returns text language sql volatile parallel safe as $
+          select extensions.crypt(_password, _salt)
+        $;
+
         create schema if not exists auth;
         create table if not exists auth.users (
           instance_id uuid,
