@@ -119,30 +119,62 @@ async fn serve(
 fn run_windows_service() -> ExitCode {
     use windows_services::{Command, Service};
 
-    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
-    let runtime_thread = std::thread::spawn(move || run_runtime(Some(stop_rx)));
+    let mut stop_tx: Option<tokio::sync::watch::Sender<bool>> = None;
+    let mut runtime_thread: Option<std::thread::JoinHandle<()>> = None;
 
     let mut service = Service::new();
     service.can_stop();
-    let control_result = service.run(|_service, command| {
-        if command == Command::Stop {
-            let _ = stop_tx.send(true);
+    let control_result = service.run(|_service, command| match command {
+        Command::Start if runtime_thread.is_none() => {
+            let (tx, rx) = tokio::sync::watch::channel(false);
+            stop_tx = Some(tx);
+            runtime_thread = Some(std::thread::spawn(move || {
+                if let Err(error) = run_runtime(Some(rx)) {
+                    write_startup_error(&error);
+                }
+            }));
         }
+        Command::Stop => {
+            if let Some(tx) = stop_tx.take() {
+                let _ = tx.send(true);
+            }
+            if let Some(thread) = runtime_thread.take() {
+                let _ = thread.join();
+            }
+        }
+        _ => {}
     });
 
-    let runtime_result = runtime_thread
-        .join()
-        .unwrap_or_else(|_| Err("runtime thread panicked".to_string()));
+    if let Some(tx) = stop_tx.take() {
+        let _ = tx.send(true);
+    }
+    if let Some(thread) = runtime_thread.take() {
+        let _ = thread.join();
+    }
 
-    match (control_result, runtime_result) {
-        (Ok(()), Ok(())) => ExitCode::SUCCESS,
-        (Err(error), _) => {
-            eprintln!("zaipos-local-service: service dispatcher failed: {error}");
-            ExitCode::FAILURE
-        }
-        (_, Err(error)) => {
-            eprintln!("zaipos-local-service: {error}");
-            ExitCode::FAILURE
-        }
+    if let Err(error) = control_result {
+        write_startup_error(&format!("service dispatcher failed: {error}"));
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+#[cfg(windows)]
+fn write_startup_error(error: &str) {
+    use std::io::Write;
+
+    let root = std::path::PathBuf::from(service_root());
+    if std::fs::create_dir_all(&root).is_err() {
+        return;
+    }
+    let path = root.join("startup-error.log");
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(path)
+    {
+        let _ = writeln!(file, "{error}");
     }
 }
