@@ -305,7 +305,9 @@ fn compatibility_error(error: sqlx::Error) -> DbError {
                 .join(" ");
             DbError::Compatibility(format!("SQLSTATE {code}: {detail}"))
         }
-        _ => DbError::Compatibility("database execution failed before PostgreSQL returned an error".to_string()),
+        _ => DbError::Compatibility(
+            "database execution failed before PostgreSQL returned an error".to_string(),
+        ),
     }
 }
 
