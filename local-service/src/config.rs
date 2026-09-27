@@ -93,8 +93,12 @@ impl ServiceConfig {
         self.root.join("server.key")
     }
 
+    pub fn desktop_dir(&self) -> PathBuf {
+        self.root.join("desktop")
+    }
+
     pub fn server_profile_path(&self) -> PathBuf {
-        self.root.join("server-profile.json")
+        self.desktop_dir().join("server-profile.json")
     }
 
     pub fn has_database_secret(&self) -> bool {

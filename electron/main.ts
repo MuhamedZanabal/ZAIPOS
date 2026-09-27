@@ -2,6 +2,7 @@
  * electron/main.ts
  * Electron main process for ZAIPOS.
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { app, BrowserWindow, shell, dialog } from 'electron';
 import path from 'path';
@@ -22,7 +23,7 @@ import { createDeviceOfflineOrchestrator } from './services/device-offline-orche
 import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
 import { validateBackendConfig, verifyBackendConnection } from './services/backend-config.js';
 import { registerLocalRuntimeIpc } from './services/local-runtime-ipc.js';
-import { adoptInstalledProfile, parseServiceNotice, type ServiceNoticeCode } from './services/local-runtime.js';
+import { adoptInstalledProfile, explainMissingService, parseServiceNotice, type ServiceNoticeCode } from './services/local-runtime.js';
 import { parseServerProfile } from './services/local-service-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,20 +39,46 @@ function installedServiceRoot(): string {
   return process.platform === 'win32' ? 'C:\\ProgramData\\ZAIPOS' : '/var/lib/zaipos';
 }
 
-function readInstalledProfile(): unknown {
+function readFirstInstalledJson(fileName: string): { value: unknown | null; accessDenied: boolean } {
+  let accessDenied = false;
+  for (const directory of ['desktop', '']) {
+    const full = directory
+      ? path.join(installedServiceRoot(), directory, fileName)
+      : path.join(installedServiceRoot(), fileName);
+    try {
+      return { value: JSON.parse(readFileSync(full, 'utf8')), accessDenied: false };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'EPERM' || code === 'EACCES') accessDenied = true;
+    }
+  }
+  return { value: null, accessDenied };
+}
+
+function queryWindowsService(): 'running' | 'stopped' | 'missing' | 'unknown' {
+  if (process.platform !== 'win32') return 'unknown';
   try {
-    return JSON.parse(readFileSync(path.join(installedServiceRoot(), 'server-profile.json'), 'utf8'));
-  } catch {
-    return null;
+    const output = execFileSync('C:\\Windows\\System32\\sc.exe', ['query', 'ZAIPOSLocalService'], {
+      encoding: 'utf8',
+      timeout: 4000,
+      windowsHide: true,
+    });
+    return /STATE\s*:\s*4\s+RUNNING/.test(output) ? 'running' : 'stopped';
+  } catch (error) {
+    const text = `${(error as { stderr?: string }).stderr ?? ''} ${(error as Error).message ?? ''}`;
+    return text.includes('1060') ? 'missing' : 'unknown';
   }
 }
 
+function readInstalledProfile(): unknown {
+  return readFirstInstalledJson('server-profile.json').value;
+}
+
 function readInstalledNotice(): ServiceNoticeCode | null {
-  try {
-    return parseServiceNotice(JSON.parse(readFileSync(path.join(installedServiceRoot(), 'server-status.json'), 'utf8')));
-  } catch {
-    return null;
-  }
+  const status = readFirstInstalledJson('server-status.json');
+  const notice = parseServiceNotice(status.value);
+  if (notice) return notice;
+  return explainMissingService({ notice, accessDenied: status.accessDenied, service: queryWindowsService() });
 }
 
 let nativeHandlersReady = false;

@@ -74,13 +74,21 @@ pub fn notice_from_runtime_error(message: &str) -> ServiceNotice {
 }
 
 pub fn publish_notice(root: &Path, notice: ServiceNotice) -> Result<(), PublishError> {
-    let path = root.join("server-status.json");
+    let directory = root.join("desktop");
+    fs::create_dir_all(&directory).map_err(|_| PublishError::Io)?;
+    let path = directory.join("server-status.json");
     let bytes = serde_json::to_vec(&NoticeFile {
         code: notice.code(),
     })
     .map_err(|_| PublishError::Io)?;
     fs::write(&path, bytes).map_err(|_| PublishError::Io)?;
-    publish_desktop_readable(&path)
+    // The installer grants Users read on this directory and its future files.
+    // A failed icacls call must not hide a status file that inheritance already published.
+    match publish_desktop_readable(&path) {
+        Ok(()) => Ok(()),
+        Err(PublishError::Acl) if cfg!(windows) => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 
 pub fn publish_desktop_readable(path: &Path) -> Result<(), PublishError> {
@@ -170,10 +178,10 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         publish_notice(&root, notice).unwrap();
-        let text = fs::read_to_string(root.join("server-status.json")).unwrap();
+        let text = fs::read_to_string(root.join("desktop").join("server-status.json")).unwrap();
         assert_eq!(text, "{\"code\":\"POSTGRES_PROVISIONING_FAILED\"}");
         assert!(!text.to_ascii_lowercase().contains("secret"));
-        let mode = fs::metadata(root.join("server-status.json"))
+        let mode = fs::metadata(root.join("desktop").join("server-status.json"))
             .unwrap()
             .permissions()
             .mode()

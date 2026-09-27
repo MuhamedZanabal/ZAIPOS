@@ -141,7 +141,7 @@ impl PostgresProvisioner {
             ensure_tls_material(&self.database_root)?;
 
         if !data_dir.join("PG_VERSION").exists() {
-            let status = Command::new(&initdb)
+            let status = postgres_command(&initdb)
                 .arg("-D")
                 .arg(&data_dir)
                 .arg("-U")
@@ -332,7 +332,7 @@ fn install_policy(data_dir: &Path, policy: &PostgresPolicy) -> Result<(), Provis
 }
 
 fn start_cluster(pg_ctl: &Path, data_dir: &Path, log_path: &Path) -> Result<(), ProvisionError> {
-    let status = Command::new(pg_ctl)
+    let status = postgres_command(pg_ctl)
         .arg("status")
         .arg("-D")
         .arg(data_dir)
@@ -341,7 +341,7 @@ fn start_cluster(pg_ctl: &Path, data_dir: &Path, log_path: &Path) -> Result<(), 
     if status.success() {
         return Ok(());
     }
-    let status = Command::new(pg_ctl)
+    let status = postgres_command(pg_ctl)
         .arg("-D")
         .arg(data_dir)
         .arg("-l")
@@ -354,6 +354,26 @@ fn start_cluster(pg_ctl: &Path, data_dir: &Path, log_path: &Path) -> Result<(), 
         .success()
         .then_some(())
         .ok_or(ProvisionError::CommandFailed)
+}
+
+/// Windows services start in System32 and do not inherit a developer PATH.
+/// PostgreSQL must run with its own bin and lib directories visible.
+fn postgres_command(binary: &Path) -> Command {
+    let mut command = Command::new(binary);
+    if let Some(bin_dir) = binary.parent() {
+        command.current_dir(bin_dir);
+        let mut directories = vec![bin_dir.to_path_buf()];
+        if let Some(prefix) = bin_dir.parent() {
+            directories.push(prefix.join("lib"));
+        }
+        if let Some(path) = std::env::var_os("PATH") {
+            directories.extend(std::env::split_paths(&path));
+        }
+        if let Ok(joined) = std::env::join_paths(directories) {
+            command.env("PATH", joined);
+        }
+    }
+    command
 }
 
 async fn bootstrap_roles_and_database(

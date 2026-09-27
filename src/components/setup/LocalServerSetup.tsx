@@ -12,6 +12,10 @@ function localServiceWaitingCopy(reason?: string | null): string {
       return 'ZAIPOS Local Service could not start the local database. Restart ZAIPOS Local Service. This screen checks again automatically. Database passwords are not entered here.';
     case 'MIGRATION_FAILED':
       return 'The local database could not be prepared. Restart ZAIPOS Local Service. This screen checks again automatically. Database passwords are not entered here.';
+    case 'PROFILE_UNREADABLE':
+      return 'ZAIPOS Local Service is installed, but Windows is blocking this user from reading it. Run the ZAIPOS installer again, then leave this screen open. Database passwords are not entered here.';
+    case 'SERVICE_NOT_RUNNING':
+      return 'ZAIPOS Local Service is not running. Close ZAIPOS, run the installer again, then leave this screen open. Database passwords are not entered here.';
     case 'TLS_FAILED':
     case 'PROFILE_FAILED':
     case 'RUNTIME_FAILED':

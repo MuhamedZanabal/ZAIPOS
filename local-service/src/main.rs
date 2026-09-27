@@ -43,8 +43,7 @@ fn run_runtime(stop: Option<tokio::sync::watch::Receiver<bool>>) -> Result<(), S
         .map_err(|error| format!("configuration rejected: {error}"))?;
     let root = config.root().to_path_buf();
     let _ = desktop_publish::grant_desktop_traverse(&root);
-    desktop_publish::publish_notice(&root, ServiceNotice::DatabaseStarting)
-        .map_err(|_| "server status write failed".to_string())?;
+    let _ = desktop_publish::publish_notice(&root, ServiceNotice::DatabaseStarting);
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -96,10 +95,17 @@ async fn serve_ready(
     });
     let bytes = serde_json::to_vec_pretty(&profile)
         .map_err(|_| "server profile write failed".to_string())?;
+    if let Some(parent) = config.server_profile_path().parent() {
+        std::fs::create_dir_all(parent).map_err(|_| "server profile write failed".to_string())?;
+    }
     std::fs::write(config.server_profile_path(), bytes)
         .map_err(|_| "server profile write failed".to_string())?;
-    desktop_publish::publish_desktop_readable(&config.server_profile_path())
-        .map_err(|_| "server profile write failed".to_string())?;
+    if !cfg!(windows) {
+        desktop_publish::publish_desktop_readable(&config.server_profile_path())
+            .map_err(|_| "server profile write failed".to_string())?;
+    } else {
+        let _ = desktop_publish::publish_desktop_readable(&config.server_profile_path());
+    }
     let _ = desktop_publish::publish_notice(config.root(), ServiceNotice::Ready);
 
     let tls = RustlsConfig::from_pem_file(&provisioned.cert_path, &provisioned.key_path)

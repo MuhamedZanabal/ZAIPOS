@@ -13,8 +13,14 @@ if (-not (Test-Path -LiteralPath $ServiceBinary)) {
 }
 
 New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
+$desktop = Join-Path $DataRoot 'desktop'
+New-Item -ItemType Directory -Force -Path $desktop | Out-Null
 & icacls.exe $DataRoot /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(X)' | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'WINDOWS_DATA_ACL_FAILED' }
+& icacls.exe $desktop /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)R' | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'WINDOWS_DATA_ACL_FAILED' }
+$utf8 = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText((Join-Path $desktop 'server-status.json'), '{"code":"DATABASE_STARTING"}', $utf8)
 
 if ($Role -eq 'terminal') { return }
 
@@ -53,18 +59,9 @@ do {
 } while ((Get-Date) -lt $deadline)
 if ($service.Status -ne 'Running') { throw 'WINDOWS_SERVICE_START_FAILED' }
 
-$profile = Join-Path $DataRoot 'server-profile.json'
+$profile = Join-Path $desktop 'server-profile.json'
 $profileDeadline = (Get-Date).AddMinutes(3)
 do {
   if (Test-Path -LiteralPath $profile) { break }
   Start-Sleep -Milliseconds 750
 } while ((Get-Date) -lt $profileDeadline)
-if (Test-Path -LiteralPath $profile) {
-  & icacls.exe $profile /grant:r '*S-1-5-32-545:R' | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw 'WINDOWS_PROFILE_ACL_FAILED' }
-}
-$statusFile = Join-Path $DataRoot 'server-status.json'
-if (Test-Path -LiteralPath $statusFile) {
-  & icacls.exe $statusFile /grant:r '*S-1-5-32-545:R' | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw 'WINDOWS_PROFILE_ACL_FAILED' }
-}

@@ -29,7 +29,7 @@ export interface ElectronBridge {
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   checkoutTableOrder: (payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
   inventoryCommand: (command: string, payload: Record<string, unknown>, authorization: ManagerAuthorization) => Promise<string>;
-  localStatus: () => Promise<{ state: 'not_configured' | 'configured'; origin?: string; caFingerprint?: string; deviceCertificateRef?: string | null; reason?: 'DATABASE_STARTING' | 'POSTGRES_PROVISIONING_FAILED' | 'DATABASE_CONNECTION_FAILED' | 'MIGRATION_FAILED' | 'TLS_FAILED' | 'PROFILE_FAILED' | 'RUNTIME_FAILED' }>;
+  localStatus: () => Promise<{ state: 'not_configured' | 'configured'; origin?: string; caFingerprint?: string; deviceCertificateRef?: string | null; reason?: 'DATABASE_STARTING' | 'POSTGRES_PROVISIONING_FAILED' | 'DATABASE_CONNECTION_FAILED' | 'MIGRATION_FAILED' | 'TLS_FAILED' | 'PROFILE_FAILED' | 'PROFILE_UNREADABLE' | 'RUNTIME_FAILED' | 'SERVICE_NOT_RUNNING' }>;
   enrollLocalTerminal: () => Promise<{ certificateRef: string }>;
   localRequest: (path: string, body?: unknown) => Promise<unknown>;
   subscribeLocalEvents: (callback: (payload: { state: 'not_configured' }) => void) => () => void;

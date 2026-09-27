@@ -24,7 +24,9 @@ test('installer offers both roles and does not delete data by default', () => {
   assert.match(installer, /\*S-1-5-18:\(OI\)\(CI\)F/);
   assert.match(installer, /\*S-1-5-32-544:\(OI\)\(CI\)F/);
   assert.match(installer, /\*S-1-5-32-545:\(X\)/);
-  assert.match(installer, /\*S-1-5-32-545:R/);
+  assert.match(installer, /\*S-1-5-32-545:\(OI\)\(CI\)R/);
+  assert.match(installer, /\{"code":"DATABASE_STARTING"\}/);
+  assert.match(installer, /Join-Path \$DataRoot 'desktop'/);
   assert.match(installer, /server-profile\.json/);
   assert.match(installer, /Stop-Service -Name 'ZAIPOSLocalService'/);
   assert.doesNotMatch(installer, /Users:\(OI\)\(CI\)/);

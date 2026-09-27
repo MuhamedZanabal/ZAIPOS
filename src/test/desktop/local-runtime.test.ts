@@ -4,7 +4,7 @@ import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createLocalRuntime, adoptInstalledProfile, parseServiceNotice, type LocalProfileStore, type LocalTransport } from '../../../electron/services/local-runtime';
+import { createLocalRuntime, adoptInstalledProfile, explainMissingService, parseServiceNotice, type LocalProfileStore, type LocalTransport } from '../../../electron/services/local-runtime';
 import type { ServerProfile } from '../../../electron/services/local-service-client';
 import { pinnedRequest } from '../../../electron/services/local-service-tls';
 
@@ -65,6 +65,10 @@ describe('installed local runtime', () => {
     expect(parseServiceNotice({ code: 'DATABASE_STARTING', detail: 'postgres://zaipos_service:secret@127.0.0.1/zaipos' })).toBeNull();
     expect(parseServiceNotice({ code: 'password=secret' })).toBeNull();
     expect(parseServiceNotice('DATABASE_STARTING')).toBeNull();
+    expect(explainMissingService({ notice: null, accessDenied: true, service: 'running' })).toBe('PROFILE_UNREADABLE');
+    expect(explainMissingService({ notice: null, accessDenied: false, service: 'missing' })).toBe('SERVICE_NOT_RUNNING');
+    expect(explainMissingService({ notice: null, accessDenied: false, service: 'running' })).toBe('DATABASE_STARTING');
+    expect(explainMissingService({ notice: 'MIGRATION_FAILED', accessDenied: false, service: 'running' })).toBe('MIGRATION_FAILED');
   });
 
   it('sends the renderer session as a request header instead of the service body', async () => {
