@@ -10,6 +10,7 @@ pub mod backup;
 pub mod commands;
 pub mod config;
 pub mod db;
+pub mod desktop_publish;
 pub mod device;
 pub mod events;
 pub mod http;

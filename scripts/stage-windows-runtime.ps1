@@ -8,6 +8,7 @@ $postgresSha = '85829f743e2697c55f1a5e8b210c53b90dd1f578448fc01cb9c4dc9e0a8e3827
 
 Push-Location $repo
 try {
+  $env:RUSTFLAGS = (@($env:RUSTFLAGS, '-C', 'target-feature=+crt-static') | Where-Object { $_ }) -join ' '
   cargo build --release -p zaipos-local-service
   if ($LASTEXITCODE -ne 0) { throw 'WINDOWS_SERVICE_BUILD_FAILED' }
 

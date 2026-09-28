@@ -4,6 +4,7 @@ use std::time::Duration;
 use axum_server::tls_rustls::RustlsConfig;
 use zaipos_local_service::auth::ensure_identity;
 use zaipos_local_service::db::{Database, MigrationRunner};
+use zaipos_local_service::desktop_publish::{self, ServiceNotice, notice_from_runtime_error};
 use zaipos_local_service::provisioning::PostgresProvisioner;
 use zaipos_local_service::{AppState, ServiceConfig, ServicePaths, build_router};
 
@@ -40,14 +41,21 @@ fn run_console() -> ExitCode {
 fn run_runtime(stop: Option<tokio::sync::watch::Receiver<bool>>) -> Result<(), String> {
     let config = ServiceConfig::load_or_initialize(ServicePaths::new(service_root()))
         .map_err(|error| format!("configuration rejected: {error}"))?;
+    let root = config.root().to_path_buf();
+    let _ = desktop_publish::grant_desktop_traverse(&root);
+    let _ = desktop_publish::publish_notice(&root, ServiceNotice::DatabaseStarting);
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|error| format!("runtime unavailable: {error}"))?;
-    runtime.block_on(serve(config, stop))
+    runtime
+        .block_on(serve_ready(config, stop))
+        .inspect_err(|error| {
+            let _ = desktop_publish::publish_notice(&root, notice_from_runtime_error(error));
+        })
 }
 
-async fn serve(
+async fn serve_ready(
     config: ServiceConfig,
     stop: Option<tokio::sync::watch::Receiver<bool>>,
 ) -> Result<(), String> {
@@ -85,11 +93,20 @@ async fn serve(
         "caFingerprint": provisioned.certificate_fingerprint,
         "deviceCertificateRef": "local-server-terminal"
     });
-    std::fs::write(
-        config.server_profile_path(),
-        serde_json::to_vec_pretty(&profile).map_err(|error| error.to_string())?,
-    )
-    .map_err(|error| format!("server profile write failed: {error}"))?;
+    let bytes = serde_json::to_vec_pretty(&profile)
+        .map_err(|_| "server profile write failed".to_string())?;
+    if let Some(parent) = config.server_profile_path().parent() {
+        std::fs::create_dir_all(parent).map_err(|_| "server profile write failed".to_string())?;
+    }
+    std::fs::write(config.server_profile_path(), bytes)
+        .map_err(|_| "server profile write failed".to_string())?;
+    if !cfg!(windows) {
+        desktop_publish::publish_desktop_readable(&config.server_profile_path())
+            .map_err(|_| "server profile write failed".to_string())?;
+    } else {
+        let _ = desktop_publish::publish_desktop_readable(&config.server_profile_path());
+    }
+    let _ = desktop_publish::publish_notice(config.root(), ServiceNotice::Ready);
 
     let tls = RustlsConfig::from_pem_file(&provisioned.cert_path, &provisioned.key_path)
         .await

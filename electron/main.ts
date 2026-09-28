@@ -2,6 +2,7 @@
  * electron/main.ts
  * Electron main process for ZAIPOS.
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { app, BrowserWindow, shell, dialog } from 'electron';
 import path from 'path';
@@ -22,7 +23,7 @@ import { createDeviceOfflineOrchestrator } from './services/device-offline-orche
 import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
 import { validateBackendConfig, verifyBackendConnection } from './services/backend-config.js';
 import { registerLocalRuntimeIpc } from './services/local-runtime-ipc.js';
-import { adoptInstalledProfile } from './services/local-runtime.js';
+import { adoptInstalledProfile, explainMissingService, parseServiceNotice, type ServiceNoticeCode } from './services/local-runtime.js';
 import { parseServerProfile } from './services/local-service-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,12 +39,66 @@ function installedServiceRoot(): string {
   return process.platform === 'win32' ? 'C:\\ProgramData\\ZAIPOS' : '/var/lib/zaipos';
 }
 
-function readInstalledProfile(): unknown {
-  try {
-    return JSON.parse(readFileSync(path.join(installedServiceRoot(), 'server-profile.json'), 'utf8'));
-  } catch {
-    return null;
+function readFirstInstalledJson(fileName: string): { value: unknown | null; accessDenied: boolean } {
+  let accessDenied = false;
+  for (const directory of ['desktop', '']) {
+    const full = directory
+      ? path.join(installedServiceRoot(), directory, fileName)
+      : path.join(installedServiceRoot(), fileName);
+    try {
+      return { value: JSON.parse(readFileSync(full, 'utf8')), accessDenied: false };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'EPERM' || code === 'EACCES') accessDenied = true;
+    }
   }
+  return { value: null, accessDenied };
+}
+
+function queryWindowsService(): 'running' | 'stopped' | 'missing' | 'unknown' {
+  if (process.platform !== 'win32') return 'unknown';
+  try {
+    const output = execFileSync('C:\\Windows\\System32\\sc.exe', ['query', 'ZAIPOSLocalService'], {
+      encoding: 'utf8',
+      timeout: 4000,
+      windowsHide: true,
+    });
+    return /STATE\s*:\s*4\s+RUNNING/.test(output) ? 'running' : 'stopped';
+  } catch (error) {
+    const text = `${(error as { stderr?: string }).stderr ?? ''} ${(error as Error).message ?? ''}`;
+    return text.includes('1060') ? 'missing' : 'unknown';
+  }
+}
+
+function readInstalledProfile(): unknown {
+  return readFirstInstalledJson('server-profile.json').value;
+}
+
+function readInstalledNotice(): ServiceNoticeCode | null {
+  const status = readFirstInstalledJson('server-status.json');
+  const notice = parseServiceNotice(status.value);
+  if (notice) return notice;
+  return explainMissingService({ notice, accessDenied: status.accessDenied, service: queryWindowsService() });
+}
+
+let nativeHandlersReady = false;
+
+function adoptProfileFromDisk() {
+  const stored = localRuntimeStore?.get('profile');
+  if (stored) {
+    try { return parseServerProfile(stored); } catch { return null; }
+  }
+  const adopted = adoptInstalledProfile(null, readInstalledProfile());
+  if (!adopted.profile) return null;
+  localRuntimeStore?.set('profile', adopted.profile);
+  if (!nativeHandlersReady) {
+    const authority = localAuthority();
+    if (authority) {
+      setupGlobalHandlers(authority);
+      nativeHandlersReady = true;
+    }
+  }
+  return adopted.profile;
 }
 
 function localAuthority(): BackendConfig | null {
@@ -131,16 +186,11 @@ function setupGlobalHandlers(config: BackendConfig): void {
 
 async function bootstrap(): Promise<void> {
   await initStore();
-  const adopted = adoptInstalledProfile(localRuntimeStore?.get('profile'), readInstalledProfile());
-  if (adopted.persist && adopted.profile) localRuntimeStore?.set('profile', adopted.profile);
+  adoptProfileFromDisk();
   registerLocalRuntimeIpc({
-    read() {
-      const stored = localRuntimeStore?.get('profile');
-      if (!stored) return null;
-      return parseServerProfile(stored);
-    },
+    read() { return adoptProfileFromDisk(); },
     write(profile) { localRuntimeStore?.set('profile', profile); },
-  });
+  }, readInstalledNotice);
   const settings = getSettings();
   const backendConfig = localAuthority() ?? getBackendConfig();
   log('info', 'settings_loaded', { kiosk: settings.kiosk, printerType: settings.printer?.connectionType, barcodeMode: settings.barcode?.mode, backendConfigured: Boolean(backendConfig) });
@@ -151,9 +201,13 @@ async function bootstrap(): Promise<void> {
     await verifyBackendConnection(validated);
     backendConfigStore.set(validated);
     setupGlobalHandlers(validated);
+    nativeHandlersReady = true;
     log('info', 'backend_configured', { origin: new URL(validated.supabaseUrl).origin });
   });
-  if (backendConfig) setupGlobalHandlers(backendConfig);
+  if (backendConfig && !nativeHandlersReady) {
+    setupGlobalHandlers(backendConfig);
+    nativeHandlersReady = true;
+  }
   setupPrinterHandlers(() => getSettings().printer);
   mainWindow = createWindow(settings);
   mainWindow.once('ready-to-show', async () => { if (mainWindow && backendConfig) await setupBarcodeScanner(settings.barcode, mainWindow); });

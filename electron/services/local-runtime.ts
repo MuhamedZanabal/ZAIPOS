@@ -17,6 +17,41 @@ export interface LocalRuntimeStatus {
   origin?: string;
   caFingerprint?: string;
   deviceCertificateRef?: string | null;
+  reason?: ServiceNoticeCode;
+}
+
+const SERVICE_NOTICE_CODES = [
+  'DATABASE_STARTING',
+  'POSTGRES_PROVISIONING_FAILED',
+  'DATABASE_CONNECTION_FAILED',
+  'MIGRATION_FAILED',
+  'TLS_FAILED',
+  'PROFILE_FAILED',
+  'PROFILE_UNREADABLE',
+  'RUNTIME_FAILED',
+  'SERVICE_NOT_RUNNING',
+] as const;
+
+export type ServiceNoticeCode = (typeof SERVICE_NOTICE_CODES)[number];
+
+/** Accept only a one-field status document. Anything else, including secrets, is ignored. */
+export function parseServiceNotice(value: unknown): ServiceNoticeCode | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+  if (keys.length !== 1 || keys[0] !== 'code' || typeof record.code !== 'string') return null;
+  return (SERVICE_NOTICE_CODES as readonly string[]).includes(record.code) ? record.code as ServiceNoticeCode : null;
+}
+
+export function explainMissingService(input: {
+  notice: ServiceNoticeCode | null;
+  accessDenied: boolean;
+  service: 'running' | 'stopped' | 'missing' | 'unknown';
+}): ServiceNoticeCode {
+  if (input.notice) return input.notice;
+  if (input.accessDenied) return 'PROFILE_UNREADABLE';
+  if (input.service === 'stopped' || input.service === 'missing') return 'SERVICE_NOT_RUNNING';
+  return 'DATABASE_STARTING';
 }
 
 export function createLocalRuntime(store: LocalProfileStore, transport: LocalTransport = { request: pinnedRequest }) {
