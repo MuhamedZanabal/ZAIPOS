@@ -123,6 +123,19 @@ impl Database {
             1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)
           ]
         $$;
+
+        select set_config('search_path', 'public, extensions', false);
+        do $$ begin
+          execute format(
+            'alter database %I set search_path to public, extensions',
+            current_database()
+          );
+        end $$;
+        do $$ begin
+          if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+            create publication supabase_realtime;
+          end if;
+        end $$;
         "#;
         sqlx::raw_sql(sql)
             .execute(&self.pool)

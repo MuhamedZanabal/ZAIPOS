@@ -46,6 +46,26 @@ try {
     Copy-Item -LiteralPath (Join-Path $source $directory) -Destination (Join-Path $postgres $directory) -Recurse
   }
   if (-not (Test-Path -LiteralPath (Join-Path $postgres 'bin\initdb.exe'))) { throw 'POSTGRES_INITDB_MISSING' }
+
+  $compat = Join-Path $repo 'local-service\postgres-compat\extension'
+  $extensionDir = Join-Path $postgres 'share\extension'
+  New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
+  Get-ChildItem -LiteralPath $compat -File | ForEach-Object {
+    $extensionName = $_.BaseName
+    if ($_.Name -match '^(?<ext>.+?)--') { $extensionName = $Matches.ext }
+    $controlPath = Join-Path $extensionDir ($extensionName + '.control')
+    if (Test-Path -LiteralPath $controlPath) {
+      $existing = Get-Content -LiteralPath $controlPath -Raw
+      if ($existing -notmatch 'ZAIPOS compatibility') { return }
+    }
+    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $extensionDir $_.Name) -Force
+  }
+  $netControl = Join-Path $extensionDir 'pg_net.control'
+  if (-not (Test-Path -LiteralPath $netControl)) { throw 'POSTGRES_COMPAT_EXTENSION_MISSING' }
+  $netBody = Get-Content -LiteralPath $netControl -Raw
+  if ($netBody -notmatch 'ZAIPOS compatibility' -or $netBody -notmatch 'relocatable = true') {
+    throw 'POSTGRES_COMPAT_EXTENSION_MISSING'
+  }
 }
 finally {
   Pop-Location

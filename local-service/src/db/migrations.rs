@@ -118,22 +118,28 @@ impl MigrationRunner {
     }
 
     pub async fn apply(&self, db: &Database) -> Result<MigrationReport, MigrationError> {
-        let pool = db.pool();
-        sqlx::query("select pg_advisory_lock($1)")
-            .bind(MIGRATION_LOCK)
-            .execute(pool)
+        let mut connection = db
+            .pool()
+            .acquire()
             .await
             .map_err(|_| MigrationError::Database)?;
-        let result = self.apply_locked(db).await;
+        sqlx::query("select pg_advisory_lock($1)")
+            .bind(MIGRATION_LOCK)
+            .execute(&mut *connection)
+            .await
+            .map_err(|_| MigrationError::Database)?;
+        let result = self.apply_locked(&mut connection).await;
         let _ = sqlx::query("select pg_advisory_unlock($1)")
             .bind(MIGRATION_LOCK)
-            .execute(pool)
+            .execute(&mut *connection)
             .await;
         result
     }
 
-    async fn apply_locked(&self, db: &Database) -> Result<MigrationReport, MigrationError> {
-        let pool = db.pool();
+    async fn apply_locked(
+        &self,
+        connection: &mut sqlx::PgConnection,
+    ) -> Result<MigrationReport, MigrationError> {
         sqlx::query(
             "create table if not exists public.zaipos_schema_migrations (
                 filename text primary key,
@@ -144,13 +150,15 @@ impl MigrationRunner {
                 failure_detail text
             )",
         )
-        .execute(pool)
+        .execute(&mut *connection)
         .await
         .map_err(|_| MigrationError::Database)?;
         let rows = sqlx::query(
-            "select filename, sha256 from public.zaipos_schema_migrations order by filename",
+            "select filename, sha256 from public.zaipos_schema_migrations
+             where completed_at is not null
+             order by filename",
         )
-        .fetch_all(pool)
+        .fetch_all(&mut *connection)
         .await
         .map_err(|_| MigrationError::Database)?;
         let applied = rows
@@ -170,67 +178,54 @@ impl MigrationRunner {
             .collect::<Vec<_>>();
         let mut applied_now = Vec::new();
         for migration in pending {
-            let mut tx = pool.begin().await.map_err(|_| MigrationError::Database)?;
-            // Historical bytes are immutable, but a new self-hosted ZAIPOS store
-            // must not install the old demonstration business. Record its exact
-            // checksum in the local ledger so later verification still detects
-            // tampering, while leaving the fresh database eligible for bootstrap.
             if fresh_local_database && migration.filename == HISTORICAL_DEMO_SEED {
-                sqlx::query(
-                    "insert into public.zaipos_schema_migrations
-                     (filename, sha256, app_version, started_at, completed_at)
-                     values ($1, $2, $3, now(), now())",
-                )
-                .bind(&migration.filename)
-                .bind(&migration.sha256)
-                .bind(env!("CARGO_PKG_VERSION"))
-                .execute(&mut *tx)
-                .await
-                .map_err(|_| MigrationError::Apply {
-                    filename: migration.filename.clone(),
-                })?;
-                tx.commit().await.map_err(|_| MigrationError::Apply {
-                    filename: migration.filename.clone(),
-                })?;
+                self.record_applied(connection, migration).await?;
                 skipped.push(migration.filename.clone());
                 continue;
             }
-            sqlx::query(
-                "insert into public.zaipos_schema_migrations (filename, sha256, app_version, started_at)
-                 values ($1, $2, $3, now())",
-            )
-            .bind(&migration.filename)
-            .bind(&migration.sha256)
-            .bind(env!("CARGO_PKG_VERSION"))
-            .execute(&mut *tx)
-            .await
-            .map_err(|_| MigrationError::Apply {
-                filename: migration.filename.clone(),
-            })?;
-            sqlx::raw_sql(&migration.sql)
-                .execute(&mut *tx)
+            // Historical files were authored for PostgreSQL autocommit. A new enum
+            // value cannot be used until its ALTER TYPE commits, and several files
+            // issue their own COMMIT. One transaction per file cannot apply them.
+            sqlx::raw_sql("set search_path to public, extensions")
+                .execute(&mut *connection)
                 .await
-                .map_err(|_| MigrationError::Apply {
-                    filename: migration.filename.clone(),
-                })?;
-            sqlx::query(
-                "update public.zaipos_schema_migrations set completed_at = now(), failure_detail = null where filename = $1",
-            )
-            .bind(&migration.filename)
-            .execute(&mut *tx)
-            .await
-            .map_err(|_| MigrationError::Apply {
-                filename: migration.filename.clone(),
-            })?;
-            tx.commit().await.map_err(|_| MigrationError::Apply {
-                filename: migration.filename.clone(),
-            })?;
+                .map_err(|_| MigrationError::Database)?;
+            for statement in split_sql_statements(&migration.sql) {
+                sqlx::raw_sql(&statement)
+                    .execute(&mut *connection)
+                    .await
+                    .map_err(|_| MigrationError::Apply {
+                        filename: migration.filename.clone(),
+                    })?;
+            }
+            self.record_applied(connection, migration).await?;
             applied_now.push(migration.filename.clone());
         }
         Ok(MigrationReport {
             applied: applied_now,
             skipped,
         })
+    }
+
+    async fn record_applied(
+        &self,
+        connection: &mut sqlx::PgConnection,
+        migration: &Migration,
+    ) -> Result<(), MigrationError> {
+        sqlx::query(
+            "insert into public.zaipos_schema_migrations
+             (filename, sha256, app_version, started_at, completed_at)
+             values ($1, $2, $3, now(), now())",
+        )
+        .bind(&migration.filename)
+        .bind(&migration.sha256)
+        .bind(env!("CARGO_PKG_VERSION"))
+        .execute(&mut *connection)
+        .await
+        .map_err(|_| MigrationError::Apply {
+            filename: migration.filename.clone(),
+        })?;
+        Ok(())
     }
 }
 
@@ -251,6 +246,95 @@ fn valid_source_name(name: &str) -> bool {
         && name
             .chars()
             .all(|char| char.is_ascii_alphanumeric() || matches!(char, '_' | '-' | '.'))
+}
+
+/// Split a migration file the way psql does: one statement per semicolon,
+/// without cutting dollar-quoted function bodies, strings, or comments.
+fn split_sql_statements(sql: &str) -> Vec<String> {
+    let mut statements = Vec::new();
+    let mut current = String::new();
+    let mut chars = sql.chars().peekable();
+    while let Some(character) = chars.next() {
+        match character {
+            '-' if chars.peek() == Some(&'-') => {
+                current.push(character);
+                current.push(chars.next().unwrap_or('-'));
+                for next in chars.by_ref() {
+                    current.push(next);
+                    if next == '\n' {
+                        break;
+                    }
+                }
+            }
+            '/' if chars.peek() == Some(&'*') => {
+                current.push(character);
+                current.push(chars.next().unwrap_or('*'));
+                let mut previous = '\0';
+                for next in chars.by_ref() {
+                    current.push(next);
+                    if previous == '*' && next == '/' {
+                        break;
+                    }
+                    previous = next;
+                }
+            }
+            '\'' | '"' => {
+                current.push(character);
+                while let Some(next) = chars.next() {
+                    current.push(next);
+                    if next == character {
+                        if chars.peek() == Some(&character) {
+                            current.push(chars.next().unwrap_or(character));
+                            continue;
+                        }
+                        break;
+                    }
+                }
+            }
+            '$' => {
+                let mut tag = String::from("$");
+                let mut closed = false;
+                while let Some(next) = chars.peek().copied() {
+                    if next == '$' {
+                        tag.push(next);
+                        chars.next();
+                        closed = true;
+                        break;
+                    }
+                    if next.is_ascii_alphanumeric() || next == '_' {
+                        tag.push(next);
+                        chars.next();
+                        continue;
+                    }
+                    break;
+                }
+                current.push_str(&tag);
+                if closed {
+                    let mut window = String::new();
+                    for next in chars.by_ref() {
+                        current.push(next);
+                        window.push(next);
+                        if window.ends_with(&tag) {
+                            break;
+                        }
+                    }
+                }
+            }
+            ';' => {
+                let trimmed = current.trim();
+                if !trimmed.is_empty() {
+                    statements.push(trimmed.to_string());
+                }
+                current.clear();
+            }
+            _ => current.push(character),
+        }
+    }
+    let trimmed = current.trim();
+    if !trimmed.is_empty() {
+        statements.push(trimmed.to_string());
+    }
+    statements
 }
 
 #[cfg(test)]
@@ -295,5 +379,43 @@ mod tests {
                 .windows(2)
                 .all(|pair| pair[0].filename < pair[1].filename)
         );
+    }
+
+    #[test]
+    fn sql_statements_keep_function_bodies_and_commit_enum_values_separately() {
+        let sql = "ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'super_admin';
+CREATE OR REPLACE FUNCTION public.has_role()
+RETURNS boolean LANGUAGE sql AS $$
+  SELECT 1;
+  SELECT ';';
+$$;
+-- comment with a semicolon;
+SELECT 'a;b';";
+        let statements = split_sql_statements(sql);
+        assert_eq!(statements.len(), 3);
+        assert!(statements[0].contains("ADD VALUE"));
+        assert!(!statements[0].contains("CREATE OR REPLACE"));
+        assert!(statements[1].contains("SELECT 1;"));
+        assert!(statements[1].contains("SELECT ';'"));
+        assert!(statements[2].contains("SELECT 'a;b'"));
+        assert!(!statements[2].contains("CREATE OR REPLACE"));
+
+        let runner = MigrationRunner::embedded().unwrap();
+        let super_admin = runner
+            .migrations
+            .iter()
+            .find(|migration| migration.filename.contains("super_admin_role"))
+            .unwrap();
+        let real = split_sql_statements(&super_admin.sql);
+        assert!(real.len() >= 3);
+        assert!(real[0].contains("ADD VALUE"));
+        assert!(!real[0].contains("CREATE OR REPLACE"));
+        assert!(real.iter().any(|statement| {
+            statement.contains("has_any_role") && statement.contains("super_admin")
+        }));
+        for migration in &runner.migrations {
+            let parts = split_sql_statements(&migration.sql);
+            assert!(!parts.is_empty(), "{}", migration.filename);
+        }
     }
 }

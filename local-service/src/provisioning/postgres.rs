@@ -134,6 +134,9 @@ impl PostgresProvisioner {
             .map_err(|_| ProvisionError::CommandFailed)?;
 
         let bin_dir = resolve_bin_dir(self.bin_dir.as_deref())?;
+        if let Some(prefix) = bin_dir.parent() {
+            install_sql_compat_extensions(&prefix.join("share").join("extension"))?;
+        }
         let initdb = find_binary(&bin_dir, "initdb").ok_or(ProvisionError::BinariesMissing)?;
         let pg_ctl = find_binary(&bin_dir, "pg_ctl").ok_or(ProvisionError::BinariesMissing)?;
         let data_dir = self.database_root.join("data");
@@ -331,6 +334,68 @@ fn install_policy(data_dir: &Path, policy: &PostgresPolicy) -> Result<(), Provis
     Ok(())
 }
 
+const SQL_COMPAT_EXTENSIONS: &[(&str, &str)] = &[
+    (
+        "pg_cron.control",
+        include_str!("../../postgres-compat/extension/pg_cron.control"),
+    ),
+    (
+        "pg_cron--1.6.sql",
+        include_str!("../../postgres-compat/extension/pg_cron--1.6.sql"),
+    ),
+    (
+        "pg_net.control",
+        include_str!("../../postgres-compat/extension/pg_net.control"),
+    ),
+    (
+        "pg_net--0.0.1.sql",
+        include_str!("../../postgres-compat/extension/pg_net--0.0.1.sql"),
+    ),
+    (
+        "pgmq.control",
+        include_str!("../../postgres-compat/extension/pgmq.control"),
+    ),
+    (
+        "pgmq--0.0.1.sql",
+        include_str!("../../postgres-compat/extension/pgmq--0.0.1.sql"),
+    ),
+    (
+        "supabase_vault.control",
+        include_str!("../../postgres-compat/extension/supabase_vault.control"),
+    ),
+    (
+        "supabase_vault--0.0.1.sql",
+        include_str!("../../postgres-compat/extension/supabase_vault--0.0.1.sql"),
+    ),
+];
+
+fn extension_control_name(filename: &str) -> String {
+    let stem = filename.split_once("--").map_or(filename, |(name, _)| name);
+    format!("{}.control", stem.trim_end_matches(".control"))
+}
+
+/// Copy SQL-only Supabase extension stubs into PostgreSQL's share directory.
+/// A control file that is not a ZAIPOS stub is left untouched, including its script.
+fn install_sql_compat_extensions(directory: &Path) -> Result<(), ProvisionError> {
+    if !directory.is_dir() {
+        return Ok(());
+    }
+    for (filename, body) in SQL_COMPAT_EXTENSIONS {
+        let control = directory.join(extension_control_name(filename));
+        if let Ok(existing) = fs::read_to_string(&control)
+            && !existing.contains("ZAIPOS compatibility")
+        {
+            continue;
+        }
+        let target = directory.join(filename);
+        if fs::read_to_string(&target).ok().as_deref() == Some(*body) {
+            continue;
+        }
+        fs::write(&target, *body).map_err(|_| ProvisionError::CommandFailed)?;
+    }
+    Ok(())
+}
+
 fn start_cluster(pg_ctl: &Path, data_dir: &Path, log_path: &Path) -> Result<(), ProvisionError> {
     let status = postgres_command(pg_ctl)
         .arg("status")
@@ -444,5 +509,63 @@ mod tests {
             render_postgres_policy(0),
             Err(ProvisionError::InvalidPort)
         ));
+    }
+
+    #[test]
+    fn sql_compat_extensions_install_without_replacing_a_real_control() {
+        let root = std::env::temp_dir().join(format!(
+            "zaipos-sql-compat-{}-{}",
+            std::process::id(),
+            u128::from_le_bytes({
+                let mut bytes = [0u8; 16];
+                getrandom::fill(&mut bytes).unwrap();
+                bytes
+            })
+        ));
+        let directory = root.join("extension");
+        fs::create_dir_all(&directory).unwrap();
+        fs::write(
+            directory.join("pg_cron.control"),
+            "comment = 'real pg_cron'\ndefault_version = '1.6'\n",
+        )
+        .unwrap();
+        fs::write(
+            directory.join("pg_cron--1.6.sql"),
+            "-- real pg_cron script\n",
+        )
+        .unwrap();
+
+        install_sql_compat_extensions(&directory).unwrap();
+        install_sql_compat_extensions(&directory).unwrap();
+
+        let cron = fs::read_to_string(directory.join("pg_cron.control")).unwrap();
+        assert!(!cron.contains("ZAIPOS compatibility"));
+        assert_eq!(
+            fs::read_to_string(directory.join("pg_cron--1.6.sql")).unwrap(),
+            "-- real pg_cron script\n"
+        );
+        let net = fs::read_to_string(directory.join("pg_net.control")).unwrap();
+        assert!(net.contains("ZAIPOS compatibility"));
+        assert!(net.contains("relocatable = true"));
+        assert!(
+            fs::read_to_string(directory.join("pg_net--0.0.1.sql"))
+                .unwrap()
+                .contains("net.http_post")
+        );
+        assert!(directory.join("pgmq.control").is_file());
+        assert!(directory.join("supabase_vault.control").is_file());
+
+        fs::write(
+            directory.join("pg_net.control"),
+            "comment = 'ZAIPOS compatibility stub for pg_net'\nrelocatable = false\n",
+        )
+        .unwrap();
+        install_sql_compat_extensions(&directory).unwrap();
+        assert!(
+            fs::read_to_string(directory.join("pg_net.control"))
+                .unwrap()
+                .contains("relocatable = true")
+        );
+        let _ = fs::remove_dir_all(root);
     }
 }

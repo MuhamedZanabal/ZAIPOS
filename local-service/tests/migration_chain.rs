@@ -42,3 +42,30 @@ async fn changed_historical_migration_blocks_readiness() {
     );
     database.close().await;
 }
+
+#[tokio::test]
+async fn new_enum_value_is_usable_in_the_same_migration_file() {
+    let Some(database) = EphemeralDatabase::open().await else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        eprintln!("skipped migration integration test; ZAIPOS_TEST_DATABASE_URL is unset");
+        return;
+    };
+    database
+        .database()
+        .exec("create type public.app_role as enum ('owner'); create table public.user_roles (role public.app_role);")
+        .await
+        .unwrap();
+    let runner = MigrationRunner::from_sources(&[(
+        "010_super_admin.sql",
+        "alter type public.app_role add value if not exists 'super_admin';
+         create or replace function public.sees_super_admin()
+         returns boolean language sql as $$
+           select exists (select 1 from public.user_roles where role = 'super_admin')
+         $$;",
+    )])
+    .unwrap();
+    runner.apply(database.database()).await.unwrap();
+    database.close().await;
+}

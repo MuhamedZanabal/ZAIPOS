@@ -314,9 +314,14 @@ jobs:
             'release\win-unpacked\resources\runtime\install-local-service.ps1',
             'release\win-unpacked\resources\runtime\postgres\bin\initdb.exe',
             'release\win-unpacked\resources\runtime\postgres\bin\pg_ctl.exe',
-            'release\win-unpacked\resources\runtime\postgres\bin\postgres.exe'
+            'release\win-unpacked\resources\runtime\postgres\bin\postgres.exe',
+            'release\win-unpacked\resources\runtime\postgres\share\extension\pg_net.control'
           )) {
             if (-not (Test-Path -LiteralPath $path)) { throw "PACKAGED_RUNTIME_MISSING: $path" }
+          }
+          $net = Get-Content -LiteralPath 'release\win-unpacked\resources\runtime\postgres\share\extension\pg_net.control' -Raw
+          if ($net -notmatch 'ZAIPOS compatibility' -or $net -notmatch 'relocatable = true') {
+            throw 'PACKAGED_PG_NET_STUB_MISSING'
           }
 
       - name: Preserve validation artifact
