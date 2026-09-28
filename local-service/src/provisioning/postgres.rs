@@ -141,15 +141,7 @@ impl PostgresProvisioner {
             ensure_tls_material(&self.database_root)?;
 
         if !data_dir.join("PG_VERSION").exists() {
-            let status = postgres_command(&initdb)
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-U")
-                .arg("zaipos_owner_bootstrap")
-                .arg("--auth-local=reject")
-                .arg("--auth-host=scram-sha-256")
-                .arg("--pwfile")
-                .arg(&credential_path)
+            let status = initdb_command(&initdb, &data_dir, &credential_path)
                 .status()
                 .map_err(|_| ProvisionError::CommandFailed)?;
             if !status.success() {
@@ -356,6 +348,22 @@ fn start_cluster(pg_ctl: &Path, data_dir: &Path, log_path: &Path) -> Result<(), 
         .ok_or(ProvisionError::CommandFailed)
 }
 
+fn initdb_command(initdb: &Path, data_dir: &Path, credential_path: &Path) -> Command {
+    let mut command = postgres_command(initdb);
+    command
+        .arg("-D")
+        .arg(data_dir)
+        .arg("-U")
+        .arg("zaipos_owner_bootstrap")
+        .arg("--encoding=UTF8")
+        .arg("--locale=C")
+        .arg("--auth-local=reject")
+        .arg("--auth-host=scram-sha-256")
+        .arg("--pwfile")
+        .arg(credential_path);
+    command
+}
+
 /// Windows services start in System32 and do not inherit a developer PATH.
 /// PostgreSQL must run with its own bin and lib directories visible.
 fn postgres_command(binary: &Path) -> Command {
@@ -432,6 +440,22 @@ mod tests {
         );
         assert!(!rendered.pg_hba_conf.contains("0.0.0.0/0"));
         assert!(!rendered.pg_hba_conf.contains(" trust"));
+    }
+
+    #[test]
+    fn initdb_is_forced_to_utf8_for_cross_platform_migration_replay() {
+        let command = initdb_command(
+            Path::new("initdb"),
+            Path::new("data"),
+            Path::new("zaipos_service.secret"),
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert!(args.iter().any(|arg| arg == "--encoding=UTF8"));
+        assert!(args.iter().any(|arg| arg == "--locale=C"));
     }
 
     #[test]
