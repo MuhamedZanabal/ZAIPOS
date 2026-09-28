@@ -97,4 +97,3 @@ async fn vanilla_postgres_replays_super_admin_enum_migration_with_local_compatib
 
     database.close().await;
 }
-
