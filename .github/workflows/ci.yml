@@ -338,7 +338,7 @@ jobs:
           name: ZAIPOS-${{ github.sha }}-windows-runtime-diagnostics
           path: |
             C:\ProgramData\ZAIPOS\postgres.log
-            C:\ProgramData\ZAIPOS\server-profile.json
+            C:\ProgramData\ZAIPOS\desktop\server-profile.json
             C:\ProgramData\ZAIPOS\startup-error.log
           if-no-files-found: ignore
           retention-days: 14
