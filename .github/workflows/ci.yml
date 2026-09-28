@@ -339,6 +339,8 @@ jobs:
           path: |
             C:\ProgramData\ZAIPOS\postgres.log
             C:\ProgramData\ZAIPOS\desktop\server-profile.json
+            C:\ProgramData\ZAIPOS\desktop\server-status.json
+            C:\ProgramData\ZAIPOS\health-error.log
             C:\ProgramData\ZAIPOS\startup-error.log
           if-no-files-found: ignore
           retention-days: 14
