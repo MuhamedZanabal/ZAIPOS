@@ -49,7 +49,7 @@ Wait-Until -Seconds 180 -Failure 'WINDOWS_ACCEPTANCE_SERVICE_NOT_RUNNING' -Condi
   (Get-Service -Name 'ZAIPOSLocalService' -ErrorAction Stop).Status -eq 'Running'
 }
 
-$profilePath = Join-Path $dataRoot 'server-profile.json'
+$profilePath = Join-Path $dataRoot 'desktop\\server-profile.json'
 Wait-Until -Seconds 240 -Failure 'WINDOWS_ACCEPTANCE_PROFILE_MISSING' -Condition {
   Test-Path -LiteralPath $profilePath
 }
