@@ -51,6 +51,7 @@ fn run_runtime(stop: Option<tokio::sync::watch::Receiver<bool>>) -> Result<(), S
     runtime
         .block_on(serve_ready(config, stop))
         .inspect_err(|error| {
+            let _ = std::fs::write(root.join("startup-error.log"), error.as_bytes());
             let _ = desktop_publish::publish_notice(&root, notice_from_runtime_error(error));
         })
 }
