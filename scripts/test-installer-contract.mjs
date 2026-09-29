@@ -40,6 +40,10 @@ test('windows package bundles the local service and PostgreSQL 17 binaries', () 
   assert.match(stage, /85829f743e2697c55f1a5e8b210c53b90dd1f578448fc01cb9c4dc9e0a8e3827/);
   assert.match(stage, /postgresql-17\.11\.0-x86_64-pc-windows-msvc\.zip/);
   assert.match(stage, /zaipos-local-service\.exe/);
+  assert.match(stage, /postgres-compat\\extension/);
+  assert.match(stage, /ZAIPOS compatibility/);
+  assert.match(stage, /relocatable = true/);
+  assert.match(stage, /POSTGRES_COMPAT_EXTENSION_MISSING/);
   assert.match(builder, /\.runtime-stage/);
   assert.match(readFileSync('installer/nsis/zaipos-local-runtime.nsh', 'utf8'), /resources\\runtime\\zaipos-local-service\.exe/);
 });
