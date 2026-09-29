@@ -1,5 +1,5 @@
 comment = 'ZAIPOS compatibility stub for pg_net'
 default_version = '0.0.1'
-relocatable = true
+relocatable = false
 superuser = true
 schema = extensions
