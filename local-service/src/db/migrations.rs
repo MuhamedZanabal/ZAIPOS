@@ -22,8 +22,8 @@ pub enum MigrationError {
     InvalidName,
     #[error("migration filename is duplicated")]
     Duplicate,
-    #[error("migration failed")]
-    Apply { filename: String },
+    #[error("migration failed in {filename}: {detail}")]
+    Apply { filename: String, detail: String },
     #[error("database unavailable")]
     Database,
 }
@@ -233,7 +233,10 @@ impl MigrationRunner {
 
 fn database_error_detail(error: &sqlx::Error) -> String {
     if let sqlx::Error::Database(database) = error {
-        let code = database.code().map(|value| value.into_owned()).unwrap_or_else(|| "unknown".to_string());
+        let code = database
+            .code()
+            .map(|value| value.into_owned())
+            .unwrap_or_else(|| "unknown".to_string());
         return format!("SQLSTATE {code}: {}", database.message());
     }
     error.to_string()
