@@ -47,7 +47,7 @@ fn run_runtime(stop: Option<tokio::sync::watch::Receiver<bool>>) -> Result<(), S
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .map_err(|error| format!("runtime unavailable: {error}"))?;
+        .map_err(|_| "runtime unavailable".to_string())?;
     runtime
         .block_on(serve_ready(config, stop))
         .inspect_err(|error| {
@@ -134,67 +134,42 @@ async fn serve_ready(
 
 #[cfg(windows)]
 fn run_windows_service() -> ExitCode {
+    use std::sync::Mutex;
     use windows_services::{Command, Service};
 
-    let mut stop_tx: Option<tokio::sync::watch::Sender<bool>> = None;
-    let mut runtime_thread: Option<std::thread::JoinHandle<()>> = None;
+    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+    let (done_tx, done_rx) = std::sync::mpsc::channel();
+    let runtime_thread = std::thread::spawn(move || {
+        let result = run_runtime(Some(stop_rx));
+        let _ = done_tx.send(());
+        result
+    });
+    let done_rx = Mutex::new(done_rx);
 
     let mut service = Service::new();
     service.can_stop();
-    let control_result = service.run(|_service, command| match command {
-        Command::Start if runtime_thread.is_none() => {
-            let (tx, rx) = tokio::sync::watch::channel(false);
-            stop_tx = Some(tx);
-            runtime_thread = Some(std::thread::spawn(move || {
-                if let Err(error) = run_runtime(Some(rx)) {
-                    write_startup_error(&error);
-                }
-            }));
-        }
-        Command::Stop => {
-            if let Some(tx) = stop_tx.take() {
-                let _ = tx.send(true);
-            }
-            if let Some(thread) = runtime_thread.take() {
-                let _ = thread.join();
+    let control_result = service.run(move |_service, command| {
+        if command == Command::Stop {
+            let _ = stop_tx.send(true);
+            if let Ok(receiver) = done_rx.lock() {
+                let _ = receiver.recv_timeout(Duration::from_secs(45));
             }
         }
-        _ => {}
     });
-    // Service owns the callback, which borrows the worker handles. Drop the
-    // dispatcher before touching those handles again so the callback lifetime ends.
-    drop(service);
 
-    if let Some(tx) = stop_tx.take() {
-        let _ = tx.send(true);
-    }
-    if let Some(thread) = runtime_thread.take() {
-        let _ = thread.join();
-    }
+    let runtime_result = runtime_thread
+        .join()
+        .unwrap_or_else(|_| Err("runtime thread panicked".to_string()));
 
-    if let Err(error) = control_result {
-        write_startup_error(&format!("service dispatcher failed: {error}"));
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    }
-}
-
-#[cfg(windows)]
-fn write_startup_error(error: &str) {
-    use std::io::Write;
-
-    let root = std::path::PathBuf::from(service_root());
-    if std::fs::create_dir_all(&root).is_err() {
-        return;
-    }
-    let path = root.join("startup-error.log");
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(path)
-    {
-        let _ = writeln!(file, "{error}");
+    match (control_result, runtime_result) {
+        (Ok(()), Ok(())) => ExitCode::SUCCESS,
+        (Err(error), _) => {
+            eprintln!("zaipos-local-service: service dispatcher failed: {error}");
+            ExitCode::FAILURE
+        }
+        (_, Err(error)) => {
+            eprintln!("zaipos-local-service: {error}");
+            ExitCode::FAILURE
+        }
     }
 }
