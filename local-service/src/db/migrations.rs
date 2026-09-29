@@ -194,8 +194,9 @@ impl MigrationRunner {
                 sqlx::raw_sql(&statement)
                     .execute(&mut *connection)
                     .await
-                    .map_err(|_| MigrationError::Apply {
+                    .map_err(|error| MigrationError::Apply {
                         filename: migration.filename.clone(),
+                        detail: database_error_detail(&error),
                     })?;
             }
             self.record_applied(connection, migration).await?;
@@ -222,8 +223,9 @@ impl MigrationRunner {
         .bind(env!("CARGO_PKG_VERSION"))
         .execute(&mut *connection)
         .await
-        .map_err(|_| MigrationError::Apply {
+        .map_err(|error| MigrationError::Apply {
             filename: migration.filename.clone(),
+            detail: database_error_detail(&error),
         })?;
         Ok(())
     }
