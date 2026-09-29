@@ -47,3 +47,5 @@ test('windows package bundles the local service and PostgreSQL 17 binaries', () 
   assert.match(builder, /\.runtime-stage/);
   assert.match(readFileSync('installer/nsis/zaipos-local-runtime.nsh', 'utf8'), /resources\\runtime\\zaipos-local-service\.exe/);
 });
+
+// CI acceptance marker: rerun Windows clean-install gate after runtime reconciliation.
