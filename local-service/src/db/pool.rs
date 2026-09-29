@@ -8,8 +8,6 @@ use crate::provisioning::ProvisionedDatabase;
 pub enum DbError {
     #[error("postgres connection failed")]
     Connection,
-    #[error("postgres compatibility failed: {0}")]
-    Compatibility(String),
     #[error("postgres table is not present")]
     UndefinedTable,
 }
@@ -47,25 +45,6 @@ impl Database {
         let sql = r#"
         create schema if not exists extensions;
         create extension if not exists pgcrypto with schema extensions;
-
-        -- Supabase exposes pgcrypto through a search path that includes the
-        -- extensions schema. Some immutable historical migrations call these
-        -- functions unqualified while also defining SECURITY DEFINER functions
-        -- with search_path = public. Keep pgcrypto owned by extensions and
-        -- provide narrow public wrappers so those bytes replay on vanilla
-        -- PostgreSQL without broadening the database search path.
-        create or replace function public.gen_salt(_type text)
-        returns text language sql volatile parallel safe as $$
-          select extensions.gen_salt(_type)
-        $$;
-        create or replace function public.gen_salt(_type text, _rounds integer)
-        returns text language sql volatile parallel safe as $$
-          select extensions.gen_salt(_type, _rounds)
-        $$;
-        create or replace function public.crypt(_password text, _salt text)
-        returns text language sql volatile parallel safe as $$
-          select extensions.crypt(_password, _salt)
-        $$;
 
         create schema if not exists auth;
         create table if not exists auth.users (
@@ -144,41 +123,25 @@ impl Database {
             1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)
           ]
         $$;
+
+        select set_config('search_path', 'public, extensions', false);
+        do $$ begin
+          execute format(
+            'alter database %I set search_path to public, extensions',
+            current_database()
+          );
+        end $$;
+        do $$ begin
+          if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+            create publication supabase_realtime;
+          end if;
+        end $$;
         "#;
         sqlx::raw_sql(sql)
             .execute(&self.pool)
             .await
-            .map_err(compatibility_error)?;
-        self.ensure_supabase_realtime_publication().await
-    }
-
-    async fn ensure_supabase_realtime_publication(&self) -> Result<(), DbError> {
-        // Historical Supabase migrations add tables to this publication. A
-        // self-hosted ZAIPOS database has no Supabase control plane to create it,
-        // so define the empty PostgreSQL-native publication before replaying the
-        // immutable migration chain. This does not create a subscription or
-        // expose PostgreSQL beyond the existing loopback-only policy.
-        let (exists,): (bool,) = sqlx::query_as(
-            "select exists(select 1 from pg_publication where pubname = 'supabase_realtime')",
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|_| DbError::Connection)?;
-        if exists {
-            return Ok(());
-        }
-
-        match sqlx::query("create publication supabase_realtime")
-            .execute(&self.pool)
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(sqlx::Error::Database(database)) if database.code().as_deref() == Some("42710") => {
-                // Another local-service startup won the idempotent creation race.
-                Ok(())
-            }
-            Err(_) => Err(DbError::Connection),
-        }
+            .map(|_| ())
+            .map_err(|_| DbError::Connection)
     }
 
     pub async fn is_ready(&self) -> Result<(), DbError> {
@@ -284,30 +247,6 @@ impl EphemeralDatabase {
         let _ = sqlx::query(&format!("drop database if exists {}", self.name))
             .execute(&self.admin)
             .await;
-    }
-}
-
-fn compatibility_error(error: sqlx::Error) -> DbError {
-    match error {
-        sqlx::Error::Database(database) => {
-            let code = database
-                .code()
-                .map(|value| value.into_owned())
-                .unwrap_or_else(|| "UNKNOWN".to_string());
-            let detail = database
-                .message()
-                .chars()
-                .take(512)
-                .map(|ch| if ch.is_control() { ' ' } else { ch })
-                .collect::<String>()
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" ");
-            DbError::Compatibility(format!("SQLSTATE {code}: {detail}"))
-        }
-        _ => DbError::Compatibility(
-            "database execution failed before PostgreSQL returned an error".to_string(),
-        ),
     }
 }
 
