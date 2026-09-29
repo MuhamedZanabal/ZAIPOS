@@ -63,7 +63,7 @@ try {
   $netControl = Join-Path $extensionDir 'pg_net.control'
   if (-not (Test-Path -LiteralPath $netControl)) { throw 'POSTGRES_COMPAT_EXTENSION_MISSING' }
   $netBody = Get-Content -LiteralPath $netControl -Raw
-  if ($netBody -notmatch 'ZAIPOS compatibility' -or $netBody -notmatch 'relocatable = true') {
+  if ($netBody -notmatch 'ZAIPOS compatibility' -or $netBody -notmatch 'relocatable = false') {
     throw 'POSTGRES_COMPAT_EXTENSION_MISSING'
   }
 }
