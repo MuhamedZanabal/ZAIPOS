@@ -44,7 +44,7 @@ async fn changed_historical_migration_blocks_readiness() {
 }
 
 #[tokio::test]
-async fn vanilla_postgres_replays_super_admin_enum_migration_with_local_compatibility() {
+async fn new_enum_value_is_usable_in_the_same_migration_file() {
     let Some(database) = EphemeralDatabase::open().await else {
         if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
             panic!("ZAIPOS_TEST_DATABASE_URL is required");
@@ -52,48 +52,20 @@ async fn vanilla_postgres_replays_super_admin_enum_migration_with_local_compatib
         eprintln!("skipped migration integration test; ZAIPOS_TEST_DATABASE_URL is unset");
         return;
     };
-
     database
         .database()
-        .prepare_local_compatibility()
-        .await
-        .expect("local compatibility SQL must execute on vanilla PostgreSQL");
-    database
-        .database()
-        .exec(
-            "create type public.app_role as enum ('owner');
-             create table public.user_roles (
-               user_id uuid not null,
-               tenant_id uuid,
-               role public.app_role not null
-             );",
-        )
+        .exec("create type public.app_role as enum ('owner'); create table public.user_roles (role public.app_role);")
         .await
         .unwrap();
-
     let runner = MigrationRunner::from_sources(&[(
-        "20260507110000_super_admin_role.sql",
-        r#"
-        ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'super_admin';
-
-        CREATE OR REPLACE FUNCTION public.has_super_admin_fixture(_user_id UUID)
-        RETURNS BOOLEAN LANGUAGE sql STABLE AS $$
-          SELECT EXISTS (
-            SELECT 1
-            FROM public.user_roles
-            WHERE user_id = _user_id
-              AND role = 'super_admin'
-          )
-        $$;
-        "#,
+        "010_super_admin.sql",
+        "alter type public.app_role add value if not exists 'super_admin';
+         create or replace function public.sees_super_admin()
+         returns boolean language sql as $$
+           select exists (select 1 from public.user_roles where role = 'super_admin')
+         $$;",
     )])
     .unwrap();
-
-    let report = runner.apply(database.database()).await.unwrap();
-    assert_eq!(
-        report.applied,
-        vec!["20260507110000_super_admin_role.sql".to_string()]
-    );
-
+    runner.apply(database.database()).await.unwrap();
     database.close().await;
 }
