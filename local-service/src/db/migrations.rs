@@ -229,6 +229,14 @@ impl MigrationRunner {
     }
 }
 
+fn database_error_detail(error: &sqlx::Error) -> String {
+    if let sqlx::Error::Database(database) = error {
+        let code = database.code().map(|value| value.into_owned()).unwrap_or_else(|| "unknown".to_string());
+        return format!("SQLSTATE {code}: {}", database.message());
+    }
+    error.to_string()
+}
+
 pub fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
