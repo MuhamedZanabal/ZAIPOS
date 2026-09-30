@@ -1,6 +1,6 @@
 -- Mark when an order was first dispatched to the kitchen so the UI can
 -- distinguish "open · sin enviar" from "open · en cocina" without losing
--- the order while items move from pending → preparing → ready.
+-- the order while items move from pending -> preparing -> ready.
 
 ALTER TABLE public.table_orders
   ADD COLUMN IF NOT EXISTS kitchen_sent_at TIMESTAMPTZ;
