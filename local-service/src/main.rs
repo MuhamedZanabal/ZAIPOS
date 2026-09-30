@@ -107,11 +107,13 @@ async fn serve_ready(
     } else {
         let _ = desktop_publish::publish_desktop_readable(&config.server_profile_path());
     }
-    let _ = desktop_publish::publish_notice(config.root(), ServiceNotice::Ready);
-
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| "TLS crypto provider unavailable".to_string())?;
     let tls = RustlsConfig::from_pem_file(&provisioned.cert_path, &provisioned.key_path)
         .await
         .map_err(|error| format!("TLS configuration failed: {error}"))?;
+    let _ = desktop_publish::publish_notice(config.root(), ServiceNotice::Ready);
     let handle = axum_server::Handle::new();
 
     if let Some(mut receiver) = stop {
