@@ -206,13 +206,43 @@ fn sha256_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
+pub async fn revoke_session(db: &Database, token: &str) -> Result<(), AuthError> {
+    if token.len() < 32 || token.len() > 256 {
+        return Err(AuthError::Unauthorized);
+    }
+    let result = sqlx::query(
+        "update public.zaipos_local_sessions
+            set revoked = true
+          where token_hash = $1",
+    )
+    .bind(sha256_hex(token.as_bytes()))
+    .execute(db.pool())
+    .await
+    .map_err(|_| AuthError::Unavailable)?;
+    if result.rows_affected() == 0 {
+        return Err(AuthError::Unauthorized);
+    }
+    Ok(())
+}
+
 pub async fn session_user_id(db: &Database, token: &str) -> Result<String, AuthError> {
     if token.len() < 32 || token.len() > 256 {
         return Err(AuthError::Unauthorized);
     }
     let row = sqlx::query(
-        "select user_id::text as user_id from public.zaipos_local_sessions
-         where token_hash = $1 and revoked = false and expires_at > now()",
+        "select s.user_id::text as user_id
+           from public.zaipos_local_sessions s
+           join public.zaipos_local_users u
+             on u.id = s.user_id
+            and u.active = true
+           join public.zaipos_local_devices d
+             on d.id = s.device_id
+            and d.tenant_id = u.tenant_id
+            and d.branch_id = u.branch_id
+            and d.revoked = false
+          where s.token_hash = $1
+            and s.revoked = false
+            and s.expires_at > now()",
     )
     .bind(sha256_hex(token.as_bytes()))
     .fetch_optional(db.pool())
