@@ -64,35 +64,29 @@ if ($profile.caFingerprint -notmatch '^[a-f0-9]{64}$') {
 
 $health = $null
 $healthErrorPath = Join-Path $dataRoot 'health-error.log'
-$handler = [System.Net.Http.HttpClientHandler]::new()
-$handler.UseProxy = $false
-$handler.ServerCertificateCustomValidationCallback = { $true }
-$client = [System.Net.Http.HttpClient]::new($handler)
-$client.Timeout = [TimeSpan]::FromSeconds(5)
-try {
-  Wait-Until -Seconds 240 -Failure 'WINDOWS_ACCEPTANCE_HEALTH_NOT_READY' -Condition {
-    try {
-      $response = $client.GetAsync($profile.origin + '/v1/health').GetAwaiter().GetResult()
-      $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-      $script:health = $body | ConvertFrom-Json
-      Remove-Item -LiteralPath $healthErrorPath -Force -ErrorAction SilentlyContinue
-      return [int]$response.StatusCode -eq 200 -and $script:health.status -eq 'ready' -and $script:health.database -eq 'ready'
-    } catch {
-      $listener = Get-NetTCPConnection -LocalPort 58321 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-      $serviceState = (Get-Service -Name 'ZAIPOSLocalService' -ErrorAction SilentlyContinue).Status
-      $processState = Get-Process -Name 'zaipos-local-service' -ErrorAction SilentlyContinue | Select-Object -First 1
-      @(
-        "error=$($_.Exception.GetType().FullName): $($_.Exception.Message)"
-        "service=$serviceState"
-        "process=$($processState.Id)"
-        "listener=$($listener.LocalAddress):$($listener.LocalPort)"
-      ) | Set-Content -LiteralPath $healthErrorPath -Encoding utf8
-      return $false
-    }
+$probeScript = Join-Path $PSScriptRoot 'probe-local-service-tls.mjs'
+Wait-Until -Seconds 240 -Failure 'WINDOWS_ACCEPTANCE_HEALTH_NOT_READY' -Condition {
+  $probe = @(& node $probeScript $profile.origin $profile.caFingerprint 2>&1)
+  if ($LASTEXITCODE -ne 0) {
+    $listener = Get-NetTCPConnection -LocalPort 58321 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    $serviceState = (Get-Service -Name 'ZAIPOSLocalService' -ErrorAction SilentlyContinue).Status
+    $processState = Get-Process -Name 'zaipos-local-service' -ErrorAction SilentlyContinue | Select-Object -First 1
+    @(
+      "probe=$($probe -join ' | ')"
+      "service=$serviceState"
+      "process=$($processState.Id)"
+      "listener=$($listener.LocalAddress):$($listener.LocalPort)"
+    ) | Set-Content -LiteralPath $healthErrorPath -Encoding utf8
+    return $false
   }
-} finally {
-  $client.Dispose()
-  $handler.Dispose()
+  try {
+    $script:health = ($probe -join '') | ConvertFrom-Json
+    Remove-Item -LiteralPath $healthErrorPath -Force -ErrorAction SilentlyContinue
+    return $script:health.status -eq 'ready' -and $script:health.database -eq 'ready'
+  } catch {
+    "probe_parse=$($_.Exception.Message)" | Set-Content -LiteralPath $healthErrorPath -Encoding utf8
+    return $false
+  }
 }
 
 if (-not (Get-Process -Name 'postgres' -ErrorAction SilentlyContinue)) {
