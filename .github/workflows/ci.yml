@@ -320,7 +320,7 @@ jobs:
             if (-not (Test-Path -LiteralPath $path)) { throw "PACKAGED_RUNTIME_MISSING: $path" }
           }
           $net = Get-Content -LiteralPath 'release\win-unpacked\resources\runtime\postgres\share\extension\pg_net.control' -Raw
-          if ($net -notmatch 'ZAIPOS compatibility' -or $net -notmatch 'relocatable = true') {
+          if ($net -notmatch 'ZAIPOS compatibility' -or $net -notmatch 'relocatable = false') {
             throw 'PACKAGED_PG_NET_STUB_MISSING'
           }
 
