@@ -22,8 +22,8 @@ pub enum MigrationError {
     InvalidName,
     #[error("migration filename is duplicated")]
     Duplicate,
-    #[error("migration failed")]
-    Apply { filename: String },
+    #[error("migration failed in {filename}: {detail}")]
+    Apply { filename: String, detail: String },
     #[error("database unavailable")]
     Database,
 }
@@ -194,8 +194,9 @@ impl MigrationRunner {
                 sqlx::raw_sql(&statement)
                     .execute(&mut *connection)
                     .await
-                    .map_err(|_| MigrationError::Apply {
+                    .map_err(|error| MigrationError::Apply {
                         filename: migration.filename.clone(),
+                        detail: database_error_detail(&error),
                     })?;
             }
             self.record_applied(connection, migration).await?;
@@ -222,11 +223,23 @@ impl MigrationRunner {
         .bind(env!("CARGO_PKG_VERSION"))
         .execute(&mut *connection)
         .await
-        .map_err(|_| MigrationError::Apply {
+        .map_err(|error| MigrationError::Apply {
             filename: migration.filename.clone(),
+            detail: database_error_detail(&error),
         })?;
         Ok(())
     }
+}
+
+fn database_error_detail(error: &sqlx::Error) -> String {
+    if let sqlx::Error::Database(database) = error {
+        let code = database
+            .code()
+            .map(|value| value.into_owned())
+            .unwrap_or_else(|| "unknown".to_string());
+        return format!("SQLSTATE {code}: {}", database.message());
+    }
+    error.to_string()
 }
 
 pub fn sha256_hex(bytes: &[u8]) -> String {

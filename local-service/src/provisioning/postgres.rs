@@ -546,7 +546,7 @@ mod tests {
         );
         let net = fs::read_to_string(directory.join("pg_net.control")).unwrap();
         assert!(net.contains("ZAIPOS compatibility"));
-        assert!(net.contains("relocatable = true"));
+        assert!(net.contains("relocatable = false"));
         assert!(
             fs::read_to_string(directory.join("pg_net--0.0.1.sql"))
                 .unwrap()
@@ -564,7 +564,7 @@ mod tests {
         assert!(
             fs::read_to_string(directory.join("pg_net.control"))
                 .unwrap()
-                .contains("relocatable = true")
+                .contains("relocatable = false")
         );
         let _ = fs::remove_dir_all(root);
     }

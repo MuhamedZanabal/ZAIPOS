@@ -320,9 +320,27 @@ jobs:
             if (-not (Test-Path -LiteralPath $path)) { throw "PACKAGED_RUNTIME_MISSING: $path" }
           }
           $net = Get-Content -LiteralPath 'release\win-unpacked\resources\runtime\postgres\share\extension\pg_net.control' -Raw
-          if ($net -notmatch 'ZAIPOS compatibility' -or $net -notmatch 'relocatable = true') {
+          if ($net -notmatch 'ZAIPOS compatibility' -or $net -notmatch 'relocatable = false') {
             throw 'PACKAGED_PG_NET_STUB_MISSING'
           }
+
+      - name: Clean-install and launch-test Windows runtime
+        shell: pwsh
+        run: ./scripts/test-windows-installed-runtime.ps1
+
+      - name: Preserve installed-runtime diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAIPOS-${{ github.sha }}-windows-runtime-diagnostics
+          path: |
+            C:\ProgramData\ZAIPOS\postgres.log
+            C:\ProgramData\ZAIPOS\desktop\server-profile.json
+            C:\ProgramData\ZAIPOS\desktop\server-status.json
+            C:\ProgramData\ZAIPOS\health-error.log
+            C:\ProgramData\ZAIPOS\startup-error.log
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Preserve validation artifact
         uses: actions/upload-artifact@v4
