@@ -41,6 +41,11 @@ fn run_console() -> ExitCode {
 fn run_runtime(stop: Option<tokio::sync::watch::Receiver<bool>>) -> Result<(), String> {
     let config = ServiceConfig::load_or_initialize(ServicePaths::new(service_root()))
         .map_err(|error| format!("configuration rejected: {error}"))?;
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .map_err(|_| "TLS crypto provider unavailable".to_string())?;
+    }
     let root = config.root().to_path_buf();
     let _ = desktop_publish::grant_desktop_traverse(&root);
     let _ = desktop_publish::publish_notice(&root, ServiceNotice::DatabaseStarting);
@@ -107,9 +112,6 @@ async fn serve_ready(
     } else {
         let _ = desktop_publish::publish_desktop_readable(&config.server_profile_path());
     }
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .map_err(|_| "TLS crypto provider unavailable".to_string())?;
     let tls = RustlsConfig::from_pem_file(&provisioned.cert_path, &provisioned.key_path)
         .await
         .map_err(|error| format!("TLS configuration failed: {error}"))?;
