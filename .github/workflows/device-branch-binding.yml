@@ -1,0 +1,43 @@
+name: Device Branch Binding
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/test-device-branch-binding-postgres.mjs'
+      - 'scripts/test-device-branch-binding-race-postgres.mjs'
+      - 'scripts/test-production-migration-chain*.mjs'
+      - '.github/workflows/device-branch-binding.yml'
+  workflow_dispatch:
+
+jobs:
+  branch-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.136
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Ensure PostgreSQL client
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply and verify complete migration chain
+        run: node scripts/test-production-migration-chain-supabase.mjs
+      - name: Reject unauthorized branch rebinding
+        run: node scripts/test-device-branch-binding-postgres.mjs
+      - name: Reject concurrent first-registration branch race
+        run: node scripts/test-device-branch-binding-race-postgres.mjs
