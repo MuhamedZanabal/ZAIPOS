@@ -208,7 +208,7 @@ pub fn render_postgres_policy(port: u16) -> Result<PostgresPolicy, ProvisionErro
     Ok(rendered)
 }
 
-fn resolve_bin_dir(explicit: Option<&Path>) -> Result<PathBuf, ProvisionError> {
+pub fn resolve_bin_dir(explicit: Option<&Path>) -> Result<PathBuf, ProvisionError> {
     if let Some(path) = explicit {
         return Ok(path.to_path_buf());
     }
@@ -229,7 +229,7 @@ fn resolve_bin_dir(explicit: Option<&Path>) -> Result<PathBuf, ProvisionError> {
     Err(ProvisionError::BinariesMissing)
 }
 
-fn find_binary(bin_dir: &Path, name: &str) -> Option<PathBuf> {
+pub fn find_binary(bin_dir: &Path, name: &str) -> Option<PathBuf> {
     let direct = bin_dir.join(name);
     if direct.is_file() {
         return Some(direct);

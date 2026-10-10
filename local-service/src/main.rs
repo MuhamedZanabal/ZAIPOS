@@ -112,6 +112,20 @@ async fn serve_ready(
     } else {
         let _ = desktop_publish::publish_desktop_readable(&config.server_profile_path());
     }
+    let mut state = AppState::ready(database);
+    match zaipos_local_service::provisioning::resolve_bin_dir(None)
+        .map_err(|_| zaipos_local_service::backup::BackupError::ToolsMissing)
+        .and_then(|bin| {
+            let dir = config
+                .database_root()
+                .parent()
+                .map(|p| p.join("backups"))
+                .unwrap_or_else(|| config.database_root().join("backups"));
+            zaipos_local_service::backup::BackupStore::new(&provisioned, &bin, dir)
+        }) {
+        Ok(store) => state = state.with_backups(store),
+        Err(error) => eprintln!("backups unavailable: {error}"),
+    }
     let tls = RustlsConfig::from_pem_file(&provisioned.cert_path, &provisioned.key_path)
         .await
         .map_err(|error| format!("TLS configuration failed: {error}"))?;
@@ -132,7 +146,7 @@ async fn serve_ready(
 
     axum_server::bind_rustls(config.listen(), tls)
         .handle(handle)
-        .serve(build_router(AppState::ready(database)).into_make_service())
+        .serve(build_router(state).into_make_service())
         .await
         .map_err(|error| format!("TLS listener stopped: {error}"))
 }

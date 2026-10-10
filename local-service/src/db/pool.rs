@@ -39,6 +39,11 @@ impl Database {
         &self.pool
     }
 
+    #[cfg(feature = "test-utils")]
+    pub fn pool_for_tests(&self) -> &PgPool {
+        &self.pool
+    }
+
     /// Prepare the minimum Supabase-compatible database primitives required by
     /// the immutable historical migration chain. No hosted service is involved.
     pub async fn prepare_local_compatibility(&self) -> Result<(), DbError> {

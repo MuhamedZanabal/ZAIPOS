@@ -11,6 +11,7 @@ use tower::ServiceExt;
 use tower_http::limit::RequestBodyLimitLayer;
 
 use crate::auth::{self, AuthError};
+use crate::backup::{BackupError, BackupStore};
 use crate::commands::{self, ExecError, execute_backend, execute_command};
 use crate::db::Database;
 
@@ -26,6 +27,7 @@ pub struct HealthResponse {
 pub struct AppState {
     health: HealthResponse,
     database: Option<Database>,
+    backups: Option<BackupStore>,
 }
 
 impl AppState {
@@ -36,6 +38,7 @@ impl AppState {
                 database: "unavailable",
             },
             database: None,
+            backups: None,
         }
     }
 
@@ -46,7 +49,14 @@ impl AppState {
                 database: "ready",
             },
             database: Some(database),
+            backups: None,
         }
+    }
+
+    /// Enables owner backups/restore of the local database.
+    pub fn with_backups(mut self, backups: BackupStore) -> Self {
+        self.backups = Some(backups);
+        self
     }
 }
 
@@ -58,6 +68,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/auth/bootstrap", post(bootstrap))
         .route("/v1/auth/logout", post(logout))
         .route("/v1/commands/{name}", post(command))
+        .route("/v1/admin/backups/{action}", post(backups))
         .fallback(not_found)
         .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BYTES))
         .with_state(state)
@@ -360,6 +371,103 @@ async fn limited_body(request: axum::extract::Request) -> Result<Vec<u8>, Status
         return Err(StatusCode::PAYLOAD_TOO_LARGE);
     }
     Ok(bytes.to_vec())
+}
+
+/// Owner/admin-only local database backups. Chunked so every request and
+/// response stays under the 1 MiB transport limit.
+async fn backups(
+    State(state): State<AppState>,
+    Path(action): Path<String>,
+    headers: axum::http::HeaderMap,
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    use base64::Engine as _;
+    let value = json_body(request).await?;
+    let (Some(database), Some(store)) = (state.database.as_ref(), state.backups.as_ref()) else {
+        return Ok(unavailable());
+    };
+    let token = bearer_token(&headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user_id = auth::session_user_id(database, &token)
+        .await
+        .map_err(|error| match error {
+            AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+            _ => StatusCode::UNAUTHORIZED,
+        })?;
+    let allowed: bool = sqlx::query_scalar(
+        "select exists(select 1 from public.user_roles where user_id = $1::uuid and role::text in ('owner','admin'))",
+    )
+    .bind(&user_id)
+    .fetch_one(database.pool())
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    if !allowed {
+        return Ok((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error": "Only an owner or admin can manage backups"})),
+        ));
+    }
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let str_field = |key: &str| {
+        value
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
+    let result: Result<Value, BackupError> = match action.as_str() {
+        "create" => store.create().await.map(|info| serde_json::json!(info)),
+        "list" => store.list().await.map(|items| serde_json::json!(items)),
+        "read" => {
+            let offset = value.get("offset").and_then(Value::as_u64).unwrap_or(0);
+            store.read_chunk(&str_field("name"), offset).await.map(|(bytes, total)| {
+                let next = offset + bytes.len() as u64;
+                serde_json::json!({"data": b64.encode(&bytes), "offset": offset, "next": next, "total": total, "done": next >= total})
+            })
+        }
+        "import-begin" => store
+            .import_begin()
+            .await
+            .map(|id| serde_json::json!({"upload_id": id})),
+        "import-chunk" => {
+            let bytes = b64
+                .decode(str_field("data"))
+                .map_err(|_| StatusCode::BAD_REQUEST)?;
+            let offset = value.get("offset").and_then(Value::as_u64).unwrap_or(0);
+            store
+                .import_chunk(&str_field("upload_id"), offset, &bytes)
+                .await
+                .map(|next| serde_json::json!({"next": next}))
+        }
+        "import-finish" => store
+            .import_finish(&str_field("upload_id"))
+            .await
+            .map(|info| serde_json::json!(info)),
+        "restore" => {
+            if str_field("confirm") != "RESTORE" {
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"error": "Type RESTORE to confirm"})),
+                ));
+            }
+            store.restore(&str_field("name")).await.map(|safety| serde_json::json!({"restored": str_field("name"), "safety_backup": safety}))
+        }
+        _ => return Err(StatusCode::NOT_FOUND),
+    };
+    match result {
+        Ok(data) => Ok((StatusCode::OK, Json(serde_json::json!({"data": data})))),
+        Err(error) => {
+            let status = match error {
+                BackupError::NotFound | BackupError::UnknownUpload => StatusCode::NOT_FOUND,
+                BackupError::InvalidName => StatusCode::BAD_REQUEST,
+                BackupError::Corrupt => StatusCode::UNPROCESSABLE_ENTITY,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            Ok((
+                status,
+                Json(serde_json::json!({"error": error.to_string()})),
+            ))
+        }
+    }
 }
 
 async fn not_found() -> impl IntoResponse {
