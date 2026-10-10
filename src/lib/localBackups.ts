@@ -20,7 +20,12 @@ const toBase64 = (bytes: Uint8Array) => {
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
 };
-const fromBase64 = (text: string) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+const fromBase64 = (text: string) => {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
 
 /** Downloads a backup in chunks; the result is byte-identical (checked against its SHA-256). */
 export async function downloadBackup(backup: LocalBackup, onProgress?: (done: number, total: number) => void): Promise<Blob> {
@@ -56,8 +61,12 @@ export async function uploadBackup(file: Blob, onProgress?: (done: number, total
 
 export async function sha256Hex(buffer: ArrayBuffer | Uint8Array): Promise<string> {
   // Copy into this realm's Uint8Array (Blob buffers can come from another realm).
-  const hash = await crypto.subtle.digest("SHA-256", Uint8Array.from(new Uint8Array(buffer as ArrayBuffer)));
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const copy = new Uint8Array(buffer.byteLength);
+  copy.set(buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer));
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", copy));
+  let hex = "";
+  for (const byte of hash) hex += byte.toString(16).padStart(2, "0");
+  return hex;
 }
 
 export const formatBytes = (n: number) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
