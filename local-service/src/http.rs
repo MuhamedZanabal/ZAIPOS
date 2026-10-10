@@ -108,10 +108,42 @@ async fn backend(
             };
         }
     }
-    match execute_backend(database, &value).await {
+    let user_id =
+        match bearer_token(&headers) {
+            Some(token) => Some(auth::session_user_id(database, &token).await.map_err(
+                |error| match error {
+                    AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+                    _ => StatusCode::UNAUTHORIZED,
+                },
+            )?),
+            None => None,
+        };
+    match execute_backend(database, &value, user_id.as_deref()).await {
+        Ok(Value::Object(mut data)) if data.contains_key("__zaipos_count") => {
+            let count = data.remove("__zaipos_count").unwrap_or(Value::Null);
+            Ok((
+                StatusCode::OK,
+                Json(serde_json::json!({"data": null, "count": count})),
+            ))
+        }
         Ok(data) => Ok((StatusCode::OK, Json(serde_json::json!({"data": data})))),
-        Err(ExecError::Rejected) => Err(StatusCode::BAD_REQUEST),
-        Err(ExecError::Unavailable | ExecError::Failed { .. }) => Ok(unavailable()),
+        // A JSON error lets the app report the failure instead of treating the
+        // local service as unreachable.
+        Err(ExecError::Rejected) => Ok((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "Request rejected by the local service", "code": "PGRST100"}),
+            ),
+        )),
+        Err(ExecError::Unauthorized) => Ok((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error": "UNAUTHORIZED"})),
+        )),
+        Err(ExecError::Failed { code, message }) => Ok((
+            status_for_code(&code),
+            Json(serde_json::json!({"error": message, "code": code})),
+        )),
+        Err(ExecError::Unavailable) => Ok(unavailable()),
     }
 }
 
@@ -220,7 +252,12 @@ async fn execute_named_command(
             | AuthError::Rejected
             | AuthError::SetupRequired => StatusCode::UNAUTHORIZED,
         })?;
-    match execute_command(database, name, arguments, &user_id).await {
+    let outcome = if name == "activate_device" {
+        commands::activate_device(database, arguments, &user_id).await
+    } else {
+        execute_command(database, name, arguments, &user_id).await
+    };
+    match outcome {
         Ok(data) => {
             if secret.is_some_and(|secret| !secret.is_empty() && data.to_string().contains(secret))
             {
@@ -229,6 +266,7 @@ async fn execute_named_command(
             Ok((StatusCode::OK, Json(data)))
         }
         Err(ExecError::Rejected) => Err(StatusCode::BAD_REQUEST),
+        Err(ExecError::Unauthorized) => Err(StatusCode::UNAUTHORIZED),
         Err(ExecError::Unavailable) => Ok((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(serde_json::json!({"error":"LOCAL_COMMAND_FAILED"})),
@@ -237,16 +275,20 @@ async fn execute_named_command(
             if secret.is_some_and(|secret| !secret.is_empty() && message.contains(secret)) {
                 return Ok(unavailable());
             }
-            let status = match code.as_str() {
-                "42501" => StatusCode::FORBIDDEN,
-                "23505" | "P0001" => StatusCode::CONFLICT,
-                _ => StatusCode::BAD_REQUEST,
-            };
+            let status = status_for_code(&code);
             Ok((
                 status,
                 Json(serde_json::json!({"code": code, "message": message})),
             ))
         }
+    }
+}
+
+fn status_for_code(code: &str) -> StatusCode {
+    match code {
+        "42501" => StatusCode::FORBIDDEN,
+        "23505" | "P0001" => StatusCode::CONFLICT,
+        _ => StatusCode::BAD_REQUEST,
     }
 }
 

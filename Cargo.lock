@@ -2647,6 +2647,7 @@ dependencies = [
  "p256",
  "rand_core",
  "rcgen",
+ "rustls",
  "secrecy",
  "serde",
  "serde_json",

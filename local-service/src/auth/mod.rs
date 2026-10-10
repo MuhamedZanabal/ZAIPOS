@@ -235,6 +235,11 @@ pub async fn bootstrap_owner(db: &Database, body: &Value) -> Result<Value, AuthE
         .and_then(Value::as_str)
         .unwrap_or("")
         .trim();
+    let business_mode = match body.get("business_mode").and_then(Value::as_str) {
+        None | Some("RETAIL") => "RETAIL",
+        Some("RESTAURANT") => "RESTAURANT",
+        Some(_) => return Err(AuthError::Rejected),
+    };
     if username.is_empty()
         || !(8..=1024).contains(&password.len())
         || tenant_name.is_empty()
@@ -310,10 +315,11 @@ pub async fn bootstrap_owner(db: &Database, body: &Value) -> Result<Value, AuthE
                 .map_err(|_| AuthError::Unavailable)?;
         }
         let created: (String, String) = sqlx::query_as(
-            "select tenant_id::text, branch_id::text from public.bootstrap_tenant_v2($1, $2, 10, 'RETAIL')",
+            "select tenant_id::text, branch_id::text from public.bootstrap_tenant_v2($1, $2, 10, $3)",
         )
         .bind(tenant_name)
         .bind(branch_name)
+        .bind(business_mode)
         .fetch_one(&mut *tx)
         .await
         .map_err(|_| AuthError::Unavailable)?;
@@ -335,11 +341,12 @@ pub async fn bootstrap_owner(db: &Database, body: &Value) -> Result<Value, AuthE
             let slug = slug_for(&username, &tenant_id);
             sqlx::query(
                 "insert into public.tenants (id, name, slug, currency, tax_rate, business_mode)
-                 values ($1::uuid, $2, $3, 'BHD', 10, 'RETAIL')",
+                 values ($1::uuid, $2, $3, 'BHD', 10, $4)",
             )
             .bind(&tenant_id)
             .bind(tenant_name)
             .bind(&slug)
+            .bind(business_mode)
             .execute(&mut *tx)
             .await
             .map_err(|_| AuthError::Unavailable)?;

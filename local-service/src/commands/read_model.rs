@@ -1,5 +1,5 @@
 use serde_json::{Value, json};
-use sqlx::QueryBuilder;
+use sqlx::{Postgres, Transaction};
 
 use crate::db::{Database, DbError};
 
@@ -8,11 +8,16 @@ use super::CommandError;
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExecError {
     Rejected,
+    Unauthorized,
     Unavailable,
     Failed { code: String, message: String },
 }
 
-pub async fn execute_backend(db: &Database, value: &Value) -> Result<Value, ExecError> {
+pub async fn execute_backend(
+    db: &Database,
+    value: &Value,
+    user_id: Option<&str>,
+) -> Result<Value, ExecError> {
     let object = value.as_object().ok_or(ExecError::Rejected)?;
     match object.get("kind").and_then(Value::as_str) {
         Some("table") => {
@@ -22,7 +27,7 @@ pub async fn execute_backend(db: &Database, value: &Value) -> Result<Value, Exec
                 .and_then(Value::as_array)
                 .map(Vec::as_slice)
                 .unwrap_or(&[]);
-            execute_table(db, table, steps).await
+            execute_table(db, table, steps, user_id).await
         }
         Some("rpc") => {
             let name = object.get("fn").and_then(Value::as_str).unwrap_or("");
@@ -33,103 +38,71 @@ pub async fn execute_backend(db: &Database, value: &Value) -> Result<Value, Exec
     }
 }
 
-async fn execute_table(db: &Database, table: &str, steps: &[Value]) -> Result<Value, ExecError> {
-    super::validate_table_name(table).map_err(|_| ExecError::Rejected)?;
-    let mut columns = vec!["*".to_string()];
-    let mut filters: Vec<(String, String)> = Vec::new();
-    let mut order: Option<(String, bool)> = None;
-    let mut limit: i64 = 100;
-    for step in steps {
-        let parts = step.as_array().ok_or(ExecError::Rejected)?;
-        let name = parts
-            .first()
-            .and_then(Value::as_str)
-            .ok_or(ExecError::Rejected)?;
-        let args = parts.get(1).and_then(Value::as_array);
-        match name {
-            "select" => {
-                let raw = args
-                    .and_then(|args| args.first())
-                    .and_then(Value::as_str)
-                    .unwrap_or("*");
-                columns = parse_columns(raw)?;
-            }
-            "eq" => {
-                let column = args
-                    .and_then(|args| args.first())
-                    .and_then(Value::as_str)
-                    .ok_or(ExecError::Rejected)?;
-                let value = args
-                    .and_then(|args| args.get(1))
-                    .ok_or(ExecError::Rejected)?;
-                if !is_ident(column) {
-                    return Err(ExecError::Rejected);
-                }
-                filters.push((column.to_string(), json_text(value)?));
-            }
-            "order" => {
-                let column = args
-                    .and_then(|args| args.first())
-                    .and_then(Value::as_str)
-                    .ok_or(ExecError::Rejected)?;
-                if !is_ident(column) {
-                    return Err(ExecError::Rejected);
-                }
-                let ascending = args
-                    .and_then(|args| args.get(1))
-                    .and_then(|value| value.get("ascending"))
-                    .and_then(Value::as_bool)
-                    .unwrap_or(true);
-                order = Some((column.to_string(), ascending));
-            }
-            "limit" => {
-                let value = args
-                    .and_then(|args| args.first())
-                    .and_then(Value::as_i64)
-                    .ok_or(ExecError::Rejected)?;
-                if !(1..=1000).contains(&value) {
-                    return Err(ExecError::Rejected);
-                }
-                limit = value;
-            }
-            "insert" | "update" | "delete" | "upsert" => return Err(ExecError::Rejected),
-            _ => return Err(ExecError::Rejected),
-        }
-    }
-    let projection = if columns.iter().any(|column| column == "*") {
-        "*".to_string()
+/// Opens a transaction that acts as the caller: `authenticated` with the
+/// session user as `auth.uid()`, or `anon` without a session. Row-level
+/// security therefore decides visibility exactly as it did on the hosted stack.
+pub(crate) async fn caller_transaction(
+    db: &Database,
+    user_id: Option<&str>,
+) -> Result<Transaction<'static, Postgres>, ExecError> {
+    let mut tx = db.pool().begin().await.map_err(map_db)?;
+    let role = if user_id.is_some() {
+        "authenticated"
     } else {
-        columns.join(", ")
+        "anon"
     };
-    let mut builder = QueryBuilder::<sqlx::Postgres>::new("select to_jsonb(row) from (select ");
-    builder.push(projection);
-    builder.push(" from ");
-    builder.push(table);
-    if !filters.is_empty() {
-        builder.push(" where ");
-        for (index, (column, value)) in filters.iter().enumerate() {
-            if index > 0 {
-                builder.push(" and ");
-            }
-            builder.push(column);
-            builder.push("::text = ");
-            builder.push_bind(value);
-        }
-    }
-    if let Some((column, ascending)) = order {
-        builder.push(" order by ");
-        builder.push(column);
-        builder.push(if ascending { " asc" } else { " desc" });
-    }
-    builder.push(" limit ");
-    builder.push_bind(limit);
-    builder.push(") row");
-    let rows = builder
-        .build_query_as::<(Value,)>()
-        .fetch_all(db.pool())
+    sqlx::query("select set_config('request.jwt.claim.sub', $1, true)")
+        .bind(user_id.unwrap_or(""))
+        .execute(&mut *tx)
         .await
         .map_err(map_db)?;
-    Ok(Value::Array(rows.into_iter().map(|(row,)| row).collect()))
+    sqlx::query("select set_config('request.jwt.claim.role', $1, true)")
+        .bind(role)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_db)?;
+    let (can_assume,): (bool,) = sqlx::query_as(
+        "select exists(select 1 from pg_roles where rolname = $1)
+            and pg_has_role(current_user, $1, 'MEMBER')",
+    )
+    .bind(role)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(map_db)?;
+    if can_assume {
+        // `role` is one of two fixed literals above; never caller text.
+        sqlx::query(if role == "authenticated" {
+            "set local role authenticated"
+        } else {
+            "set local role anon"
+        })
+        .execute(&mut *tx)
+        .await
+        .map_err(map_db)?;
+    }
+    Ok(tx)
+}
+
+async fn execute_table(
+    db: &Database,
+    table: &str,
+    steps: &[Value],
+    user_id: Option<&str>,
+) -> Result<Value, ExecError> {
+    super::validate_table_name(table).map_err(|_| ExecError::Rejected)?;
+    let mutating = steps.iter().any(|step| {
+        step.get(0)
+            .and_then(Value::as_str)
+            .is_some_and(|name| matches!(name, "insert" | "update" | "delete" | "upsert"))
+    });
+    if mutating && user_id.is_none() {
+        return Err(ExecError::Unauthorized);
+    }
+    let mut tx = caller_transaction(db, user_id).await?;
+    let allowed = |name: &str| super::validate_table_name(name).is_ok();
+    let result = super::table_api::execute(&mut tx, table, steps, &allowed).await?;
+    tx.commit().await.map_err(map_command)?;
+    Ok(result)
 }
 
 async fn execute_report(db: &Database, name: &str, args: &Value) -> Result<Value, ExecError> {
@@ -157,43 +130,6 @@ async fn execute_report(db: &Database, name: &str, args: &Value) -> Result<Value
             .ok_or(ExecError::Unavailable)?;
     }
     Ok(json!({ "total_bhd": format_bhd_millis(millis) }))
-}
-
-fn parse_columns(raw: &str) -> Result<Vec<String>, ExecError> {
-    if raw.trim() == "*" {
-        return Ok(vec!["*".to_string()]);
-    }
-    let columns = raw
-        .split(',')
-        .map(str::trim)
-        .filter(|column| !column.is_empty())
-        .map(|column| {
-            if is_ident(column) {
-                Ok(column.to_string())
-            } else {
-                Err(ExecError::Rejected)
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    if columns.is_empty() {
-        return Err(ExecError::Rejected);
-    }
-    Ok(columns)
-}
-
-fn json_text(value: &Value) -> Result<String, ExecError> {
-    match value {
-        Value::String(text) => Ok(text.clone()),
-        Value::Bool(flag) => Ok(flag.to_string()),
-        Value::Number(number) => {
-            if number.is_f64() {
-                Err(ExecError::Rejected)
-            } else {
-                Ok(number.to_string())
-            }
-        }
-        _ => Err(ExecError::Rejected),
-    }
 }
 
 fn is_ident(value: &str) -> bool {
@@ -250,62 +186,122 @@ pub async fn execute_command(
     if arguments.keys().any(|key| !is_ident(key)) {
         return Err(ExecError::Rejected);
     }
-    let mut tx = db.pool().begin().await.map_err(map_db)?;
-    sqlx::query("select set_config('request.jwt.claim.sub', $1, true)")
-        .bind(user_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(map_db)?;
-    sqlx::query("select set_config('request.jwt.claim.role', 'authenticated', true)")
-        .execute(&mut *tx)
-        .await
-        .map_err(map_db)?;
-    let mut builder = QueryBuilder::new(format!("select to_jsonb(public.{name}("));
-    let mut first = true;
-    for (key, value) in arguments {
-        if !first {
-            builder.push(", ");
+    let mut tx = caller_transaction(db, Some(user_id)).await?;
+    let signature = function_signature(&mut tx, name, arguments).await?;
+    let mut call = format!("public.{name}(");
+    let mut binds: Vec<&Value> = Vec::new();
+    for (index, (key, value)) in arguments.iter().enumerate() {
+        if index > 0 {
+            call.push_str(", ");
         }
-        first = false;
-        builder.push(format!("{key} := "));
-        push_bound(&mut builder, value)?;
+        let target = signature
+            .arguments
+            .iter()
+            .find(|(argument, _)| argument == key)
+            .map(|(_, kind)| kind.as_str())
+            .ok_or(ExecError::Rejected)?;
+        if !value.is_null() {
+            binds.push(value);
+        }
+        let position = binds.len();
+        // The declared parameter type comes from pg_catalog, never from the caller.
+        let expression = match value {
+            Value::Null => format!("null::{target}"),
+            Value::Bool(_) => format!("${position}::boolean::{target}"),
+            Value::Number(_) => format!("${position}::bigint::{target}"),
+            Value::String(_) => format!("${position}::text::{target}"),
+            Value::Array(_) if !target.starts_with("json") && target.ends_with("[]") => {
+                format!("array(select jsonb_array_elements_text(${position}::jsonb))::{target}")
+            }
+            Value::Object(_) | Value::Array(_) => format!("${position}::jsonb::{target}"),
+        };
+        call.push_str(&format!("{key} := {expression}"));
     }
-    builder.push("))");
-    let row: Option<(Value,)> = builder
-        .build_query_as()
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(map_command)?;
+    call.push(')');
+    let sql = if signature.returns_set {
+        format!("select coalesce(jsonb_agg(to_jsonb(r)), '[]'::jsonb) from {call} r")
+    } else {
+        format!("select to_jsonb({call})")
+    };
+    let sql = if signature.returns_void {
+        format!("with c as (select {call}) select 'null'::jsonb from c")
+    } else {
+        sql
+    };
+    let mut query = sqlx::query_as::<_, (Value,)>(&sql);
+    for value in binds {
+        query = match value {
+            Value::Null => query,
+            Value::Bool(flag) => query.bind(*flag),
+            Value::Number(number) => query.bind(number.as_i64().ok_or(ExecError::Rejected)?),
+            Value::String(text) => query.bind(text.as_str()),
+            Value::Object(_) | Value::Array(_) => query.bind(value),
+        };
+    }
+    let row: Option<(Value,)> = query.fetch_optional(&mut *tx).await.map_err(map_command)?;
     tx.commit().await.map_err(map_command)?;
     Ok(row.map(|(value,)| value).unwrap_or(Value::Null))
 }
 
-fn push_bound<'a>(
-    builder: &mut QueryBuilder<'a, sqlx::Postgres>,
-    value: &'a Value,
-) -> Result<(), ExecError> {
-    match value {
-        Value::Null => {
-            builder.push("null");
-        }
-        Value::Bool(flag) => {
-            builder.push_bind(*flag);
-        }
-        Value::Number(number) => {
-            let integer = number.as_i64().ok_or(ExecError::Rejected)?;
-            builder.push_bind(integer);
-        }
-        Value::String(text) => {
-            builder.push_bind(text.as_str());
-        }
-        Value::Object(_) | Value::Array(_) => {
-            builder.push_bind(value);
-        }
-    }
-    Ok(())
+/// (input names, input types, defaulted count, returns set, returns void)
+type OverloadRow = (Vec<String>, Vec<String>, i16, bool, bool);
+
+struct FunctionSignature {
+    arguments: Vec<(String, String)>,
+    returns_set: bool,
+    returns_void: bool,
 }
 
-fn map_command(error: sqlx::Error) -> ExecError {
+/// Picks the public function overload whose input parameter names cover the
+/// caller's named arguments, mirroring PostgREST's named-argument RPC calls.
+async fn function_signature(
+    tx: &mut Transaction<'static, Postgres>,
+    name: &str,
+    arguments: &serde_json::Map<String, Value>,
+) -> Result<FunctionSignature, ExecError> {
+    let rows: Vec<OverloadRow> = sqlx::query_as(
+        "select coalesce(array_agg(x.n order by x.o) filter (where x.m in ('i', 'b', 'v')), '{}'),
+                coalesce(array_agg(format_type(x.t, null) order by x.o) filter (where x.m in ('i', 'b', 'v')), '{}'),
+                p.pronargdefaults, p.proretset, p.prorettype = 'void'::regtype
+           from pg_proc p
+           left join lateral unnest(
+                  coalesce(p.proallargtypes, p.proargtypes::oid[]),
+                  coalesce(p.proargnames, array_fill(''::text, array[cardinality(coalesce(p.proallargtypes, p.proargtypes::oid[]))])),
+                  coalesce(p.proargmodes, array_fill('i'::\"char\", array[cardinality(coalesce(p.proallargtypes, p.proargtypes::oid[]))]))
+                ) with ordinality as x(t, n, m, o) on true
+          where p.proname = $1 and p.pronamespace = 'public'::regnamespace
+          group by p.oid, p.pronargdefaults, p.proretset, p.prorettype
+          order by p.oid",
+    )
+    .bind(name)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(map_command)?;
+    let chosen = rows
+        .into_iter()
+        .filter(|(names, _, defaults, _, _)| {
+            let required = names
+                .len()
+                .saturating_sub(usize::try_from(*defaults).unwrap_or(0));
+            arguments.keys().all(|key| names.contains(key))
+                && names[..required]
+                    .iter()
+                    .all(|name| arguments.contains_key(name))
+        })
+        .min_by_key(|(names, ..)| names.len())
+        .ok_or_else(|| ExecError::Failed {
+            code: "PGRST202".to_string(),
+            message: format!("Could not find the function public.{name} with the given arguments"),
+        })?;
+    let (names, types, _, returns_set, returns_void) = chosen;
+    Ok(FunctionSignature {
+        arguments: names.into_iter().zip(types).collect(),
+        returns_set,
+        returns_void,
+    })
+}
+
+pub(crate) fn map_command(error: sqlx::Error) -> ExecError {
     if let sqlx::Error::Database(db) = &error {
         return ExecError::Failed {
             code: db
