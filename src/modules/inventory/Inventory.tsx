@@ -247,7 +247,7 @@ export default function Inventory() {
           {/* Provision */}
           <Dialog open={open} onOpenChange={setOpen}>
             <button type="button" className="g-btn g-btn-primary" onClick={() => setOpen(true)}>
-              <PackagePlus size={15} /> Aprovisionar
+              <PackagePlus size={15} /> Receive stock
             </button>
             <MovementDialog
               tenantId={tenantId!} branchId={branchId!} userId={user!.id}
