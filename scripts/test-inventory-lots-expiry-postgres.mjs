@@ -77,14 +77,14 @@ assertEqual("lot tracking enabled", scalar(`SELECT lot_tracking_enabled::text FR
 assertEqual("configuration operation completed", scalar(`SELECT status FROM public.inventory_operations WHERE id='${configOperation}';`), "completed");
 
 phase("idempotent-receipt");
-const receiptA = asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-EARLY','2026-09-01','2026-10-01',5.000,'lot-receipt-0001','runtime test');`);
-const replayA = asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-EARLY','2026-09-01','2026-10-01',5.000,'lot-receipt-0001','runtime test');`);
+const receiptA = asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-EARLY','2098-09-01','2098-10-01',5.000,'lot-receipt-0001','runtime test');`);
+const replayA = asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-EARLY','2098-09-01','2098-10-01',5.000,'lot-receipt-0001','runtime test');`);
 assertEqual("receipt replay returns same operation", replayA, receiptA);
 assertEqual("replay does not duplicate lot", scalar(`SELECT count(*)::text FROM public.inventory_lots WHERE source_operation_id='${receiptA}';`), "1");
-expectReject("mutation payload binding", () => asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-EARLY','2026-09-01','2026-10-01',4.000,'lot-receipt-0001','runtime test');`), /different inventory request/i);
+expectReject("mutation payload binding", () => asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-EARLY','2098-09-01','2098-10-01',4.000,'lot-receipt-0001','runtime test');`), /different inventory request/i);
 
 phase("second-receipt-and-aggregate");
-asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-LATE','2026-09-01','2026-11-01',5.000,'lot-receipt-0002','runtime test');`);
+asUser(`SELECT public.receive_inventory_lot_v1('${I.tenant}','${I.branch}','${I.center}','${I.product}','BATCH-LATE','2098-09-01','2098-11-01',5.000,'lot-receipt-0002','runtime test');`);
 assertEqual("aggregate receipt stock", scalar(`SELECT quantity::text FROM public.inventory_stocks WHERE inventory_center_id='${I.center}' AND product_id='${I.product}';`), "10.000");
 assertEqual("lot receipt stock", scalar(`SELECT sum(quantity_remaining)::text FROM public.inventory_lots WHERE inventory_center_id='${I.center}' AND product_id='${I.product}';`), "10.000");
 

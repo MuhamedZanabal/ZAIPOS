@@ -3,14 +3,18 @@
 -- Table and function privileges for anon/authenticated/service_role come from
 -- the Supabase-equivalent default privileges that the local service sets up
 -- before the first migration (local-service/src/provisioning/postgres.rs), so
--- every earlier REVOKE keeps its meaning. What a plain PostgreSQL still lacks
+-- every earlier revocation keeps its meaning. What a plain PostgreSQL still lacks
 -- is schema access for auth.uid()/auth.role() used by RLS policies and
 -- SECURITY DEFINER functions, and the local service's own access to the local
 -- identity tables. On a fresh install, first-owner setup failed with
 -- "permission denied for table zaipos_local_users".
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+  -- Local runtime only: zaipos_service exists only in clusters provisioned by
+  -- the local service. Hosted Supabase already has these grants and its auth
+  -- schema belongs to supabase_auth_admin, so nothing here runs there.
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zaipos_service')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
      AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
      AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
