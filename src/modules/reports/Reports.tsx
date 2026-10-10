@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { netOfRefunds, REPORTABLE_SALE_STATUSES, type ReportItem, type ReportReturnItem, type ReportSale } from "./netOfRefunds";
+import { paymentMethodLabel, type PayMethod } from "@/modules/pos/PaymentDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
@@ -50,13 +52,16 @@ export default function Reports() {
       const to = new Date(dateTo);
       to.setHours(23, 59, 59, 999);
 
-      const [salesRes, itemsRes, paymentsRes, cashTillRes] = await Promise.all([
+      const statuses = [...REPORTABLE_SALE_STATUSES];
+      const [salesRes, itemsRes, paymentsRes, returnsRes, cashTillRes] = await Promise.all([
         supabase.from("sales").select("id, total, tax_total, created_at, channel").eq("branch_id", branchId!)
-          .eq("status", "completed").gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
-        supabase.from("sale_items").select("product_name, quantity, line_total, sales!inner(branch_id, created_at, status)")
-          .eq("sales.branch_id", branchId!).eq("sales.status", "completed").gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
+          .in("status", statuses).gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
+        supabase.from("sale_items").select("id, sale_id, product_name, quantity, line_total, sales!inner(branch_id, created_at, status)")
+          .eq("sales.branch_id", branchId!).in("sales.status", statuses).gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
         supabase.from("payments").select("method, amount, sales!inner(branch_id, created_at, status)")
-          .eq("sales.branch_id", branchId!).eq("sales.status", "completed").gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
+          .eq("sales.branch_id", branchId!).in("sales.status", statuses).gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
+        (supabase as any).from("sale_return_items").select("sale_item_id, quantity, amount")
+          .eq("branch_id", branchId!).gte("created_at", from.toISOString()),
         (supabase as any).rpc("get_cash_till_intelligence_v1", {
           _branch_id: branchId!,
           _start_at: from.toISOString(),
@@ -66,8 +71,13 @@ export default function Reports() {
 
       if (cashTillRes.error) throw cashTillRes.error;
 
-      const sales = salesRes.data ?? [];
-      const items = itemsRes.data ?? [];
+      if (returnsRes.error) throw returnsRes.error;
+      const net = netOfRefunds(
+        (salesRes.data ?? []) as ReportSale[],
+        (itemsRes.data ?? []) as unknown as ReportItem[],
+        (returnsRes.data ?? []) as ReportReturnItem[],
+      );
+      const sales = net.sales;
       const payments = paymentsRes.data ?? [];
       const cashTill = cashTillRes.data as CashTillIntelligence;
 
@@ -80,19 +90,13 @@ export default function Reports() {
       });
       const days = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
 
-      const byProduct: Record<string, { name: string; qty: number; total: number }> = {};
-      items.forEach((it: any) => {
-        if (!byProduct[it.product_name]) byProduct[it.product_name] = { name: it.product_name, qty: 0, total: 0 };
-        byProduct[it.product_name].qty += Number(it.quantity);
-        byProduct[it.product_name].total += Number(it.line_total);
-      });
-      const top = Object.values(byProduct).sort((a, b) => b.total - a.total).slice(0, 20);
+      const top = net.products.sort((a, b) => b.total - a.total).slice(0, 20);
 
       const byMethod: Record<string, number> = {};
-      payments.forEach((p: any) => { byMethod[p.method] = (byMethod[p.method] ?? 0) + Number(p.amount); });
+      payments.forEach((p: any) => { const label = paymentMethodLabel(p.method as PayMethod) ?? p.method; byMethod[label] = (byMethod[label] ?? 0) + Number(p.amount); });
 
       const totals = sales.reduce((sum, row) => sum + Number(row.total), 0);
-      const taxTotal = sales.reduce((sum, row) => sum + Number(row.tax_total || 0), 0);
+      const taxTotal = sales.reduce((sum, row) => sum + row.tax, 0);
 
       return {
         days,
@@ -100,6 +104,7 @@ export default function Reports() {
         byMethod,
         totals,
         taxTotal,
+        refundTotal: net.refundTotal,
         count: sales.length,
         avg: sales.length ? totals / sales.length : 0,
         cashTill,
@@ -238,6 +243,7 @@ export default function Reports() {
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(data?.byMethod ?? {}).map(([method, total]) => <div key={method} className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{method}</div><div className="h-num g-val-18">{formatCurrency(total)}</div></div>)}
             {Object.keys(data?.byMethod ?? {}).length === 0 && <div className="col-span-full text-center h-meta py-6">No payments recorded</div>}
+            {(data?.refundTotal ?? 0) > 0 && <div className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">Refunds</div><div className="h-num g-val-18">−{formatCurrency(data?.refundTotal ?? 0)}</div></div>}
           </div>
         </div>
         <div className="glass rounded-2xl p-5 relative overflow-hidden">
