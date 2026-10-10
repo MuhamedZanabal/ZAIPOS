@@ -81,7 +81,16 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
   const discountedTotal = roundBhd(Math.max(0, total - couponDiscount));
   const grandTotal = roundBhd(discountedTotal + tip);
   const payableFils = bhdToFils(amountText(grandTotal));
-  const remainingFils = remainingPaymentFils(payableFils, allocations);
+  // The parent clears the cart (total -> 0) right after a sale completes, one
+  // render before the reset effect runs. Stale allocations must not crash the
+  // dialog (white screen) in that render.
+  const remainingFils = useMemo(() => {
+    try {
+      return remainingPaymentFils(payableFils, allocations);
+    } catch {
+      return 0;
+    }
+  }, [payableFils, allocations]);
   const allocatedFils = subtractMoney(payableFils, remainingFils);
   const paymentAmountFils = useMemo(() => {
     try {
