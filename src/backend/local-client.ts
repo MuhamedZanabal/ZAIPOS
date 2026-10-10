@@ -1,4 +1,5 @@
 import type { LocalSession, LocalUser } from './session';
+import { englishServerMessage } from '@/lib/serverMessages';
 
 type LocalError = { message: string } | null;
 type LocalResult<T = unknown> = { data: T; error: LocalError; count?: number | null };
@@ -39,7 +40,7 @@ async function localDispatch(path: string, payload: Record<string, unknown>): Pr
     const body = await bridge(path, transmitted);
     if (!body || typeof body !== 'object') return { data: null, error: { message: 'LOCAL_RUNTIME_UNAVAILABLE' } };
     const record = body as { data?: unknown; error?: string; count?: unknown; access_token?: string; user?: LocalUser };
-    if (typeof record.error === 'string') return { data: null, error: { message: record.error } };
+    if (typeof record.error === 'string') return { data: null, error: { message: englishServerMessage(record.error) } };
     if ('count' in record) return { data: record.data ?? null, error: null, count: typeof record.count === 'number' ? record.count : null };
     return { data: 'data' in record ? record.data ?? null : body, error: null };
   } catch (error) {

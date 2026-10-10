@@ -35,6 +35,8 @@ interface Props {
   onSendToCashier: () => void;
   onCancel: () => void;
   onPay: () => void;
+  servedTotal: number;
+  unservedCount: number;
 }
 
 export function TableOrderMobile(props: Props) {
@@ -342,10 +344,10 @@ export function TableOrderMobile(props: Props) {
                 size="lg"
                 className="w-full h-13 min-h-[52px]"
                 onClick={onPay}
-                disabled={Number(order.total) <= 0}
+                disabled={props.servedTotal <= 0}
               >
                 <CreditCard className="h-5 w-5 mr-2" />
-                Charge {formatCurrency(Number(order.total))}
+                Charge {formatCurrency(props.servedTotal)}
               </Button>
             )}
           </div>

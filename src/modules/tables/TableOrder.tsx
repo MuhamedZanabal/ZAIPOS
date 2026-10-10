@@ -23,6 +23,8 @@ import { TableOrderMobile } from "./TableOrderMobile";
 import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, type TableItemStatus } from "./itemStatus";
 import { db } from "@/lib/db";
 import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
+import { englishServerMessage } from "@/lib/serverMessages";
+import { servedTotals } from "./servedTotals";
 import { mutateTableOrderItem } from "@/lib/tableOrderItems";
 import { createTableOrderLifecyclePayload, createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder, transitionTableOrderLifecycle } from "@/lib/tableKitchen";
 
@@ -303,13 +305,13 @@ export default function TableOrder() {
       const payableTotal = Math.max(0, baseTotal - discountAmount + tipAmount);
       if (!tenantId || !branchId) throw new Error('Table checkout scope is unavailable');
       await checkoutTableOrderOnDevice({ tenantId, branchId, orderId, allocations, tipAmount, discountAmount, couponCode });
-      toast.success("Cobro registrado");
+      toast.success("Payment recorded");
       setPayOpen(false);
       qc.invalidateQueries({ queryKey: ["table-orders-open"] });
       qc.invalidateQueries({ queryKey: ["tables"] });
       navigate("/tables");
     } catch (err: any) {
-      toast.error(err.message ?? "Checkout error");
+      toast.error(englishServerMessage(err?.message ?? "Checkout failed"), { duration: 10_000 });
     } finally { setSubmitting(false); }
   };
 
@@ -357,11 +359,15 @@ export default function TableOrder() {
 
   const isOpen = order.status === "open";
   const sent = order.status === "sent_to_cashier";
+  // Only served (dispatched) items are charged by checkout; unserved items stay on the order.
+  const { servedTotal, unservedCount } = servedTotals(items ?? []);
 
   if (isMobile) {
     return (
       <>
         <TableOrderMobile
+          servedTotal={servedTotal}
+          unservedCount={unservedCount}
           order={order}
           items={items ?? []}
           filtered={filtered}
@@ -387,7 +393,7 @@ export default function TableOrder() {
         <PaymentDialog
           open={payOpen}
           onOpenChange={setPayOpen}
-          total={Number(order.total)}
+          total={servedTotal}
           tenantId={tenantId}
           submitting={submitting}
           onConfirm={charge}
@@ -698,9 +704,10 @@ export default function TableOrder() {
                 type="button"
                 className="g-btn g-btn-primary g-btn-touch w-full"
                 onClick={() => setPayOpen(true)}
-                disabled={Number(order.total) <= 0}
+                disabled={servedTotal <= 0}
+                title={unservedCount > 0 ? `${unservedCount} item(s) not served yet are not charged` : undefined}
               >
-                <CreditCard className="h-5 w-5 mr-2" /> Charge {formatCurrency(Number(order.total))}
+                <CreditCard className="h-5 w-5 mr-2" /> Charge {formatCurrency(servedTotal)}
               </button>
             )}
           </div>
@@ -710,7 +717,7 @@ export default function TableOrder() {
       <PaymentDialog
         open={payOpen}
         onOpenChange={setPayOpen}
-        total={Number(order.total)}
+        total={servedTotal}
         tenantId={tenantId}
         submitting={submitting}
         onConfirm={charge}
