@@ -1,3 +1,4 @@
+import { useOpenSession } from "@/hooks/useOpenSession";
 import { useState, type CSSProperties } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
@@ -23,20 +24,8 @@ function Shell() {
   const { devMode } = useDevMode();
   const { toggleSidebar, isMobile, openMobile } = useSidebar();
 
-  const { data: openSession } = useQuery({
-    queryKey: ["open-session", branchId],
-    enabled: !!branchId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("cash_sessions")
-        .select("id")
-        .eq("branch_id", branchId!)
-        .eq("status", "open")
-        .maybeSingle();
-      return data;
-    },
-    refetchInterval: 15000,
-  });
+  // Same query (and cache entry) as the POS, so both always agree.
+  const { data: openSession } = useOpenSession(branchId);
 
   const today = new Date().toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const roleInitials = (roles[0] ?? "U").slice(0, 2).toUpperCase();

@@ -84,12 +84,13 @@ export default function POS() {
     refetchInterval: 15_000,
     queryFn: async () => {
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("sales")
         .select("id, total")
         .eq("branch_id", branchId!)
         .in("status", ["completed", "partially_refunded"])
         .gte("created_at", today.toISOString());
+      if (error) throw error; // keep the last figures while the server is unreachable
       const count      = data?.length ?? 0;
       const totalSales = data?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
       return { count, totalSales, avgTicket: count ? roundBhd(totalSales / count) : 0 };
