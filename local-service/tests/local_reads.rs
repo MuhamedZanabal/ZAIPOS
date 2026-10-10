@@ -446,3 +446,68 @@ async fn body(response: axum::response::Response) -> String {
         .to_bytes();
     String::from_utf8(bytes.to_vec()).unwrap()
 }
+
+#[tokio::test]
+async fn session_rpc_runs_named_argument_functions_with_fractional_bhd() {
+    let Some(database) = EphemeralDatabase::open().await else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        return;
+    };
+    auth::ensure_identity(database.database()).await.unwrap();
+    database
+        .database()
+        .exec(
+            "create function net_after_commission(_gross numeric, _commission numeric default 0)
+               returns numeric language sql as $$ select _gross - _commission $$;
+             do $$ begin
+               if exists (select 1 from pg_roles where rolname = 'authenticated') then
+                 grant execute on function net_after_commission(numeric, numeric) to authenticated;
+               end if;
+             end $$;",
+        )
+        .await
+        .unwrap();
+    let app = build_router(AppState::ready(database.database().clone()));
+    let created = body(
+        app.clone()
+            .oneshot(post(
+                "/v1/auth/bootstrap",
+                r#"{"kind":"auth","email":"owner@shop.test","password":"owner-password","tenant_name":"Karama","branch_name":"Front"}"#,
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let token = created
+        .split("\"access_token\":\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .expect("session token")
+        .to_string();
+
+    let anonymous = app
+        .clone()
+        .oneshot(post(
+            "/v1/backend",
+            r#"{"kind":"rpc","fn":"net_after_commission","args":{"_gross":5.83,"_commission":1.042}}"#,
+        ))
+        .await
+        .unwrap();
+    assert_ne!(anonymous.status(), axum::http::StatusCode::OK);
+
+    let response = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/backend",
+            r#"{"kind":"rpc","fn":"net_after_commission","args":{"_gross":5.83,"_commission":1.042}}"#,
+            &token,
+        ))
+        .await
+        .unwrap();
+    let status = response.status();
+    let text = body(response).await;
+    assert_eq!(status, axum::http::StatusCode::OK, "{text}");
+    assert!(text.contains("4.788"), "{text}");
+}

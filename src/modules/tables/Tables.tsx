@@ -268,7 +268,7 @@ function TablePanel({
             onClick={onOpen}
             className="g-btn g-btn-primary g-btn-touch tbl-panel-cta-btn"
           >
-            Ver comanda
+            View order
             <ChevronRight size={16} />
           </button>
         </div>
@@ -707,12 +707,12 @@ export default function Tables() {
       {/* ── Legend bar ── */}
       <div className="glass flex items-center gap-5 rounded-2xl tbl-grid-wrap">
         <StatChip
-          label="Ocupadas"
+          label="Occupied"
           count={statCounts.occupied}
           dotColor="tbl-dot-brand"
         />
         <StatChip
-          label="Listas"
+          label="Ready"
           count={statCounts.ready}
           dotColor="tbl-dot-ok"
         />
@@ -722,7 +722,7 @@ export default function Tables() {
           dotColor="tbl-dot-warn"
         />
         <StatChip
-          label="Libres"
+          label="Free"
           count={statCounts.free}
           dotColor="tbl-dot-ink-200"
         />

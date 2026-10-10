@@ -314,7 +314,7 @@ export function TableOrderMobile(props: Props) {
               <span className="tabular-nums">{formatCurrency(Number(order.subtotal))}</span>
             </div>
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-muted-foreground">Impuestos</span>
+              <span className="text-muted-foreground">VAT</span>
               <span className="tabular-nums">{formatCurrency(Number(order.tax_total))}</span>
             </div>
             <div className="flex items-baseline justify-between border-t pt-2">
@@ -345,7 +345,7 @@ export function TableOrderMobile(props: Props) {
                 disabled={Number(order.total) <= 0}
               >
                 <CreditCard className="h-5 w-5 mr-2" />
-                Cobrar {formatCurrency(Number(order.total))}
+                Charge {formatCurrency(Number(order.total))}
               </Button>
             )}
           </div>

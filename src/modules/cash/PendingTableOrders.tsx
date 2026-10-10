@@ -92,7 +92,7 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
             <span className="pill pill-warn g-kds-pill-micro">{list.length}</span>
           )}
         </div>
-        <span className="h-meta">Tiempo real</span>
+        <span className="h-meta">Live</span>
       </div>
 
       {list.length === 0 ? (
@@ -130,10 +130,10 @@ export function PendingTableOrders({ tenantId, branchId }: Props) {
                 <div className="grid g-pending-grid gap-2 mt-auto">
                   <button type="button" className="g-btn g-btn-primary g-pending-cobrar"
                     onClick={() => setPayOrder(o)}>
-                    <CreditCard size={14} /> Cobrar
+                    <CreditCard size={14} /> Charge
                   </button>
                   <button type="button" className="g-btn g-btn-ghost g-pending-view"
-                    title="Ver comanda"
+                    title="View order"
                     onClick={() => navigate(`/tables/${o.id}`)}>
                     <Eye size={15} />
                   </button>

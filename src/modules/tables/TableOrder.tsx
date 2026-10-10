@@ -426,7 +426,7 @@ export default function TableOrder() {
         </button>
         <div className="g-title-18">{(order as any).tables?.name ?? "Table"}</div>
         {sent && <span className="g-pill g-pill-warn g-pill-h22">Sent to register</span>}
-        {isOpen && <span className="g-pill g-pill-brand g-pill-h22">Abierto</span>}
+        {isOpen && <span className="g-pill g-pill-brand g-pill-h22">Open</span>}
         {waiterName ? (
           <span className="h-meta">
             Waiter: <span className="font-semibold text-[var(--ink-700)]">{waiterName}</span>
@@ -671,7 +671,7 @@ export default function TableOrder() {
               <span className="tabular-nums text-[var(--ink-700)]">{formatCurrency(Number(order.subtotal))}</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="h-label">Impuestos</span>
+              <span className="h-label">VAT</span>
               <span className="tabular-nums text-[var(--ink-700)]">{formatCurrency(Number(order.tax_total))}</span>
             </div>
             <div className="flex items-baseline justify-between border-t border-[var(--g-hairline)] pt-2">
@@ -700,7 +700,7 @@ export default function TableOrder() {
                 onClick={() => setPayOpen(true)}
                 disabled={Number(order.total) <= 0}
               >
-                <CreditCard className="h-5 w-5 mr-2" /> Cobrar {formatCurrency(Number(order.total))}
+                <CreditCard className="h-5 w-5 mr-2" /> Charge {formatCurrency(Number(order.total))}
               </button>
             )}
           </div>
