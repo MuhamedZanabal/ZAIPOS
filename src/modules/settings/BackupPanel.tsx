@@ -61,7 +61,9 @@ export function BackupPanel() {
       const blob = await downloadBackup(backup, (d, t) => setProgress(`Downloading ${formatBytes(d)} of ${formatBytes(t)}…`));
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `ZAIPOS-backup-${new Date(backup.created_at_ms).toISOString().slice(0, 19).replace(/[:T]/g, "-")}.dump`;
+      const at = new Date(backup.created_at_ms);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      a.download = `ZAIPOS-backup-${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}-${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}.dump`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
       toast.success("Backup copy saved (checksum verified)");
@@ -88,7 +90,7 @@ export function BackupPanel() {
       await startRestore(target.name);
       const job = await waitForJob();
       if (job.state === "failed") throw new Error(job.error ?? "Restore failed; your data was not changed");
-      toast.success("Restore complete. Sign in again to continue.", { duration: 15_000 });
+      toast.success("Restore complete. ZAIPOS will reload; sign in again if asked.", { duration: 15_000 });
       setTimeout(() => window.location.reload(), 2500);
     } catch (e: any) { toast.error(e?.message ?? "Restore failed"); }
     finally { setBusy(null); setProgress(null); }
@@ -138,7 +140,7 @@ export function BackupPanel() {
             <DialogDescription>
               All current data on this ZAIPOS server will be replaced with the backup from{" "}
               {restoreTarget ? new Date(restoreTarget.created_at_ms).toLocaleString("en-BH") : ""}. Sales made after that time will be removed.
-              A safety copy of the current data is taken first, so this can be undone. Everyone will need to sign in again.
+              A safety copy of the current data is taken first, so this can be undone. Other users may need to sign in again.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
