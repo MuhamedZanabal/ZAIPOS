@@ -199,7 +199,7 @@ export default function Products() {
         }
         const { error: insertError } = await supabase.from("products").insert(dataToInsert);
         if (insertError) {
-          console.error("Error al insertar:", insertError);
+          console.error("Insert failed:", insertError);
           throw new Error("The database was cleaned, but an error occurred while inserting the new products. Verify the category and other fields.");
         }
         for (const row of prepared) {

@@ -111,7 +111,7 @@ export default function Expenses() {
       }
     },
     onSuccess: () => {
-      toast.success(editingExpense ? "Gasto actualizado" : "Gasto registrado");
+      toast.success(editingExpense ? "Expense updated" : "Expense recorded");
       qc.invalidateQueries({ queryKey: ["expenses"] });
       setExpenseOpen(false);
       setEditingExpense(null);
@@ -126,7 +126,7 @@ export default function Expenses() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Gasto eliminado");
+      toast.success("Expense deleted");
       qc.invalidateQueries({ queryKey: ["expenses"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
@@ -171,8 +171,8 @@ export default function Expenses() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div className="g-page-hd">
-          <div className="g-page-hd-eyebrow">FINANZAS · GASTOS</div>
-          <div className="h-display g-page-title">Gastos</div>
+          <div className="g-page-hd-eyebrow">FINANCE · EXPENSES</div>
+          <div className="h-display g-page-title">Expenses</div>
           <div className="g-page-hd-meta">This month: {formatCurrency(totalMonth)}</div>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
@@ -182,7 +182,7 @@ export default function Expenses() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="expenses">Gastos</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
 

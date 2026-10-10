@@ -119,7 +119,7 @@ export default function QRMenu() {
       if (existing) return prev.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { product, quantity: 1, notes: "" }];
     });
-    toast.success(`${product.name} agregado`, { duration: 1000 });
+    toast.success(`${product.name} added`, { duration: 1000 });
   };
 
   const updateQty = (productId: string, delta: number) => {
@@ -286,7 +286,7 @@ export default function QRMenu() {
                         {outOfStock && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                             <span className="bg-black/70 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                              Agotado
+                              Sold out
                             </span>
                           </div>
                         )}
@@ -301,7 +301,7 @@ export default function QRMenu() {
                           <ImageOff className="h-5 w-5 text-muted-foreground/40" />
                           {outOfStock && (
                             <div className="absolute inset-0 rounded-lg bg-black/30 flex items-center justify-center">
-                              <span className="text-white text-[9px] font-bold">AGOTADO</span>
+                              <span className="text-white text-[9px] font-bold">SOLD OUT</span>
                             </div>
                           )}
                         </div>
@@ -325,7 +325,7 @@ export default function QRMenu() {
                       {/* Controles de quantity */}
                       <div className="shrink-0">
                         {outOfStock ? (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">Agotado</Badge>
+                          <Badge variant="outline" className="text-xs text-muted-foreground">Sold out</Badge>
                         ) : cartItem ? (
                           <div className="flex items-center gap-1.5">
                             <button

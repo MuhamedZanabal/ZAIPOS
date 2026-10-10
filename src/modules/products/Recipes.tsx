@@ -36,7 +36,7 @@ export default function Recipes() {
       {/* Page header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1">
-          <div className="h-display g-page-title">Recetas</div>
+          <div className="h-display g-page-title">Recipes</div>
           <div className="h-meta g-page-subtitle">Products with defined ingredients/components · CATALOG</div>
         </div>
         <Link to="/products" className="g-btn g-btn-ghost">

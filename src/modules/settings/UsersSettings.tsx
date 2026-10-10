@@ -405,7 +405,7 @@ export default function UsersSettings() {
                                 ? "No puedes eliminarte"
                                 : m.role === "super_admin"
                                 ? "No puedes quitar un super admin"
-                                : "Quitar acceso"
+                                : "Remove access"
                             }
                           >
                             <Trash2 className="h-4 w-4" />

@@ -107,14 +107,14 @@ function TableDrawer({ table, order, items, onClose, onNavigate }: {
             className="btn btn-ghost flex items-center justify-center gap-2 h-12 rounded-xl"
             onClick={onNavigate}
           >
-            <Send className="h-4 w-4" /> Ver comanda
+            <Send className="h-4 w-4" /> View order
           </button>
           <button
             type="button"
             className="btn btn-primary flex items-center justify-center gap-2 h-12 rounded-xl"
             onClick={onNavigate}
           >
-            <Receipt className="h-4 w-4" /> Cobrar
+            <Receipt className="h-4 w-4" /> Charge
           </button>
         </div>
       </div>
@@ -191,7 +191,7 @@ const QUICK_ACTIONS = [
   { icon: Plus,     label: "New",     scClass: "sc-blue",   to: "/tables"   },
   { icon: Bike,     label: "Delivery", scClass: "sc-green",  to: "/delivery" },
   { icon: ScanLine, label: "Escanear",  scClass: "sc-purple", to: "/pos"      },
-  { icon: Receipt,  label: "Cobrar",    scClass: "sc-amber",  to: "/cash"     },
+  { icon: Receipt,  label: "Charge",    scClass: "sc-amber",  to: "/cash"     },
 ] as const;
 
 /* ─── Main dashboard ──────────────────────────────────────────── */
@@ -311,7 +311,7 @@ export default function WaiterDashboard() {
           <div className="grid grid-cols-3 gap-3 mt-3">
             {[
               { label: "MIS TABLES", value: String(myTables.length),    color: "text-foreground" },
-              { label: "OCUPADAS",  value: String(occupiedCount),       color: "text-primary"    },
+              { label: "OCCUPIED",  value: String(occupiedCount),       color: "text-primary"    },
               { label: "ATTENTION",  value: String(attentionCount),      color: "text-amber-500"  },
             ].map((stat) => (
               <div key={stat.label}>
@@ -350,7 +350,7 @@ export default function WaiterDashboard() {
       <div className="px-4 pb-2 flex gap-2">
         {[
           { id: "mesas",    label: "Tables",    count: (tables ?? []).length },
-          { id: "comandas", label: "Comandas", count: myOrders.length },
+          { id: "comandas", label: "Orders", count: myOrders.length },
         ].map(({ id, label, count }) => (
           <button
             key={id}

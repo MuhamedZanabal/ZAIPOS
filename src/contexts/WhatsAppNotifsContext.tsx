@@ -40,7 +40,7 @@ export function WhatsAppNotifsProvider({ children }: { children: React.ReactNode
           const preview = String(payload.new?.body ?? "");
           toast("📱 New WhatsApp message", {
             description: preview.length > 80 ? preview.slice(0, 80) + "…" : preview,
-            action: { label: "Ver", onClick: () => { window.location.hash = "/whatsapp"; } },
+            action: { label: "View", onClick: () => { window.location.hash = "/whatsapp"; } },
           });
         }
       )

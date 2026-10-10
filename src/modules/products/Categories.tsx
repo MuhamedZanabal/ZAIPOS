@@ -166,7 +166,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
       };
       if (editing) await supabase.from("categories").update(payload).eq("id", editing.id);
       else await supabase.from("categories").insert(payload);
-      toast.success("Guardado");
+      toast.success("Saved");
       onClose();
     } catch (err: any) { toast.error(err.message); }
   };

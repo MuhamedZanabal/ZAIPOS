@@ -357,7 +357,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         .from('product-images')
         .getPublicUrl(path);
       setForm((f: any) => ({ ...f, image_url: publicUrl }));
-      toast.success("Imagen subida correctamente");
+      toast.success("Image uploaded");
     } catch (err: any) {
       toast.error(err.message ?? "Error uploading image");
     } finally {
@@ -542,7 +542,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                     type="button"
                     onClick={() => setForm((f: any) => ({ ...f, image_url: null }))}
                     className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
-                    title="Quitar imagen"
+                    title="Remove image"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>

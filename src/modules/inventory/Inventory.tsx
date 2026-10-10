@@ -25,7 +25,7 @@ import "./inventory.css";
 const MOVE_TYPES = ["purchase", "adjustment", "waste", "return"] as const;
 
 const MOVE_TYPE_LABELS: Record<typeof MOVE_TYPES[number], string> = {
-  purchase:   "Compra / Entrada",
+  purchase:   "Purchase / Receipt",
   adjustment: "Adjustment",
   waste:      "Waste / Loss",
   return:     "Return",

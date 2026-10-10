@@ -325,8 +325,8 @@ export default function Suppliers() {
                 <span className="text-sm tabular-nums text-ink-500">{new Date(o.created_at).toLocaleDateString("en-BH")}</span>
                 <span className="font-medium text-sm text-ink-900">{o.suppliers?.name ?? "No supplier"}</span>
                 <span>
-                  {o.status === "received" && <span className="g-pill g-pill-ok">Recibida</span>}
-                  {o.status === "cancelled" && <span className="g-pill g-pill-bad">Cancelada</span>}
+                  {o.status === "received" && <span className="g-pill g-pill-ok">Received</span>}
+                  {o.status === "cancelled" && <span className="g-pill g-pill-bad">Cancelled</span>}
                   {o.status === "draft" && <span className="g-pill g-pill-ghost">Borrador</span>}
                 </span>
                 <span className="text-sm text-ink-500">{o.notes ?? "—"}</span>

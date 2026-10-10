@@ -110,7 +110,7 @@ export default function Shifts() {
     const { error: e2 } = await supabase.from("employee_shifts")
       .update({ check_in: new Date().toISOString(), status: "in_progress" }).eq("id", shift.id);
     if (e2) return toast.error(e2.message);
-    toast.success("Entrada registrada");
+    toast.success("Clock-in recorded");
     qc.invalidateQueries({ queryKey: ["shifts"] });
     qc.invalidateQueries({ queryKey: ["attendance"] });
   };
@@ -123,7 +123,7 @@ export default function Shifts() {
     const { error: e2 } = await supabase.from("employee_shifts")
       .update({ check_out: new Date().toISOString(), status: "completed" }).eq("id", shift.id);
     if (e2) return toast.error(e2.message);
-    toast.success("Salida registrada");
+    toast.success("Clock-out recorded");
     qc.invalidateQueries({ queryKey: ["shifts"] });
     qc.invalidateQueries({ queryKey: ["attendance"] });
   };
@@ -204,9 +204,9 @@ export default function Shifts() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(-1)}>← Anterior</button>
+              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(-1)}>← Previous</button>
               <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => setWeekStart(startOfWeek())}>Today</button>
-              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(1)}>Siguiente →</button>
+              <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => navWeek(1)}>Next →</button>
             </div>
             <div className="h-meta text-sm text-ink-500">
               {weekStart.toLocaleDateString("en-BH", { day: "numeric", month: "short" })} —{" "}
@@ -263,8 +263,8 @@ export default function Shifts() {
               <span>Employee</span>
               <span>Inicio</span>
               <span>Fin</span>
-              <span>Entrada</span>
-              <span>Salida</span>
+              <span>Clock-in</span>
+              <span>Clock-out</span>
               <span>Status</span>
               <span className="text-right">Actions</span>
             </div>
@@ -289,7 +289,7 @@ export default function Shifts() {
                         onClick={() => checkIn(s)}
                       >
                         <LogIn className="h-3 w-3" />
-                        Entrada
+                        Clock-in
                       </button>
                     )}
                     {s.check_in && !s.check_out && (
@@ -299,7 +299,7 @@ export default function Shifts() {
                         onClick={() => checkOut(s)}
                       >
                         <LogOut className="h-3 w-3" />
-                        Salida
+                        Clock-out
                       </button>
                     )}
                   </div>
@@ -336,8 +336,8 @@ export default function Shifts() {
                 <span className="font-medium text-sm text-ink-900">{a.employees?.full_name ?? "—"}</span>
                 <span>
                   {a.type === "check_in"
-                    ? <span className="g-pill g-pill-ok flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Entrada</span>
-                    : <span className="g-pill g-pill-ghost flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Salida</span>
+                    ? <span className="g-pill g-pill-ok flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Clock-in</span>
+                    : <span className="g-pill g-pill-ghost flex items-center gap-1 w-fit"><Clock className="h-3 w-3" />Clock-out</span>
                   }
                 </span>
               </div>
