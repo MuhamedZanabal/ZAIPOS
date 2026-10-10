@@ -31,7 +31,7 @@ function writeSession(session: LocalSession | null): void {
   for (const listener of listeners) listener(session ? 'SIGNED_IN' : 'SIGNED_OUT', session);
 }
 
-async function localDispatch(path: string, payload: Record<string, unknown>): Promise<LocalResult> {
+export async function localDispatch(path: string, payload: Record<string, unknown>): Promise<LocalResult> {
   const bridge = typeof window === 'undefined' ? undefined : window.electron?.localRequest;
   if (!bridge) return { data: null, error: { message: 'LOCAL_RUNTIME_NOT_CONFIGURED' } };
   const token = readSession()?.access_token;

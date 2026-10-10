@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BackupPanel } from "./BackupPanel";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -333,11 +334,13 @@ export function DataManagement() {
         </Alert>
       )}
 
+      <BackupPanel />
+
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Recommendation</AlertTitle>
         <AlertDescription>
-          Create a verified database backup before bulk changes. These catalogue and stock exports are scoped snapshots, not disaster-recovery backups.
+          Create a full backup (above) before bulk changes. The catalogue and stock exports are scoped snapshots, not disaster-recovery backups.
         </AlertDescription>
       </Alert>
     </div>

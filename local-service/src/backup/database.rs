@@ -87,6 +87,7 @@ struct Inner {
     password: SecretString,
     lock: Mutex<()>,
     uploads: Mutex<HashMap<String, PathBuf>>,
+    job: std::sync::Mutex<serde_json::Value>,
 }
 
 impl BackupStore {
@@ -134,6 +135,7 @@ impl BackupStore {
                 password: connection.password,
                 lock: Mutex::new(()),
                 uploads: Mutex::new(HashMap::new()),
+                job: std::sync::Mutex::new(serde_json::json!({"state": "idle"})),
             }),
         })
     }
@@ -148,6 +150,54 @@ impl BackupStore {
         tokio::task::spawn_blocking(move || inner.create_blocking("manual"))
             .await
             .map_err(|_| BackupError::Io)?
+    }
+
+    /// Long operations run in the background (the desktop transport has a
+    /// short idle timeout); callers poll `job_status`.
+    pub fn start(
+        &self,
+        kind: &'static str,
+        name: Option<String>,
+    ) -> Result<serde_json::Value, BackupError> {
+        {
+            let mut job = self.inner.job.lock().map_err(|_| BackupError::Io)?;
+            if job.get("state").and_then(|v| v.as_str()) == Some("running") {
+                return Err(BackupError::Command(
+                    "another backup or restore is running".into(),
+                ));
+            }
+            *job = serde_json::json!({"state": "running", "kind": kind, "started_at_ms": now_ms()});
+        }
+        let store = self.clone();
+        tokio::spawn(async move {
+            let outcome = match (kind, name) {
+                ("restore", Some(name)) => store
+                    .restore(&name)
+                    .await
+                    .map(|safety| serde_json::json!({"restored": name, "safety_backup": safety})),
+                _ => store.create().await.map(|info| serde_json::json!(info)),
+            };
+            let status = match outcome {
+                Ok(result) => {
+                    serde_json::json!({"state": "done", "kind": kind, "result": result, "finished_at_ms": now_ms()})
+                }
+                Err(error) => {
+                    serde_json::json!({"state": "failed", "kind": kind, "error": error.to_string(), "finished_at_ms": now_ms()})
+                }
+            };
+            if let Ok(mut job) = store.inner.job.lock() {
+                *job = status;
+            }
+        });
+        self.job_status()
+    }
+
+    pub fn job_status(&self) -> Result<serde_json::Value, BackupError> {
+        self.inner
+            .job
+            .lock()
+            .map(|job| job.clone())
+            .map_err(|_| BackupError::Io)
     }
 
     pub async fn list(&self) -> Result<Vec<BackupInfo>, BackupError> {

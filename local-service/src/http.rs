@@ -415,7 +415,8 @@ async fn backups(
             .to_string()
     };
     let result: Result<Value, BackupError> = match action.as_str() {
-        "create" => store.create().await.map(|info| serde_json::json!(info)),
+        "create" => store.start("create", None),
+        "status" => store.job_status(),
         "list" => store.list().await.map(|items| serde_json::json!(items)),
         "read" => {
             let offset = value.get("offset").and_then(Value::as_u64).unwrap_or(0);
@@ -449,7 +450,14 @@ async fn backups(
                     Json(serde_json::json!({"error": "Type RESTORE to confirm"})),
                 ));
             }
-            store.restore(&str_field("name")).await.map(|safety| serde_json::json!({"restored": str_field("name"), "safety_backup": safety}))
+            let name = str_field("name");
+            if !crate::backup::database::valid_name(&name) {
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"error": "backup name is invalid"})),
+                ));
+            }
+            store.start("restore", Some(name))
         }
         _ => return Err(StatusCode::NOT_FOUND),
     };
