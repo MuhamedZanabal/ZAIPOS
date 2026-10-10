@@ -1,3 +1,4 @@
+import { roundBhd } from "@/lib/bahrain";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -77,18 +78,20 @@ export default function POS() {
   const { data: todayMetrics } = useQuery({
     queryKey: ["pos-today-metrics", branchId],
     enabled: !!branchId,
-    refetchInterval: 60_000,
+    // The persisted query cache otherwise keeps "Sales today" at 0 for minutes.
+    staleTime: 0,
+    refetchInterval: 15_000,
     queryFn: async () => {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const { data } = await supabase
         .from("sales")
         .select("id, total")
         .eq("branch_id", branchId!)
-        .eq("status", "completed")
+        .in("status", ["completed", "partially_refunded"])
         .gte("created_at", today.toISOString());
       const count      = data?.length ?? 0;
       const totalSales = data?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
-      return { count, totalSales, avgTicket: count ? Math.round(totalSales / count) : 0 };
+      return { count, totalSales, avgTicket: count ? roundBhd(totalSales / count) : 0 };
     },
   });
 
@@ -453,6 +456,7 @@ export default function POS() {
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      qc.invalidateQueries({ queryKey: ["pos-today-metrics"] });
     } catch (err: any) {
       toast.error(err.message ?? "Could not complete the sale");
     } finally { setSubmitting(false); }
