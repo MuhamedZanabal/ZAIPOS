@@ -62,6 +62,15 @@ function applyBranding(config: TenantConfig): void {
   document.title = config.name;
 }
 
+// The desktop app loads from file:// and keeps a single business in its local
+// database, so there is no hostname to match. Row-level security limits
+// `tenants` to the businesses the signed-in user belongs to.
+export function isLocalDesktopRuntime(): boolean {
+  return typeof window !== "undefined"
+    && window.location.protocol === "file:"
+    && typeof window.electron?.localRequest === "function";
+}
+
 function resolveHostname(): string {
   const { hostname } = window.location;
   if (hostname === "localhost" || hostname === "127.0.0.1") {
@@ -82,11 +91,12 @@ export function useTenantByDomain() {
     async function resolve() {
       const domain = resolveHostname();
 
-      const { data, error: qErr } = await supabase
+      const query = supabase
         .from("tenants")
-        .select("id, name, domain, logo_url, primary_color, theme_kind")
-        .eq("domain", domain)
-        .maybeSingle();
+        .select("id, name, domain, logo_url, primary_color, theme_kind");
+      const { data, error: qErr } = await (isLocalDesktopRuntime()
+        ? query.limit(1).maybeSingle()
+        : query.eq("domain", domain).maybeSingle());
 
       if (cancelled) return;
 

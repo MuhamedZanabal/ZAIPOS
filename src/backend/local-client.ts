@@ -1,7 +1,7 @@
 import type { LocalSession, LocalUser } from './session';
 
 type LocalError = { message: string } | null;
-type LocalResult<T = unknown> = { data: T; error: LocalError };
+type LocalResult<T = unknown> = { data: T; error: LocalError; count?: number | null };
 
 const SESSION_KEY = 'zaipos.local.session';
 const listeners = new Set<(event: string, session: LocalSession | null) => void>();
@@ -38,9 +38,10 @@ async function localDispatch(path: string, payload: Record<string, unknown>): Pr
   try {
     const body = await bridge(path, transmitted);
     if (!body || typeof body !== 'object') return { data: null, error: { message: 'LOCAL_RUNTIME_UNAVAILABLE' } };
-    const record = body as { data?: unknown; error?: string; access_token?: string; user?: LocalUser };
+    const record = body as { data?: unknown; error?: string; count?: unknown; access_token?: string; user?: LocalUser };
     if (typeof record.error === 'string') return { data: null, error: { message: record.error } };
-    return { data: record.data ?? body, error: null };
+    if ('count' in record) return { data: record.data ?? null, error: null, count: typeof record.count === 'number' ? record.count : null };
+    return { data: 'data' in record ? record.data ?? null : body, error: null };
   } catch (error) {
     return { data: null, error: { message: error instanceof Error ? error.message : 'LOCAL_RUNTIME_UNAVAILABLE' } };
   }
@@ -111,8 +112,8 @@ export function createLocalClient() {
         writeSession(null);
         return { error: null };
       },
-      bootstrapOwner: async ({ email, password, tenantName, branchName }: { email: string; password: string; tenantName: string; branchName: string }) => {
-        const result = await localDispatch('/v1/auth/bootstrap', { kind: 'auth', action: 'bootstrap', email, password, tenant_name: tenantName, branch_name: branchName });
+      bootstrapOwner: async ({ email, password, tenantName, branchName, businessMode = 'RETAIL' }: { email: string; password: string; tenantName: string; branchName: string; businessMode?: 'RETAIL' | 'RESTAURANT' }) => {
+        const result = await localDispatch('/v1/auth/bootstrap', { kind: 'auth', action: 'bootstrap', email, password, tenant_name: tenantName, branch_name: branchName, business_mode: businessMode });
         const session = (result.data as { session?: LocalSession } | null)?.session;
         if (result.error || !session?.access_token || session.access_token === password) {
           return { data: { user: null, session: null }, error: result.error ?? { message: 'LOCAL_RUNTIME_NOT_CONFIGURED' } };

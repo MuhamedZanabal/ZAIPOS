@@ -1,6 +1,10 @@
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, persister } from './lib/queryClient';
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
+
+// The packaged desktop app loads dist/index.html from disk, where the path is
+// the file location rather than an app route; hash routing keeps routes working.
+const AppRouter = typeof window !== "undefined" && window.location.protocol === "file:" ? HashRouter : BrowserRouter;
 import { lazy, Suspense } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -94,7 +98,7 @@ const App = () => {
           <Toaster />
           <Sonner richColors closeButton />
           <PWAInstallPrompt />
-          <BrowserRouter>
+          <AppRouter>
             <OfflineBanner />
             <Suspense fallback={<PageFallback />}>
               <Routes>
@@ -142,7 +146,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
+          </AppRouter>
         </TooltipProvider>
       </TenantProvider>
     </PersistQueryClientProvider>

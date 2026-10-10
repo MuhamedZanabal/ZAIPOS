@@ -359,6 +359,9 @@ export default function Products() {
             </button>
           </DialogTrigger>
           <ProductForm
+            // Remount per open so a new product never reuses the previous draft id
+            // (saving a second product used to overwrite the first one).
+            key={open ? (editing?.id ?? "new") : "closed"}
             tenantId={tenantId!}
             categories={categories ?? []}
             editing={editing}

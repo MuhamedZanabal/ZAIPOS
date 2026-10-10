@@ -30,6 +30,7 @@ export default function LocalServerSetup({ configured, onReady }: Props) {
   const [password, setPassword] = useState('');
   const [tenantName, setTenantName] = useState('');
   const [branchName, setBranchName] = useState('');
+  const [businessMode, setBusinessMode] = useState<'RETAIL' | 'RESTAURANT'>('RETAIL');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(configured);
@@ -54,7 +55,7 @@ export default function LocalServerSetup({ configured, onReady }: Props) {
     event.preventDefault();
     setBusy(true);
     setError('');
-    const result = await localClient.auth.bootstrapOwner({ email, password, tenantName, branchName });
+    const result = await localClient.auth.bootstrapOwner({ email, password, tenantName, branchName, businessMode });
     setBusy(false);
     if (result.error?.message === 'already_initialized') {
       setError('This computer already has an owner. Continue to sign in.');
@@ -93,6 +94,14 @@ export default function LocalServerSetup({ configured, onReady }: Props) {
             <label className="block">
               <span className="mb-2 block text-sm font-medium">Branch</span>
               <input required maxLength={80} value={branchName} onChange={(event) => setBranchName(event.target.value)} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400" />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium">Business type</span>
+              <select aria-label="Business type" value={businessMode} onChange={(event) => setBusinessMode(event.target.value === 'RESTAURANT' ? 'RESTAURANT' : 'RETAIL')} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400">
+                <option value="RETAIL">Shop / counter service</option>
+                <option value="RESTAURANT">Restaurant or café (tables and kitchen screen)</option>
+              </select>
+              <span className="mt-1 block text-xs text-slate-400">This can't be changed later.</span>
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium">Owner email</span>

@@ -81,17 +81,19 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unkn
   const payload = body === undefined ? '' : JSON.stringify(body);
   const method = body === undefined ? 'GET' : 'POST';
   return new Promise((resolve, reject) => {
-    let raw = '';
+    let raw = Buffer.alloc(0);
     const fail = (error: Error) => {
       socket.destroy();
       reject(error);
     };
     socket.on('data', (chunk) => {
-      raw += chunk.toString('utf8');
+      // Content-Length counts bytes; decoding before measuring stalled any
+      // response containing multi-byte text (for example Arabic product names).
+      raw = Buffer.concat([raw, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
       const split = raw.indexOf('\r\n\r\n');
       if (split < 0) return;
-      const header = raw.slice(0, split);
-      const responseBody = raw.slice(split + 4);
+      const header = raw.subarray(0, split).toString('utf8');
+      const responseBody = raw.subarray(split + 4);
       const [statusLine, ...lines] = header.split('\r\n');
       const status = Number(statusLine?.split(' ')[1]);
       if (!Number.isInteger(status) || status < 200 || status > 599) {
@@ -105,7 +107,7 @@ function readHttp(socket: tls.TLSSocket, host: string, path: string, body?: unkn
       const lengthHeader = lines.find((line) => line.toLowerCase().startsWith('content-length:'));
       const length = Number(lengthHeader?.split(':')[1]?.trim());
       if (!Number.isInteger(length) || length < 0 || length > 1_048_576 || responseBody.length < length) return;
-      const slice = responseBody.slice(0, length);
+      const slice = responseBody.subarray(0, length).toString('utf8');
       let parsed: unknown;
       try {
         parsed = JSON.parse(slice);

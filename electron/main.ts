@@ -25,6 +25,7 @@ import { validateBackendConfig, verifyBackendConnection } from './services/backe
 import { registerLocalRuntimeIpc } from './services/local-runtime-ipc.js';
 import { adoptInstalledProfile, explainMissingService, parseServiceNotice, type ServiceNoticeCode } from './services/local-runtime.js';
 import { parseServerProfile } from './services/local-service-client.js';
+import { createLocalAwareFetch } from './services/local-fetch.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -186,6 +187,12 @@ function setupGlobalHandlers(config: BackendConfig): void {
 
 async function bootstrap(): Promise<void> {
   await initStore();
+  // Main-process calls to the pinned local service go through the fingerprint-checked TLS client.
+  globalThis.fetch = createLocalAwareFetch(() => {
+    const stored = localRuntimeStore?.get('profile');
+    if (!stored) return null;
+    try { return parseServerProfile(stored); } catch { return null; }
+  });
   adoptProfileFromDisk();
   registerLocalRuntimeIpc({
     read() { return adoptProfileFromDisk(); },

@@ -13,8 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Copy, Bot, Webhook, Save, Loader2, Wifi, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-const SUPABASE_URL = getRuntimeConfig().supabaseUrl;
-const EVO_WEBHOOK = `${SUPABASE_URL}/functions/v1/evolution-webhook`;
+// Resolved lazily: the local desktop runtime has no hosted functions URL, and
+// reading it at import time crashed the whole Settings page.
+const hostedFunctionsUrl = (): string | null => {
+  try { return getRuntimeConfig().supabaseUrl; } catch { return null; }
+};
+const evolutionWebhookUrl = (): string => {
+  const base = hostedFunctionsUrl();
+  return base ? `${base}/functions/v1/evolution-webhook` : "";
+};
 
 type DiagStep = {
   label: string;
@@ -101,7 +108,7 @@ export default function WhatsAppSettings() {
   };
 
   const copyWebhook = async () => {
-    await navigator.clipboard.writeText(EVO_WEBHOOK);
+    await navigator.clipboard.writeText(evolutionWebhookUrl());
     toast.success("Webhook URL copied");
   };
 
@@ -137,7 +144,7 @@ export default function WhatsAppSettings() {
     }
 
     try {
-      const response = await fetch(EVO_WEBHOOK, {
+      const response = await fetch(evolutionWebhookUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event: "PING_TEST", instance: "__ping__", data: {} }),
@@ -151,7 +158,9 @@ export default function WhatsAppSettings() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("No active session");
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
+      const base = hostedFunctionsUrl();
+      if (!base) throw new Error("WhatsApp sending needs a hosted messaging backend");
+      const response = await fetch(`${base}/functions/v1/send-whatsapp-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -199,7 +208,7 @@ export default function WhatsAppSettings() {
           Configure this URL in Evolution API as the destination for <code className="bg-muted px-1 py-0.5 rounded text-xs">MESSAGES_UPSERT</code> events.
         </p>
         <div className="flex gap-2">
-          <Input readOnly value={EVO_WEBHOOK} className="font-mono text-xs" />
+          <Input readOnly value={evolutionWebhookUrl()} className="font-mono text-xs" />
           <Button variant="outline" size="icon" onClick={copyWebhook} title="Copy URL">
             <Copy className="h-4 w-4" />
           </Button>

@@ -29,6 +29,8 @@ export default function DevicesSettings() {
   const [saving, setSaving] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [currentDeviceUid, setCurrentDeviceUid] = useState<string | null>(null);
+  const [provisioned, setProvisioned] = useState<boolean | null>(null);
+  const [activating, setActivating] = useState(false);
   const canManage = hasRole('owner', 'admin', 'manager');
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function DevicesSettings() {
         setCurrentVersion(version);
         setChannel(settings.updateChannel);
         setCurrentDeviceUid(identity.deviceUid);
+        setProvisioned(identity.provisioned);
       })
       .catch(() => undefined);
   }, []);
@@ -66,6 +69,44 @@ export default function DevicesSettings() {
       toast.error(error instanceof Error ? error.message : 'Could not save update channel.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Enrol this computer for sales, cash and stock commands: an owner, admin or
+  // manager approves this terminal's device id, and the desktop app exchanges
+  // the approval for a credential kept in OS-encrypted storage.
+  const activateThisTerminal = async () => {
+    if (!hardware || !tenantId) return;
+    setActivating(true);
+    try {
+      const authorization = await desktopAuthorization();
+      const identity = await hardware.getDeviceIdentity();
+      const { data: created, error } = await (supabase as any).rpc('approve_device_enrollment', {
+        _tenant_id: authorization.tenantId,
+        _branch_id: authorization.branchId,
+        _device_uid: identity.deviceUid,
+      });
+      let approvalId: unknown = created;
+      if (error) {
+        // A previous attempt may have left an unused approval for this terminal; reuse it.
+        const { data: pending } = await (supabase as any)
+          .from('device_enrollment_approvals')
+          .select('id')
+          .eq('device_uid', identity.deviceUid)
+          .is('consumed_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+        approvalId = pending?.id;
+      }
+      if (typeof approvalId !== 'string') throw new Error(error?.message ?? 'Could not approve this terminal.');
+      await hardware.activateDevice(approvalId, authorization);
+      setProvisioned(true);
+      toast.success('This terminal is activated for sales, cash and stock.');
+      void refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not activate this terminal.');
+    } finally {
+      setActivating(false);
     }
   };
 
@@ -130,6 +171,18 @@ export default function DevicesSettings() {
               {saving ? 'Saving…' : 'Save channel'}
             </Button>
           </div>
+          {isElectron() && canManage && (
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant={provisioned ? 'default' : 'secondary'}>
+                {provisioned ? 'Activated terminal' : 'Not activated'}
+              </Badge>
+              {!provisioned && (
+                <Button onClick={activateThisTerminal} disabled={activating}>
+                  {activating ? 'Activating…' : 'Activate this terminal'}
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
