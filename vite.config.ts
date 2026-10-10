@@ -160,10 +160,14 @@ export default defineConfig(async ({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ["react", "react-dom", "react-router-dom"],
-            query: ["@tanstack/react-query", "@tanstack/react-query-persist-client"],
-            ui: ["@radix-ui/react-dialog", "@radix-ui/react-select", "@radix-ui/react-tabs", "lucide-react"],
+          // A function (not an object) so Rollup's shared CommonJS helpers land in the
+          // react chunk; otherwise they can end up in "ui" and create a react<->ui
+          // import cycle that leaves React undefined at startup (white screen).
+          manualChunks(id: string) {
+            if (id.includes("commonjsHelpers") || /node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return "react";
+            if (/node_modules\/@tanstack\/(react-query|query-core|react-query-persist-client|query-persist-client-core)\//.test(id)) return "query";
+            if (/node_modules\/(@radix-ui\/react-(dialog|select|tabs)|lucide-react)\//.test(id)) return "ui";
+            return undefined;
           },
         },
       },
