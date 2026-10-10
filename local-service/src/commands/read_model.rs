@@ -32,7 +32,17 @@ pub async fn execute_backend(
         Some("rpc") => {
             let name = object.get("fn").and_then(Value::as_str).unwrap_or("");
             let args = object.get("args").cloned().unwrap_or_else(|| json!({}));
-            execute_report(db, name, &args).await
+            if name == "report_daily_sales" {
+                return execute_report(db, name, &args).await;
+            }
+            // Every other supabase.rpc() call runs as the signed-in caller, with
+            // the same named-argument resolution as /v1/commands. RLS and
+            // function EXECUTE grants decide, exactly as on the hosted stack.
+            let user_id = user_id.ok_or(ExecError::Unauthorized)?;
+            if name == "activate_device" || args.get("sql").is_some() {
+                return Err(ExecError::Rejected);
+            }
+            execute_command(db, name, &args, user_id).await
         }
         _ => Err(ExecError::Rejected),
     }
@@ -208,7 +218,9 @@ pub async fn execute_command(
         let expression = match value {
             Value::Null => format!("null::{target}"),
             Value::Bool(_) => format!("${position}::boolean::{target}"),
-            Value::Number(_) => format!("${position}::bigint::{target}"),
+            Value::Number(number) if number.is_i64() => format!("${position}::bigint::{target}"),
+            // Fractional amounts (e.g. BHD 1.042) travel as exact decimal text.
+            Value::Number(_) => format!("${position}::text::numeric::{target}"),
             Value::String(_) => format!("${position}::text::{target}"),
             Value::Array(_) if !target.starts_with("json") && target.ends_with("[]") => {
                 format!("array(select jsonb_array_elements_text(${position}::jsonb))::{target}")
@@ -233,7 +245,10 @@ pub async fn execute_command(
         query = match value {
             Value::Null => query,
             Value::Bool(flag) => query.bind(*flag),
-            Value::Number(number) => query.bind(number.as_i64().ok_or(ExecError::Rejected)?),
+            Value::Number(number) => match number.as_i64() {
+                Some(integer) => query.bind(integer),
+                None => query.bind(number.to_string()),
+            },
             Value::String(text) => query.bind(text.as_str()),
             Value::Object(_) | Value::Array(_) => query.bind(value),
         };
