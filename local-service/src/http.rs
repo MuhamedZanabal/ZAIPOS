@@ -393,13 +393,17 @@ async fn backups(
             AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
             _ => StatusCode::UNAUTHORIZED,
         })?;
+    // Checked as the caller (row-level security applies), like every other read.
+    let mut tx = commands::caller_transaction(database, Some(&user_id))
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     let allowed: bool = sqlx::query_scalar(
-        "select exists(select 1 from public.user_roles where user_id = $1::uuid and role::text in ('owner','admin'))",
+        "select exists(select 1 from public.user_roles where user_id = auth.uid() and role::text in ('owner','admin'))",
     )
-    .bind(&user_id)
-    .fetch_one(database.pool())
+    .fetch_one(&mut *tx)
     .await
     .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    drop(tx);
     if !allowed {
         return Ok((
             StatusCode::FORBIDDEN,

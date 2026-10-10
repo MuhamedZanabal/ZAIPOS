@@ -6,6 +6,7 @@ use serde_json::Value;
 use thiserror::Error;
 
 pub use device_activation::activate_device;
+pub(crate) use read_model::caller_transaction;
 pub use read_model::{ExecError, execute_backend, execute_command};
 
 #[derive(Debug, Error, PartialEq, Eq)]
