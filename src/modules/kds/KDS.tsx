@@ -221,10 +221,11 @@ export default function KDS() {
       const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean))];
       const stations = new Map<string, string | null>();
       if (productIds.length) {
-        const { data: products, error: productsError } = await supabase
-          .from("products")
-          .select("id, station")
-          .in("id", productIds);
+        type StationRows = { data: { id: string; station: string | null }[] | null; error: unknown };
+        const productsTable = supabase.from("products") as unknown as {
+          select: (columns: "id, station") => { in: (column: "id", values: string[]) => PromiseLike<StationRows> };
+        };
+        const { data: products, error: productsError } = await productsTable.select("id, station").in("id", productIds);
         if (productsError) throw productsError;
         for (const p of (products || []) as { id: string; station: string | null }[]) stations.set(p.id, p.station);
       }
