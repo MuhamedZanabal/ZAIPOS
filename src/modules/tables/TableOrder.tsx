@@ -66,6 +66,11 @@ export default function TableOrder() {
   const { data: items, refetch: refetchItems } = useQuery({
     queryKey: ["table-order-items", orderId],
     enabled: !!orderId,
+    // Kitchen status changes come from the KDS on another screen/terminal;
+    // without this the stepper stays stale for the 5-minute default and
+    // checkout reports that nothing has been served.
+    staleTime: 0,
+    refetchInterval: 10000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("table_order_items").select("*").eq("order_id", orderId!).order("created_at");
