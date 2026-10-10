@@ -21,6 +21,7 @@ import { createDeviceOfflineAuthority } from './services/device-offline-authorit
 import { createDeviceOfflineQueue } from './services/device-offline-queue.js';
 import { createDeviceOfflineOrchestrator } from './services/device-offline-orchestrator.js';
 import { createDeviceCheckoutCoordinator } from './services/device-checkout-coordinator.js';
+import { createLocalCheckoutOutbox, isLocalServerUnreachable } from './services/local-checkout-outbox.js';
 import { validateBackendConfig, verifyBackendConnection } from './services/backend-config.js';
 import { registerLocalRuntimeIpc } from './services/local-runtime-ipc.js';
 import { adoptInstalledProfile, explainMissingService, parseServiceNotice, type ServiceNoticeCode } from './services/local-runtime.js';
@@ -169,7 +170,48 @@ function setupGlobalHandlers(config: BackendConfig): void {
   handleTrustedIpc(IPC_HANDLERS.ACTIVATE_DEVICE, async (_event, approvalId, authorization) => { const result = await deviceCredentials.activate(approvalId, app.getVersion(), process.platform, authorization); await refreshOfflineAuthority(authorization); return result; });
   handleTrustedIpc(IPC_HANDLERS.ROTATE_DEVICE_CREDENTIAL, async (_event, approvalId, authorization) => { offlineAuthority.clear(); const result = await deviceCredentials.rotate(approvalId, authorization); await refreshOfflineAuthority(authorization); return result; });
   handleTrustedIpc(IPC_HANDLERS.REVOKE_DEVICE, async (_event, deviceId, authorization) => { const result = await deviceCredentials.revoke(deviceId, authorization); offlineAuthority.clear(); return result; });
-  handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, (_event, payload, authorization) => checkoutCoordinator.checkout(payload, authorization));
+  // Local runtime: if the on-premises server is unreachable, keep the sale in a durable
+  // main-process outbox and replay it (idempotently, by client mutation ID) when it returns.
+  const localOutbox = localAuthority()
+    ? createLocalCheckoutOutbox(path.join(app.getPath('userData'), 'offline-sales.json'), (payload, authorization) => deviceCredentials.checkout(payload as any, authorization))
+    : null;
+  const requireOutboxAuthorization = (authorization: any) => {
+    if (!localOutbox) throw new Error('Offline sales are only available with the local ZAIPOS server');
+    const tenantId = authorization?.tenantId; const branchId = authorization?.branchId; const accessToken = authorization?.accessToken;
+    if (typeof tenantId !== 'string' || typeof branchId !== 'string' || typeof accessToken !== 'string' || !accessToken) throw new Error('An active authenticated branch session is required');
+    return { outbox: localOutbox, authorization };
+  };
+  handleTrustedIpc(IPC_HANDLERS.DEVICE_CHECKOUT, async (_event, payload, authorization) => {
+    try {
+      const result = await checkoutCoordinator.checkout(payload, authorization);
+      if (localOutbox && typeof result === 'string' && localOutbox.status(authorization).pending > 0) {
+        void localOutbox.replay(authorization).then((summary) => log('info', 'offline_sales_replayed', summary)).catch(() => undefined);
+      }
+      return result;
+    } catch (error) {
+      if (!localOutbox || !isLocalServerUnreachable(error)) throw error;
+      requireOutboxAuthorization(authorization);
+      const mutationId = localOutbox.enqueue(payload);
+      log('warn', 'offline_sale_queued', { mutationId });
+      return Object.freeze({ status: 'pending' as const, mutationId });
+    }
+  });
+  handleTrustedIpc(IPC_HANDLERS.OFFLINE_SALES_STATUS, (_event, authorization) => {
+    if (!localOutbox) return { pending: 0, failed: 0, failures: [] };
+    const { outbox } = requireOutboxAuthorization(authorization);
+    return outbox.status({ tenantId: authorization.tenantId, branchId: authorization.branchId });
+  });
+  handleTrustedIpc(IPC_HANDLERS.OFFLINE_SALES_REPLAY, async (_event, authorization) => {
+    const { outbox } = requireOutboxAuthorization(authorization);
+    const summary = await outbox.replay(authorization);
+    if (summary.attempted) log('info', 'offline_sales_replayed', summary);
+    return summary;
+  });
+  handleTrustedIpc(IPC_HANDLERS.OFFLINE_SALES_RESOLVE, (_event, mutationId, action, authorization) => {
+    const { outbox } = requireOutboxAuthorization(authorization);
+    if (action !== 'retry' && action !== 'discard') throw new Error('Invalid offline sale action');
+    outbox.resolveFailed(String(mutationId), action);
+  });
   handleTrustedIpc(IPC_HANDLERS.DEVICE_CASH_MOVEMENT, (_event, payload, authorization, cancel) => deviceCredentials.cashMovement(payload, authorization, cancel));
   handleTrustedIpc(IPC_HANDLERS.DEVICE_CASH_SESSION, (_event, payload, authorization, close) => deviceCredentials.cashSession(payload, authorization, close));
   handleTrustedIpc(IPC_HANDLERS.DEVICE_SALE_RETURN, (_event, payload, authorization) => deviceCredentials.returnSale(payload, authorization));

@@ -1,6 +1,7 @@
 import { GearMark } from "@/components/shared/GearMark";
 import { LiveDot } from "@/components/shared/LiveDot";
 import { User } from "lucide-react";
+import { useOfflineSalesStore } from "@/stores/offlineSales";
 
 interface BrandBarProps {
   branch?:   string;
@@ -15,6 +16,7 @@ export function BrandBar({
   channel  = "Local",
   showSync = true,
 }: BrandBarProps) {
+  const offlinePending = useOfflineSalesStore((state) => state.pending);
   return (
     <div className="brand-bar shrink-0">
       {/* Lockup */}
@@ -40,10 +42,15 @@ export function BrandBar({
       </span>
 
       {/* Sync pill */}
-      {showSync && (
+      {showSync && offlinePending === 0 && (
         <span className="s-pill s-pill-green">
           <LiveDot kind="green" />
           SYNC OK
+        </span>
+      )}
+      {showSync && offlinePending > 0 && (
+        <span className="s-pill s-pill-amber" data-testid="offline-sales-pill">
+          {offlinePending} OFFLINE · WILL SYNC
         </span>
       )}
 

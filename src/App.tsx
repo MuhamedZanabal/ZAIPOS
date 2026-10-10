@@ -1,3 +1,4 @@
+import { OfflineSalesBanner } from "@/components/shared/OfflineSalesBanner";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, persister } from './lib/queryClient';
 import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
@@ -100,6 +101,7 @@ const App = () => {
           <PWAInstallPrompt />
           <AppRouter>
             <OfflineBanner />
+            <OfflineSalesBanner />
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 {/* ── Rutas públicas ── */}

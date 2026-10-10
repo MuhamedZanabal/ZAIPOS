@@ -1,3 +1,4 @@
+import { useOfflineSalesStore } from "@/stores/offlineSales";
 import { roundBhd } from "@/lib/bahrain";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -405,11 +406,17 @@ export default function POS() {
       const saleId = await checkoutMutation.mutateAsync(command.payload);
 
       const queuedOffline = !saleId || typeof saleId !== "string";
-      toast.success(
-        queuedOffline
-          ? `Sale queued · ${formatCurrency(payableTotal)}`
-          : `Sale recorded · ${formatCurrency(payableTotal)}`
-      );
+      if (queuedOffline) {
+        useOfflineSalesStore.getState().set({ pending: useOfflineSalesStore.getState().pending + 1, serverReachable: false });
+        toast.warning(`Saved offline · ${formatCurrency(payableTotal)}`, {
+          description: "The ZAIPOS server is unreachable. This sale is stored on this terminal and will sync automatically.",
+          duration: 10_000,
+        });
+        // The customer still needs change: the drawer is local hardware.
+        if (command.hasCashPayment) await openDrawer().catch(() => undefined);
+      } else {
+        toast.success(`Sale recorded · ${formatCurrency(payableTotal)}`);
+      }
       if (saleId && typeof saleId === "string") {
         try {
           const { data: sale } = await supabase
