@@ -209,14 +209,29 @@ export default function KDS() {
       const { data, error } = await supabase
         .from("table_order_items")
         .select(`id, quantity, product_id, product_name, modifiers, status, created_at, notes, order_id,
-          products(station),
           table_orders!inner(status, branch_id, tables(name))`)
         .eq("table_orders.branch_id", branchId!)
         .in("table_orders.status", ["open", "sent_to_cashier"])
         .in("status", ["pending", "preparing"])
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data || []) as unknown as KDSItem[];
+      // table_order_items.product_id has no foreign key to products, so the
+      // station cannot be embedded (PGRST200); look it up separately.
+      const rows = (data || []) as unknown as Omit<KDSItem, "products">[];
+      const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean))];
+      const stations = new Map<string, string | null>();
+      if (productIds.length) {
+        const { data: products, error: productsError } = await supabase
+          .from("products")
+          .select("id, station")
+          .in("id", productIds);
+        if (productsError) throw productsError;
+        for (const p of (products || []) as { id: string; station: string | null }[]) stations.set(p.id, p.station);
+      }
+      return rows.map((r) => ({
+        ...r,
+        products: stations.has(r.product_id) ? { station: stations.get(r.product_id) ?? null } : null,
+      })) as KDSItem[];
     },
   });
 
