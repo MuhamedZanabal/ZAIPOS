@@ -25,7 +25,7 @@ export async function renderBilingualReceipt(data: TicketData, charWidth: number
   });
   try {
     win.webContents.session.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] }, (_d, cb) => cb({ cancel: true }));
-    await win.loadURL(`data:text/html;charset=utf-8;base64,${Buffer.from(html).toString('base64')}`);
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     await new Promise((r) => setTimeout(r, 150));
     const image = await win.webContents.capturePage();
     const size = image.getSize();

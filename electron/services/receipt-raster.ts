@@ -62,7 +62,7 @@ export function buildBilingualReceiptHtml(data: TicketData, dotWidth: number, fo
     const qty = Number.isInteger(item.quantity) ? String(item.quantity) : item.quantity.toFixed(3);
     return `<tr><td class="item" dir="ltr">${esc(qty)} × <bdi>${esc(item.name)}</bdi><div class="sub">@ ${esc(formatBhdReceiptAmount(item.unitPrice))}${(item.taxRate ?? 0) > 0 ? ` · VAT ${item.taxRate}%` : ""}${(item.discountAmount ?? 0) > 0 ? ` · -${esc(formatBhdReceiptAmount(item.discountAmount ?? 0))}` : ""}</div></td><td class="val">${esc(formatBhdReceiptAmount(item.total))}</td></tr>`;
   }).join("");
-  const rates = Array.from(new Set(data.items.map((i) => i.taxRate ?? 0).filter((r) => r > 0)));
+  const rates = [...new Set(data.items.map((i) => i.taxRate ?? 0).filter((r) => r > 0))];
   const fontFace = fontBase64
     ? `@font-face{font-family:"ReceiptArabic";src:url(data:font/woff2;base64,${fontBase64.regular}) format("woff2");font-weight:400}@font-face{font-family:"ReceiptArabic";src:url(data:font/woff2;base64,${fontBase64.bold}) format("woff2");font-weight:700}`
     : "";
@@ -111,7 +111,7 @@ export function bitmapToEscPosRaster(width: number, height: number, pixels: Uint
   const band = Math.max(1, Math.min(opts.band ?? 128, 2047));
   const bytesPerRow = Math.ceil(width / 8);
   const [ri, bi] = opts.bgra ? [2, 0] : [0, 2];
-  const chunks: Buffer[] = [Buffer.from([0x1b, 0x40])]; // ESC @ initialise
+  const chunks: Buffer[] = [Buffer.of(0x1b, 0x40)]; // ESC @ initialise
   for (let top = 0; top < height; top += band) {
     const rows = Math.min(band, height - top);
     const out = Buffer.alloc(8 + bytesPerRow * rows);
