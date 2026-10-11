@@ -7,6 +7,54 @@ use zaipos_local_service::auth;
 use zaipos_local_service::db::{EphemeralDatabase, MigrationRunner};
 use zaipos_local_service::http::{AppState, build_router};
 
+/// The Supabase-shaped chain needs the cluster roles anon/authenticated/
+/// service_role. They are cluster-global, so the scenarios run sequentially in
+/// one test and any role this test had to create is dropped again afterwards
+/// (other test binaries rely on them being absent).
+#[tokio::test]
+async fn business_types_on_real_postgres() {
+    let Ok(url) = std::env::var("ZAIPOS_TEST_DATABASE_URL") else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        return;
+    };
+    let admin = sqlx::PgPool::connect(&url).await.unwrap();
+    let mut created = Vec::new();
+    for role in ["anon", "authenticated", "service_role"] {
+        let exists: bool =
+            sqlx::query_scalar("select exists(select 1 from pg_roles where rolname = $1)")
+                .bind(role)
+                .fetch_one(&admin)
+                .await
+                .unwrap();
+        if !exists {
+            sqlx::query(&format!("create role {role} nologin"))
+                .execute(&admin)
+                .await
+                .unwrap();
+            created.push(role);
+        }
+    }
+    // spawn_local catches a scenario panic so the roles are still cleaned up.
+    let outcome = tokio::task::LocalSet::new()
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                bootstrap_sets_type_and_defaults_for_every_business_type().await;
+                unknown_type_is_rejected_and_direct_type_updates_are_blocked().await;
+                owner_changes_type_and_adds_staff_who_can_sign_in().await;
+            })
+            .await
+        })
+        .await;
+    for role in created {
+        let _ = sqlx::query(&format!("drop role if exists {role}"))
+            .execute(&admin)
+            .await;
+    }
+    outcome.unwrap();
+}
+
 async fn migrated() -> Option<EphemeralDatabase> {
     let Some(database) = EphemeralDatabase::open().await else {
         if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
@@ -14,20 +62,6 @@ async fn migrated() -> Option<EphemeralDatabase> {
         }
         return None;
     };
-    // Cluster roles the Supabase-shaped migrations grant to (created by the
-    // provisioner in production).
-    database
-        .database()
-        .exec(
-            "do $$ begin
-               if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
-               if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
-               if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
-             exception when unique_violation or duplicate_object then null;
-             end $$",
-        )
-        .await
-        .unwrap();
     database
         .database()
         .prepare_local_compatibility()
@@ -95,7 +129,6 @@ async fn bootstrap(app: &axum::Router, mode: &str) -> String {
         .to_string()
 }
 
-#[tokio::test]
 async fn bootstrap_sets_type_and_defaults_for_every_business_type() {
     for (mode, channels, tables_allowed) in [
         ("RESTAURANT", "{pos,tables,talabat,whatsapp,delivery}", true),
@@ -136,7 +169,6 @@ async fn bootstrap_sets_type_and_defaults_for_every_business_type() {
     }
 }
 
-#[tokio::test]
 async fn unknown_type_is_rejected_and_direct_type_updates_are_blocked() {
     let Some(database) = migrated().await else {
         return;
@@ -160,7 +192,6 @@ async fn unknown_type_is_rejected_and_direct_type_updates_are_blocked() {
     database.close().await;
 }
 
-#[tokio::test]
 async fn owner_changes_type_and_adds_staff_who_can_sign_in() {
     let Some(database) = migrated().await else {
         return;
