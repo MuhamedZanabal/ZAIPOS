@@ -15,7 +15,7 @@ export interface TicketData {
 }
 export interface PrintResult { ok: boolean; error?: string; }
 export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth';
-export interface PrinterConfig { connectionType: PrinterConnectionType; devicePath?: string; host?: string; port?: number; bluetoothAddress?: string; width?: number; characterSet?: string; }
+export interface PrinterConfig { connectionType: PrinterConnectionType; devicePath?: string; host?: string; port?: number; bluetoothAddress?: string; width?: number; characterSet?: string; /** 'bilingual' prints Arabic+English as a raster image; 'english' uses text mode. */ receiptLanguage?: 'bilingual' | 'english'; }
 export type BarcodeScannerMode = 'hid' | 'serial';
 export interface BarcodeConfig { mode: BarcodeScannerMode; serialPort?: string; baudRate?: number; }
 export interface AppSettings { kiosk: boolean; updateChannel: 'stable' | 'beta'; printer: PrinterConfig; barcode: BarcodeConfig; }
