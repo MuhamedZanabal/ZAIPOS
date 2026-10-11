@@ -11,6 +11,7 @@ import { formatCurrency } from "@/lib/format";
 import { bhdToFils, formatFils } from "@/lib/bahrain";
 import { Undo2, AlertTriangle, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { enqueue, isServerUnreachable } from "@/lib/offlineOutbox";
 
 type SaleItem = {
   id: string;
@@ -62,6 +63,8 @@ interface ReturnDialogProps {
   onOpenChange: (o: boolean) => void;
   sale: Sale | null;
 }
+
+const OFFLINE_QUEUED = "offline-queued" as const;
 
 export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
   const { tenantId, branchId } = useTenantContext();
@@ -226,7 +229,7 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
         evidenceUrl = attempt.evidencePath;
       }
 
-      return window.electron.returnSale({
+      const payload = {
         _tenant_id: tenantId,
         _branch_id: branchId,
         _sale_id: sale.id,
@@ -239,14 +242,21 @@ export function ReturnDialog({ open, onOpenChange, sale }: ReturnDialogProps) {
         _cash_session_id: isInPersonSale ? openSession?.id ?? null : null,
         _reason: reason.trim() || null,
         _evidence_url: evidenceUrl,
-      }, {
-        accessToken,
-        tenantId,
-        branchId,
-      });
+      };
+      try {
+        return await window.electron.returnSale(payload, { accessToken, tenantId, branchId });
+      } catch (error) {
+        // Server unreachable: keep the refund on this till under the same idempotency key
+        // and replay it automatically. Evidence photos need the server, so those stay online-only.
+        if (!isServerUnreachable(error) || evidenceFile) throw error;
+        enqueue({ id: attempt.operationId, kind: "sale-return", payload, tenantId, branchId });
+        return OFFLINE_QUEUED;
+      }
     },
-    onSuccess: () => {
-      toast.success("Return recorded with server-authoritative refund accounting.");
+    onSuccess: (result) => {
+      toast.success(result === OFFLINE_QUEUED
+        ? "Server unreachable — return saved on this till and will sync automatically."
+        : "Return recorded with server-authoritative refund accounting.");
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["sale-return-ledger", sale?.id] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });

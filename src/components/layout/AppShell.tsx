@@ -2,6 +2,7 @@ import { useOpenSession } from "@/hooks/useOpenSession";
 import { useState, type CSSProperties } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useLanguageStore } from "@/i18n";
+import { useOfflineReplay } from "@/hooks/useOfflineReplay";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { WhatsAppNotifsProvider } from "@/contexts/WhatsAppNotifsContext";
@@ -24,6 +25,7 @@ function Shell() {
   const { branchId, setBranch, branches, roles } = useTenantContext();
   const { devMode } = useDevMode();
   const language = useLanguageStore((s) => s.language);
+  useOfflineReplay();
   const { toggleSidebar, isMobile, openMobile } = useSidebar();
 
   // Same query (and cache entry) as the POS, so both always agree.

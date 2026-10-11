@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { PendingTableOrders } from "./PendingTableOrders";
 import { ZReportDialog } from "./ZReportDialog";
+import { isServerUnreachable } from "@/lib/offlineOutbox";
 import type { ZSession } from "@/lib/zReport";
 import { cn } from "@/lib/utils";
 import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
@@ -477,7 +478,8 @@ export function CashMovementDialog({
       else toast.success(completed.state === 'cancelled' ? 'Movement cancelled before recording cash' : 'Cash movement confirmed');
       // Retain the confirmed reference until an explicit new physical movement.
     } catch (error: any) {
-      toast.error(error.message ?? 'Cash movement response is uncertain; recover the original reference');
+      if (isServerUnreachable(error)) toast.warning('Server unreachable — movement saved on this till and will sync automatically.');
+      else toast.error(error.message ?? 'Cash movement response is uncertain; recover the original reference');
       try { if (actorId) setDraft(readCashMovement(actorId)); }
       catch (readError: any) { setRecoveryError(readError.message); }
     } finally { setSaving(false); }

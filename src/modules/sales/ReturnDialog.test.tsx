@@ -129,6 +129,28 @@ describe("ReturnDialog v2 lifecycle wiring", () => {
     expect(state.rpc).not.toHaveBeenCalled();
   });
 
+  it("keeps a refund on the till when the server is unreachable and does not drop it", async () => {
+    localStorage.clear();
+    state.returnSale.mockRejectedValueOnce(new Error("fetch failed"));
+    renderDialog();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /Process return/i }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("zaipos:outbox:v1") ?? "[]")).toHaveLength(1));
+    const [queued] = JSON.parse(localStorage.getItem("zaipos:outbox:v1")!);
+    expect(queued).toMatchObject({ kind: "sale-return", state: "pending", payload: { _sale_id: sale.id } });
+    expect(queued.id).toBe(queued.payload._client_mutation_id);
+  });
+
+  it("still reports business rejections instead of queueing them", async () => {
+    localStorage.clear();
+    state.returnSale.mockRejectedValueOnce(new Error("Return quantity exceeds the remaining quantity"));
+    renderDialog();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /Process return/i }));
+    await waitFor(() => expect(state.returnSale).toHaveBeenCalledTimes(1));
+    expect(localStorage.getItem("zaipos:outbox:v1")).toBeNull();
+  });
+
   it("uses authoritative return ledgers to cap a subsequent partial return", async () => {
     state.saleReturns = [{ amount_fils: 2728 }];
     state.returnItems = [{
