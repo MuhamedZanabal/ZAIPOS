@@ -21,6 +21,7 @@ import {
   type PaymentAllocation,
   type PayMethod,
 } from "./paymentAllocations";
+import { translate as t } from "@/i18n";
 
 /**
  * Database-compatible payment buckets.
@@ -212,9 +213,9 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
       <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-[var(--g-hairline)]">
           <DialogTitle className="text-xl flex items-baseline justify-between">
-            <span className="h-display text-xl">Charge sale</span>
+            <span className="h-display text-xl">{t("Charge sale")}</span>
             <div className="text-right">
-              <div className="h-meta">Total payable, including tip</div>
+              <div className="h-meta">{t("Total payable, including tip")}</div>
               <div className="h-num text-3xl text-brand-600">{formatCurrency(grandTotal)}</div>
             </div>
           </DialogTitle>
@@ -224,18 +225,18 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
           <div className="p-6 border-r border-[var(--g-hairline)] overflow-y-auto space-y-5">
             <div className="grid grid-cols-2 gap-3">
               <div className="glass rounded-xl px-4 py-3">
-                <div className="h-label uppercase tracking-widest mb-1">Allocated</div>
+                <div className="h-label uppercase tracking-widest mb-1">{t("Allocated")}</div>
                 <div className="h-num text-2xl">{formatFils(allocatedFils)}</div>
               </div>
               <div className="glass rounded-xl px-4 py-3">
-                <div className="h-label uppercase tracking-widest mb-1">Remaining</div>
+                <div className="h-label uppercase tracking-widest mb-1">{t("Remaining")}</div>
                 <div className={cn("h-num text-2xl", remainingFils === 0 && "text-[var(--g-ok)]")}>{formatFils(remainingFils)}</div>
               </div>
             </div>
 
             {allocations.length > 0 && (
               <div className="space-y-2">
-                <div className="h-label uppercase tracking-widest">Payment allocations</div>
+                <div className="h-label uppercase tracking-widest">{t("Payment allocations")}</div>
                 {allocations.map((allocation, index) => {
                   const label = paymentMethodLabel(allocation.method);
                   return (
@@ -261,7 +262,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
             )}
 
             <div className="space-y-3">
-              <div className="h-label uppercase tracking-widest">Payment method</div>
+              <div className="h-label uppercase tracking-widest">{t("Payment method")}</div>
               <div className="grid grid-cols-2 gap-2">
                 {methods.map((option) => {
                   const active = method === option.id;
@@ -278,7 +279,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                       )}
                     >
                       <option.icon className="h-6 w-6" />
-                      <span className="font-semibold text-sm">{option.label}</span>
+                      <span className="font-semibold text-sm">{t(option.label)}</span>
                     </button>
                   );
                 })}
@@ -291,7 +292,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   <Heart className="h-3.5 w-3.5 text-[var(--g-bad)]" /> Tip
                 </div>
                 <div className="text-sm font-bold tabular-nums text-g-bad">
-                  {tip > 0 ? "+" + formatCurrency(tip) : "No tip"}
+                  {tip > 0 ? "+" + formatCurrency(tip) : t("No tip")}
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -321,7 +322,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   type="number"
                   min="0"
                   step="0.001"
-                  placeholder="Custom amount"
+                  placeholder={t("Custom amount")}
                   className="pl-12"
                   value={tip || ""}
                   disabled={totalsLocked}
@@ -351,7 +352,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
                   onClick={applyCoupon}
                   disabled={validatingCoupon || totalsLocked}
                 >
-                  {validatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                  {validatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : t("Apply")}
                 </button>
               </div>
               {couponDiscount > 0 && (
@@ -390,7 +391,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
 
               {method === "cash" && previewCashChangeFils > 0 && remainingFils > 0 && (
                 <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-                  <span className="h-label uppercase tracking-wider">Change</span>
+                  <span className="h-label uppercase tracking-wider">{t("Change")}</span>
                   <span className="h-num text-xl text-[var(--g-ok)]">{formatFils(previewCashChangeFils)}</span>
                 </div>
               )}
@@ -411,7 +412,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
               disabled={submitting || allocations.length === 0 || remainingFils !== 0}
               onClick={completeSale}
             >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Complete sale"}
+              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : t("Complete sale")}
             </button>
           </div>
         </div>

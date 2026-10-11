@@ -42,6 +42,7 @@ import { channelAllowedInMode, hasCapability } from "@/lib/business-modes";
 import { enabledPaymentMethods } from "@/lib/setupWizard";
 import { FIRST_SALE_GUIDE_KEY } from "@/hooks/useSetupInProgress";
 import { isWeighedProduct, parseWeightKg } from "@/lib/weighedItems";
+import { translate as t } from "@/i18n";
 
 export default function POS() {
   const navigate = useNavigate();
@@ -400,8 +401,8 @@ export default function POS() {
 
   const finalize = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {
     if (!tenantId || !branchId) return;
-    if (lines.length === 0) return toast.error("Add products to the ticket");
-    if (isPos && !openSession) return toast.error("You must open the register before making in-person sales");
+    if (lines.length === 0) return toast.error(t("Add products to the ticket"));
+    if (isPos && !openSession) return toast.error(t("You must open the register before making in-person sales"));
     if (submitting) return;
 
     setSubmitting(true);
@@ -428,7 +429,7 @@ export default function POS() {
       if (queuedOffline) {
         useOfflineSalesStore.getState().set({ pending: useOfflineSalesStore.getState().pending + 1, serverReachable: false });
         toast.warning(`Saved offline · ${formatCurrency(payableTotal)}`, {
-          description: "The ZAIPOS server is unreachable. This sale is stored on this terminal and will sync automatically.",
+          description: t("The ZAIPOS server is unreachable. This sale is stored on this terminal and will sync automatically."),
           duration: 10_000,
         });
         // The customer still needs change: the drawer is local hardware.
@@ -492,13 +493,13 @@ export default function POS() {
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       qc.invalidateQueries({ queryKey: ["pos-today-metrics"] });
     } catch (err: any) {
-      toast.error(err.message ?? "Could not complete the sale");
+      toast.error(err.message ?? t("Could not complete the sale"));
     } finally { setSubmitting(false); }
   };
 
   const handleSendToTable = async () => {
     if (!selectedTableId) return toast.error("Select a table first");
-    if (lines.length === 0) return toast.error("Add products to the ticket");
+    if (lines.length === 0) return toast.error(t("Add products to the ticket"));
 
     setSubmitting(true);
     try {
@@ -565,7 +566,7 @@ export default function POS() {
           title="Back to main dashboard"
         >
           <LayoutDashboard className="h-4 w-4" />
-          <span className="hidden sm:inline font-medium">Dashboard</span>
+          <span className="hidden sm:inline font-medium">{t("Dashboard")}</span>
         </Link>
       </div>
 
@@ -662,8 +663,8 @@ export default function POS() {
       {/* ── No-session warning ───────────────────────────── */}
       {isPos && !openSession && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
-          <span className="text-sm"><strong>Register closed</strong> · Open the register to record in-person sales.</span>
-          <Button asChild size="sm" variant="default"><Link to="/cash">Open register</Link></Button>
+          <span className="text-sm"><strong>{t("Register closed")}</strong> · Open the register to record in-person sales.</span>
+          <Button asChild size="sm" variant="default"><Link to="/cash">{t("Open register")}</Link></Button>
         </div>
       )}
 
@@ -681,7 +682,7 @@ export default function POS() {
               <input
                 ref={searchInputRef}
                 type="search"
-                aria-label={barcodeFirst ? "Scan barcode" : "Search products"}
+                aria-label={barcodeFirst ? t("Scan barcode") : t("Search products")}
                 autoFocus={barcodeFirst}
                 placeholder={barcodeFirst ? "Scan barcode or type to search…" : "Search product, SKU, or barcode…"}
                 className={cn("flex-1 bg-transparent outline-none placeholder:text-muted-foreground", barcodeFirst ? "text-lg font-semibold py-1" : "text-sm")}
@@ -719,7 +720,7 @@ export default function POS() {
                       <Heart className="h-2 w-2 fill-current" /> {selectedCustomer.loyalty_points}
                     </Badge>
                   )}
-                  <button type="button" aria-label="Clear customer"
+                  <button type="button" aria-label={t("Clear customer")}
                     onClick={() => { setCustomerId(null); setCustomerSearch(""); }}
                     className="text-primary/60 hover:text-primary ml-0.5">
                     <X className="h-3 w-3" />
@@ -809,7 +810,7 @@ export default function POS() {
         {/* RIGHT: ticket */}
         <TicketPanel
           canCharge={canCharge}
-          reasonDisabled={isPos && !openSession ? "Open register to charge" : undefined}
+          reasonDisabled={isPos && !openSession ? t("Open register to charge") : undefined}
           onCharge={() => setPaymentOpen(true)}
           onSendToTable={channel === "tables" ? handleSendToTable : undefined}
           onHold={() => {
@@ -874,7 +875,7 @@ export default function POS() {
               searchInputRef.current?.focus();
             }}
           >
-            <label className="block text-sm font-medium" htmlFor="weigh-kg">Weight (kg)</label>
+            <label className="block text-sm font-medium" htmlFor="weigh-kg">{t("Weight (kg)")}</label>
             <input id="weigh-kg" aria-label="Weight in kg" autoFocus inputMode="decimal" value={weighKg}
               onChange={(e) => setWeighKg(e.target.value)} placeholder="0.000"
               className="w-full rounded-lg border px-3 py-2 text-2xl font-semibold tabular-nums" />
@@ -882,7 +883,7 @@ export default function POS() {
               {formatCurrency(Number(weighProduct?.price ?? 0))} per kg
               {parseWeightKg(weighKg) !== null && <> · Line total {formatCurrency(roundBhd(Number(weighProduct?.price ?? 0) * (parseWeightKg(weighKg) ?? 0)))}</>}
             </div>
-            <Button type="submit" className="w-full">Add to sale</Button>
+            <Button type="submit" className="w-full">{t("Add to sale")}</Button>
           </form>
         </DialogContent>
       </Dialog>

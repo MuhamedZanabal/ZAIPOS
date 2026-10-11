@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { signOutFully } from "@/lib/signOut";
 import type { LucideIcon } from "lucide-react";
 import type { SalesChannel } from "@/lib/channels";
+import { useLanguageStore, useT } from "@/i18n";
 
 type Item = {
   title: string;
@@ -97,6 +98,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const { roles, activeChannels, branchId, branches, businessMode } = useTenantContext();
+  const t = useT();
+  const { language, setLanguage } = useLanguageStore();
   const { unreadCount } = useWhatsAppNotifs();
   const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
@@ -148,7 +151,7 @@ export function AppSidebar() {
                 return (
                   <div key={section.label}>
                     {!collapsed && (
-                      <div className="g-sb-section-label">{section.label}</div>
+                      <div className="g-sb-section-label">{t(section.label)}</div>
                     )}
                     {visible.map((item) => {
                       const active =
@@ -158,7 +161,7 @@ export function AppSidebar() {
                         <NavLink
                           key={item.url}
                           to={item.url}
-                          title={collapsed ? item.title : undefined}
+                          title={collapsed ? t(item.title) : undefined}
                           className={cn(
                             "g-sb-nav-item",
                             active && "is-active",
@@ -167,7 +170,7 @@ export function AppSidebar() {
                         >
                           <item.icon size={18} style={{ flexShrink: 0 }} />
                           {!collapsed && (
-                            <span className="truncate flex-1">{item.title}</span>
+                            <span className="truncate flex-1">{t(item.title)}</span>
                           )}
                           {item.url === "/whatsapp" && unreadCount > 0 && (
                             <span className={cn("g-sb-badge", collapsed && "g-sb-badge-float")}>
@@ -182,25 +185,14 @@ export function AppSidebar() {
               })}
             </nav>
 
-            {/* Plan card (only expanded) */}
+            {/* Language */}
             {!collapsed && (
-              <div className="glass-thin g-sb-plan">
-                <div className="g-sb-plan-row">
-                  <div className="g-sb-plan-orb">
-                    <Sparkles size={14} color="white" />
-                  </div>
-                  <div>
-                    <div className="g-sb-plan-title">Plan Premium</div>
-                    <div className="g-sb-plan-sub">Your plan is active</div>
-                  </div>
+              <div className="glass-thin g-sb-plan" role="group" aria-label={t("Language")}>
+                <div className="g-sb-plan-sub mb-1">{t("Language")}</div>
+                <div className="flex gap-1">
+                  <button type="button" className="g-sb-plan-btn flex-1" aria-pressed={language === "en"} onClick={() => setLanguage("en")}>English</button>
+                  <button type="button" className="g-sb-plan-btn flex-1" aria-pressed={language === "ar"} onClick={() => setLanguage("ar")} lang="ar">العربية</button>
                 </div>
-                <button
-                  type="button"
-                  className="g-sb-plan-btn"
-                  onClick={() => navigate("/settings")}
-                >
-                  View benefits <ChevronRight size={12} />
-                </button>
               </div>
             )}
 
@@ -216,7 +208,8 @@ export function AppSidebar() {
                   <button
                     type="button"
                     className="g-sb-logout-btn"
-                    title="Sign out"
+                    title={t("Sign out")}
+                    aria-label={t("Sign out")}
                     onClick={async () => {
                       await signOutFully();
                       navigate("/auth");

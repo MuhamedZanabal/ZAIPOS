@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildZReport, zReportLines, type ZSession } from "@/lib/zReport";
+import { translate as t } from "@/i18n";
 
 /** End-of-day Z-report for one register session, built from the recorded sales, payments, refunds and cash movements. */
 export function ZReportDialog({ session, businessName, onClose }: { session: ZSession | null; businessName: string; onClose: () => void }) {
@@ -28,13 +29,13 @@ export function ZReportDialog({ session, businessName, onClose }: { session: ZSe
   return (
     <Dialog open={!!session} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Z-report (end of day)</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("Z-report (end of day)")}</DialogTitle></DialogHeader>
         {isLoading && <p className="h-meta">Building report…</p>}
         {error && <p role="alert" className="text-sm text-destructive">Could not build the Z-report: {(error as Error).message}</p>}
         {data && (
           <>
             <pre data-testid="z-report" className="z-report-print max-h-[60vh] overflow-auto rounded-lg bg-muted p-3 font-mono text-xs leading-5" dir="ltr">{data.join("\n")}</pre>
-            <Button type="button" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" aria-hidden="true" />Print</Button>
+            <Button type="button" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" aria-hidden="true" />{t("Print")}</Button>
           </>
         )}
       </DialogContent>

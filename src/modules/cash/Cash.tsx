@@ -30,6 +30,7 @@ import type { ZSession } from "@/lib/zReport";
 import { cn } from "@/lib/utils";
 import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
 import { executeCashSession, readCashSessionDraft, type CashSessionDraft } from "@/lib/deviceCashSession";
+import { translate as t } from "@/i18n";
 
 export default function Cash() {
   const { tenantId, branchId, hasRole } = useTenantContext();
@@ -177,8 +178,8 @@ export default function Cash() {
 
       <Tabs defaultValue="current">
         <TabsList>
-          <TabsTrigger value="current">Current register</TabsTrigger>
-          <TabsTrigger value="history">Closing history</TabsTrigger>
+          <TabsTrigger value="current">{t("Current register")}</TabsTrigger>
+          <TabsTrigger value="history">{t("Closing history")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="current" className="mt-4 space-y-4">
@@ -353,7 +354,7 @@ export default function Cash() {
                   </span>
                   {canViewDifferences && row.status === "closed" && (
                     <button type="button" className="text-xs font-semibold underline" onClick={() => setZSession(row)} aria-label={`Z-report for ${new Date(row.opened_at).toLocaleDateString(BAHRAIN_LOCALE)}`}>
-                      Z-report
+                      {t("Z-report")}
                     </button>
                   )}
                 </div>

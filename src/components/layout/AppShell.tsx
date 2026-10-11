@@ -1,6 +1,7 @@
 import { useOpenSession } from "@/hooks/useOpenSession";
 import { useState, type CSSProperties } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useLanguageStore } from "@/i18n";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { WhatsAppNotifsProvider } from "@/contexts/WhatsAppNotifsContext";
@@ -22,6 +23,7 @@ function Shell() {
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const { branchId, setBranch, branches, roles } = useTenantContext();
   const { devMode } = useDevMode();
+  const language = useLanguageStore((s) => s.language);
   const { toggleSidebar, isMobile, openMobile } = useSidebar();
 
   // Same query (and cache entry) as the POS, so both always agree.
@@ -110,7 +112,8 @@ function Shell() {
         )}
 
         <main className="g-content">
-          <Outlet />
+          {/* Remount routed screens when the language changes so every translated label refreshes. */}
+          <div key={language} className="contents"><Outlet /></div>
         </main>
       </div>
     </div>

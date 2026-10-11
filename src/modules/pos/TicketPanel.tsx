@@ -4,6 +4,7 @@ import { effectiveCartUnitPrice, useCart, type CartLine } from "@/stores/cart";
 import { formatCurrency } from "@/lib/format";
 import { formatQuantity, isWeighedProduct } from "@/lib/weighedItems";
 import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw, ShieldCheck } from "lucide-react";
+import { translate as t } from "@/i18n";
 
 interface TicketPanelProps {
   canCharge: boolean;
@@ -41,12 +42,12 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
             </Button>
           )}
           {onOpenHeldCarts && (
-            <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label="Open held carts">
+            <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label={t("Open held carts")}>
               <RotateCcw className="h-4 w-4 mr-1" /> Held
             </Button>
           )}
           {lines.length > 0 && onHold && (
-            <Button variant="ghost" size="sm" onClick={onHold} className="h-8" aria-label="Hold current cart">
+            <Button variant="ghost" size="sm" onClick={onHold} className="h-8" aria-label={t("Hold current cart")}>
               <Archive className="h-4 w-4 mr-1" /> Hold
             </Button>
           )}
@@ -94,7 +95,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                   <button
                     onClick={() => remove(l.id)}
                     className="text-muted-foreground hover:text-destructive p-1 -m-1"
-                    aria-label="Remove"
+                    aria-label={t("Remove")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
