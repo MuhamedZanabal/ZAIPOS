@@ -73,6 +73,15 @@
       "ui_roles": [],
       "server_authorization": "not-assessed"
     },
+    "application-route|src/App.tsx|/setup": {
+      "ui_access": "role-gated",
+      "ui_roles": [
+        "owner",
+        "admin"
+      ],
+      "super_admin_bypass": true,
+      "server_authorization": "not-assessed"
+    },
     "application-route|src/App.tsx|/pos": {
       "ui_access": "role-gated",
       "ui_roles": [
