@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/format";
 import { formatQuantity, isWeighedProduct } from "@/lib/weighedItems";
 import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw, ShieldCheck } from "lucide-react";
 import { translate as t } from "@/i18n";
+import { LineDiscount } from "./LineDiscount";
 
 interface TicketPanelProps {
   canCharge: boolean;
@@ -91,6 +92,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                         {l.priceOverride ? "Replace price override" : "Request price override"}
                       </button>
                     )}
+                    {!isTableOrder && <LineDiscount line={l} />}
                   </div>
                   <button
                     onClick={() => remove(l.id)}

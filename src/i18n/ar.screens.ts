@@ -566,4 +566,5 @@ export const AR_SCREENS: Record<string, string> = {
   "No staff with a POS PIN yet. Set PINs in Employees.": "لا يوجد موظفون برمز بعد. عيّن الرموز من قسم الموظفين.",
   "PIN": "الرمز",
   "Switch": "تبديل",
+  "Discounts need a manager. VAT is charged on the discounted price.": "الخصومات تتطلب مديرًا. تُحتسب الضريبة على السعر بعد الخصم.",
 };
