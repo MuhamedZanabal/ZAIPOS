@@ -548,7 +548,6 @@ export const AR_SCREENS: Record<string, string> = {
   "Development Mode active · Table sales do not validate stock or require an open register": "وضع التطوير نشط · مبيعات الطاولات لا تتحقق من المخزون ولا تتطلب صندوقًا مفتوحًا",
   "ZAIPOS AI can read the authorized branch reporting snapshot through a server-controlled evidence boundary. Autonomous ordering and operational mutation tools remain disabled.": "يمكن لـ ZAIPOS الذكي قراءة لقطة تقارير الفرع المصرح بها عبر حدود يتحكم بها الخادم. أدوات الطلب الذاتي وتعديل العمليات تبقى معطلة.",
   "Allows sales and orders to be recorded regardless of available stock. Use this only for testing and demonstrations.": "يسمح بتسجيل المبيعات والطلبات بغض النظر عن المخزون المتاح. استخدمه للاختبار والعروض فقط.",
-  "Current stock": "المخزون الحالي",
   "Forecast": "التوقعات",
   "Stock history": "سجل المخزون",
   "Centers": "المراكز",
