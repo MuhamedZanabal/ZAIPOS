@@ -5,6 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { app, BrowserWindow, shell, dialog } from 'electron';
+import { openCustomerDisplay } from './services/customer-display';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { configureTrustedWindow, handleTrustedIpc, safeExternalUrl } from './security.js';
@@ -129,6 +130,8 @@ function createWindow(settings: AppSettings): BrowserWindow {
   const appUrl = devUrl ?? pathToFileURL(path.join(__dirname, '../dist/index.html')).href;
   configureTrustedWindow(win, appUrl);
   if (devUrl) { const parsed = new URL(devUrl); if (!['http:', 'https:'].includes(parsed.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) throw new Error('Desktop development server must use an explicit loopback origin'); win.loadURL(devUrl); } else win.loadFile(path.join(__dirname, '../dist/index.html'));
+  win.webContents.once('did-finish-load', () => { try { openCustomerDisplay(path.join(__dirname, '../dist/index.html'), devUrl); } catch (error) { console.error('[customer-display]', error); } });
+  win.on('closed', () => { for (const other of BrowserWindow.getAllWindows()) if (other !== win && !other.isDestroyed()) other.close(); });
   return win;
 }
 

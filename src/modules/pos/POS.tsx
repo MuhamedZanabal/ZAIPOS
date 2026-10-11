@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useOpenSession } from "@/hooks/useOpenSession";
+import { useCustomerDisplayFeed, showPaidOnCustomerDisplay } from "./useCustomerDisplayFeed";
 import { effectiveCartUnitPrice, linesWithTicketDiscount, useCart, type CartLine, type PriceOverrideEvidence } from "@/stores/cart";
 import { useHardware } from "@/hooks/useHardware";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,8 @@ export default function POS() {
       return data;
     },
   });
+  useCustomerDisplayFeed(tenant?.name ?? undefined);
+
 
   const { data: products } = useProducts(tenantId);
 
@@ -443,6 +446,7 @@ export default function POS() {
         if (command.hasCashPayment) await openDrawer().catch(() => undefined);
       } else {
         toast.success(`Sale recorded · ${formatCurrency(payableTotal)}`);
+        showPaidOnCustomerDisplay(Math.round(payableTotal * 1000), command.changeFils, tenant?.name ?? undefined);
         if (localStorage.getItem(FIRST_SALE_GUIDE_KEY)) {
           localStorage.removeItem(FIRST_SALE_GUIDE_KEY);
           setShowFirstSaleGuide(false);

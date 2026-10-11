@@ -2891,3 +2891,6 @@
 
 /* Arabic UI uses the bundled Noto Sans Arabic face first. */
 html[dir="rtl"] body { font-family: "Noto Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif; }
+
+/* Arabic runs inside otherwise English screens (customer display). */
+.font-arabic { font-family: "Noto Sans Arabic", system-ui, sans-serif; }
