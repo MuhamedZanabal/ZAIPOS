@@ -104,11 +104,12 @@ export const useCart = create<CartState>((set, get) => ({
   replace: (lines) => set({ lines }),
   clear: () => set({ lines: [], ticketDiscount: null, discountApprovalId: null }),
   subtotal: () => checkoutLines(get()).reduce((sum, l) => sum + effectiveCartUnitPrice(l) * l.quantity - l.discount, 0),
+  // VAT is rounded per line in fils, exactly like the checkout function.
   taxTotal: () =>
     checkoutLines(get()).reduce((sum, l) => {
-      const base = effectiveCartUnitPrice(l) * l.quantity - l.discount;
-      return sum + (base * Number(l.product.tax_rate || 0)) / 100;
-    }, 0),
+      const baseFils = lineGrossFils(l) - toFils(l.discount || 0);
+      return sum + Math.round((baseFils * Number(l.product.tax_rate || 0)) / 100);
+    }, 0) / 1000,
   total: () => get().subtotal() + get().taxTotal(),
 }));
 
