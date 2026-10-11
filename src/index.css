@@ -2894,3 +2894,14 @@ html[dir="rtl"] body { font-family: "Noto Sans Arabic", "Plus Jakarta Sans", sys
 
 /* Arabic runs inside otherwise English screens (customer display). */
 .font-arabic { font-family: "Noto Sans Arabic", system-ui, sans-serif; }
+
+/* Barcode label sheet: 50 x 30 mm labels, A4 grid when printing to PDF. */
+.label-print { display: none; }
+@media print {
+  .label-print, .label-print * { visibility: visible; }
+  .label-print { display: grid; position: absolute; inset: 0 auto auto 0; grid-template-columns: repeat(auto-fill, 50mm); gap: 2mm; background: #fff; color: #000; padding: 4mm; }
+  .label-print-item { width: 50mm; height: 30mm; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; break-inside: avoid; font-family: "Plus Jakarta Sans", sans-serif; }
+  .label-print-name { font-size: 8pt; font-weight: 600; max-width: 48mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .label-print-price { font-size: 10pt; font-weight: 700; }
+  .label-print-code svg { width: 46mm; height: auto; }
+}

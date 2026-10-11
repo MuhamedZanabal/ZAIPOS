@@ -581,4 +581,12 @@ export const AR_SCREENS: Record<string, string> = {
   "Ticket discount": "خصم الفاتورة",
   "VAT is charged on the discounted price. Above": "تُحتسب الضريبة على السعر بعد الخصم. فوق",
   "a manager PIN is required.": "يلزم رمز المدير.",
+  "Barcode labels": "ملصقات الباركود",
+  "Copies": "النسخ",
+  "ESC/POS file": "ملف ESC/POS",
+  "ESC/POS label file saved": "تم حفظ ملف الملصقات ESC/POS",
+  "No products with a barcode or SKU": "لا توجد منتجات بباركود أو رمز SKU",
+  "Print / Save PDF": "طباعة / حفظ PDF",
+  "Print labels": "طباعة الملصقات",
+  "EAN-13 is used for valid EAN codes; other barcodes and SKUs print as Code 128.": "يُستخدم EAN-13 للرموز الصحيحة؛ وتُطبع الرموز الأخرى ورموز SKU بصيغة Code 128.",
 };
