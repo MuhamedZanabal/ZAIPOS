@@ -50,6 +50,7 @@ const ChannelPrices = lazy(() => import("./modules/channel-prices/ChannelPrices"
 const DigitalOrders = lazy(() => import("./modules/digital-orders/DigitalOrders"));
 const Delivery = lazy(() => import("./modules/delivery/Delivery"));
 const Settings = lazy(() => import("./modules/settings/Settings"));
+const Setup = lazy(() => import("./pages/Setup"));
 const Tables = lazy(() => import("./modules/tables/Tables"));
 const TableOrder = lazy(() => import("./modules/tables/TableOrder"));
 const WaiterDashboard = lazy(() => import("./modules/waiter/WaiterDashboard"));
@@ -114,6 +115,7 @@ const App = () => {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/pos" element={<POS />} />
+                  <Route path="/setup" element={<Setup />} />
                   <Route path="/tables/:id" element={<TableOrder />} />
                   <Route element={<AppShell />}>
                     <Route path="/tables" element={<Tables />} />

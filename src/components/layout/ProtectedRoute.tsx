@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { Loader2 } from "lucide-react";
 import { canAccessBusinessMode, canAccessProtectedPath } from "@/lib/roles";
+import { SETUP_DEFERRED_KEY, useSetupInProgress } from "@/hooks/useSetupInProgress";
 
 /** Ruta de aterrizaje según el rol principal del user */
 function homeForRoles(roles: string[]): string {
@@ -18,7 +19,9 @@ function homeForRoles(roles: string[]): string {
 export function ProtectedRoute() {
   const location = useLocation();
   const { user, loading } = useAuth();
-  const { needsOnboarding, isLoading, roles, businessMode } = useTenantContext();
+  const { needsOnboarding, isLoading, roles, businessMode, tenantId } = useTenantContext();
+  const canRunSetup = roles.includes("owner") || roles.includes("admin");
+  const { data: setupInProgress } = useSetupInProgress(tenantId, !!user && !needsOnboarding && canRunSetup);
 
   if (loading || (user && isLoading)) {
     return (
@@ -32,6 +35,13 @@ export function ProtectedRoute() {
 
   if (needsOnboarding && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (
+    setupInProgress && canRunSetup && location.pathname !== "/setup" && location.pathname !== "/onboarding"
+    && sessionStorage.getItem(SETUP_DEFERRED_KEY) !== "1"
+  ) {
+    return <Navigate to="/setup" replace />;
   }
 
   if (!needsOnboarding && location.pathname !== "/onboarding") {

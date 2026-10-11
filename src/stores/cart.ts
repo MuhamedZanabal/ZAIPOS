@@ -35,6 +35,8 @@ export interface CartLine {
 interface CartState {
   lines: CartLine[];
   add: (p: CartProduct) => void;
+  /** Adds a measured quantity (e.g. 0.750 kg). Rounded to 3 decimals. */
+  addQuantity: (p: CartProduct, quantity: number) => void;
   remove: (id: string) => void;
   setQty: (id: string, q: number) => void;
   setDiscount: (id: string, d: number) => void;
@@ -56,6 +58,16 @@ export const useCart = create<CartState>((set, get) => ({
       if (existing)
         return { lines: s.lines.map((l) => (l.id === lineId ? { ...l, quantity: l.quantity + 1, priceOverride: undefined } : l)) };
       return { lines: [...s.lines, { id: lineId, product: p, quantity: 1, discount: 0 }] };
+    }),
+  addQuantity: (p, quantity) =>
+    set((s) => {
+      const q = Math.round(quantity * 1000) / 1000;
+      if (!(q > 0)) return s;
+      const lineId = getLineId(p);
+      const existing = s.lines.find((l) => l.id === lineId);
+      if (existing)
+        return { lines: s.lines.map((l) => (l.id === lineId ? { ...l, quantity: Math.round((l.quantity + q) * 1000) / 1000, priceOverride: undefined } : l)) };
+      return { lines: [...s.lines, { id: lineId, product: p, quantity: q, discount: 0 }] };
     }),
   remove: (id) => set((s) => ({ lines: s.lines.filter((l) => l.id !== id) })),
   setQty: (id, q) =>

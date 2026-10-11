@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { effectiveCartUnitPrice, useCart, type CartLine } from "@/stores/cart";
 import { formatCurrency } from "@/lib/format";
+import { formatQuantity, isWeighedProduct } from "@/lib/weighedItems";
 import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw, ShieldCheck } from "lucide-react";
 
 interface TicketPanelProps {
@@ -30,7 +31,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
           <ShoppingBag className="h-4 w-4 text-primary" />
           <span className="font-semibold">Current ticket</span>
           {lines.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + l.quantity, 0)} items</span>
+            <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + (isWeighedProduct(l.product as { unit_code?: string | null }) ? 1 : l.quantity), 0)} items</span>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -99,6 +100,9 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                   </button>
                 </div>
                 <div className="flex items-center justify-between mt-2.5">
+                  {isWeighedProduct(l.product as { unit_code?: string | null }) ? (
+                    <span className="font-semibold tabular-nums" data-testid="weighed-qty">{formatQuantity(l.quantity, "kg")}</span>
+                  ) : (
                   <div className="flex items-center gap-1.5 bg-muted rounded-lg p-0.5">
                     <Button size="icon" variant="ghost" className="h-9 w-9 rounded-md" onClick={() => setQty(l.id, l.quantity - 1)}>
                       <Minus className="h-4 w-4" />
@@ -108,6 +112,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
+                  )}
                   <div className="font-bold tabular-nums">{formatCurrency(effectiveCartUnitPrice(l) * l.quantity)}</div>
                 </div>
               </li>

@@ -38,13 +38,22 @@ import { LiveDot } from "@/components/shared/LiveDot";
 import { useDevMode } from "@/hooks/useDevMode";
 import { productMatchesBarcode, productMatchesCatalogueQuery } from "@/lib/productBarcodes";
 import { appendTableCart } from "@/lib/tableCart";
+import { channelAllowedInMode, hasCapability } from "@/lib/business-modes";
+import { enabledPaymentMethods } from "@/lib/setupWizard";
+import { FIRST_SALE_GUIDE_KEY } from "@/hooks/useSetupInProgress";
+import { isWeighedProduct, parseWeightKg } from "@/lib/weighedItems";
 
 export default function POS() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { tenantId, branchId, branches, activeChannels } = useTenantContext();
+  const { tenantId, branchId, branches, activeChannels, businessMode } = useTenantContext();
+  const barcodeFirst = hasCapability(businessMode, "barcode_first");
+  const [weighProduct, setWeighProduct] = useState<any | null>(null);
+  const [weighKg, setWeighKg] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [showFirstSaleGuide, setShowFirstSaleGuide] = useState(() => localStorage.getItem(FIRST_SALE_GUIDE_KEY) === "1");
   const { devMode } = useDevMode();
-  const { lines, total, clear, add, replace, setPriceOverride, clearPriceOverrides } = useCart();
+  const { lines, total, clear, add, addQuantity, replace, setPriceOverride, clearPriceOverrides } = useCart();
   const { data: openSession } = useOpenSession(branchId);
   const { onBarcodeScanned, printTicket, openDrawer } = useHardware();
 
@@ -297,6 +306,15 @@ export default function POS() {
   }, [priced, activeCat, search]);
 
   const handleAddProduct = useCallback(async (product: any) => {
+    if (isWeighedProduct(product)) {
+      setWeighProduct(product);
+      setWeighKg("");
+      return;
+    }
+    if (!hasCapability(businessMode, "modifiers")) {
+      add(product);
+      return;
+    }
     const { data: groups } = await supabase
       .from("modifier_groups")
       .select("*, modifier_options(*)")
@@ -327,7 +345,7 @@ export default function POS() {
         setUpsellItems(items);
       }
     }
-  }, [add]);
+  }, [add, businessMode]);
 
   const confirmModifiers = async () => {
     if (!modifierProduct) return;
@@ -417,6 +435,11 @@ export default function POS() {
         if (command.hasCashPayment) await openDrawer().catch(() => undefined);
       } else {
         toast.success(`Sale recorded · ${formatCurrency(payableTotal)}`);
+        if (localStorage.getItem(FIRST_SALE_GUIDE_KEY)) {
+          localStorage.removeItem(FIRST_SALE_GUIDE_KEY);
+          setShowFirstSaleGuide(false);
+          toast.success("First test sale done — you're all set!");
+        }
       }
       if (saleId && typeof saleId === "string") {
         try {
@@ -547,7 +570,7 @@ export default function POS() {
       <div className="flex items-center gap-2 px-4 py-2 border-b bg-card/60 flex-wrap shrink-0">
         <span className="eyebrow eyebrow-muted text-[9px] shrink-0">CHANNEL</span>
 
-        {CHANNELS.filter(c => activeChannels.includes(c.id)).map((c) => (
+        {CHANNELS.filter(c => activeChannels.includes(c.id) && channelAllowedInMode(businessMode, c.id)).map((c) => (
           <button
             key={c.id}
             type="button"
@@ -601,7 +624,7 @@ export default function POS() {
         )}
 
         {/* Pending tables badge */}
-        {(pendingTables ?? 0) > 0 && (
+        {hasCapability(businessMode, "tables") && (pendingTables ?? 0) > 0 && (
           <button
             type="button"
             onClick={() => navigate("/cash")}
@@ -624,6 +647,15 @@ export default function POS() {
         ))}
       </div>
 
+      {showFirstSaleGuide && (
+        <div className="bg-cyan-50 border-b border-cyan-200 px-4 py-2 flex items-center justify-between gap-3 shrink-0 text-cyan-950" data-testid="first-sale-guide" role="status">
+          <span className="text-sm">
+            <strong>First test sale:</strong> {openSession ? "✓ Register open" : "1. Open the register"} · 2. {barcodeFirst ? "Scan a barcode or tap a sample item" : "Tap a sample item"} · 3. Charge and pick a payment method
+          </span>
+          <button type="button" aria-label="Hide first sale guide" className="text-cyan-800" onClick={() => { localStorage.removeItem(FIRST_SALE_GUIDE_KEY); setShowFirstSaleGuide(false); }}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
       {/* ── No-session warning ───────────────────────────── */}
       {isPos && !openSession && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
@@ -644,11 +676,26 @@ export default function POS() {
             <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-[14px] border bg-card focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
+                ref={searchInputRef}
                 type="search"
-                placeholder="Search product, SKU, or barcode…"
-                className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+                aria-label={barcodeFirst ? "Scan barcode" : "Search products"}
+                autoFocus={barcodeFirst}
+                placeholder={barcodeFirst ? "Scan barcode or type to search…" : "Search product, SKU, or barcode…"}
+                className={cn("flex-1 bg-transparent outline-none placeholder:text-muted-foreground", barcodeFirst ? "text-lg font-semibold py-1" : "text-sm")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" || !search.trim()) return;
+                  e.preventDefault();
+                  const exact = priced.find((p) => productMatchesBarcode(p, search));
+                  const target = exact ?? (filtered.length === 1 ? filtered[0] : null);
+                  if (target) {
+                    void handleAddProduct(target);
+                    setSearch("");
+                  } else if (barcodeFirst) {
+                    toast.error(`No product with barcode ${search.trim()}`);
+                  }
+                }}
               />
               <kbd className="hidden sm:inline-flex h-5 px-1.5 items-center rounded border border-border font-mono text-[10px] text-muted-foreground bg-muted">F2</kbd>
             </div>
@@ -810,7 +857,35 @@ export default function POS() {
         }}
       />
 
+      <Dialog open={!!weighProduct} onOpenChange={(open) => { if (!open) setWeighProduct(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Weigh {weighProduct?.name}</DialogTitle></DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const kg = parseWeightKg(weighKg);
+              if (kg === null) { toast.error("Enter a weight in kg, up to 3 decimals (e.g. 0.750)"); return; }
+              addQuantity(weighProduct, kg);
+              setWeighProduct(null);
+              searchInputRef.current?.focus();
+            }}
+          >
+            <label className="block text-sm font-medium" htmlFor="weigh-kg">Weight (kg)</label>
+            <input id="weigh-kg" aria-label="Weight in kg" autoFocus inputMode="decimal" value={weighKg}
+              onChange={(e) => setWeighKg(e.target.value)} placeholder="0.000"
+              className="w-full rounded-lg border px-3 py-2 text-2xl font-semibold tabular-nums" />
+            <div className="text-sm text-muted-foreground">
+              {formatCurrency(Number(weighProduct?.price ?? 0))} per kg
+              {parseWeightKg(weighKg) !== null && <> · Line total {formatCurrency(roundBhd(Number(weighProduct?.price ?? 0) * (parseWeightKg(weighKg) ?? 0)))}</>}
+            </div>
+            <Button type="submit" className="w-full">Add to sale</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <PaymentDialog
+        enabledMethods={enabledPaymentMethods((tenant as any)?.receipt_config)}
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         total={totalNum}
@@ -893,3 +968,4 @@ export default function POS() {
     </div>
   );
 }
+

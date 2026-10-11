@@ -18,6 +18,9 @@ import { ProductBarcodeFields } from "./ProductBarcodeFields";
 import { inspectProductBarcodes, replaceProductBarcodes, type ProductBarcodeInspection } from "@/lib/productBarcodeCommands";
 import { normalizeBarcode, type ProductBarcode, type ProductBarcodeType } from "@/lib/productBarcodes";
 import { bhdToFils, formatFils } from "@/lib/bahrain";
+import { useTenantContext } from "@/hooks/useTenantContext";
+import { hasCapability } from "@/lib/business-modes";
+import { isWeighedProduct, WEIGHT_UNIT } from "@/lib/weighedItems";
 import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
 
 
@@ -320,6 +323,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
 
 export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const qc = useQueryClient();
+  const { businessMode } = useTenantContext();
   const [form, setForm] = useState<any>(
     editing ?? { name: "", product_type: "simple", price: 0, cost: 0, tax_rate: 10, min_stock: 0, status: "active", category_id: null, sku: "", color: "#c2410c", station: null, description: "", sort_order: 0, image_url: null, requires_detail: false }
   );
@@ -418,8 +422,8 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
     scanCleanupRef.current = () => { clearTimeout(timer); prev?.(); };
   };
 
-  const showRecipe = COMPOUND.has(form.product_type) && !!editing?.id;
-  const showModifiers = ["simple", "composite", "production", "combo"].includes(form.product_type) && !!editing?.id;
+  const showRecipe = COMPOUND.has(form.product_type) && !!editing?.id && hasCapability(businessMode, "recipes");
+  const showModifiers = ["simple", "composite", "production", "combo"].includes(form.product_type) && !!editing?.id && hasCapability(businessMode, "modifiers");
   const showComplementaries = !!editing?.id;
 
   const { data: financialHistory = [] } = useQuery({
@@ -512,7 +516,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         <TabsList>
           <TabsTrigger value="basic">Information</TabsTrigger>
           {showRecipe && <TabsTrigger value="recipe">Recipe</TabsTrigger>}
-          {showModifiers && <TabsTrigger value="modifiers">Modificadores</TabsTrigger>}
+          {showModifiers && <TabsTrigger value="modifiers">Modifiers</TabsTrigger>}
           {showComplementaries && <TabsTrigger value="complementaries">Upselling</TabsTrigger>}
           {editing?.id && <TabsTrigger value="financial-history">Price history</TabsTrigger>}
         </TabsList>
@@ -596,7 +600,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5"><Label>Price</Label>
+              <div className="space-y-1.5"><Label>{isWeighedProduct(form) ? "Price per kg" : "Price"}</Label>
                 <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => {
                   setForm({ ...form, price: e.target.value });
                   financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
@@ -635,7 +639,18 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                 <Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
               </div>
             </div>
+            {hasCapability(businessMode, "weighed_items") && (
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <Label htmlFor="sold-by-weight">Sold by weight (kg)</Label>
+                  <p className="text-xs text-muted-foreground">Price is per kg; the cashier enters the weight (up to 3 decimals) at the till.</p>
+                </div>
+                <Switch id="sold-by-weight" aria-label="Sold by weight" checked={isWeighedProduct(form)}
+                  onCheckedChange={(on) => setForm({ ...form, unit_code: on ? WEIGHT_UNIT : "unit" })} />
+              </div>
+            )}
             {/* KDS station */}
+            {hasCapability(businessMode, "kitchen_station") && (
             <div className="space-y-1.5">
               <Label>KDS station</Label>
               <Select value={form.station ?? "none"} onValueChange={(v) => setForm({ ...form, station: v === "none" ? null : v })}>
@@ -646,6 +661,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            )}
             <ProductBarcodeFields
               barcodes={barcodes}
               issues={barcodeIssues}

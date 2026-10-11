@@ -81,3 +81,15 @@ export function canAccessPathInMode(mode: BusinessMode | string, pathname: strin
 export function allowsTableService(mode: BusinessMode | string): boolean {
   return hasCapability(mode, "tables");
 }
+
+/** Sales channels that depend on a capability (others are always allowed). */
+const CHANNEL_CAPABILITY: Partial<Record<string, Capability>> = {
+  tables: "tables",
+  talabat: "delivery_platforms",
+  delivery: "delivery_platforms",
+};
+
+export function channelAllowedInMode(mode: BusinessMode | string, channel: string): boolean {
+  const capability = CHANNEL_CAPABILITY[channel];
+  return !capability || hasCapability(mode, capability);
+}

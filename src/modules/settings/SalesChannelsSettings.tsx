@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { channelAllowedInMode } from "@/lib/business-modes";
 import { Switch } from "@/components/ui/switch";
 import { Store, UtensilsCrossed, Bike, MessageCircle, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -28,7 +29,7 @@ const DESCRIPTIONS: Record<SalesChannel, string> = {
 };
 
 export default function SalesChannelsSettings() {
-  const { tenantId, hasRole } = useTenantContext();
+  const { tenantId, hasRole, businessMode } = useTenantContext();
   const qc = useQueryClient();
   const isSuperAdmin = hasRole("super_admin");
   const [activeChannels, setActiveChannels] = useState<SalesChannel[]>([]);
@@ -100,7 +101,7 @@ export default function SalesChannelsSettings() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {CHANNELS.map((channel) => {
+          {CHANNELS.filter((channel) => channelAllowedInMode(businessMode, channel.id)).map((channel) => {
             const active = channel.id === "pos" || activeChannels.includes(channel.id);
             const locked = channel.id === "pos";
 

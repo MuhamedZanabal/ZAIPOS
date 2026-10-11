@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { signOutFully } from "@/lib/signOut";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SetupWizard } from "@/components/setup/SetupWizard";
+import { saveBasics } from "@/lib/setupApply";
+import { FIRST_IN_APP_STEP, saveWizard, type WizardState } from "@/lib/setupWizard";
 import { toast } from "sonner";
-import { Loader2, Building2, Lock } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantStore } from "@/stores/tenant";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,15 +25,10 @@ export default function Onboarding() {
   const [checking, setChecking] = useState(true);
   const [needsBootstrap, setNeedsBootstrap] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [tenantOptions, setTenantOptions] = useState<
     Array<{ tenant_id: string; branch_id: string | null; role: string; tenants: { name: string } | null }>
   >([]);
 
-  const [businessName, setBusinessName] = useState("");
-  const [branchName, setBranchName] = useState("Barra principal");
-  const [taxRate, setTaxRate] = useState("10");
-  const [businessMode, setBusinessMode] = useState<"RETAIL" | "RESTAURANT">("RETAIL");
 
   const enterTenant = async (tenantId: string, branchId: string | null) => {
     setTenant(tenantId);
@@ -78,31 +74,23 @@ export default function Onboarding() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.rpc("bootstrap_tenant_v2" as any, {
-        _business_name: businessName.trim(),
-        _branch_name: branchName.trim(),
-        _tax_rate: Number(taxRate),
-        _business_mode: businessMode,
-      });
-      if (error) throw error;
-      const bootstrap = Array.isArray(data) ? data[0] : data;
-      if (!bootstrap?.tenant_id || !bootstrap?.branch_id) {
-        throw new Error("Bootstrap did not return tenant/branch");
-      }
-      setTenant(bootstrap.tenant_id);
-      setBranch(bootstrap.branch_id);
-      await qc.invalidateQueries({ queryKey: ["my-roles"] });
-      toast.success("Business configured! Welcome");
-      navigate("/dashboard");
-    } catch (err: any) {
-      toast.error(err.message ?? "We could not create the business");
-    } finally {
-      setLoading(false);
-    }
+  const createBusiness = async (state: WizardState) => {
+    const { data, error } = await supabase.rpc("bootstrap_tenant_v2" as any, {
+      _business_name: state.basics.businessName.trim(),
+      _branch_name: state.basics.branchName.trim(),
+      _tax_rate: state.basics.vatRate,
+      _business_mode: state.mode,
+    });
+    if (error) throw error;
+    const bootstrap = Array.isArray(data) ? data[0] : data;
+    if (!bootstrap?.tenant_id || !bootstrap?.branch_id) throw new Error("Bootstrap did not return tenant/branch");
+    setTenant(bootstrap.tenant_id);
+    setBranch(bootstrap.branch_id);
+    await saveBasics(bootstrap.tenant_id, state, FIRST_IN_APP_STEP);
+    saveWizard({ ...state, step: FIRST_IN_APP_STEP });
+    await qc.invalidateQueries({ queryKey: ["my-roles"] });
+    toast.success("Business created. Let's finish setting it up.");
+    navigate("/setup", { replace: true });
   };
 
   if (checking) {
@@ -122,7 +110,7 @@ export default function Onboarding() {
             <div>
               <div className="h-label g-auth-eyebrow mb-1">MULTIPLE ACCESS</div>
               <div className="h-display g-auth-title">Which business do you work in?</div>
-              <div className="h-meta mt-0.5">Tienes acceso a varios negocios.</div>
+              <div className="h-meta mt-0.5">You have access to several businesses.</div>
             </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -180,47 +168,8 @@ export default function Onboarding() {
   if (!needsBootstrap) return null;
 
   return (
-    <div className="g-onboarding-root">
-      <div className="glass g-onboarding-card">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="orb g-onboarding-setup-orb">
-            <Building2 size={20} />
-          </div>
-          <div>
-            <div className="h-label g-auth-eyebrow mb-1">PRIMER SETUP</div>
-            <div className="h-display g-auth-title">Set up your business</div>
-            <div className="h-meta">You are the first user. This takes less than a minute.</div>
-          </div>
-        </div>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Business name</Label>
-            <Input required placeholder="My Business" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>First branch</Label>
-            <Input required value={branchName} onChange={(e) => setBranchName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Default tax (%)</Label>
-            <Input type="number" min="0" max="100" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
-          </div>
-          <fieldset className="space-y-2">
-            <Label asChild><legend>Business type</legend></Label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["RETAIL", "RESTAURANT"] as const).map((mode) => (
-                <button key={mode} type="button" aria-pressed={businessMode === mode}
-                  className={businessMode === mode ? "g-btn g-btn-primary" : "g-btn g-btn-ghost"}
-                  onClick={() => setBusinessMode(mode)}>{mode === "RETAIL" ? "Retail" : "Restaurant"}</button>
-              ))}
-            </div>
-          </fieldset>
-          <button type="submit" className="g-btn g-btn-primary g-btn-touch w-full" disabled={loading}>
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Create business
-          </button>
-        </form>
-      </div>
+    <div className="grid min-h-screen place-items-center bg-slate-100 p-4 sm:p-8">
+      <SetupWizard onCreateBusiness={createBusiness} />
     </div>
   );
 }

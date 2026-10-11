@@ -44,6 +44,8 @@ interface PaymentDialogProps {
   total: number;
   tenantId?: string | null;
   submitting: boolean;
+  /** Methods this business accepts (set in the setup wizard). Defaults to all. */
+  enabledMethods?: PayMethod[];
   onConfirm: (
     allocations: PaymentAllocation[],
     tip: number,
@@ -69,8 +71,10 @@ const TIP_SUGGESTIONS = [
 const SHORTCUTS = [...BHD_CASH_SHORTCUTS];
 const amountText = (value: number) => roundBhd(value).toFixed(3);
 
-export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting, onConfirm }: PaymentDialogProps) {
-  const [method, setMethod] = useState<PayMethod>("cash");
+export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting, onConfirm, enabledMethods }: PaymentDialogProps) {
+  const methods = enabledMethods?.length ? METHODS.filter((option) => enabledMethods.includes(option.id)) : METHODS;
+  const firstMethod: PayMethod = methods[0]?.id ?? "cash";
+  const [method, setMethod] = useState<PayMethod>(firstMethod);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
   const [tip, setTip] = useState(0);
@@ -106,13 +110,13 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
 
   useEffect(() => {
     if (!open) return;
-    setMethod("cash");
+    setMethod(firstMethod);
     setAllocations([]);
     setTip(0);
     setCoupon("");
     setCouponDiscount(0);
     setPaymentAmount(amountText(total));
-  }, [open, total]);
+  }, [open, total, firstMethod]);
 
   useEffect(() => {
     if (!open || totalsLocked) return;
@@ -259,7 +263,7 @@ export function PaymentDialog({ open, onOpenChange, total, tenantId, submitting,
             <div className="space-y-3">
               <div className="h-label uppercase tracking-widest">Payment method</div>
               <div className="grid grid-cols-2 gap-2">
-                {METHODS.map((option) => {
+                {methods.map((option) => {
                   const active = method === option.id;
                   return (
                     <button

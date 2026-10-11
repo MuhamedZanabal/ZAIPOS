@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { BusinessTypeSettings } from "./BusinessTypeSettings";
 import { Save, FlaskConical } from "lucide-react";
 import {
   BAHRAIN_CURRENCY,
@@ -82,6 +83,7 @@ export default function BusinessSettings() {
 
   return (
     <div className="space-y-6">
+      <BusinessTypeSettings />
       <div className="glass p-6 rounded-2xl max-w-2xl space-y-5">
         <div className="space-y-1.5">
           <Label>Business name</Label>
