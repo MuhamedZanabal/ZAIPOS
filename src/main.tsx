@@ -1,4 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
+import "./fonts";
 import "./index.css";
 import { initializeRuntimeConfig } from "./runtime-config";
 

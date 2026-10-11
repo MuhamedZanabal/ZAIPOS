@@ -2888,3 +2888,6 @@
   .z-report-print, .z-report-print * { visibility: visible; }
   .z-report-print { position: absolute; inset: 0 auto auto 0; max-height: none; overflow: visible; background: #fff; color: #000; }
 }
+
+/* Arabic UI uses the bundled Noto Sans Arabic face first. */
+html[dir="rtl"] body { font-family: "Noto Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif; }

@@ -17,7 +17,7 @@ export default defineConfig(async ({ mode }) => {
       transformIndexHtml() {
         return [{ tag: "meta", attrs: {
           "http-equiv": "Content-Security-Policy",
-          content: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; frame-src 'none'; form-action 'self'",
+          content: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; frame-src 'none'; form-action 'self'",
         }, injectTo: "head-prepend" }];
       },
     },
