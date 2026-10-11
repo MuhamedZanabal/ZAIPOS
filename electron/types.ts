@@ -10,6 +10,8 @@ export interface TicketData {
   items: TicketItem[]; subtotal: number; discountTotal: number; tipAmount: number; taxTotal: number; total: number;
   payments: TicketPayment[]; customerName?: string; cashierName?: string; notes?: string; qrData?: string; date?: string;
   isReprint?: boolean; saleStatus?: string; reprintEventId?: string;
+  /** Seller VAT registration number (TRN). When present the receipt is issued as an NBR (simplified) tax invoice. */
+  vatNumber?: string; customerVatNumber?: string;
 }
 export interface PrintResult { ok: boolean; error?: string; }
 export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth';

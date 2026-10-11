@@ -459,6 +459,8 @@ export default function POS() {
               quantity: line.quantity,
               unitPrice: effectiveCartUnitPrice(line),
               total: effectiveCartUnitPrice(line) * line.quantity - (line.discount || 0),
+              discountAmount: line.discount || 0,
+              taxRate: Number(line.product.tax_rate ?? 0),
             })),
             subtotal: Number(sale?.subtotal ?? totalNum),
             discountTotal: Number(sale?.discount_total ?? discountAmount),
@@ -467,6 +469,7 @@ export default function POS() {
             total: Number(sale?.total ?? payableTotal),
             payments: command.receiptPayments,
             notes: receiptConfig.footer_text || undefined,
+            vatNumber: typeof receiptConfig.trn === "string" && receiptConfig.trn.trim() ? receiptConfig.trn.trim() : undefined,
             date: new Date().toISOString(),
           });
           if (command.hasCashPayment) await openDrawer();

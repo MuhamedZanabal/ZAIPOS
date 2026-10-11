@@ -19,6 +19,21 @@ export function formatBhdReceiptAmount(amount: number): string {
   return `BHD ${amount.toFixed(3)}`;
 }
 
+/** NBR: simplified tax invoice allowed when the buyer is not VAT-registered or the total is BHD 500 or less. */
+export const SIMPLIFIED_INVOICE_LIMIT_BHD = 500;
+
+export function receiptDocumentTitle(data: Pick<TicketData, "vatNumber" | "customerVatNumber" | "total">): string {
+  const vatNumber = data.vatNumber?.trim();
+  if (!vatNumber) return "RECEIPT";
+  if (data.customerVatNumber?.trim() || data.total > SIMPLIFIED_INVOICE_LIMIT_BHD) return "TAX INVOICE";
+  return "SIMPLIFIED TAX INVOICE";
+}
+
+function vatRateLabel(data: TicketData): string {
+  const rates = Array.from(new Set(data.items.map((item) => item.taxRate ?? 0).filter((rate) => rate > 0)));
+  return rates.length === 1 ? `VAT ${rates[0]}%` : "VAT";
+}
+
 export function buildReceiptTextLines(data: TicketData, width: number): string[] {
   const date = data.date ? new Date(data.date) : new Date();
   if (Number.isNaN(date.getTime())) throw new TypeError("Receipt date is invalid");
@@ -38,12 +53,15 @@ export function buildReceiptTextLines(data: TicketData, width: number): string[]
   if (data.branchName) lines.push(data.branchName);
   if (data.address) lines.push(data.address);
   if (data.phone) lines.push(`Tel: ${data.phone}`);
+  if (data.vatNumber?.trim()) lines.push(`VAT Reg. No (TRN): ${data.vatNumber.trim()}`);
   if (data.isReprint) lines.push("*** REPRINT ***");
 
   lines.push(separator);
-  lines.push(padLine(`Receipt #${data.ticketNumber}`, dateText, width));
+  lines.push(receiptDocumentTitle(data));
+  lines.push(padLine(`${data.vatNumber?.trim() ? "Invoice" : "Receipt"} #${data.ticketNumber}`, dateText, width));
   if (data.cashierName) lines.push(`Cashier: ${data.cashierName}`);
   if (data.customerName) lines.push(`Customer: ${data.customerName}`);
+  if (data.customerVatNumber?.trim()) lines.push(`Customer VAT No: ${data.customerVatNumber.trim()}`);
   if (data.isReprint && data.saleStatus && data.saleStatus !== "completed") {
     lines.push(`Current status: ${data.saleStatus.replaceAll("_", " ").toUpperCase()}`);
   }
@@ -68,9 +86,9 @@ export function buildReceiptTextLines(data: TicketData, width: number): string[]
   lines.push(separator);
   lines.push(padLine("Subtotal", formatBhdReceiptAmount(data.subtotal), width));
   if (data.discountTotal > 0) lines.push(padLine("Discount", `-${formatBhdReceiptAmount(data.discountTotal)}`, width));
-  if (data.taxTotal > 0) lines.push(padLine("VAT", formatBhdReceiptAmount(data.taxTotal), width));
+  if (data.taxTotal > 0) lines.push(padLine(vatRateLabel(data), formatBhdReceiptAmount(data.taxTotal), width));
   if (data.tipAmount > 0) lines.push(padLine("Tip", formatBhdReceiptAmount(data.tipAmount), width));
-  lines.push(padLine("TOTAL", formatBhdReceiptAmount(data.total), width));
+  lines.push(padLine(data.taxTotal > 0 ? "TOTAL (incl. VAT)" : "TOTAL", formatBhdReceiptAmount(data.total), width));
 
   if (data.payments.length > 0) {
     lines.push(separator, "Payment methods:");

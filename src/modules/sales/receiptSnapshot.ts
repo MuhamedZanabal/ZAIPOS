@@ -54,6 +54,7 @@ export function buildHistoricalReceiptTicket(prepared: PreparedReceiptReprint): 
   }
 
   const footer = snapshot.business.receipt_config?.footer_text;
+  const trn = snapshot.business.receipt_config?.trn;
 
   return {
     ticketNumber: snapshot.ticket_number,
@@ -82,6 +83,7 @@ export function buildHistoricalReceiptTicket(prepared: PreparedReceiptReprint): 
       reference: payment.reference ?? undefined,
     })),
     notes: typeof footer === "string" && footer.trim() ? footer : undefined,
+    vatNumber: typeof trn === "string" && trn.trim() ? trn.trim() : undefined,
     date: snapshot.transaction_time,
     isReprint: true,
     saleStatus: prepared.current_status,
