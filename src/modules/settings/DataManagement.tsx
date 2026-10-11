@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BackupPanel } from "./BackupPanel";
+import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -336,6 +337,7 @@ export function DataManagement() {
       )}
 
       <BackupPanel />
+      <DiagnosticsPanel />
 
       <Alert>
         <AlertCircle className="h-4 w-4" />

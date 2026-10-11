@@ -11,6 +11,7 @@ import { configureTrustedWindow, handleTrustedIpc, safeExternalUrl } from './sec
 import type { AppSettings, BackendConfig } from './types.js';
 import { DEFAULT_SETTINGS, IPC_HANDLERS } from './types.js';
 import { setupPrinterHandlers } from './services/printer.js';
+import { setupErrorReporting } from './services/diagnostics-ipc.js';
 import { setupBarcodeScanner, closeBarcodeScanner, restartBarcodeScanner } from './services/barcode.js';
 import { setupUpdater } from './services/updater.js';
 import { validateSettings, validateSettingsPatch } from './hardware-security.js';
@@ -258,6 +259,7 @@ async function bootstrap(): Promise<void> {
     nativeHandlersReady = true;
   }
   setupPrinterHandlers(() => getSettings().printer);
+  setupErrorReporting();
   mainWindow = createWindow(settings);
   mainWindow.once('ready-to-show', async () => { if (mainWindow && backendConfig) await setupBarcodeScanner(settings.barcode, mainWindow); });
   if (mainWindow) await setupUpdater(mainWindow, settings.updateChannel);

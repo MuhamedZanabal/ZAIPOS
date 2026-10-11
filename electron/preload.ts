@@ -34,6 +34,8 @@ const electronAPI = {
   collectDeliveryPayment: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_DELIVERY_COLLECTION, payload, authorization),
   checkoutTableOrder: (payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_TABLE_CHECKOUT, payload, authorization),
   inventoryCommand: (command: string, payload: Record<string, unknown>, authorization: ManagerAuthorization): Promise<string> => ipcRenderer.invoke(IPC_HANDLERS.DEVICE_INVENTORY_COMMAND, command, payload, authorization),
+  reportError: (error: { message: string; stack?: string; route?: string }): Promise<void> => ipcRenderer.invoke(IPC_HANDLERS.REPORT_RENDERER_ERROR, error),
+  exportDiagnostics: (): Promise<{ saved: boolean; path?: string }> => ipcRenderer.invoke(IPC_HANDLERS.EXPORT_DIAGNOSTICS),
   platform: process.platform as NodeJS.Platform,
   localStatus: () => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_STATUS),
   enrollLocalTerminal: () => ipcRenderer.invoke(IPC_HANDLERS.LOCAL_ENROLL),

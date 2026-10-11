@@ -35,6 +35,8 @@ export interface ElectronBridge {
   localStatus: () => Promise<{ state: 'not_configured' | 'configured'; origin?: string; caFingerprint?: string; deviceCertificateRef?: string | null; reason?: 'DATABASE_STARTING' | 'POSTGRES_PROVISIONING_FAILED' | 'DATABASE_CONNECTION_FAILED' | 'MIGRATION_FAILED' | 'TLS_FAILED' | 'PROFILE_FAILED' | 'PROFILE_UNREADABLE' | 'RUNTIME_FAILED' | 'SERVICE_NOT_RUNNING' }>;
   enrollLocalTerminal: () => Promise<{ certificateRef: string }>;
   localRequest: (path: string, body?: unknown) => Promise<unknown>;
+  reportError?: (error: { message: string; stack?: string; route?: string }) => Promise<void>;
+  exportDiagnostics?: () => Promise<{ saved: boolean; path?: string }>;
   subscribeLocalEvents: (callback: (payload: { state: 'not_configured' }) => void) => () => void;
   platform: NodeJS.Platform;
 }

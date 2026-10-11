@@ -551,4 +551,9 @@ export const AR_SCREENS: Record<string, string> = {
   "Forecast": "التوقعات",
   "Stock history": "سجل المخزون",
   "Centers": "المراكز",
+  "Diagnostics saved. Attach the file to an email to ZAIPOS support.": "تم حفظ التشخيص. أرفق الملف برسالة إلى دعم ZAIPOS.",
+  "Diagnostics could not be saved": "تعذر حفظ التشخيص",
+  "Errors are recorded on this computer only (rotating log, passwords and tokens removed). Nothing is sent automatically.": "تُسجّل الأخطاء على هذا الجهاز فقط (سجل دوّار مع حذف كلمات المرور والرموز). لا يُرسل أي شيء تلقائيًا.",
+  "Send diagnostics": "إرسال التشخيص",
+  "Available in the ZAIPOS desktop app.": "متاح في تطبيق ZAIPOS لسطح المكتب.",
 };

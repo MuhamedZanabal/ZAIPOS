@@ -1,6 +1,9 @@
 import { createRoot, type Root } from "react-dom/client";
 import "./fonts";
 import "./index.css";
+import { installErrorReporting } from "./lib/errorReporting";
+
+installErrorReporting();
 import { initializeRuntimeConfig } from "./runtime-config";
 
 const rootElement = document.getElementById("root");
