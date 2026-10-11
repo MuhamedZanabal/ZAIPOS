@@ -262,6 +262,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install ZAIPOS compatibility extension stubs into the test server
+        # The desktop runtime ships stub pg_net/pg_cron/pgmq/vault extensions so
+        # the full migration chain applies on plain PostgreSQL; the Rust tests
+        # that migrate a real database (business_modes) need the same stubs.
+        run: docker cp local-service/postgres-compat/extension/. "${{ job.services.postgres.id }}:/usr/share/postgresql/17/extension/"
+
       - name: Install PostgreSQL 17 client tools (backup/restore tests)
         run: |
           if [ ! -x /usr/lib/postgresql/17/bin/pg_dump ]; then
