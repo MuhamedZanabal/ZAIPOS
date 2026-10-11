@@ -82,7 +82,10 @@ function table(name: string): LocalQuery {
 
 function storageBucket(bucket: string) {
   return {
-    upload: (path: string, _file: unknown, _options?: { upsert?: boolean; contentType?: string }) => localDispatch('/v1/backend', { kind: 'attachment', action: 'put', bucket, path }),
+    // The local service does not store file bytes yet; fail clearly instead of
+    // recording a path that points at nothing.
+    upload: async (_path: string, _file: unknown, _options?: { upsert?: boolean; contentType?: string }): Promise<AnyResult> =>
+      ({ data: null, error: { message: `Photo uploads (${bucket}) are not available on this ZAIPOS server yet. Save without a photo.` } }),
     getPublicUrl: (path: string) => ({ data: { publicUrl: `app-attachment:${bucket}/${path}` } }),
   };
 }
