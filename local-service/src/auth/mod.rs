@@ -444,7 +444,13 @@ pub async fn create_staff_user(
     caller_id: &str,
     body: &Value,
 ) -> Result<Value, String> {
-    let text = |key: &str| body.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    let text = |key: &str| {
+        body.get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_string()
+    };
     let username = normalize_username(&text("email"));
     let password = body.get("password").and_then(Value::as_str).unwrap_or("");
     let full_name = text("full_name");
@@ -487,12 +493,20 @@ pub async fn create_staff_user(
     if exists.0 {
         return Err("That login name is already in use".into());
     }
-    let login_branch = if branch_id.is_empty() { caller_branch } else { branch_id.clone() };
+    let login_branch = if branch_id.is_empty() {
+        caller_branch
+    } else {
+        branch_id.clone()
+    };
     let (user_id,): (String,) = sqlx::query_as("select gen_random_uuid()::text")
         .fetch_one(&mut *tx)
         .await
         .map_err(unavailable)?;
-    let display = if full_name.is_empty() { username.clone() } else { full_name };
+    let display = if full_name.is_empty() {
+        username.clone()
+    } else {
+        full_name
+    };
     sqlx::query(
         "insert into auth.users (id, email, raw_user_meta_data)
          values ($1::uuid, $2, jsonb_build_object('full_name', $3::text))",

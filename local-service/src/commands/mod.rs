@@ -81,7 +81,11 @@ pub fn validate_backend(value: &Value) -> Result<(), CommandError> {
         Some("table") => validate_table(object.get("table").and_then(Value::as_str).unwrap_or("")),
         Some("rpc") => validate_name(object.get("fn").and_then(Value::as_str).unwrap_or("")),
         Some("function") => validate_name(
-            &object.get("name").and_then(Value::as_str).unwrap_or("").replace('-', "_"),
+            &object
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .replace('-', "_"),
         ),
         Some("attachment") => validate_attachment(object),
         Some("auth") => Ok(()),

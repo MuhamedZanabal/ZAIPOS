@@ -136,9 +136,18 @@ async fn backend(
             return Err(StatusCode::UNAUTHORIZED);
         };
         return Ok(
-            match auth::create_staff_user(database, caller, value.get("body").unwrap_or(&Value::Null)).await {
+            match auth::create_staff_user(
+                database,
+                caller,
+                value.get("body").unwrap_or(&Value::Null),
+            )
+            .await
+            {
                 Ok(data) => (StatusCode::OK, Json(serde_json::json!({ "data": data }))),
-                Err(message) => (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": message }))),
+                Err(message) => (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": message })),
+                ),
             },
         );
     }
