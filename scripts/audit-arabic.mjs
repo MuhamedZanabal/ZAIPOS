@@ -6,15 +6,16 @@ const root = process.cwd();
 const dictFiles = ["src/i18n/ar.ts", "src/i18n/ar.screens.ts"];
 const keyPattern = /"((?:[^"\\]|\\.)*)":\s*"((?:[^"\\]|\\.)*)"/g;
 const ar = new Map();
+const duplicates = [];
 for (const file of dictFiles) {
-  for (const m of fs.readFileSync(path.join(root, file), "utf8").matchAll(keyPattern)) ar.set(JSON.parse(`"${m[1]}"`), JSON.parse(`"${m[2]}"`));
+  for (const m of fs.readFileSync(path.join(root, file), "utf8").matchAll(keyPattern)) { const k = JSON.parse(`"${m[1]}"`); if (ar.has(k)) duplicates.push(k); ar.set(JSON.parse(`"${m[1]}"`), JSON.parse(`"${m[2]}"`)); }
 }
 // Sample data, identifiers and protocol values intentionally stay as-is.
 const untranslatable = /@|^\+973|^e\.g\. zaipos|^[A-Z_]+$|^[\d\s×#:·.,-]+$/;
 const spanish = /[ñ¿¡]|\b(acceso|alerta|borrador|cargar|recibir|revertir|transferir|usar|ver|guardar|cancelar|eliminar|nuevo|mesa|cocina|cliente|proveedor|merma|miembros|observaciones|urgente|unidades|proyecciones|centros|margen|consistencia|complementarios)\b/i;
 const callPattern = /\b(?:t|tx|translate)\(\s*("(?:[^"\\]|\\.)*")\s*[,)]/g;
 
-const problems = [];
+const problems = duplicates.map((k) => `duplicate Arabic key "${k}"`);
 const walk = (dir) => {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
