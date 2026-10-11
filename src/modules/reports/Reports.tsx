@@ -56,9 +56,9 @@ export default function Reports() {
 
       const statuses = [...REPORTABLE_SALE_STATUSES];
       const [salesRes, itemsRes, paymentsRes, returnsRes, cashTillRes] = await Promise.all([
-        supabase.from("sales").select("id, total, tax_total, created_at, channel").eq("branch_id", branchId!)
+        supabase.from("sales").select("id, total, tax_total, discount_total, created_at, channel").eq("branch_id", branchId!)
           .in("status", statuses).gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
-        supabase.from("sale_items").select("id, sale_id, product_name, quantity, line_total, sales!inner(branch_id, created_at, status)")
+        supabase.from("sale_items").select("id, sale_id, product_name, quantity, line_total, discount, sales!inner(branch_id, created_at, status)")
           .eq("sales.branch_id", branchId!).in("sales.status", statuses).gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
         supabase.from("payments").select("method, amount, sales!inner(branch_id, created_at, status)")
           .eq("sales.branch_id", branchId!).in("sales.status", statuses).gte("sales.created_at", from.toISOString()).lte("sales.created_at", to.toISOString()),
@@ -99,6 +99,10 @@ export default function Reports() {
 
       const totals = sales.reduce((sum, row) => sum + Number(row.total), 0);
       const taxTotal = sales.reduce((sum, row) => sum + row.tax, 0);
+      // Discounts given: ticket-level (sales.discount_total) plus pre-VAT line discounts, in fils.
+      const discountFils =
+        ((salesRes.data ?? []) as Array<{ discount_total?: number | string | null }>).reduce((sum, row) => sum + Math.round(Number(row.discount_total ?? 0) * 1000), 0) +
+        ((itemsRes.data ?? []) as Array<{ discount?: number | string | null }>).reduce((sum, row) => sum + Math.round(Number(row.discount ?? 0) * 1000), 0);
 
       return {
         days,
@@ -106,6 +110,7 @@ export default function Reports() {
         byMethod,
         totals,
         taxTotal,
+        discountTotal: discountFils / 1000,
         refundTotal: net.refundTotal,
         count: sales.length,
         avg: sales.length ? totals / sales.length : 0,
@@ -245,6 +250,7 @@ export default function Reports() {
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(data?.byMethod ?? {}).map(([method, total]) => <div key={method} className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{method}</div><div className="h-num g-val-18">{formatCurrency(total)}</div></div>)}
             {Object.keys(data?.byMethod ?? {}).length === 0 && <div className="col-span-full text-center h-meta py-6">{tx("No payments recorded")}</div>}
+            {(data?.discountTotal ?? 0) > 0 && <div className="glass-thin rounded-xl p-3" data-testid="report-discounts"><div className="h-meta uppercase tracking-wider mb-1">{tx("Discounts given")}</div><div className="h-num g-val-18">−{formatCurrency(data?.discountTotal ?? 0)}</div></div>}
             {(data?.refundTotal ?? 0) > 0 && <div className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{tx("Refunds")}</div><div className="h-num g-val-18">−{formatCurrency(data?.refundTotal ?? 0)}</div></div>}
           </div>
         </div>

@@ -37,7 +37,7 @@ export default function BusinessSettings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tenants")
-        .select("id, name, currency, tax_rate")
+        .select("id, name, currency, tax_rate, discount_approval_threshold_pct")
         .eq("id", tenantId!)
         .single();
       if (error) throw error;
@@ -49,6 +49,7 @@ export default function BusinessSettings() {
     name: "",
     currency: BAHRAIN_CURRENCY as string,
     tax_rate: BAHRAIN_STANDARD_VAT as number,
+    discount_threshold: 10,
   });
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function BusinessSettings() {
         name: tenant.name ?? "",
         currency: tenant.currency || BAHRAIN_CURRENCY,
         tax_rate: Number(tenant.tax_rate ?? BAHRAIN_STANDARD_VAT),
+        discount_threshold: Number((tenant as { discount_approval_threshold_pct?: number | null }).discount_approval_threshold_pct ?? 10),
       });
     }
   }, [tenant]);
@@ -64,6 +66,7 @@ export default function BusinessSettings() {
   const save = async () => {
     if (!tenantId) return;
     if (!form.name.trim()) return toast.error(tx("Business name is required"));
+    if (!(form.discount_threshold >= 0 && form.discount_threshold <= 100)) return toast.error(tx("Discount approval limit must be between 0 and 100%"));
 
     const { error } = await supabase
       .from("tenants")
@@ -71,7 +74,8 @@ export default function BusinessSettings() {
         name: form.name.trim(),
         currency: BAHRAIN_CURRENCY,
         tax_rate: form.tax_rate,
-      })
+        discount_approval_threshold_pct: form.discount_threshold,
+      } as never)
       .eq("id", tenantId);
 
     if (error) return toast.error(error.message);
@@ -132,6 +136,23 @@ export default function BusinessSettings() {
             />
             <p className="text-xs text-muted-foreground">
               {tx("Bahrain standard VAT is 10%. Use product-level tax treatment for zero-rated or exempt supplies.")}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{tx("Cashier discount limit (%)")}</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="0.5"
+              disabled={!canEdit}
+              value={form.discount_threshold}
+              data-testid="discount-threshold"
+              onChange={(e) => setForm({ ...form, discount_threshold: Number(e.target.value) })}
+            />
+            <p className="text-xs text-muted-foreground">
+              {tx("Cashiers can discount up to this percentage. Larger discounts need a manager PIN.")}
             </p>
           </div>
         </div>

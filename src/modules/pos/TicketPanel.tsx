@@ -6,6 +6,8 @@ import { formatQuantity, isWeighedProduct } from "@/lib/weighedItems";
 import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw, ShieldCheck } from "lucide-react";
 import { translate as t } from "@/i18n";
 import { LineDiscount } from "./LineDiscount";
+import { TicketDiscount } from "./TicketDiscount";
+import { linesWithTicketDiscount } from "@/stores/cart";
 
 interface TicketPanelProps {
   canCharge: boolean;
@@ -25,6 +27,8 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
   const totalNum = total();
 
   const isTableOrder = !!onSendToTable;
+  const ticketDiscount = useCart((s) => s.ticketDiscount);
+  const discountNum = linesWithTicketDiscount(lines, ticketDiscount).reduce((sum, l) => sum + l.discount, 0);
 
   return (
     <aside className="flex flex-col glass-strong g-ticket-panel h-full max-lg:max-h-[45vh] max-lg:border-t max-lg:border-l-0">
@@ -125,6 +129,12 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
       </ScrollArea>
 
       <footer className="border-t bg-muted/30 p-4 space-y-1.5">
+        {!isTableOrder && (
+          <div className="flex items-center justify-between text-sm">
+            <TicketDiscount />
+            {discountNum > 0 && <span className="tabular-nums text-destructive" data-testid="discount-total">-{formatCurrency(discountNum)}</span>}
+          </div>
+        )}
         <Row label="Subtotal" value={formatCurrency(subtotalNum)} />
         <Row label="VAT" value={formatCurrency(taxNum)} />
         <div className="flex items-baseline justify-between pt-2 border-t mt-2">

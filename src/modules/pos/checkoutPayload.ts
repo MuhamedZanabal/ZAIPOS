@@ -39,6 +39,7 @@ export interface CheckoutV2Payload {
     product_id: string;
     quantity: number;
     discount_fils: number;
+    discount_approval_operation_id?: string;
     modifiers: Array<{
       option_id: string;
       group_id: string;
@@ -163,6 +164,7 @@ export function buildCheckoutV2Payload(input: CheckoutV2BuildInput): CheckoutV2P
         price_delta: modifier.price_delta,
       })),
       ...(line.priceOverride ? { price_override_request_id: line.priceOverride.requestId } : {}),
+      ...(line.discountApprovalId ? { discount_approval_operation_id: line.discountApprovalId } : {}),
     })),
     _payments: input.payments.map((payment) => ({
       method: payment.method,

@@ -6,7 +6,7 @@ export interface ZSession {
   opening_amount: number | string; counted_cash?: number | string | null;
   counted_card?: number | string | null; counted_transfer?: number | string | null; counted_qr?: number | string | null;
 }
-export interface ZSale { id: string; status: string; channel?: string | null; total: number | string; tax_total?: number | string | null; discount_total?: number | string | null }
+export interface ZSale { id: string; status: string; channel?: string | null; total: number | string; tax_total?: number | string | null; discount_total?: number | string | null; sale_items?: Array<{ discount?: number | string | null }> | null }
 export interface ZPayment { sale_id: string; method: string; amount: number | string }
 export interface ZReturn { amount: number | string; method?: string | null }
 export interface ZMovement { type: string; amount: number | string }
@@ -48,7 +48,7 @@ export function buildZReport(session: ZSession, sales: ZSale[], payments: ZPayme
   return {
     sessionId: session.id, openedAt: session.opened_at, closedAt: session.closed_at,
     saleCount: counted.length, voidCount: sales.filter((s) => s.status === "voided" || s.status === "cancelled").length,
-    grossFils, discountFils: counted.reduce((sum, s) => sum + fils(s.discount_total), 0), vatFils, refundFils, netFils, netVatFils,
+    grossFils, discountFils: counted.reduce((sum, s) => sum + fils(s.discount_total) + (s.sale_items ?? []).reduce((a, i) => a + fils(i.discount), 0), 0), vatFils, refundFils, netFils, netVatFils,
     byMethodFils, byChannelFils, openingFils, cashInFils, cashOutFils, cashRefundFils,
     expectedCashFils, countedCashFils, cashDifferenceFils: countedCashFils == null ? null : countedCashFils - expectedCashFils,
   };

@@ -44,3 +44,14 @@ describe("Z-report", () => {
     expect(r.cashDifferenceFils).toBeNull();
   });
 });
+
+describe("buildZReport discounts", () => {
+  it("adds pre-VAT line discounts to ticket discounts", () => {
+    const r = buildZReport(
+      { id: "s", opened_at: "2026-10-11T05:00:00Z", closed_at: null, status: "open", opening_amount: "0" },
+      [{ id: "a", status: "completed", total: "2.970", tax_total: "0.270", discount_total: "0.100", sale_items: [{ discount: "0.300" }, { discount: null }] }],
+      [], [], [],
+    );
+    expect(r.discountFils).toBe(400);
+  });
+});

@@ -10,7 +10,20 @@ import { translate as tx } from "@/i18n";
 import { useActiveCashier } from "@/stores/activeCashier";
 import { englishServerMessage } from "@/lib/serverMessages";
 
-interface Employee { id: string; full_name: string; role: string | null }
+export interface Employee { id: string; full_name: string; role: string | null }
+
+/** Active employees on the branch (cashier picker and manager approval share this read). */
+export function usePosEmployees(tenantId: string | null, branchId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["pos-cashiers", tenantId, branchId],
+    enabled: enabled && !!tenantId && !!branchId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("id, full_name, role").eq("tenant_id", tenantId!).eq("branch_id", branchId!).eq("status", "active").order("full_name");
+      if (error) throw error;
+      return (data ?? []) as Employee[];
+    },
+  });
+}
 
 /** Header control on the register: shows the cashier at the till and switches by PIN. */
 export function CashierSwitch({ tenantId, branchId, cashSessionId }: { tenantId: string | null; branchId: string | null; cashSessionId?: string | null }) {
@@ -19,15 +32,7 @@ export function CashierSwitch({ tenantId, branchId, cashSessionId }: { tenantId:
   const [selected, setSelected] = useState<Employee | null>(null);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
-  const { data: employees = [] } = useQuery({
-    queryKey: ["pos-cashiers", tenantId, branchId],
-    enabled: open && !!tenantId && !!branchId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, role").eq("tenant_id", tenantId!).eq("branch_id", branchId!).eq("status", "active").order("full_name");
-      if (error) throw error;
-      return (data ?? []) as Employee[];
-    },
-  });
+  const { data: employees = [] } = usePosEmployees(tenantId, branchId, open);
   const current = cashier && cashier.branchId === branchId ? cashier : null;
 
   const verify = async () => {

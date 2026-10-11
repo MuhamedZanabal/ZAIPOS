@@ -30,7 +30,7 @@ export function useTenantContext() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("tenant_id, role, branch_id, tenants(id, name, currency, tax_rate, active_channels, business_mode)")
+        .select("tenant_id, role, branch_id, tenants(id, name, currency, tax_rate, active_channels, business_mode, discount_approval_threshold_pct)")
         .eq("user_id", user!.id);
       if (error) throw error;
       return data ?? [];
@@ -94,9 +94,19 @@ export function useTenantContext() {
     return normalizeBusinessMode(isTenantSummary(tenantObj) ? tenantObj.business_mode : undefined);
   }, [memberships, tenantId]);
 
+  const discountThresholdPct = useMemo(() => {
+    const tenantObj = memberships?.find((membership) => membership.tenant_id === tenantId)?.tenants as
+      | { discount_approval_threshold_pct?: number | string | null }
+      | null
+      | undefined;
+    const value = Number(tenantObj?.discount_approval_threshold_pct ?? 10);
+    return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 10;
+  }, [memberships, tenantId]);
+
   return {
     tenantId,
     branchId,
+    discountThresholdPct,
     setTenant,
     setBranch,
     memberships: memberships ?? [],

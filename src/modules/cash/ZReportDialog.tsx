@@ -14,7 +14,7 @@ export function ZReportDialog({ session, businessName, onClose }: { session: ZSe
     queryFn: async () => {
       const id = session!.id;
       const [sales, returns, movements] = await Promise.all([
-        supabase.from("sales").select("id, status, channel, total, tax_total, discount_total").eq("session_id", id),
+        supabase.from("sales").select("id, status, channel, total, tax_total, discount_total, sale_items(discount)").eq("session_id", id),
         supabase.from("sale_returns").select("amount").eq("cash_session_id", id),
         supabase.from("cash_movements").select("type, amount").eq("session_id", id),
       ]);

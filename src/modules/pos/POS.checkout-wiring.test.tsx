@@ -55,7 +55,8 @@ vi.mock("@/hooks/useOpenSession", () => ({
 vi.mock("@/hooks/useDevMode", () => ({ useDevMode: () => ({ devMode: false }) }));
 vi.mock("@/hooks/useProducts", () => ({ useProducts: () => ({ data: [] }) }));
 
-vi.mock("@/stores/cart", () => ({
+vi.mock("@/stores/cart", async (importOriginal) => ({
+  linesWithTicketDiscount: (await importOriginal<typeof import("@/stores/cart")>()).linesWithTicketDiscount,
   effectiveCartUnitPrice: (line: any) => line.priceOverride ? line.priceOverride.overrideUnitPriceFils / 1000 : Number(line.product.price),
   useCart: () => ({
     lines: [{
@@ -72,6 +73,8 @@ vi.mock("@/stores/cart", () => ({
       discount: 0,
       priceOverride: state.priceOverride,
     }],
+    ticketDiscount: null,
+    discountApprovalId: null,
     total: () => state.priceOverride ? Number(state.priceOverride.overrideUnitPriceFils) / 1000 : 8.5,
     clear: state.clear,
     add: vi.fn(),

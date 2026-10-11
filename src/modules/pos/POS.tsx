@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useOpenSession } from "@/hooks/useOpenSession";
-import { effectiveCartUnitPrice, useCart, type CartLine, type PriceOverrideEvidence } from "@/stores/cart";
+import { effectiveCartUnitPrice, linesWithTicketDiscount, useCart, type CartLine, type PriceOverrideEvidence } from "@/stores/cart";
 import { useHardware } from "@/hooks/useHardware";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +59,7 @@ export default function POS() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showFirstSaleGuide, setShowFirstSaleGuide] = useState(() => localStorage.getItem(FIRST_SALE_GUIDE_KEY) === "1");
   const { devMode } = useDevMode();
-  const { lines, total, clear, add, addQuantity, replace, setPriceOverride, clearPriceOverrides } = useCart();
+  const { lines, ticketDiscount, discountApprovalId, total, clear, add, addQuantity, replace, setPriceOverride, clearPriceOverrides } = useCart();
   const { data: openSession } = useOpenSession(branchId);
   const activeCashier = useActiveCashier((state) => state.cashier);
   const { onBarcodeScanned, printTicket, openDrawer } = useHardware();
@@ -413,6 +413,7 @@ export default function POS() {
 
     setSubmitting(true);
     try {
+      const saleLines = linesWithTicketDiscount(lines, ticketDiscount, discountApprovalId);
       if (!checkoutMutationIdRef.current) checkoutMutationIdRef.current = crypto.randomUUID();
       const command = buildPosCheckoutCommand({
         tenantId,
@@ -420,7 +421,7 @@ export default function POS() {
         cashSessionId: openSession?.id ?? null,
         customerId,
         channel,
-        lines,
+        lines: saleLines,
         allocations,
         discountAmountBhd: discountAmount,
         tipAmountBhd: tipAmount,
@@ -462,7 +463,7 @@ export default function POS() {
             businessName: tenant?.name ?? "ZAIPOS",
             branchName,
             cashierName: activeCashier && activeCashier.branchId === branchId ? activeCashier.name : undefined,
-            items: lines.map((line) => ({
+            items: saleLines.map((line) => ({
               name: line.product.name,
               quantity: line.quantity,
               unitPrice: effectiveCartUnitPrice(line),
@@ -510,7 +511,7 @@ export default function POS() {
 
     setSubmitting(true);
     try {
-      if (lines.some((line) => Number(line.discount || 0) !== 0)) {
+      if (ticketDiscount || lines.some((line) => Number(line.discount || 0) !== 0)) {
         throw new Error("Restaurant line discounts require an authoritative manager policy and cannot be sent yet");
       }
       const items = lines.map((l) => ({
