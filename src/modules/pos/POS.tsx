@@ -42,9 +42,12 @@ import { channelAllowedInMode, hasCapability } from "@/lib/business-modes";
 import { enabledPaymentMethods } from "@/lib/setupWizard";
 import { FIRST_SALE_GUIDE_KEY } from "@/hooks/useSetupInProgress";
 import { isWeighedProduct, parseWeightKg } from "@/lib/weighedItems";
-import { translate as t } from "@/i18n";
+import { translate as t, useLanguageStore } from "@/i18n";
+import { LanguageToggle } from "@/components/shared/LanguageToggle";
 
 export default function POS() {
+  // Re-render the whole register (and its children) when the language changes.
+  useLanguageStore((state) => state.language);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { tenantId, branchId, branches, activeChannels, businessMode } = useTenantContext();
@@ -560,6 +563,7 @@ export default function POS() {
             showSync={!!openSession}
           />
         </div>
+        <LanguageToggle className="border-l self-stretch" />
         <Link
           to="/dashboard"
           className="flex items-center gap-1.5 shrink-0 px-4 border-l text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
