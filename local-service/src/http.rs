@@ -463,21 +463,25 @@ async fn storage(
             Json(serde_json::json!({"error": message})),
         ))
     };
-    if bucket != "product-images" || !attachments::is_safe_segment(&tenant) {
+    if bucket != "product-images" || !crate::pos_pin::uuid_like(&tenant) {
         return reject("Invalid photo location");
     }
     let writer = action == "upload";
-    // Membership is checked for the session's verified user id (bound, not
-    // taken from the request), directly against user_roles.
+    // Membership is checked for the session's verified user id through the
+    // SECURITY DEFINER role helpers, inside the caller's transaction.
+    let mut tx = commands::caller_transaction(database, Some(&user_id))
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     let allowed: bool = sqlx::query_scalar(
-        "select exists(select 1 from public.user_roles where user_id::text = $3 and tenant_id::text = $1 and ($2 = false or role::text in ('owner','admin','manager')))",
+        "select case when $2 then public.has_any_role($3::uuid, $1::uuid, array['owner','admin','manager']::public.app_role[]) else public.is_tenant_member($3::uuid, $1::uuid) end",
     )
     .bind(&tenant)
     .bind(writer)
     .bind(user_id.to_string())
-    .fetch_one(database.pool())
+    .fetch_one(&mut *tx)
     .await
     .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    drop(tx);
     if !allowed {
         return Ok((
             StatusCode::FORBIDDEN,

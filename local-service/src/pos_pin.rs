@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use crate::auth::password::{hash_password, verify_password};
 use crate::db::Database;
 
-fn uuid_like(value: &str) -> bool {
+pub fn uuid_like(value: &str) -> bool {
     value.len() == 36
         && value.chars().enumerate().all(|(i, c)| {
             if [8, 13, 18, 23].contains(&i) {
@@ -29,6 +29,44 @@ fn constant_time_eq(a: &str, b: &str) -> bool {
         diff |= (a.get(i).copied().unwrap_or(0) ^ b.get(i).copied().unwrap_or(0)) as usize;
     }
     diff == 0
+}
+
+/// Like the hosted edge function, the PIN functions run as `service_role`; the
+/// SECURITY DEFINER functions still check the actor's branch role themselves.
+async fn service_tx(
+    pool: &sqlx::PgPool,
+) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let can_assume: bool = sqlx::query_scalar(
+        "select exists(select 1 from pg_roles where rolname = 'service_role')
+            and pg_has_role(current_user, 'service_role', 'MEMBER')",
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if can_assume {
+        sqlx::query("set local role service_role")
+            .execute(&mut *tx)
+            .await?;
+    }
+    Ok(tx)
+}
+
+async fn scalar_as_service<T>(
+    pool: &sqlx::PgPool,
+    sql: &str,
+    binds: Vec<Option<String>>,
+) -> Result<T, sqlx::Error>
+where
+    T: for<'r> sqlx::Decode<'r, sqlx::Postgres> + sqlx::Type<sqlx::Postgres> + Send + Unpin,
+{
+    let mut tx = service_tx(pool).await?;
+    let mut query = sqlx::query_scalar::<_, T>(sql);
+    for bind in binds {
+        query = query.bind(bind);
+    }
+    let value = query.fetch_one(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(value)
 }
 
 fn operation_id() -> String {
@@ -75,16 +113,11 @@ pub async fn handle(database: &Database, caller: &str, body: &Value) -> (u16, Va
             let Ok(hash) = hash_password(&pin) else {
                 return (400, json!({"error": "PIN rejected"}));
             };
-            match sqlx::query_scalar::<_, String>(
+            match scalar_as_service::<String>(
+                pool,
                 "select public.set_employee_pos_pin_v1($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6)::text",
+                vec![Some(caller.to_string()), Some(tenant.clone()), Some(branch.clone()), Some(employee.clone()), Some(hash), Some(operation_id())],
             )
-            .bind(caller)
-            .bind(&tenant)
-            .bind(&branch)
-            .bind(&employee)
-            .bind(&hash)
-            .bind(operation_id())
-            .fetch_one(pool)
             .await
             {
                 Ok(credential) => (200, json!({"employee_id": employee, "credential_id": credential, "algorithm": "argon2id"})),
@@ -100,17 +133,11 @@ pub async fn handle(database: &Database, caller: &str, body: &Value) -> (u16, Va
                     json!({"error": "A registered device and valid session context are required"}),
                 );
             }
-            let prepared = match sqlx::query_scalar::<_, Value>(
+            let prepared = match scalar_as_service::<Value>(
+                pool,
                 "select to_jsonb(public.begin_employee_pos_pin_verification_v1($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, nullif($6, '')::uuid, $7))",
+                vec![Some(caller.to_string()), Some(tenant.clone()), Some(branch.clone()), Some(employee.clone()), Some(device.clone()), Some(session.clone()), Some(operation_id())],
             )
-            .bind(caller)
-            .bind(&tenant)
-            .bind(&branch)
-            .bind(&employee)
-            .bind(&device)
-            .bind(&session)
-            .bind(operation_id())
-            .fetch_one(pool)
             .await
             {
                 Ok(value) => value,
@@ -139,14 +166,11 @@ pub async fn handle(database: &Database, caller: &str, body: &Value) -> (u16, Va
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
-            match sqlx::query_scalar::<_, Value>(
-                "select to_jsonb(public.complete_employee_pos_pin_verification_v1($1::uuid, $2::uuid, $3, $4))",
+            match scalar_as_service::<Value>(
+                pool,
+                "select to_jsonb(public.complete_employee_pos_pin_verification_v1($1::uuid, $2::uuid, $3::boolean, $4))",
+                vec![Some(caller.to_string()), Some(attempt), Some(verified.to_string()), replacement],
             )
-            .bind(caller)
-            .bind(&attempt)
-            .bind(verified)
-            .bind(replacement)
-            .fetch_one(pool)
             .await
             {
                 Ok(result) => {
