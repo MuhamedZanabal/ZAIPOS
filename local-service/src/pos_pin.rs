@@ -133,10 +133,11 @@ pub async fn handle(database: &Database, caller: &str, body: &Value) -> (u16, Va
                     json!({"error": "A registered device and valid session context are required"}),
                 );
             }
+            let verification_id = operation_id();
             let prepared = match scalar_as_service::<Value>(
                 pool,
                 "select to_jsonb(public.begin_employee_pos_pin_verification_v1($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, nullif($6, '')::uuid, $7))",
-                vec![Some(caller.to_string()), Some(tenant.clone()), Some(branch.clone()), Some(employee.clone()), Some(device.clone()), Some(session.clone()), Some(operation_id())],
+                vec![Some(caller.to_string()), Some(tenant.clone()), Some(branch.clone()), Some(employee.clone()), Some(device.clone()), Some(session.clone()), Some(verification_id.clone())],
             )
             .await
             {
@@ -173,8 +174,14 @@ pub async fn handle(database: &Database, caller: &str, body: &Value) -> (u16, Va
             )
             .await
             {
-                Ok(result) => {
+                Ok(mut result) => {
                     let ok = result.get("verified").and_then(Value::as_bool) == Some(true);
+                    if ok {
+                        // Evidence the checkout can cite for a discount above the threshold.
+                        if let Some(map) = result.as_object_mut() {
+                            map.insert("verification_id".into(), Value::String(verification_id));
+                        }
+                    }
                     (if ok { 200 } else { 401 }, result)
                 }
                 Err(e) => db_error(e),
