@@ -25,12 +25,15 @@ import {
   Wallet,
 } from "lucide-react";
 import { PendingTableOrders } from "./PendingTableOrders";
+import { ZReportDialog } from "./ZReportDialog";
+import type { ZSession } from "@/lib/zReport";
 import { cn } from "@/lib/utils";
 import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
 import { executeCashSession, readCashSessionDraft, type CashSessionDraft } from "@/lib/deviceCashSession";
 
 export default function Cash() {
   const { tenantId, branchId, hasRole } = useTenantContext();
+  const [zSession, setZSession] = useState<ZSession | null>(null);
   const { user } = useAuth();
   const qc = useQueryClient();
   const [openAmount, setOpenAmount] = useState("0.000");
@@ -55,6 +58,12 @@ export default function Cash() {
       }
     } catch (error: any) { toast.error(error.message); }
   }, [user?.id]);
+
+  const { data: tenant } = useQuery({
+    queryKey: ["cash-tenant-name", tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => (await supabase.from("tenants").select("name").eq("id", tenantId!).maybeSingle()).data as { name: string } | null,
+  });
 
   const { data: history } = useQuery({
     queryKey: ["cash-history", branchId],
@@ -305,6 +314,7 @@ export default function Cash() {
               <span className="text-right">Expected</span>
               <span className="text-right">Counted</span>
               <span className="text-right">Difference</span>
+              <span className="sr-only">Report</span>
             </div>
 
             {(history ?? []).map((row: any) => {
@@ -341,6 +351,11 @@ export default function Cash() {
                       ? `${difference > 0 ? "+" : ""}${formatCurrency(difference)}`
                       : "Hidden"}
                   </span>
+                  {canViewDifferences && row.status === "closed" && (
+                    <button type="button" className="text-xs font-semibold underline" onClick={() => setZSession(row)} aria-label={`Z-report for ${new Date(row.opened_at).toLocaleDateString(BAHRAIN_LOCALE)}`}>
+                      Z-report
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -374,6 +389,7 @@ export default function Cash() {
         </DialogContent>
       </Dialog>
 
+      <ZReportDialog session={zSession} businessName={tenant?.name ?? "ZAIPOS"} onClose={() => setZSession(null)} />
       <CashMovementDialog
         actorId={user?.id ?? null}
         tenantId={tenantId}

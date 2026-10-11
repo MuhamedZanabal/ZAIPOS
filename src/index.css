@@ -2376,7 +2376,7 @@
 .g-cash-hist-head,
 .g-cash-hist-row {
   display: grid;
-  grid-template-columns: 1fr 80px 130px 130px 130px;
+  grid-template-columns: 1fr 80px 130px 130px 130px 72px;
   align-items: center;
   gap: 16px;
   padding: 12px 20px;
@@ -2880,4 +2880,11 @@
 /* Branch grid single column on mobile */
 @media (max-width: 479px) {
   .g-branches-grid { grid-template-columns: 1fr; }
+}
+
+/* Z-report: print only the report text */
+@media print {
+  body * { visibility: hidden; }
+  .z-report-print, .z-report-print * { visibility: visible; }
+  .z-report-print { position: absolute; inset: 0 auto auto 0; max-height: none; overflow: visible; background: #fff; color: #000; }
 }
