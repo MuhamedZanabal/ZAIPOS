@@ -11,7 +11,7 @@ for (const file of dictFiles) {
 }
 // Sample data, identifiers and protocol values intentionally stay as-is.
 const untranslatable = /@|^\+973|^e\.g\. zaipos|^[A-Z_]+$|^[\d\s×#:·.,-]+$/;
-const spanish = /[ñ¿¡]|\b(acceso|alerta|borrador|cargar|recibir|revertir|transferir|usar|ver|guardar|cancelar|eliminar|nuevo|mesa|cocina|cliente|proveedor|merma|miembros|observaciones|urgente|unidades)\b/i;
+const spanish = /[ñ¿¡]|\b(acceso|alerta|borrador|cargar|recibir|revertir|transferir|usar|ver|guardar|cancelar|eliminar|nuevo|mesa|cocina|cliente|proveedor|merma|miembros|observaciones|urgente|unidades|proyecciones|centros|margen|consistencia|complementarios)\b/i;
 const callPattern = /\b(?:t|tx|translate)\(\s*("(?:[^"\\]|\\.)*")\s*[,)]/g;
 
 const problems = [];

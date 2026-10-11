@@ -168,10 +168,10 @@ export default function Inventory() {
   }
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: "stock",    label: "Current stock",  icon: <Warehouse size={14} /> },
-    { id: "forecast", label: "Proyecciones",  icon: <TrendingUp size={14} /> },
-    { id: "history",  label: "Kardex",        icon: <History size={14} /> },
-    { id: "centers",  label: "Centros",       icon: <Settings2 size={14} /> },
+    { id: "stock",    label: tx("Current stock"),  icon: <Warehouse size={14} /> },
+    { id: "forecast", label: tx("Forecast"),  icon: <TrendingUp size={14} /> },
+    { id: "history",  label: tx("Stock history"),        icon: <History size={14} /> },
+    { id: "centers",  label: tx("Centers"),       icon: <Settings2 size={14} /> },
   ];
 
   return (

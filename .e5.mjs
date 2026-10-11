@@ -3,8 +3,8 @@ const b = await chromium.connectOverCDP('http://127.0.0.1:9222'); const p = b.co
 const errs = []; p.on('pageerror', (e) => errs.push(e.message));
 const S = (n) => p.screenshot({ path: `/workspace/omega/sprint/screens/prod2_${n}.png` });
 const go = async (h) => { await p.evaluate((x) => { location.hash = x; }, h); await p.waitForTimeout(2500); };
-await go('#/pos');
-await p.getByTestId('language-toggle').click(); await p.waitForTimeout(1200);
+await p.reload(); await p.waitForTimeout(4000); await go('#/pos');
+if (await p.evaluate(() => document.documentElement.dir) !== 'rtl') await p.getByTestId('language-toggle').click(); await p.waitForTimeout(1200);
 console.log('POS dir', await p.evaluate(() => document.documentElement.dir), (await p.innerText('body')).slice(0, 200).replace(/\n/g, ' | '));
 await S('04_pos_header_toggle_arabic');
 await p.reload(); await p.waitForTimeout(4000);
