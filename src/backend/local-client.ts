@@ -82,10 +82,18 @@ function table(name: string): LocalQuery {
 
 function storageBucket(bucket: string) {
   return {
-    // The local service does not store file bytes yet; fail clearly instead of
-    // recording a path that points at nothing.
-    upload: async (_path: string, _file: unknown, _options?: { upsert?: boolean; contentType?: string }): Promise<AnyResult> =>
-      ({ data: null, error: { message: `Photo uploads (${bucket}) are not available on this ZAIPOS server yet. Save without a photo.` } }),
+    // Photos are stored on the ZAIPOS server, content-addressed per tenant; the
+    // returned path (<tenant>/<sha256>) replaces the caller's suggested name.
+    upload: async (path: string, file: unknown, _options?: { upsert?: boolean; contentType?: string }): Promise<AnyResult> => {
+      if (bucket !== 'product-images') return { data: null, error: { message: `Uploads to ${bucket} are not available on this ZAIPOS server.` } };
+      if (!(file instanceof Blob)) return { data: null, error: { message: 'Choose a photo file' } };
+      try {
+        const { uploadLocalPhoto } = await import('@/lib/localPhotos');
+        return { data: await uploadLocalPhoto(bucket, path.split('/')[0] ?? '', file), error: null };
+      } catch (error) {
+        return { data: null, error: { message: error instanceof Error ? error.message : 'Photo could not be saved' } };
+      }
+    },
     getPublicUrl: (path: string) => ({ data: { publicUrl: `app-attachment:${bucket}/${path}` } }),
   };
 }

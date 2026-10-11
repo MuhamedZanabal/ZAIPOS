@@ -112,7 +112,13 @@ async fn serve_ready(
     } else {
         let _ = desktop_publish::publish_desktop_readable(&config.server_profile_path());
     }
-    let mut state = AppState::ready(database);
+    let mut state = AppState::ready(database).with_media(
+        config
+            .database_root()
+            .parent()
+            .map(|p| p.join("media"))
+            .unwrap_or_else(|| config.database_root().join("media")),
+    );
     match zaipos_local_service::provisioning::resolve_bin_dir(None)
         .map_err(|_| zaipos_local_service::backup::BackupError::ToolsMissing)
         .and_then(|bin| {

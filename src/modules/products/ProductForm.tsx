@@ -22,6 +22,7 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { hasCapability } from "@/lib/business-modes";
 import { isWeighedProduct, WEIGHT_UNIT } from "@/lib/weighedItems";
 import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
+import { LocalImage } from "@/components/shared/LocalImage";
 import { translate as tx } from "@/i18n";
 
 
@@ -354,13 +355,14 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
     try {
       const ext = file.name.split('.').pop() ?? 'jpg';
       const path = `${tenantId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
+      const { data: uploaded, error } = await supabase.storage
         .from('product-images')
         .upload(path, file, { upsert: true, contentType: file.type });
       if (error) throw error;
+      const storedPath = (uploaded as { path?: string } | null)?.path ?? path;
       const { data: { publicUrl } } = supabase.storage
         .from('product-images')
-        .getPublicUrl(path);
+        .getPublicUrl(storedPath);
       setForm((f: any) => ({ ...f, image_url: publicUrl }));
       toast.success(tx("Image uploaded"));
     } catch (err: any) {
@@ -542,7 +544,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               />
               {form.image_url ? (
                 <div className="relative w-full h-40 rounded-lg overflow-hidden border bg-muted">
-                  <img src={form.image_url} alt="Product photo" className="w-full h-full object-cover" />
+                  <LocalImage src={form.image_url} alt="Product photo" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setForm((f: any) => ({ ...f, image_url: null }))}

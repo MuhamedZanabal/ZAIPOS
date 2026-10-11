@@ -10,6 +10,7 @@ use serde_json::Value;
 use tower::ServiceExt;
 use tower_http::limit::RequestBodyLimitLayer;
 
+use crate::attachments::{self, DurableAttachmentStore};
 use crate::auth::{self, AuthError};
 use crate::backup::{BackupError, BackupStore};
 use crate::commands::{self, ExecError, execute_backend, execute_command};
@@ -28,6 +29,7 @@ pub struct AppState {
     health: HealthResponse,
     database: Option<Database>,
     backups: Option<BackupStore>,
+    media: Option<std::sync::Arc<DurableAttachmentStore>>,
 }
 
 impl AppState {
@@ -39,6 +41,7 @@ impl AppState {
             },
             database: None,
             backups: None,
+            media: None,
         }
     }
 
@@ -50,7 +53,14 @@ impl AppState {
             },
             database: Some(database),
             backups: None,
+            media: None,
         }
+    }
+
+    /// Enables local product-photo storage under `root`.
+    pub fn with_media(mut self, root: impl Into<std::path::PathBuf>) -> Self {
+        self.media = Some(std::sync::Arc::new(DurableAttachmentStore::open(root)));
+        self
     }
 
     /// Enables owner backups/restore of the local database.
@@ -69,6 +79,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/auth/logout", post(logout))
         .route("/v1/commands/{name}", post(command))
         .route("/v1/admin/backups/{action}", post(backups))
+        .route("/v1/storage/{action}", post(storage))
         .fallback(not_found)
         .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BYTES))
         .with_state(state)
@@ -393,6 +404,107 @@ async fn limited_body(request: axum::extract::Request) -> Result<Vec<u8>, Status
         return Err(StatusCode::PAYLOAD_TOO_LARGE);
     }
     Ok(bytes.to_vec())
+}
+
+/// Product photos stored on this server. Upload/remove: owner, admin or
+/// manager of the tenant; download: any member of the tenant. Files are
+/// content-addressed (sha256) under <media>/<tenant>/<bucket>/ and the type is
+/// taken from the file signature, never from the client.
+async fn storage(
+    State(state): State<AppState>,
+    Path(action): Path<String>,
+    headers: axum::http::HeaderMap,
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    use base64::Engine as _;
+    let value = json_body(request).await?;
+    let (Some(database), Some(media)) = (state.database.as_ref(), state.media.as_ref()) else {
+        return Ok(unavailable());
+    };
+    let token = bearer_token(&headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user_id = auth::session_user_id(database, &token)
+        .await
+        .map_err(|error| match error {
+            AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+            _ => StatusCode::UNAUTHORIZED,
+        })?;
+    let field = |key: &str| {
+        value
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
+    let (bucket, tenant) = (field("bucket"), field("tenant_id"));
+    let reject = |message: &str| {
+        Ok((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": message})),
+        ))
+    };
+    if bucket != "product-images" || !attachments::is_safe_segment(&tenant) {
+        return reject("Invalid photo location");
+    }
+    let writer = action == "upload";
+    // Membership is checked for the session's verified user id (bound, not
+    // taken from the request), directly against user_roles.
+    let allowed: bool = sqlx::query_scalar(
+        "select exists(select 1 from public.user_roles where user_id::text = $3 and tenant_id::text = $1 and ($2 = false or role::text in ('owner','admin','manager')))",
+    )
+    .bind(&tenant)
+    .bind(writer)
+    .bind(user_id.to_string())
+    .fetch_one(database.pool())
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    if !allowed {
+        return Ok((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error": "You do not have access to this business's photos"})),
+        ));
+    }
+    let b64 = base64::engine::general_purpose::STANDARD;
+    match action.as_str() {
+        "upload" => {
+            let Ok(bytes) = b64.decode(field("data_base64")) else {
+                return reject("Photo data is not valid");
+            };
+            let content_type = match attachments::check_image(&bytes) {
+                Ok(kind) => kind,
+                Err(message) => return reject(message),
+            };
+            match media.put(&tenant, &bucket, "photo", &bytes) {
+                Ok(hash) => Ok((
+                    StatusCode::OK,
+                    Json(
+                        serde_json::json!({"data": {"path": format!("{tenant}/{hash}"), "content_type": content_type}}),
+                    ),
+                )),
+                Err(_) => Ok((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Photo could not be saved"})),
+                )),
+            }
+        }
+        "download" => {
+            let hash = field("hash");
+            match media.read(&tenant, &bucket, &hash) {
+                Ok(Some(bytes)) => Ok((
+                    StatusCode::OK,
+                    Json(serde_json::json!({"data": {
+                        "content_type": attachments::sniff_image(&bytes).unwrap_or("application/octet-stream"),
+                        "data_base64": b64.encode(&bytes),
+                    }})),
+                )),
+                Ok(None) => Ok((
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": "Photo not found"})),
+                )),
+                Err(_) => reject("Invalid photo location"),
+            }
+        }
+        _ => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 /// Owner/admin-only local database backups. Chunked so every request and

@@ -43,6 +43,7 @@ async fn business_types_on_real_postgres() {
                 bootstrap_sets_type_and_defaults_for_every_business_type().await;
                 unknown_type_is_rejected_and_direct_type_updates_are_blocked().await;
                 owner_changes_type_and_adds_staff_who_can_sign_in().await;
+                product_photos_are_stored_locally_per_tenant().await;
             })
             .await
         })
@@ -320,5 +321,79 @@ async fn owner_changes_type_and_adds_staff_who_can_sign_in() {
         .await
         .unwrap();
     assert_eq!(duplicate.status(), axum::http::StatusCode::BAD_REQUEST);
+    database.close().await;
+}
+
+async fn product_photos_are_stored_locally_per_tenant() {
+    use base64::Engine as _;
+    let Some(database) = migrated().await else {
+        return;
+    };
+    let media = std::env::temp_dir().join(format!("zaipos-media-{}", std::process::id()));
+    let app = build_router(AppState::ready(database.database().clone()).with_media(&media));
+    let token = bootstrap(&app, "RETAIL").await;
+    let tenant = scalar(&database, "select id::text from public.tenants").await;
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0, 16, b'J', b'F', b'I', b'F'];
+    let call = |action: &str, body: String, token: Option<String>| {
+        let app = app.clone();
+        let path = format!("/v1/storage/{action}");
+        async move {
+            let response = app
+                .oneshot(post(&path, &body, token.as_deref()))
+                .await
+                .unwrap();
+            (response.status(), text(response).await)
+        }
+    };
+    let upload = |data: &[u8], tenant: &str| {
+        format!(
+            r#"{{"bucket":"product-images","tenant_id":"{tenant}","data_base64":"{}"}}"#,
+            b64.encode(data)
+        )
+    };
+    let (status, body) = call("upload", upload(&jpeg, &tenant), Some(token.clone())).await;
+    assert_eq!(status, axum::http::StatusCode::OK, "{body}");
+    let path = body
+        .split("\"path\":\"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap()
+        .to_string();
+    let hash = path.split('/').nth(1).unwrap().to_string();
+    assert!(path.starts_with(&tenant));
+    let (status, body) = call(
+        "download",
+        format!(r#"{{"bucket":"product-images","tenant_id":"{tenant}","hash":"{hash}"}}"#),
+        Some(token.clone()),
+    )
+    .await;
+    assert_eq!(status, axum::http::StatusCode::OK);
+    assert!(body.contains("image/jpeg") && body.contains(&b64.encode(jpeg)));
+    // Wrong type, other tenant, traversal and no session are all refused.
+    let (status, _) = call(
+        "upload",
+        upload(b"<svg onload=alert(1)>", &tenant),
+        Some(token.clone()),
+    )
+    .await;
+    assert_eq!(status, axum::http::StatusCode::BAD_REQUEST);
+    let other = "00000000-0000-4000-8000-000000000099";
+    let (status, _) = call("upload", upload(&jpeg, other), Some(token.clone())).await;
+    assert_eq!(status, axum::http::StatusCode::FORBIDDEN);
+    let (status, _) = call("upload", upload(&jpeg, "../etc"), Some(token.clone())).await;
+    assert_eq!(status, axum::http::StatusCode::BAD_REQUEST);
+    let (status, _) = call(
+        "download",
+        format!(r#"{{"bucket":"product-images","tenant_id":"{tenant}","hash":"../../x"}}"#),
+        Some(token.clone()),
+    )
+    .await;
+    assert_ne!(status, axum::http::StatusCode::OK);
+    let (status, _) = call("upload", upload(&jpeg, &tenant), None).await;
+    assert_eq!(status, axum::http::StatusCode::UNAUTHORIZED);
+    let _ = std::fs::remove_dir_all(&media);
     database.close().await;
 }
