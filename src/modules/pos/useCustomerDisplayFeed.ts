@@ -3,12 +3,16 @@ import { publishCustomerDisplay } from "@/lib/customerDisplay";
 import { effectiveCartUnitPrice, linesWithTicketDiscount, useCart } from "@/stores/cart";
 
 const fils = (bhd: number) => Math.round(bhd * 1000);
+const PAID_SCREEN_MS = 8000;
+let paidUntil = 0;
 
 /** Mirrors the open ticket to the customer display (see src/lib/customerDisplay.ts). */
 export function useCustomerDisplayFeed(businessName?: string) {
   const lines = useCart((s) => s.lines);
   const ticket = useCart((s) => s.ticketDiscount);
   useEffect(() => {
+    // Keep the thank-you screen up after checkout clears the cart.
+    if (lines.length === 0 && Date.now() < paidUntil) return;
     const priced = linesWithTicketDiscount(lines, ticket);
     const net = priced.map((l) => fils(effectiveCartUnitPrice(l) * l.quantity) - fils(l.discount));
     const vat = priced.reduce((sum, l, i) => sum + Math.round((net[i] * Number(l.product.tax_rate || 0)) / 100), 0);
@@ -26,10 +30,11 @@ export function useCustomerDisplayFeed(businessName?: string) {
 
 /** Shows the thank-you screen with the charged total, then returns to idle. */
 export function showPaidOnCustomerDisplay(totalFils: number, changeFils: number, businessName?: string) {
+  paidUntil = Date.now() + PAID_SCREEN_MS;
   publishCustomerDisplay({ status: "paid", businessName, lines: [], discountFils: 0, vatFils: 0, totalFils, changeFils });
   window.setTimeout(() => {
     if (useCart.getState().lines.length === 0) {
       publishCustomerDisplay({ status: "idle", businessName, lines: [], discountFils: 0, vatFils: 0, totalFils: 0 });
     }
-  }, 8000);
+  }, PAID_SCREEN_MS);
 }

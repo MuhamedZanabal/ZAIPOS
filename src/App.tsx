@@ -40,7 +40,6 @@ const Sales = lazy(() => import("./modules/sales/Sales"));
 const Production = lazy(() => import("./modules/production/Production"));
 const KDS = lazy(() => import("./modules/kds/KDS"));
 const QRMenu = lazy(() => import("./pages/QRMenu"));
-const CustomerDisplay = lazy(() => import("./pages/CustomerDisplay"));
 const WhatsAppInbox = lazy(() => import("./modules/whatsapp/WhatsAppInbox"));
 const Reports = lazy(() => import("./modules/reports/Reports"));
 const Employees = lazy(() => import("./modules/staff/Employees"));
@@ -111,7 +110,6 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/403" element={<Forbidden />} />
                 <Route path="/qr/:branchId" element={<QRMenu />} />
-                <Route path="/customer-display" element={<CustomerDisplay />} />
 
                 {/* ── Rutas protegidas ── */}
                 <Route element={<ProtectedRoute />}>
