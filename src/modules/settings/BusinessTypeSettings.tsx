@@ -45,8 +45,8 @@ export function BusinessTypeSettings() {
 
   return (
     <div className="glass p-6 rounded-2xl max-w-2xl space-y-3" data-testid="business-type-settings">
-      <Label>Business type</Label>
-      <p className="text-sm text-muted-foreground">Decides which screens and till controls ZAIPOS shows. Your products, sales and reports are kept.</p>
+      <Label>{tx("Business type")}</Label>
+      <p className="text-sm text-muted-foreground">{tx("Decides which screens and till controls ZAIPOS shows. Your products, sales and reports are kept.")}</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {BUSINESS_MODES.map((mode) => (
           <Button key={mode} type="button" variant={mode === businessMode ? "default" : "outline"} aria-pressed={mode === businessMode}

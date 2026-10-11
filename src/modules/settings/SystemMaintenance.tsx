@@ -70,7 +70,7 @@ export function SystemMaintenance() {
         <div className="glass rounded-2xl p-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-brand-600">
             <Mail className="h-5 w-5" />
-            <div className="g-title-15">Messaging</div>
+            <div className="g-title-15">{tx("Messaging")}</div>
           </div>
           <div className="h-meta">{tx("Manual processing of the pending email queue.")}</div>
           <Button
@@ -88,7 +88,7 @@ export function SystemMaintenance() {
         <div className="glass rounded-2xl p-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-brand-600">
             <ShieldCheck className="h-5 w-5" />
-            <div className="g-title-15">Consistencia</div>
+            <div className="g-title-15">{tx("Consistency")}</div>
           </div>
           <div className="h-meta">{tx("Ensures every product has valid stock records.")}</div>
           <Button
@@ -106,7 +106,7 @@ export function SystemMaintenance() {
         <div className="glass rounded-2xl p-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-brand-600">
             <RefreshCcw className="h-5 w-5" />
-            <div className="g-title-15">Diagnostics</div>
+            <div className="g-title-15">{tx("Diagnostics")}</div>
           </div>
           <div className="h-meta">{tx("Checks the connection status for the WhatsApp AI channel.")}</div>
           <Button
@@ -123,9 +123,9 @@ export function SystemMaintenance() {
 
       <Alert variant="destructive" className="bg-destructive/5">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Manual Mode Active</AlertTitle>
+        <AlertTitle>{tx("Manual Mode Active")}</AlertTitle>
         <AlertDescription>
-          Under the current operating policy, all background maintenance tasks are delegated to manual execution by an administrator.
+          {tx("Under the current operating policy, all background maintenance tasks are delegated to manual execution by an administrator.")}
         </AlertDescription>
       </Alert>
     </div>

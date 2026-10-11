@@ -319,7 +319,7 @@ export default function KDS() {
         <div className="glass g-kds-header-stat">
           <span className="dot dot-ok" />
           <div className="g-kds-header-stat-inner">
-            <div className="g-kds-header-stat-label">Connected to POS</div>
+            <div className="g-kds-header-stat-label">{tx("Connected to POS")}</div>
             <div className="g-kds-header-stat-val">Avg. time {SLA_MINUTES} min</div>
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function KDS() {
           <div className="glass g-kds-header-stat">
             <span className="dot dot-bad" />
             <div className="g-kds-header-stat-inner">
-              <div className="g-kds-header-stat-label">Delayed</div>
+              <div className="g-kds-header-stat-label">{tx("Delayed")}</div>
               <div className="g-kds-header-stat-val">{lateCount} order{lateCount !== 1 ? "s" : ""}</div>
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function KDS() {
         <div className="flex-1" />
         <div className="flex items-center gap-2 h-meta">
           <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> &lt; 10 min
-          <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block ml-2" /> 10–20 min
+          <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block ml-2" /> {tx("10–20 min")}
           <span className="w-3 h-3 rounded-full bg-red-500 inline-block ml-2" /> &gt; 20 min
         </div>
       </div>

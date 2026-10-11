@@ -158,7 +158,7 @@ export default function DevicesSettings() {
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="space-y-1 text-sm">
-              <span className="block text-xs text-muted-foreground">Update channel</span>
+              <span className="block text-xs text-muted-foreground">{tx("Update channel")}</span>
               <select
                 className="h-9 rounded-md border bg-background px-3"
                 value={channel}

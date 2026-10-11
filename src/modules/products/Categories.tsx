@@ -185,7 +185,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Color</Label>
+            <Label>{tx("Color")}</Label>
             <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
           </div>
           <div className="space-y-1.5">
@@ -207,7 +207,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
             <div className="space-y-2 pl-6">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">From</Label>
+                  <Label className="text-xs">{tx("From")}</Label>
                   <Input type="time" value={form.schedule_from ?? "08:00"} onChange={(e) => setForm({ ...form, schedule_from: e.target.value })} className="h-8" />
                 </div>
                 <div className="space-y-1">
@@ -216,7 +216,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Active days</Label>
+                <Label className="text-xs">{tx("Active days")}</Label>
                 <div className="flex gap-1 flex-wrap">
                   {DAYS.map((d, i) => (
                     <button
@@ -244,7 +244,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
         </div>
 
         <button type="submit" className="g-btn g-btn-primary w-full g-btn-touch">
-          Save
+          {tx("Save")}
         </button>
       </form>
     </DialogContent>

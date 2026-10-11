@@ -181,10 +181,10 @@ function TablePanel({
           <div className="tbl-panel-empty-state">
             <div className="g-dot-brand g-dot tbl-panel-empty-dot" />
             <div className="h-label tbl-panel-empty-title">
-              Available table
+              {tx("Available table")}
             </div>
             <div className="h-meta tbl-panel-empty-meta">
-              No active order
+              {tx("No active order")}
             </div>
           </div>
 
@@ -255,7 +255,7 @@ function TablePanel({
 
           {/* Total */}
           <div className="flex items-center justify-between">
-            <div className="h-label">Total</div>
+            <div className="h-label">{tx("Total")}</div>
             <div className="g-num-22 tbl-panel-total-val">
               {formatCurrency(total)}
             </div>
@@ -557,7 +557,7 @@ export default function Tables() {
         <div className="flex items-center gap-3">
           <div>
             <div className="h-display tbl-page-title">
-              Tables
+              {tx("Tables")}
             </div>
             <div className="h-meta tbl-page-meta">
               {branchName}
@@ -619,8 +619,7 @@ export default function Tables() {
         {devMode && (
           <div className="g-dev-banner">
             <FlaskConical size={14} />
-            Development Mode active · Table sales do not validate stock or
-            require an open register
+            {tx("Development Mode active · Table sales do not validate stock or require an open register")}
           </div>
         )}
 
@@ -701,8 +700,7 @@ export default function Tables() {
       {devMode && (
         <div className="g-dev-banner">
           <FlaskConical size={14} />
-          Development Mode active · Table sales do not validate stock or
-          require an open register
+          {tx("Development Mode active · Table sales do not validate stock or require an open register")}
         </div>
       )}
 

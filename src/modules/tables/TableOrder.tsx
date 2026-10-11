@@ -349,7 +349,7 @@ export default function TableOrder() {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
         <div className="text-4xl">⚠️</div>
-        <p className="font-semibold text-[var(--ink-900)]">Could not load the order</p>
+        <p className="font-semibold text-[var(--ink-900)]">{tx("Could not load the order")}</p>
         <p className="h-meta">
           {(orderError as any)?.message ?? "The order does not exist or was cancelled."}
         </p>
@@ -407,7 +407,7 @@ export default function TableOrder() {
               <DialogTitle>Details for {pendingDetailProduct?.name}</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
-              <p className="h-meta">This product requires details that will be sent to the kitchen KDS.</p>
+              <p className="h-meta">{tx("This product requires details that will be sent to the kitchen KDS.")}</p>
               <Textarea
                 placeholder={tx("E.g. Medium-well, no onion, extra sauce…")}
                 value={detailInput}
@@ -418,7 +418,7 @@ export default function TableOrder() {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setPendingDetailProduct(null)}>Cancel</Button>
-              <Button onClick={confirmDetail} disabled={!detailInput.trim()}>Add to order</Button>
+              <Button onClick={confirmDetail} disabled={!detailInput.trim()}>{tx("Add to order")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -523,7 +523,7 @@ export default function TableOrder() {
           <div className="px-4 py-3 border-b border-[var(--g-hairline)] space-y-2 shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <div className="h-label uppercase tracking-wider">Order</div>
+                <div className="h-label uppercase tracking-wider">{tx("Order")}</div>
                 <div className="text-sm text-[var(--ink-700)]">
                   {(items ?? []).length} items ·{" "}
                   <span className={cn("inline-block px-1.5 py-0.5 rounded text-[10px] font-bold", ORDER_STATE_META[deriveOrderState(order.status, items ?? [])].tone)}>
@@ -565,7 +565,7 @@ export default function TableOrder() {
                     disabled={c.preparing === 0 && c.pending === 0}
                     onClick={markAllReady}
                   >
-                    <Bell className="h-3 w-3 mr-1" /> Mark ready
+                    <Bell className="h-3 w-3 mr-1" /> {tx("Mark ready")}
                   </button>
                 </div>
               );
@@ -684,7 +684,7 @@ export default function TableOrder() {
               <span className="tabular-nums text-[var(--ink-700)]">{formatCurrency(Number(order.tax_total))}</span>
             </div>
             <div className="flex items-baseline justify-between border-t border-[var(--g-hairline)] pt-2">
-              <span className="font-bold text-[var(--ink-900)]">Total</span>
+              <span className="font-bold text-[var(--ink-900)]">{tx("Total")}</span>
               <span className="h-num text-2xl text-[var(--brand-600)]">{formatCurrency(Number(order.total))}</span>
             </div>
             {isOpen && (
@@ -698,7 +698,7 @@ export default function TableOrder() {
                   onClick={sendToCashier}
                   disabled={(items ?? []).length === 0}
                 >
-                  <Send className="h-4 w-4 mr-2" /> Send to register
+                  <Send className="h-4 w-4 mr-2" /> {tx("Send to register")}
                 </button>
               </div>
             )}
@@ -732,7 +732,7 @@ export default function TableOrder() {
             <DialogTitle>Details for {pendingDetailProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <p className="h-meta">This product requires details that will be sent to the kitchen KDS.</p>
+            <p className="h-meta">{tx("This product requires details that will be sent to the kitchen KDS.")}</p>
             <Textarea
               placeholder={tx("E.g. Medium-well, no onion, extra sauce…")}
               value={detailInput}
@@ -743,7 +743,7 @@ export default function TableOrder() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setPendingDetailProduct(null)}>Cancel</Button>
-            <Button onClick={confirmDetail} disabled={!detailInput.trim()}>Add to order</Button>
+            <Button onClick={confirmDetail} disabled={!detailInput.trim()}>{tx("Add to order")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

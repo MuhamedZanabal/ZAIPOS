@@ -53,7 +53,7 @@ export default function Settings() {
   return (
     <div className="g-cfg-stage">
       <div className="glass g-cfg-nav-panel">
-        <div className="h-display g-cfg-nav-title">Settings</div>
+        <div className="h-display g-cfg-nav-title">{tx("Settings")}</div>
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = active === tab.id;

@@ -204,10 +204,10 @@ export default function WhatsAppSettings() {
       <div className="glass p-5 space-y-3">
         <div className="flex items-center gap-2 font-semibold">
           <Webhook className="h-4 w-4 text-primary" />
-          WhatsApp webhook URL
+          {tx("WhatsApp webhook URL")}
         </div>
         <p className="text-sm text-muted-foreground">
-          Configure this URL in Evolution API as the destination for <code className="bg-muted px-1 py-0.5 rounded text-xs">{tx("MESSAGES_UPSERT")}</code> events.
+          {tx("Configure this URL in Evolution API as the destination for")} <code className="bg-muted px-1 py-0.5 rounded text-xs">{tx("MESSAGES_UPSERT")}</code> {tx("events.")}
         </p>
         <div className="flex gap-2">
           <Input readOnly value={evolutionWebhookUrl()} className="font-mono text-xs" />
@@ -242,12 +242,12 @@ export default function WhatsAppSettings() {
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" /> {tx("Loading…")}
           </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Evolution API instance name</Label>
+              <Label>{tx("Evolution API instance name")}</Label>
               <Input placeholder={tx("e.g. zaipos-manama")} value={instance} onChange={(e) => setInstance(e.target.value)} />
               <p className="text-xs text-muted-foreground">{tx("This must exactly match the instance configured in Evolution API.")}</p>
             </div>
@@ -259,7 +259,7 @@ export default function WhatsAppSettings() {
 
             <div className="flex items-center gap-3">
               <Switch checked={isActive} onCheckedChange={setIsActive} id="wa-active" />
-              <Label htmlFor="wa-active">Agent active</Label>
+              <Label htmlFor="wa-active">{tx("Agent active")}</Label>
             </div>
 
             <div className="flex gap-2 flex-wrap">
@@ -278,7 +278,7 @@ export default function WhatsAppSettings() {
 
       {diagSteps.length > 0 && (
         <div className="glass p-5 space-y-3">
-          <div className="font-semibold">Connection diagnostics</div>
+          <div className="font-semibold">{tx("Connection diagnostics")}</div>
           <div className="space-y-2">
             {diagSteps.map((step) => (
               <div key={step.label} className="flex items-start gap-2 rounded-lg border p-3">

@@ -266,7 +266,7 @@ export function DataManagement() {
               />
             </div>
             <p className="text-[10px] text-muted-foreground">
-              * Existing products are matched by 'id' or 'sku'. New product identities and retry IDs are deterministic for the same file.
+              {tx("* Existing products are matched by 'id' or 'sku'. New product identities and retry IDs are deterministic for the same file.")}
             </p>
           </div>
         </div>
@@ -275,7 +275,7 @@ export function DataManagement() {
           <div>
             <div className="flex items-center gap-2 text-brand-600">
               <Box className="h-5 w-5" />
-              <div className="g-title-16">Stock and Inventory</div>
+              <div className="g-title-16">{tx("Stock and Inventory")}</div>
             </div>
             <div className="h-meta mt-1">
               {tx("Bulk-adjust physical quantities in your inventory centers.")}
@@ -294,7 +294,7 @@ export function DataManagement() {
 
           <div className="space-y-3 pt-2 border-t">
             <div className="space-y-1.5">
-              <Label>Destination center for import</Label>
+              <Label>{tx("Destination center for import")}</Label>
               <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
                 <SelectTrigger>
                   <SelectValue placeholder={tx("Select a center...")} />
@@ -339,9 +339,9 @@ export function DataManagement() {
 
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Recommendation</AlertTitle>
+        <AlertTitle>{tx("Recommendation")}</AlertTitle>
         <AlertDescription>
-          Create a full backup (above) before bulk changes. The catalogue and stock exports are scoped snapshots, not disaster-recovery backups.
+          {tx("Create a full backup (above) before bulk changes. The catalogue and stock exports are scoped snapshots, not disaster-recovery backups.")}
         </AlertDescription>
       </Alert>
     </div>

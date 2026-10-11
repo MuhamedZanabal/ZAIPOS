@@ -157,9 +157,9 @@ export default function Customers() {
       {filtered.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center">
           <div className="orb mx-auto mb-4"><Users className="h-7 w-7" /></div>
-          <h2 className="h-display font-semibold text-lg">No customers</h2>
+          <h2 className="h-display font-semibold text-lg">{tx("No customers")}</h2>
           <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-            Register customers to link them to sales and view their history.
+            {tx("Register customers to link them to sales and view their history.")}
           </p>
         </div>
       ) : (

@@ -52,8 +52,8 @@ export function ProductBarcodeFields({ barcodes, issues, scanning, onChange, onS
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <Label>Product barcodes</Label>
-          <p className="text-xs text-muted-foreground">Add retail, case, supplier, or internal codes. One code must be primary.</p>
+          <Label>{tx("Product barcodes")}</Label>
+          <p className="text-xs text-muted-foreground">{tx("Add retail, case, supplier, or internal codes. One code must be primary.")}</p>
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" size="sm" onClick={onStartScan} disabled={scanning}>

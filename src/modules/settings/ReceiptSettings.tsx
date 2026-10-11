@@ -101,8 +101,8 @@ export default function ReceiptSettings() {
 
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <Label>VAT details</Label>
-                  <p className="h-meta">Show taxable amount and Bahrain VAT breakdown.</p>
+                  <Label>{tx("VAT details")}</Label>
+                  <p className="h-meta">{tx("Show taxable amount and Bahrain VAT breakdown.")}</p>
                 </div>
                 <Switch
                   checked={config.show_tax_details}
@@ -112,8 +112,8 @@ export default function ReceiptSettings() {
 
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <Label>Customer details</Label>
-                  <p className="h-meta">Show customer name and identifier when linked to the sale.</p>
+                  <Label>{tx("Customer details")}</Label>
+                  <p className="h-meta">{tx("Show customer name and identifier when linked to the sale.")}</p>
                 </div>
                 <Switch
                   checked={config.show_customer_info}
@@ -133,7 +133,7 @@ export default function ReceiptSettings() {
 
       <div className="space-y-4">
         <div className="h-label uppercase tracking-widest flex items-center gap-2">
-          <Eye className="h-3 w-3" /> Receipt preview (80 mm)
+          <Eye className="h-3 w-3" /> {tx("Receipt preview (80 mm)")}
         </div>
         <div className="bg-white text-black p-6 font-mono text-[10px] shadow-lg border-2 border-dashed rounded-xl">
           <div className="text-center space-y-1 mb-4">

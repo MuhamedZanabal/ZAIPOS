@@ -83,7 +83,7 @@ export function TableOrderMobile(props: Props) {
       {devMode && (
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 text-white text-[11px] font-semibold">
           <FlaskConical className="h-3 w-3 shrink-0" />
-          DEV MODE · No stock or register validation
+          {tx("DEV MODE · No stock or register validation")}
         </div>
       )}
 
@@ -321,7 +321,7 @@ export function TableOrderMobile(props: Props) {
               <span className="tabular-nums">{formatCurrency(Number(order.tax_total))}</span>
             </div>
             <div className="flex items-baseline justify-between border-t pt-2">
-              <span className="font-bold">Total</span>
+              <span className="font-bold">{tx("Total")}</span>
               <span className="text-2xl font-black text-primary tabular-nums">
                 {formatCurrency(Number(order.total))}
               </span>
@@ -336,7 +336,7 @@ export function TableOrderMobile(props: Props) {
                   onClick={onSendToCashier}
                   disabled={pendingCount === 0 && itemCount === 0}
                 >
-                  <Send className="h-4 w-4 mr-1" /> Send to register
+                  <Send className="h-4 w-4 mr-1" /> {tx("Send to register")}
                 </Button>
               </div>
             )}

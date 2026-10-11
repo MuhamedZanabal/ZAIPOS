@@ -101,11 +101,11 @@ export default function TablesSettings() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="font-semibold text-ink-900">Tables</p>
-          <p className="h-meta">Branch table catalog</p>
+          <p className="font-semibold text-ink-900">{tx("Tables")}</p>
+          <p className="h-meta">{tx("Branch table catalog")}</p>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openNew}>
-          <Plus className="h-4 w-4" /> New table
+          <Plus className="h-4 w-4" /> {tx("New table")}
         </button>
       </div>
 
@@ -178,7 +178,7 @@ export default function TablesSettings() {
           </div>
           <DialogFooter>
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="button" className="g-btn g-btn-primary" onClick={save}>Save</button>
+            <button type="button" className="g-btn g-btn-primary" onClick={save}>{tx("Save")}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

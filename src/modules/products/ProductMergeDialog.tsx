@@ -137,9 +137,9 @@ export function ProductMergeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Merge duplicate product</DialogTitle>
+          <DialogTitle>{tx("Merge duplicate product")}</DialogTitle>
           <DialogDescription>
-            Preserve historical evidence while consolidating current stock and barcode identity. The source product is retained as an inactive alias.
+            {tx("Preserve historical evidence while consolidating current stock and barcode identity. The source product is retained as an inactive alias.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -179,11 +179,11 @@ export function ProductMergeDialog({
 
           {preview ? (
             <div className="space-y-2 rounded-md border p-3 text-sm">
-              <div className="font-medium">Authoritative preview</div>
+              <div className="font-medium">{tx("Authoritative preview")}</div>
               <div className="grid grid-cols-2 gap-2">
                 <span>{tx("Source stock")}</span><span>{preview.source_stock_quantity}</span>
-                <span>Canonical stock</span><span>{preview.canonical_stock_quantity}</span>
-                <span>Combined stock</span><span>{preview.combined_stock_quantity}</span>
+                <span>{tx("Canonical stock")}</span><span>{preview.canonical_stock_quantity}</span>
+                <span>{tx("Combined stock")}</span><span>{preview.combined_stock_quantity}</span>
               </div>
               <div>{preview.source_barcode_count} source barcodes will resolve to the canonical product.</div>
               {!preview.can_merge ? (
@@ -197,7 +197,7 @@ export function ProductMergeDialog({
           {error ? <div role="alert" className="rounded-md border p-2 text-sm">{error}</div> : null}
 
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Merge reason</span>
+            <span className="font-medium">{tx("Merge reason")}</span>
             <input
               aria-label={tx("Merge reason")}
               className="w-full rounded-md border bg-background px-3 py-2"

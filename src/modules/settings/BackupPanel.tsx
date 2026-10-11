@@ -145,7 +145,7 @@ export function BackupPanel() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <label className="h-meta" htmlFor="restore-confirm">Type RESTORE to confirm</label>
+            <label className="h-meta" htmlFor="restore-confirm">{tx("Type RESTORE to confirm")}</label>
             <Input id="restore-confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
           </div>
           <DialogFooter>

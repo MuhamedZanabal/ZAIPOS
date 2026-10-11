@@ -161,7 +161,7 @@ export default function Inventory() {
       <div className="flex items-center justify-center h-48">
         <div className="flex items-center gap-3">
           <RefreshCw size={16} className="animate-spin text-ink-400" />
-          <span className="h-meta">Loading inventory...</span>
+          <span className="h-meta">{tx("Loading inventory...")}</span>
         </div>
       </div>
     );
@@ -275,7 +275,7 @@ export default function Inventory() {
             <div className="orb g-orb-38 orb-sq"><Package size={16} /></div>
           </div>
           <div className="g-num-28">{activeStocks.length}</div>
-          <span className="h-meta">active products</span>
+          <span className="h-meta">{tx("active products")}</span>
         </div>
 
         {/* Low stock */}
@@ -289,7 +289,7 @@ export default function Inventory() {
           <div className={"g-num-28 " + (lowStock.length > 0 ? "inv-warn-text" : "inv-ink-900")}>
             {lowStock.length}
           </div>
-          <span className="h-meta">need restocking</span>
+          <span className="h-meta">{tx("need restocking")}</span>
         </div>
 
         {/* Out of stock */}
@@ -303,7 +303,7 @@ export default function Inventory() {
           <div className={"g-num-28 " + (outOfStock.length > 0 ? "inv-bad-text" : "inv-ink-900")}>
             {outOfStock.length}
           </div>
-          <span className="h-meta">products out of stock</span>
+          <span className="h-meta">{tx("products out of stock")}</span>
         </div>
 
         {/* Inventory value */}
@@ -313,7 +313,7 @@ export default function Inventory() {
             <div className="orb g-orb-38 orb-sq"><TrendingUp size={15} /></div>
           </div>
           <div className="g-num-28">{totalValue.toLocaleString("en-BH", { maximumFractionDigits: 0 })}</div>
-          <span className="h-meta">across all centers</span>
+          <span className="h-meta">{tx("across all centers")}</span>
         </div>
 
         {/* Transfer card — wide */}
@@ -364,7 +364,7 @@ export default function Inventory() {
 
         {/* Center filter */}
         <div className="flex items-center gap-2">
-          <span className="h-label hidden md:block">Center:</span>
+          <span className="h-label hidden md:block">{tx("Center:")}</span>
           <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
             <SelectTrigger className="h-8 text-xs bg-white/60 border-white/70 inv-select-trigger">
               <SelectValue placeholder={tx("All centers")} />
@@ -430,13 +430,13 @@ export default function Inventory() {
           <div className="glass overflow-hidden">
             {/* Table header */}
             <div className="grid items-center px-5 py-3 inv-table-grid inv-table-header">
-              <span className="h-label">Product</span>
+              <span className="h-label">{tx("Product")}</span>
               <span className="h-label">SKU</span>
-              <span className="h-label">Current stock</span>
-              <span className="h-label">Location</span>
-              <span className="h-label">Movement</span>
-              <span className="h-label">Unit</span>
-              <span className="h-label">Status</span>
+              <span className="h-label">{tx("Current stock")}</span>
+              <span className="h-label">{tx("Location")}</span>
+              <span className="h-label">{tx("Movement")}</span>
+              <span className="h-label">{tx("Unit")}</span>
+              <span className="h-label">{tx("Status")}</span>
             </div>
 
             {/* Table rows */}
@@ -542,19 +542,19 @@ export default function Inventory() {
         <div className="glass overflow-hidden">
           {/* Header */}
           <div className="grid items-center px-5 py-3 inv-history-grid inv-table-header">
-            <span className="h-label">Date</span>
-            <span className="h-label">Product</span>
-            <span className="h-label">Center</span>
-            <span className="h-label">Type</span>
-            <span className="h-label">Quantity</span>
-            <span className="h-label">Reason</span>
-            <span className="h-label">Source</span>
+            <span className="h-label">{tx("Date")}</span>
+            <span className="h-label">{tx("Product")}</span>
+            <span className="h-label">{tx("Center")}</span>
+            <span className="h-label">{tx("Type")}</span>
+            <span className="h-label">{tx("Quantity")}</span>
+            <span className="h-label">{tx("Reason")}</span>
+            <span className="h-label">{tx("Source")}</span>
           </div>
 
           {(!movements || movements.length === 0) ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="orb g-orb-52"><History size={22} /></div>
-              <span className="h-meta">No movements recorded</span>
+              <span className="h-meta">{tx("No movements recorded")}</span>
             </div>
           ) : (
             (movements ?? []).map((m: any) => (
@@ -636,7 +636,7 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
     return (
       <div className="glass flex flex-col items-center justify-center py-16 gap-3">
         <div className="orb g-orb-52"><TrendingUp size={22} /></div>
-        <span className="h-meta">There is no sales data from the last 30 days to forecast.</span>
+        <span className="h-meta">{tx("There is no sales data from the last 30 days to forecast.")}</span>
       </div>
     );
   }
@@ -736,14 +736,14 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
     <DialogContent className="max-w-md">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <PackagePlus className="h-5 w-5" /> Provision inventory
+          <PackagePlus className="h-5 w-5" /> {tx("Provision inventory")}
         </DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
 
         {/* Tipo de movimiento */}
         <div className="space-y-1.5">
-          <Label>Movement type</Label>
+          <Label>{tx("Movement type")}</Label>
           <div className="grid grid-cols-2 gap-2">
             {MOVE_TYPES.map((t) => (
               <button
@@ -763,7 +763,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
 
         {/* Product con búsqueda */}
         <div className="space-y-1.5">
-          <Label>Product</Label>
+          <Label>{tx("Product")}</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -800,7 +800,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
 
         {/* Centro */}
         <div className="space-y-1.5">
-          <Label>Inventory center</Label>
+          <Label>{tx("Inventory center")}</Label>
           <Select value={centerId} onValueChange={setCenterId}>
             <SelectTrigger><SelectValue placeholder={tx("Select the center...")} /></SelectTrigger>
             <SelectContent>
@@ -822,7 +822,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
 
         {/* Reason */}
         <div className="space-y-1.5">
-          <Label>Reason <span className="text-muted-foreground font-normal">(optional)</span></Label>
+          <Label>{tx("Reason")} <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Textarea
             value={reason} onChange={(e) => setReason(e.target.value)}
             placeholder={tx("E.g. Supplier purchase, physical count, etc.")}

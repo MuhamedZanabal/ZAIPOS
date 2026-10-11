@@ -202,7 +202,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
 
       {/* New grupo */}
       <div className="glass p-3 space-y-2 border-dashed">
-        <p className="text-xs font-medium text-muted-foreground">New modifier group</p>
+        <p className="text-xs font-medium text-muted-foreground">{tx("New modifier group")}</p>
         <div className="flex gap-2">
           <Input
             placeholder={tx("Group name (e.g. Add-ons)")}
@@ -280,7 +280,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        When this product is added to the cart, the POS will suggest these complementary products.
+        {tx("When this product is added to the cart, the POS will suggest these complementary products.")}
       </p>
       <div className="space-y-1.5">
         <Label className="text-xs">{tx("Search product to add")}</Label>
@@ -304,7 +304,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
         <p className="text-xs text-muted-foreground text-center py-4">{tx("No complementary products defined.")}</p>
       ) : (
         <div className="space-y-1.5">
-          <Label className="text-xs">Complementarios actuales</Label>
+          <Label className="text-xs">{tx("Current complementary products")}</Label>
           <div className="space-y-1">
             {linked.map((p: any) => (
               <div key={p.id} className="flex items-center justify-between px-3 py-2 border rounded-lg text-sm">
@@ -515,7 +515,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
 
       <Tabs defaultValue="basic">
         <TabsList>
-          <TabsTrigger value="basic">Information</TabsTrigger>
+          <TabsTrigger value="basic">{tx("Information")}</TabsTrigger>
           {showRecipe && <TabsTrigger value="recipe">{tx("Recipe")}</TabsTrigger>}
           {showModifiers && <TabsTrigger value="modifiers">{tx("Modifiers")}</TabsTrigger>}
           {showComplementaries && <TabsTrigger value="complementaries">{tx("Upselling")}</TabsTrigger>}
@@ -530,7 +530,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
 
             {/* Product photo */}
             <div className="space-y-1.5">
-              <Label>Product photo</Label>
+              <Label>{tx("Product photo")}</Label>
               <input
                 ref={imageInputRef}
                 type="file"
@@ -563,7 +563,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                     ? <Loader2 className="h-6 w-6 animate-spin" />
                     : <ImagePlus className="h-6 w-6" />}
                   <span className="text-sm">{uploadingImage ? "Subiendo…" : "Clic para subir foto"}</span>
-                  <span className="text-xs">JPEG, PNG o WebP · max. 5 MB</span>
+                  <span className="text-xs">{tx("JPEG, PNG or WebP · max. 5 MB")}</span>
                 </button>
               )}
               {form.image_url && (
@@ -576,7 +576,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
 
             {/* Description para el menú */}
             <div className="space-y-1.5">
-              <Label>Description <span className="text-muted-foreground font-normal">(visible in the QR menu)</span></Label>
+              <Label>{tx("Description")} <span className="text-muted-foreground font-normal">(visible in the QR menu)</span></Label>
               <Textarea
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -586,7 +586,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <Label>{tx("Category")}</Label>
                 <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v || null })}>
                   <SelectTrigger><SelectValue placeholder={tx("Select...")} /></SelectTrigger>
                   <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
@@ -619,7 +619,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </div>
             {editing?.id && (
               <div className="space-y-1.5">
-                <Label>Financial change reason</Label>
+                <Label>{tx("Financial change reason")}</Label>
                 <Textarea
                   value={financialReason}
                   onChange={(event) => {
@@ -653,7 +653,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             {/* KDS station */}
             {hasCapability(businessMode, "kitchen_station") && (
             <div className="space-y-1.5">
-              <Label>KDS station</Label>
+              <Label>{tx("KDS station")}</Label>
               <Select value={form.station ?? "none"} onValueChange={(v) => setForm({ ...form, station: v === "none" ? null : v })}>
                 <SelectTrigger><SelectValue placeholder={tx("Unassigned (Kitchen by default)")} /></SelectTrigger>
                 <SelectContent>
@@ -681,8 +681,8 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </Button>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <Label>Requires details</Label>
-                <p className="text-xs text-muted-foreground">When added to an order, a comment is requested and sent to the KDS</p>
+                <Label>{tx("Requires details")}</Label>
+                <p className="text-xs text-muted-foreground">{tx("When added to an order, a comment is requested and sent to the KDS")}</p>
               </div>
               <Switch checked={!!form.requires_detail} onCheckedChange={(c) => setForm({ ...form, requires_detail: c })} />
             </div>
@@ -705,7 +705,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         {showModifiers && (
           <TabsContent value="modifiers" className="mt-4">
             <p className="text-sm text-muted-foreground mb-3">
-              Define add-on or option groups that the cashier/waiter must select when adding this product.
+              {tx("Define add-on or option groups that the cashier/waiter must select when adding this product.")}
             </p>
             <ModifierGroupEditor tenantId={tenantId} productId={editing.id} />
           </TabsContent>

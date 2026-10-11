@@ -251,11 +251,11 @@ export default function Suppliers() {
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr_72px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-                <span>Name</span>
+                <span>{tx("Name")}</span>
                 <span>NIT</span>
-                <span>Contact</span>
-                <span>Phone</span>
-                <span>Payment terms</span>
+                <span>{tx("Contact")}</span>
+                <span>{tx("Phone")}</span>
+                <span>{tx("Payment terms")}</span>
                 <span />
               </div>
               {filteredSuppliers.map((s, idx) => (
@@ -312,11 +312,11 @@ export default function Suppliers() {
         ) : (
           <div className="glass rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[1fr_2fr_100px_2fr_120px_100px] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-white/10">
-              <span>Date</span>
-              <span>Supplier</span>
-              <span>Status</span>
-              <span>Notes</span>
-              <span className="text-right">Total</span>
+              <span>{tx("Date")}</span>
+              <span>{tx("Supplier")}</span>
+              <span>{tx("Status")}</span>
+              <span>{tx("Notes")}</span>
+              <span className="text-right">{tx("Total")}</span>
               <span />
             </div>
             {orders.map((o, idx) => (
@@ -357,7 +357,7 @@ export default function Suppliers() {
           <DialogHeader><DialogTitle>{editingSupplier ? "Edit supplier" : "New supplier"}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label>Name / Legal name *</Label>
+              <Label>{tx("Name / Legal name *")}</Label>
               <Input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))} placeholder={tx("Distribuidora XYZ")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -381,7 +381,7 @@ export default function Suppliers() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Payment terms</Label>
+              <Label>{tx("Payment terms")}</Label>
               <Input value={supplierForm.payment_terms} onChange={(e) => setSupplierForm((f) => ({ ...f, payment_terms: e.target.value }))} placeholder={tx("E.g. Net 30, cash, 15-day credit")} />
             </div>
             <div className="space-y-1.5">
@@ -422,10 +422,10 @@ export default function Suppliers() {
             </div>
 
             <div className="glass-thin rounded-xl p-3 space-y-3">
-              <div className="text-sm font-semibold text-ink-900">Add products</div>
+              <div className="text-sm font-semibold text-ink-900">{tx("Add products")}</div>
               <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                 <div className="space-y-1">
-                  <Label className="text-xs">Product</Label>
+                  <Label className="text-xs">{tx("Product")}</Label>
                   <Input
                     value={itemProductSearch}
                     onChange={(event) => setItemProductSearch(event.target.value)}
@@ -460,10 +460,10 @@ export default function Suppliers() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Cant.</TableHead>
-                      <TableHead>Cost</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>{tx("Product")}</TableHead>
+                      <TableHead>{tx("Qty.")}</TableHead>
+                      <TableHead>{tx("Cost")}</TableHead>
+                      <TableHead className="text-right">{tx("Total")}</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>

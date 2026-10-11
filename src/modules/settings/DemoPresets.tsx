@@ -334,7 +334,7 @@ export function DemoPresets() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Product VAT treatment in Bahrain can vary by supply. Review the tax rate of real inventory before production use.
+        {tx("Product VAT treatment in Bahrain can vary by supply. Review the tax rate of real inventory before production use.")}
       </p>
 
       <AlertDialog open={!!confirmKind} onOpenChange={(open) => !open && setConfirmKind(null)}>
@@ -344,11 +344,11 @@ export function DemoPresets() {
               Apply {confirmKind ? BAHRAIN_PRESETS[confirmKind].label : ""} demo?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This changes the demo business identity to a Bahrain example and adds BHD-priced categories, products, opening stock, and tables where applicable. Existing matching products are not duplicated.
+              {tx("This changes the demo business identity to a Bahrain example and adds BHD-priced categories, products, opening stock, and tables where applicable. Existing matching products are not duplicated.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tx("Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => confirmKind && applyPreset(confirmKind)}>
               Apply Bahrain demo
             </AlertDialogAction>

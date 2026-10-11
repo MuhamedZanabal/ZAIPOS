@@ -228,7 +228,7 @@ export default function Products() {
     <div className="flex flex-col gap-5">
       {/* Page header */}
       <div className="flex flex-col gap-1">
-        <div className="h-display g-page-title">Products</div>
+        <div className="h-display g-page-title">{tx("Products")}</div>
         <div className="h-meta g-page-subtitle">{products?.length ?? 0} products · CATALOG</div>
       </div>
 
@@ -289,13 +289,13 @@ export default function Products() {
             <SelectValue placeholder={tx("Type")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="simple">Simple</SelectItem>
-            <SelectItem value="composite">Composite</SelectItem>
-            <SelectItem value="production">Production</SelectItem>
-            <SelectItem value="combo">Combo</SelectItem>
-            <SelectItem value="ingredient">Ingredient</SelectItem>
-            <SelectItem value="modifier">Modifier</SelectItem>
+            <SelectItem value="all">{tx("All")}</SelectItem>
+            <SelectItem value="simple">{tx("Simple")}</SelectItem>
+            <SelectItem value="composite">{tx("Composite")}</SelectItem>
+            <SelectItem value="production">{tx("Production")}</SelectItem>
+            <SelectItem value="combo">{tx("Combo")}</SelectItem>
+            <SelectItem value="ingredient">{tx("Ingredient")}</SelectItem>
+            <SelectItem value="modifier">{tx("Modifier")}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -337,7 +337,7 @@ export default function Products() {
         </button>
 
         <button type="button" className="g-btn g-btn-ghost" onClick={handleDownloadTemplate} title={tx("Download CSV template")}>
-          <FileDown className="h-4 w-4" /> Template
+          <FileDown className="h-4 w-4" /> {tx("Template")}
         </button>
 
         <button
@@ -445,7 +445,7 @@ export default function Products() {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12 text-ink-400">
-                  No products
+                  {tx("No products")}
                 </TableCell>
               </TableRow>
             )}
@@ -479,15 +479,15 @@ export default function Products() {
               {tx("⚠️ Import Warning")}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              <p>You are about to import <strong>{importFile?.name}</strong>.</p>
-              <p>{tx("This action")} <strong>will retire all current products</strong> {tx("and create the products in the file.")}</p>
+              <p>{tx("You are about to import")} <strong>{importFile?.name}</strong>.</p>
+              <p>{tx("This action")} <strong>{tx("will retire all current products")}</strong> {tx("and create the products in the file.")}</p>
               <p className="font-semibold text-destructive">{tx("Existing product and financial history will remain immutable.")}</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tx("Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={executeImport} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Yes, Retire and Import
+              {tx("Yes, Retire and Import")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

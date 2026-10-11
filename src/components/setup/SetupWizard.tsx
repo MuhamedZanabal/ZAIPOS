@@ -112,8 +112,8 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
 
       {WIZARD_STEPS[step].key === "type" && (
         <section>
-          <h1 className="mb-1 text-2xl font-bold">What kind of business is this?</h1>
-          <p className="mb-5 text-slate-600">ZAIPOS shows the screens that fit your business. You can change this later in Settings.</p>
+          <h1 className="mb-1 text-2xl font-bold">{tx("What kind of business is this?")}</h1>
+          <p className="mb-5 text-slate-600">{tx("ZAIPOS shows the screens that fit your business. You can change this later in Settings.")}</p>
           <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={tx("Business type")}>
             {BUSINESS_MODES.map((mode) => {
               const Icon = MODE_ICONS[mode];
@@ -135,7 +135,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
 
       {WIZARD_STEPS[step].key === "basics" && (
         <section className="space-y-4">
-          <h1 className="text-2xl font-bold">Business basics</h1>
+          <h1 className="text-2xl font-bold">{tx("Business basics")}</h1>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Business name")}</span>
               <input className={field} maxLength={80} value={state.basics.businessName} onChange={(e) => update({ basics: { ...state.basics, businessName: e.target.value } })} /></label>
@@ -145,7 +145,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
               <input className={`${field} bg-slate-100`} value="BHD — Bahraini dinar" readOnly aria-readonly /></label>
             <label className="block"><span className="mb-1 block text-sm font-medium">{tx("VAT rate (%)")}</span>
               <input className={field} type="number" min={0} max={100} step="0.5" value={state.basics.vatRate} onChange={(e) => update({ basics: { ...state.basics, vatRate: Number(e.target.value) } })} /></label>
-            <label className="block sm:col-span-2"><span className="mb-1 block text-sm font-medium">{tx("VAT registration number (TRN)")} <span className="font-normal text-slate-500">— optional, 15 digits</span></span>
+            <label className="block sm:col-span-2"><span className="mb-1 block text-sm font-medium">{tx("VAT registration number (TRN)")} <span className="font-normal text-slate-500">{tx("— optional, 15 digits")}</span></span>
               <input className={field} inputMode="numeric" maxLength={15} value={state.basics.trn} onChange={(e) => update({ basics: { ...state.basics, trn: e.target.value.replace(/\D/g, "") } })} /></label>
           </div>
           {local && (
@@ -165,7 +165,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
 
       {WIZARD_STEPS[step].key === "payments" && (
         <section className="space-y-4">
-          <h1 className="text-2xl font-bold">Payments and receipt</h1>
+          <h1 className="text-2xl font-bold">{tx("Payments and receipt")}</h1>
           <fieldset>
             <legend className="mb-2 text-sm font-medium">{tx("Payment methods you accept")}</legend>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -193,12 +193,12 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
 
       {WIZARD_STEPS[step].key === "finish" && (
         <section className="space-y-4">
-          <h1 className="text-2xl font-bold">You're ready for a first test sale</h1>
+          <h1 className="text-2xl font-bold">{tx("You're ready for a first test sale")}</h1>
           <p className="text-slate-600">{state.basics.businessName || "Your business"} is set up as a <strong>{info?.label ?? "business"}</strong>.</p>
           <ol className="list-decimal space-y-2 pl-5 text-slate-700">
-            <li>Open the register with the cash in the drawer (Cash Register).</li>
+            <li>{tx("Open the register with the cash in the drawer (Cash Register).")}</li>
             <li>{info && (state.mode === "SUPERMARKET" || state.mode === "RETAIL") ? "Scan a barcode or tap a sample item. Items sold by weight ask for the kg." : "Tap a sample item to add it to the order."}</li>
-            <li>Press Charge, pick a payment method and complete the sale.</li>
+            <li>{tx("Press Charge, pick a payment method and complete the sale.")}</li>
           </ol>
           <p className="text-sm text-slate-500">{tx("Sample items are marked \"(sample)\". Edit or delete them in Products whenever you like.")}</p>
         </section>
@@ -236,14 +236,14 @@ function CatalogStep({ state, update }: { state: WizardState; update: (patch: Pa
   const setItems = (next: WizardState["catalog"]["items"]) => update({ catalog: { ...state.catalog, items: next } });
   return (
     <section className="space-y-3">
-      <h1 className="text-2xl font-bold">Starter catalog</h1>
+      <h1 className="text-2xl font-bold">{tx("Starter catalog")}</h1>
       <label className="flex items-center gap-2 font-medium">
         <input type="checkbox" checked={state.catalog.useSamples} onChange={(e) => update({ catalog: { items, useSamples: e.target.checked } })} />
         Add sample items so I can try a sale right away
       </label>
       {state.catalog.useSamples && (
         <>
-          <p className="text-sm text-slate-600">{tx("These are")} <strong>samples</strong> {tx("with 50 in opening stock. Edit names and prices, untick what you don't want, or delete them later in Products.")}</p>
+          <p className="text-sm text-slate-600">{tx("These are")} <strong>{tx("samples")}</strong> {tx("with 50 in opening stock. Edit names and prices, untick what you don't want, or delete them later in Products.")}</p>
           <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-left text-slate-500"><tr><th className="p-2">{tx("Add")}</th><th className="p-2">{tx("Item")}</th><th className="p-2">{tx("Category")}</th><th className="p-2">{tx("Price (BHD)")}</th><th className="p-2">{tx("Unit")}</th></tr></thead>
@@ -271,8 +271,8 @@ function StaffStep({ state, update, local }: { state: WizardState; update: (patc
   const setStaff = (staff: StaffDraft[]) => update({ staff });
   return (
     <section className="space-y-3">
-      <h1 className="text-2xl font-bold">Staff <span className="text-base font-normal text-slate-500">(optional)</span></h1>
-      <p className="text-slate-600">Give each person their own login so sales are tracked per person. You can skip this and add staff later in Settings → Users.</p>
+      <h1 className="text-2xl font-bold">{tx("Staff")} <span className="text-base font-normal text-slate-500">(optional)</span></h1>
+      <p className="text-slate-600">{tx("Give each person their own login so sales are tracked per person. You can skip this and add staff later in Settings → Users.")}</p>
       {state.staff.map((member, index) => (
         <div key={member.key} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]" data-testid="staff-row">
           <input className={field} aria-label={tx("Staff name")} placeholder={tx("Name")} value={member.name} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, name: e.target.value } : m)))} />

@@ -1,0 +1,12 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.connectOverCDP('http://127.0.0.1:9222'); const p = b.contexts()[0].pages()[0];
+const S = (n) => p.screenshot({ path: `/workspace/omega/sprint/screens/prod2_${n}.png` });
+const ins = p.locator('input');
+await ins.nth(0).fill('Seef Grill'); await ins.nth(1).fill('Seef');
+await ins.nth(4).fill('220000000000003');
+await ins.nth(5).fill('owner@seefgrill.bh'); await ins.nth(6).fill('Owner#2026pass');
+await p.getByRole('button', { name: 'Create business' }).click();
+await p.waitForTimeout(15000);
+console.log((await p.innerText('body')).slice(0, 700));
+await S('03_after_create');
+process.exit(0);

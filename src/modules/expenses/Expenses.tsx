@@ -178,7 +178,7 @@ export default function Expenses() {
           <div className="g-page-hd-meta">This month: {formatCurrency(totalMonth)}</div>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
-          <Plus size={16} className="mr-1" />Record expense
+          <Plus size={16} className="mr-1" />{tx("Record expense")}
         </button>
       </div>
 
@@ -199,11 +199,11 @@ export default function Expenses() {
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="g-exp-head">
-                <span>Date</span>
-                <span>Description</span>
-                <span>Category</span>
-                <span>Method</span>
-                <span className="text-right">Amount</span>
+                <span>{tx("Date")}</span>
+                <span>{tx("Description")}</span>
+                <span>{tx("Category")}</span>
+                <span>{tx("Method")}</span>
+                <span className="text-right">{tx("Amount")}</span>
                 <span />
               </div>
               {expenses.map((e) => (
@@ -217,7 +217,7 @@ export default function Expenses() {
                         {e.expense_categories.name}
                       </span>
                     ) : (
-                      <span className="h-meta">Uncategorized</span>
+                      <span className="h-meta">{tx("Uncategorized")}</span>
                     )}
                   </span>
                   <span className="g-exp-pay">
@@ -264,7 +264,7 @@ export default function Expenses() {
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
               <div className="g-cat-head">
-                <span>Name</span>
+                <span>{tx("Name")}</span>
               </div>
               {categories.map((c) => (
                 <div key={c.id} className="g-cat-row">
@@ -291,7 +291,7 @@ export default function Expenses() {
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Amount *</Label>
+                <Label>{tx("Amount *")}</Label>
                 <Input
                   type="number"
                   min="0"
@@ -310,7 +310,7 @@ export default function Expenses() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label>{tx("Category")}</Label>
               <Select
                 value={expenseForm.category_id}
                 onValueChange={(v) => setExpenseForm((f) => ({ ...f, category_id: v }))}
@@ -359,7 +359,7 @@ export default function Expenses() {
           <DialogHeader><DialogTitle>{tx("New category")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label>Name *</Label>
+              <Label>{tx("Name *")}</Label>
               <Input
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}

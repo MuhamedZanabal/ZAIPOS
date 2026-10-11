@@ -200,7 +200,7 @@ export default function UsersSettings() {
             <span className="orb orb-sq w-8 h-8">
               <UserPlus className="h-4 w-4" />
             </span>
-            <h3 className="font-semibold text-ink-900">Add user to business</h3>
+            <h3 className="font-semibold text-ink-900">{tx("Add user to business")}</h3>
           </div>
 
           <Tabs defaultValue="create">
@@ -272,11 +272,11 @@ export default function UsersSettings() {
 
             <TabsContent value="invite" className="mt-4 space-y-3">
               <p className="h-meta">
-                If the user already has an account in another business in the system, search by email to assign a role here.
+                {tx("If the user already has an account in another business in the system, search by email to assign a role here.")}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_auto] gap-3 items-end">
                 <div className="space-y-1.5">
-                  <Label>Email</Label>
+                  <Label>{tx("Email")}</Label>
                   <Input
                     type="email"
                     placeholder={tx("user@email.com")}
@@ -334,9 +334,9 @@ export default function UsersSettings() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/5">
-                  <th className="text-left px-5 py-3 h-label">User</th>
-                  <th className="text-left px-5 py-3 h-label">Role</th>
-                  <th className="text-left px-5 py-3 h-label">Branch</th>
+                  <th className="text-left px-5 py-3 h-label">{tx("User")}</th>
+                  <th className="text-left px-5 py-3 h-label">{tx("Role")}</th>
+                  <th className="text-left px-5 py-3 h-label">{tx("Branch")}</th>
                   {canManage && <th className="w-12 px-5 py-3 sr-only">{tx("Actions")}</th>}
                 </tr>
               </thead>

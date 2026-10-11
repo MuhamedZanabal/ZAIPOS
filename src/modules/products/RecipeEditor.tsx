@@ -105,7 +105,7 @@ export function RecipeEditor({ tenantId, parentProductId }: RecipeEditorProps) {
         <div className="g-recipe-head">
           <span className="font-semibold text-sm">Componentes ({components?.length ?? 0})</span>
           <span className="h-meta">
-            Total cost: <strong className="h-num g-recipe-cost-val">{formatCurrency(totalCost)}</strong>
+            {tx("Total cost:")} <strong className="h-num g-recipe-cost-val">{formatCurrency(totalCost)}</strong>
           </span>
         </div>
         {(components ?? []).length === 0 ? (

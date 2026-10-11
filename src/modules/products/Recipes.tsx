@@ -42,7 +42,7 @@ export default function Recipes() {
           <div className="h-meta g-page-subtitle">{tx("Products with defined ingredients/components · CATALOG")}</div>
         </div>
         <Link to="/products" className="g-btn g-btn-ghost">
-          Go to products
+          {tx("Go to products")}
         </Link>
       </div>
 
@@ -102,11 +102,11 @@ export default function Recipes() {
                     <div className="font-semibold tabular-nums">{formatCurrency(totalCost)}</div>
                   </div>
                   <div>
-                    <div className="h-label text-xs">Price</div>
+                    <div className="h-label text-xs">{tx("Price")}</div>
                     <div className="font-semibold tabular-nums">{formatCurrency(Number(r.price))}</div>
                   </div>
                   <div>
-                    <div className="h-label text-xs">Margen</div>
+                    <div className="h-label text-xs">{tx("Margin")}</div>
                     <div className={`font-semibold tabular-nums ${margin < 0 ? "text-g-bad" : "text-g-ok"}`}>
                       {formatCurrency(margin)}
                     </div>

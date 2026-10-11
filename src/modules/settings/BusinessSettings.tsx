@@ -99,7 +99,7 @@ export default function BusinessSettings() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Currency</Label>
+            <Label>{tx("Currency")}</Label>
             <Select
               value={BAHRAIN_CURRENCY}
               disabled
@@ -144,7 +144,7 @@ export default function BusinessSettings() {
           </div>
         ) : (
           <p className="h-meta">
-            Only the owner or administrators can edit this information.
+            {tx("Only the owner or administrators can edit this information.")}
           </p>
         )}
       </div>
@@ -157,10 +157,9 @@ export default function BusinessSettings() {
                 <FlaskConical className="h-4 w-4 text-orange-500" />
               </span>
               <div className="space-y-1">
-                <p className="font-semibold text-sm text-ink-900">Development mode</p>
+                <p className="font-semibold text-sm text-ink-900">{tx("Development mode")}</p>
                 <p className="h-meta max-w-sm">
-                  Allows sales and orders to be recorded regardless of available stock.
-                  Use this only for testing and demonstrations.
+                  {tx("Allows sales and orders to be recorded regardless of available stock. Use this only for testing and demonstrations.")}
                 </p>
               </div>
             </div>

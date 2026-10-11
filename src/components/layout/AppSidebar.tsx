@@ -125,7 +125,7 @@ export function AppSidebar() {
   }, [pathname]);
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0 bg-transparent">
+    <Sidebar collapsible="icon" side={language === "ar" ? "right" : "left"} className="border-r-0 border-l-0 bg-transparent">
       <SidebarContent className="bg-transparent p-0">
         <div className="g-sb-wrap">
           <div className="glass g-sb-card">

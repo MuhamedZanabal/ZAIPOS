@@ -356,7 +356,7 @@ export default function Delivery() {
                         <div className="flex items-center gap-1"><Clock size={11} /> {formatDate(order.created_at)}</div>
                       </div>
                       <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--hairline)]">
-                        <span className="h-meta">Delivery fee</span>
+                        <span className="h-meta">{tx("Delivery fee")}</span>
                         <span className="tabular-nums text-ink-900 font-semibold">{formatFils(feeFils)}</span>
                       </div>
                       {(column.id === "ready" || column.id === "assigned") && (couriers?.length ?? 0) > 0 && (
@@ -394,7 +394,7 @@ export default function Delivery() {
             </div>
 
             <div className="space-y-2">
-              <Label>Add products</Label>
+              <Label>{tx("Add products")}</Label>
               <Input placeholder={tx("Search product...")} value={search} onChange={(event) => setSearch(event.target.value)} />
               {search && (
                 <ScrollArea className="h-44 border rounded-lg">
@@ -435,13 +435,13 @@ export default function Delivery() {
                   </div>
                 )}
                 <div className="mt-3 pt-3 border-t border-[var(--hairline)] flex justify-between font-bold"><span>{tx("Total estimate")}</span><span>{formatFils(totalFils)}</span></div>
-                <div className="h-meta mt-1">Final price and tax are re-resolved by the server at commit.</div>
+                <div className="h-meta mt-1">{tx("Final price and tax are re-resolved by the server at commit.")}</div>
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={submit} disabled={submitting || lines.length === 0}>Record delivery</Button>
+            <Button onClick={submit} disabled={submitting || lines.length === 0}>{tx("Record delivery")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

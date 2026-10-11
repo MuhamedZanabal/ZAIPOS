@@ -189,11 +189,11 @@ export default function Reports() {
             <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.expected_amount_fils))}</div>
           </div>
           <div className="glass-thin rounded-xl p-3">
-            <div className="h-meta uppercase tracking-wider">Counted cash</div>
+            <div className="h-meta uppercase tracking-wider">{tx("Counted cash")}</div>
             <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.counted_cash_fils))}</div>
           </div>
           <div className="glass-thin rounded-xl p-3">
-            <div className="h-meta uppercase tracking-wider">Net variance</div>
+            <div className="h-meta uppercase tracking-wider">{tx("Net variance")}</div>
             <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.difference_fils))}</div>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="glass rounded-2xl p-5">
-          <div className="h-meta uppercase tracking-wider mb-4">MIX · PAYMENT METHODS</div>
+          <div className="h-meta uppercase tracking-wider mb-4">{tx("MIX · PAYMENT METHODS")}</div>
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(data?.byMethod ?? {}).map(([method, total]) => <div key={method} className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{method}</div><div className="h-num g-val-18">{formatCurrency(total)}</div></div>)}
             {Object.keys(data?.byMethod ?? {}).length === 0 && <div className="col-span-full text-center h-meta py-6">{tx("No payments recorded")}</div>}
@@ -249,7 +249,7 @@ export default function Reports() {
           </div>
         </div>
         <div className="glass rounded-2xl p-5 relative overflow-hidden">
-          <div className="h-meta uppercase tracking-wider mb-4">TAX SUMMARY</div>
+          <div className="h-meta uppercase tracking-wider mb-4">{tx("TAX SUMMARY")}</div>
           <div className="space-y-4">
             <div className="flex justify-between items-baseline"><span className="h-label">{tx("Net subtotal")}</span><span className="h-num g-val-22 tabular-nums">{formatCurrency((data?.totals ?? 0) - (data?.taxTotal ?? 0))}</span></div>
             <div className="flex justify-between items-baseline"><span className="h-label">VAT</span><span className="h-num g-val-22 tabular-nums">{formatCurrency(data?.taxTotal ?? 0)}</span></div>
