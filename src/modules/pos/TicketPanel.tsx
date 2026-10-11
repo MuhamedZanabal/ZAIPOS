@@ -30,7 +30,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
       <header className="px-4 py-3 border-b flex items-center justify-between bg-muted/30">
         <div className="flex items-center gap-2">
           <ShoppingBag className="h-4 w-4 text-primary" />
-          <span className="font-semibold">Current ticket</span>
+          <span className="font-semibold">{t("Current ticket")}</span>
           {lines.length > 0 && (
             <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + (isWeighedProduct(l.product as { unit_code?: string | null }) ? 1 : l.quantity), 0)} items</span>
           )}
@@ -38,12 +38,12 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
         <div className="flex items-center gap-1">
           {onOpenPriceApprovals && (
             <Button variant="ghost" size="sm" onClick={onOpenPriceApprovals} className="h-8" aria-label="Open price override approvals">
-              <ShieldCheck className="h-4 w-4 mr-1" /> Approvals
+              <ShieldCheck className="h-4 w-4 mr-1" /> {t("Approvals")}
             </Button>
           )}
           {onOpenHeldCarts && (
             <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label={t("Open held carts")}>
-              <RotateCcw className="h-4 w-4 mr-1" /> Held
+              <RotateCcw className="h-4 w-4 mr-1" /> {t("Held")}
             </Button>
           )}
           {lines.length > 0 && onHold && (
@@ -63,7 +63,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
         {lines.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">
             <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            Tap a product to add it to the ticket
+            {t("Tap a product to add it to the ticket")}
           </div>
         ) : (
           <ul className="divide-y">
@@ -126,7 +126,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
         <Row label="Subtotal" value={formatCurrency(subtotalNum)} />
         <Row label="VAT" value={formatCurrency(taxNum)} />
         <div className="flex items-baseline justify-between pt-2 border-t mt-2">
-          <span className="font-semibold">Total</span>
+          <span className="font-semibold">{t("Total")}</span>
           <span className="text-3xl font-bold text-primary tabular-nums">{formatCurrency(totalNum)}</span>
         </div>
         {reasonDisabled && (
@@ -149,7 +149,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
             disabled={lines.length === 0 || !canCharge}
             onClick={onCharge}
           >
-            CHARGE {formatCurrency(totalNum)}
+            {t("CHARGE")} {formatCurrency(totalNum)}
           </Button>
         )}
       </footer>
@@ -160,7 +160,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground">{t(label)}</span>
       <span className="tabular-nums">{value}</span>
     </div>
   );

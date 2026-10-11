@@ -204,7 +204,7 @@ export default function UsersSettings() {
           <Tabs defaultValue="create">
             <TabsList>
               <TabsTrigger value="create">Create new</TabsTrigger>
-              <TabsTrigger value="invite">Invitar existente</TabsTrigger>
+              <TabsTrigger value="invite">Invite existing user</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create" className="mt-4 space-y-3">

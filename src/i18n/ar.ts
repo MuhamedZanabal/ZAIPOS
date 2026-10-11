@@ -19,6 +19,11 @@ export const AR: Record<string, string> = {
   "Remove": "إزالة", "Hold current cart": "تعليق السلة الحالية", "Open held carts": "السلال المعلقة",
   "Subtotal": "المجموع الفرعي", "Discount": "الخصم", "VAT": "ضريبة القيمة المضافة", "Total": "الإجمالي",
   "Charge": "تحصيل", "Clear": "مسح", "Customer": "العميل", "Clear customer": "إزالة العميل",
+  "Current ticket": "الفاتورة الحالية", "Approvals": "الموافقات", "Held": "المعلقة",
+  "Tap a product to add it to the ticket": "اضغط على منتج لإضافته إلى الفاتورة", "CHARGE": "تحصيل",
+  "Open the register to record in-person sales.": "افتح الصندوق لتسجيل المبيعات الحضورية.",
+  "Scan barcode or type to search…": "امسح الباركود أو اكتب للبحث…", "Search product, SKU, or barcode…": "ابحث بالمنتج أو الرمز أو الباركود…",
+  "This branch": "هذا الفرع",
   // payment
   "Charge sale": "تحصيل البيع", "Payment method": "طريقة الدفع", "Cash": "نقدًا", "Card": "بطاقة",
   "BenefitPay": "بنفت باي", "Bank Transfer": "تحويل بنكي", "Complete sale": "إتمام البيع", "Change": "الباقي",

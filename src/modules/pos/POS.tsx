@@ -663,7 +663,7 @@ export default function POS() {
       {/* ── No-session warning ───────────────────────────── */}
       {isPos && !openSession && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
-          <span className="text-sm"><strong>{t("Register closed")}</strong> · Open the register to record in-person sales.</span>
+          <span className="text-sm"><strong>{t("Register closed")}</strong> · {t("Open the register to record in-person sales.")}</span>
           <Button asChild size="sm" variant="default"><Link to="/cash">{t("Open register")}</Link></Button>
         </div>
       )}
@@ -684,7 +684,7 @@ export default function POS() {
                 type="search"
                 aria-label={barcodeFirst ? t("Scan barcode") : t("Search products")}
                 autoFocus={barcodeFirst}
-                placeholder={barcodeFirst ? "Scan barcode or type to search…" : "Search product, SKU, or barcode…"}
+                placeholder={barcodeFirst ? t("Scan barcode or type to search…") : t("Search product, SKU, or barcode…")}
                 className={cn("flex-1 bg-transparent outline-none placeholder:text-muted-foreground", barcodeFirst ? "text-lg font-semibold py-1" : "text-sm")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -790,7 +790,7 @@ export default function POS() {
                   <Search className="h-3 w-3 ml-1 text-muted-foreground" />
                 </div>
                 <span className="text-[11px] text-muted-foreground hidden sm:block">
-                  This branch
+                  {t("This branch")}
                 </span>
               </div>
             </div>
