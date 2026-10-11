@@ -123,7 +123,23 @@ async fn serve_ready(
                 .unwrap_or_else(|| config.database_root().join("backups"));
             zaipos_local_service::backup::BackupStore::new(&provisioned, &bin, dir)
         }) {
-        Ok(store) => state = state.with_backups(store),
+        Ok(store) => {
+            let hours = std::env::var("ZAIPOS_BACKUP_INTERVAL_HOURS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .filter(|h| (1..=168).contains(h))
+                .unwrap_or(24);
+            let keep = std::env::var("ZAIPOS_BACKUP_KEEP")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+                .filter(|k| (1..=365).contains(k))
+                .unwrap_or(14);
+            let mirror = std::env::var_os("ZAIPOS_BACKUP_MIRROR_DIR")
+                .map(std::path::PathBuf::from)
+                .filter(|p| p.is_absolute());
+            store.spawn_schedule(std::time::Duration::from_secs(hours * 3600), keep, mirror);
+            state = state.with_backups(store)
+        }
         Err(error) => eprintln!("backups unavailable: {error}"),
     }
     let tls = RustlsConfig::from_pem_file(&provisioned.cert_path, &provisioned.key_path)

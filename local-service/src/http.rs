@@ -443,6 +443,7 @@ async fn backups(
     let result: Result<Value, BackupError> = match action.as_str() {
         "create" => store.start("create", None),
         "status" => store.job_status(),
+        "schedule" => Ok(store.last_scheduled()),
         "list" => store.list().await.map(|items| serde_json::json!(items)),
         "read" => {
             let offset = value.get("offset").and_then(Value::as_u64).unwrap_or(0);

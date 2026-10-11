@@ -9,7 +9,7 @@ import {
   type BackupJob, type LocalBackup,
 } from "@/lib/localBackups";
 
-const KIND_LABEL: Record<string, string> = { manual: "Manual", imported: "Imported file", "before-restore": "Safety copy (before restore)" };
+const KIND_LABEL: Record<string, string> = { automatic: "Automatic (daily)", manual: "Manual", imported: "Imported file", "before-restore": "Safety copy (before restore)" };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Full local-database backup and restore (owner/admin, local ZAIPOS server). */
@@ -103,7 +103,7 @@ export function BackupPanel() {
           <div className="orb g-orb-32"><DatabaseBackup size={16} /></div>
           <div>
             <div className="text-sm font-semibold text-ink-900">Full backup &amp; restore</div>
-            <div className="h-meta">Complete copy of this ZAIPOS server's database: sales, stock, customers, settings. Each backup is read back and checksummed before it is listed.</div>
+            <div className="h-meta">Complete copy of this ZAIPOS server's database: sales, stock, customers, settings. Each backup is read back and checksummed before it is listed. An automatic backup runs every day (the newest 14 are kept); set ZAIPOS_BACKUP_MIRROR_DIR to also copy each one to a USB disk or network folder.</div>
           </div>
         </div>
         <div className="flex gap-2">

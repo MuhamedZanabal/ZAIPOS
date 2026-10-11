@@ -12,7 +12,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use secrecy::{ExposeSecret, SecretString};
 use serde::Serialize;
@@ -24,6 +24,7 @@ use crate::provisioning::{ProvisionedDatabase, find_binary};
 pub const CHUNK_BYTES: usize = 512 * 1024;
 const MAX_IMPORT_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const OWNER_ROLE: &str = "zaipos_owner_bootstrap";
+pub const AUTOMATIC_KIND: &str = "automatic";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum BackupError {
@@ -88,6 +89,7 @@ struct Inner {
     lock: Mutex<()>,
     uploads: Mutex<HashMap<String, PathBuf>>,
     job: std::sync::Mutex<serde_json::Value>,
+    last_scheduled: std::sync::Mutex<serde_json::Value>,
 }
 
 impl BackupStore {
@@ -136,6 +138,7 @@ impl BackupStore {
                 lock: Mutex::new(()),
                 uploads: Mutex::new(HashMap::new()),
                 job: std::sync::Mutex::new(serde_json::json!({"state": "idle"})),
+                last_scheduled: std::sync::Mutex::new(serde_json::Value::Null),
             }),
         })
     }
@@ -289,6 +292,73 @@ impl BackupStore {
         .map_err(|_| BackupError::Io)?
     }
 
+    /// Takes a backup tagged `automatic`, copies it to the optional mirror
+    /// directory (USB disk, network share or synced cloud folder) and prunes
+    /// old automatic backups beyond `keep`. Manual/imported/safety backups are
+    /// never pruned.
+    pub async fn create_automatic(
+        &self,
+        keep: usize,
+        mirror: Option<PathBuf>,
+    ) -> Result<BackupInfo, BackupError> {
+        let _guard = self.inner.lock.lock().await;
+        let inner = self.inner.clone();
+        tokio::task::spawn_blocking(move || {
+            let info = inner.create_blocking(AUTOMATIC_KIND)?;
+            if let Some(mirror) = mirror {
+                inner.mirror(&info, &mirror)?;
+            }
+            let all = inner.list_blocking()?;
+            for name in prunable(&all, keep) {
+                let _ = fs::remove_file(inner.dir.join(&name));
+                let _ = fs::remove_file(inner.dir.join(format!("{name}.json")));
+            }
+            Ok(info)
+        })
+        .await
+        .map_err(|_| BackupError::Io)?
+    }
+
+    /// Runs `create_automatic` whenever the newest automatic backup is older
+    /// than `interval`. Checks every 15 minutes so a till that was switched
+    /// off overnight still backs up soon after it is turned on.
+    pub fn spawn_schedule(&self, interval: Duration, keep: usize, mirror: Option<PathBuf>) {
+        let store = self.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(120)).await;
+            loop {
+                let due = match store.list().await {
+                    Ok(items) => backup_due(&items, now_ms(), interval),
+                    Err(_) => true,
+                };
+                if due {
+                    let status = match store.create_automatic(keep, mirror.clone()).await {
+                        Ok(info) => {
+                            serde_json::json!({"state": "done", "name": info.name, "at_ms": now_ms()})
+                        }
+                        Err(error) => {
+                            eprintln!("scheduled backup failed: {error}");
+                            serde_json::json!({"state": "failed", "error": error.to_string(), "at_ms": now_ms()})
+                        }
+                    };
+                    if let Ok(mut last) = store.inner.last_scheduled.lock() {
+                        *last = status;
+                    }
+                }
+                tokio::time::sleep(Duration::from_secs(15 * 60)).await;
+            }
+        });
+    }
+
+    /// Outcome of the most recent scheduled backup (for the backups screen).
+    pub fn last_scheduled(&self) -> serde_json::Value {
+        self.inner
+            .last_scheduled
+            .lock()
+            .map(|v| v.clone())
+            .unwrap_or(serde_json::Value::Null)
+    }
+
     /// Restores `name` over the live database. Returns the safety backup taken first.
     pub async fn restore(&self, name: &str) -> Result<BackupInfo, BackupError> {
         let path = self.inner.backup_path(name)?;
@@ -414,6 +484,25 @@ impl Inner {
         Ok(info)
     }
 
+    /// Copies a verified backup and its sidecar to `mirror`, then re-checks the copy.
+    fn mirror(&self, info: &BackupInfo, mirror: &Path) -> Result<(), BackupError> {
+        fs::create_dir_all(mirror).map_err(|_| BackupError::Io)?;
+        let target = mirror.join(&info.name);
+        let part = mirror.join(format!(".{}.part", info.name));
+        fs::copy(self.dir.join(&info.name), &part).map_err(|_| BackupError::Io)?;
+        if sha256_file(&part)? != info.sha256 {
+            let _ = fs::remove_file(&part);
+            return Err(BackupError::Corrupt);
+        }
+        fs::rename(&part, &target).map_err(|_| BackupError::Io)?;
+        fs::copy(
+            self.dir.join(format!("{}.json", info.name)),
+            mirror.join(format!("{}.json", info.name)),
+        )
+        .map_err(|_| BackupError::Io)?;
+        Ok(())
+    }
+
     fn read_info(&self, name: &str) -> Result<BackupInfo, BackupError> {
         let raw =
             fs::read(self.dir.join(format!("{name}.json"))).map_err(|_| BackupError::NotFound)?;
@@ -472,6 +561,27 @@ impl Inner {
     }
 }
 
+/// Automatic backups beyond the newest `keep` (oldest first). Other kinds are kept.
+pub fn prunable(items: &[BackupInfo], keep: usize) -> Vec<String> {
+    let mut automatic: Vec<&BackupInfo> =
+        items.iter().filter(|i| i.kind == AUTOMATIC_KIND).collect();
+    automatic.sort_by_key(|i| std::cmp::Reverse(i.created_at_ms));
+    automatic
+        .into_iter()
+        .skip(keep.max(1))
+        .map(|i| i.name.clone())
+        .collect()
+}
+
+/// True when no backup of any kind was taken within `interval`.
+pub fn backup_due(items: &[BackupInfo], now_ms: u64, interval: Duration) -> bool {
+    let newest = items.iter().map(|i| i.created_at_ms).max();
+    match newest {
+        None => true,
+        Some(at) => now_ms.saturating_sub(at) >= interval.as_millis() as u64,
+    }
+}
+
 pub fn valid_name(name: &str) -> bool {
     name.strip_prefix("zaipos-")
         .and_then(|rest| rest.strip_suffix(".dump"))
@@ -513,7 +623,42 @@ fn sha256_file(path: &Path) -> Result<String, BackupError> {
 
 #[cfg(test)]
 mod tests {
-    use super::valid_name;
+    use super::{AUTOMATIC_KIND, BackupInfo, backup_due, prunable, valid_name};
+    use std::time::Duration;
+
+    fn info(name: &str, at: u64, kind: &str) -> BackupInfo {
+        BackupInfo {
+            name: name.into(),
+            bytes: 1,
+            sha256: "x".into(),
+            created_at_ms: at,
+            kind: kind.into(),
+        }
+    }
+
+    #[test]
+    fn prunes_only_old_automatic_backups() {
+        let items = vec![
+            info("zaipos-1.dump", 1, AUTOMATIC_KIND),
+            info("zaipos-2.dump", 2, "manual"),
+            info("zaipos-3.dump", 3, AUTOMATIC_KIND),
+            info("zaipos-4.dump", 4, AUTOMATIC_KIND),
+            info("zaipos-5.dump", 5, "before-restore"),
+        ];
+        assert_eq!(prunable(&items, 2), vec!["zaipos-1.dump".to_string()]);
+        assert!(prunable(&items, 10).is_empty());
+        // keep is never zero: the newest automatic backup always survives
+        assert_eq!(prunable(&items, 0).len(), 2);
+    }
+
+    #[test]
+    fn schedule_is_due_when_no_recent_backup() {
+        let day = Duration::from_secs(86_400);
+        assert!(backup_due(&[], 10, day));
+        let items = vec![info("zaipos-1.dump", 1_000, "manual")];
+        assert!(!backup_due(&items, 1_000 + 3_600_000, day));
+        assert!(backup_due(&items, 1_000 + 86_400_000, day));
+    }
 
     #[test]
     fn only_store_names_are_accepted() {

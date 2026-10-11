@@ -155,6 +155,43 @@ async fn backup_restore_roundtrip_on_real_postgres() {
         BackupError::InvalidName
     );
 
+    // Scheduled backups: tagged automatic, mirrored off the till disk, and
+    // only the newest `keep` automatic backups are retained.
+    let mirror = std::env::temp_dir().join(format!("{name}-mirror"));
+    let mut automatic = Vec::new();
+    for _ in 0..3 {
+        automatic.push(
+            store
+                .create_automatic(2, Some(mirror.clone()))
+                .await
+                .unwrap(),
+        );
+    }
+    assert!(automatic.iter().all(|b| b.kind == "automatic"));
+    let listed: Vec<_> = store.list().await.unwrap();
+    let kept: Vec<_> = listed
+        .iter()
+        .filter(|b| b.kind == "automatic")
+        .map(|b| b.name.clone())
+        .collect();
+    assert_eq!(
+        kept,
+        vec![automatic[2].name.clone(), automatic[1].name.clone()]
+    );
+    assert!(
+        listed.iter().any(|b| b.kind == "manual"),
+        "manual backups are never pruned"
+    );
+    for b in &automatic {
+        assert!(
+            mirror.join(&b.name).is_file() && mirror.join(format!("{}.json", b.name)).is_file()
+        );
+    }
+    // The mirrored copy restores like the original.
+    store.restore(&automatic[2].name).await.unwrap();
+    assert_eq!(names(&db).await, vec!["karak", "machboos"]);
+    let _ = std::fs::remove_dir_all(&mirror);
+
     drop(db);
     let _ = admin
         .exec(&format!(
