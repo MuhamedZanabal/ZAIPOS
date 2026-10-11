@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createDeviceCheckoutCoordinator } from '../../../electron/services/device-checkout-coordinator';
+import { callArg } from "@/test/mockArgs";
 
 const authorization = {
   accessToken: 'operator-token',
@@ -97,7 +98,7 @@ describe('device checkout authenticated reconnect coordinator', () => {
     await expect(coordinator.checkout({ ...payload, _lease_token: lease.token, _device_credential: 'b'.repeat(64) }, authorization))
       .resolves.toEqual({ status: 'pending', mutationId });
     expect(deps.orchestrator.capture).toHaveBeenCalledTimes(1);
-    const captured = deps.orchestrator.capture.mock.calls[0][0];
+    const captured = callArg(deps.orchestrator.capture, 0, 0);
     expect(captured.mutationId).toBe(mutationId);
     expect(captured.payload).not.toHaveProperty('_lease_token');
     expect(captured.payload).not.toHaveProperty('_device_credential');
@@ -113,7 +114,7 @@ describe('device checkout authenticated reconnect coordinator', () => {
     await expect(coordinator.checkout(payload, authorization)).resolves.toEqual({ status: 'pending', mutationId });
     await expect(coordinator.checkout(payload, authorization)).resolves.toEqual({ status: 'pending', mutationId });
     expect(deps.orchestrator.capture).toHaveBeenCalledTimes(2);
-    expect(deps.orchestrator.capture.mock.calls[0][0].mutationId).toBe(mutationId);
-    expect(deps.orchestrator.capture.mock.calls[1][0].mutationId).toBe(mutationId);
+    expect(callArg(deps.orchestrator.capture, 0, 0).mutationId).toBe(mutationId);
+    expect(callArg(deps.orchestrator.capture, 1, 0).mutationId).toBe(mutationId);
   });
 });

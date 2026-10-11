@@ -113,7 +113,7 @@ describe('native durable offline mutation queue', () => {
     const requests: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
       requests.push(String(init.body));
-      return { ok: true, status: 200, text: async () => { throw new Error('response stream reset'); } } as Response;
+      return { ok: true, status: 200, text: async () => { throw new Error('response stream reset'); } } as unknown as Response;
     }));
 
     await expect(queue.reconcileNext(authorization)).resolves.toEqual({ status: 'retained', mutationId });

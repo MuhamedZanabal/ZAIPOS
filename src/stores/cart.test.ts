@@ -24,7 +24,7 @@ function product(overrides: Partial<CartProduct> = {}): CartProduct {
     rappi_product_id: null,
     station: null,
     ...overrides,
-  };
+  } as CartProduct;
 }
 
 describe("cart store", () => {

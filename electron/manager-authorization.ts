@@ -19,7 +19,7 @@ async function authorize(action: ManagerAction, payload: unknown, input: unknown
   const key = backendConfig?.supabasePublishableKey ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   let endpoint: URL;
   try {
-    endpoint = new URL(configuredUrl);
+    endpoint = new URL(configuredUrl ?? '');
     if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash || !key) throw denied();
     endpoint.pathname = '/v1/commands/authorize_desktop_action';
   } catch { throw denied(); }
@@ -34,10 +34,10 @@ async function authorize(action: ManagerAction, payload: unknown, input: unknown
       body:JSON.stringify({_tenant_id:auth.tenantId,_branch_id:auth.branchId,_action:action,_payload_sha256:payloadHash,_nonce:nonce}),
     });
     if (!response.ok) throw denied();
-    const result = await response.json();
+    const result = await response.json() as Partial<Record<'authorization_id' | 'nonce' | 'payload_sha256' | 'action' | 'tenant_id' | 'branch_id', string>> | null;
     if (!result || !uuid.test(result.authorization_id ?? '') || result.nonce !== nonce || result.payload_sha256 !== payloadHash ||
         result.action !== action || result.tenant_id !== auth.tenantId || result.branch_id !== auth.branchId) throw denied();
-    return result.authorization_id;
+    return result.authorization_id as string;
   } catch { throw denied(); }
 }
 

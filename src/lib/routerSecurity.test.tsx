@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createMemoryRouter, type Router } from "react-router-dom";
+import { createMemoryRouter } from "react-router-dom";
+
+type Router = ReturnType<typeof createMemoryRouter>;
 
 const routers: Router[] = [];
 
@@ -34,6 +36,6 @@ describe("router navigation security", () => {
   it("continues to permit internal application routes", () => {
     const router = createRouter();
 
-    expect(router.createHref({ pathname: "/pos" })).toBe("/pos");
+    expect(router.createHref(new URL("/pos", "http://localhost"))).toBe("/pos");
   });
 });
