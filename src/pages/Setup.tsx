@@ -4,8 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { normalizeBusinessMode } from "@/lib/business-modes";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { FIRST_SALE_GUIDE_KEY, SETUP_DEFERRED_KEY } from "@/hooks/useSetupInProgress";
+import { ensureTerminalActivated } from "@/lib/terminalActivation";
 import { applyStarterCatalog, createStaff, savePaymentsAndReceipt, setSetupStatus } from "@/lib/setupApply";
 import {
   FIRST_IN_APP_STEP,
@@ -22,20 +24,23 @@ import {
 export default function Setup() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { tenantId, branchId, businessMode } = useTenantContext();
-  const { data: tenant, isLoading } = useQuery({
+  const { tenantId, branchId } = useTenantContext();
+  const { data: tenant, isLoading, isFetchedAfterMount } = useQuery({
     queryKey: ["setup-tenant", tenantId],
+    staleTime: 0,
     enabled: !!tenantId,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("tenants").select("name, tax_rate, receipt_config").eq("id", tenantId!).maybeSingle();
+      const { data, error } = await (supabase as any).from("tenants").select("name, tax_rate, receipt_config, business_mode").eq("id", tenantId!).maybeSingle();
       if (error) throw error;
-      return data as { name: string; tax_rate: number; receipt_config: Record<string, unknown> | null } | null;
+      return data as { name: string; tax_rate: number; receipt_config: Record<string, unknown> | null; business_mode: string } | null;
     },
   });
 
   // Resume from this device's draft, or rebuild one from the business record.
   const initial = useMemo<WizardState | null>(() => {
     if (!tenant) return null;
+    // Read the type from the business record itself: the tenant context may still be loading.
+    const businessMode = normalizeBusinessMode(tenant.business_mode);
     const saved = loadWizard();
     const status = readSetupStatus(tenant.receipt_config);
     const base = saved && saved.mode === businessMode ? saved : {
@@ -49,14 +54,19 @@ export default function Setup() {
       basics: { ...base.basics, businessName: tenant.name, vatRate: Number(tenant.tax_rate ?? 10), trn: String(rc.trn ?? base.basics.trn ?? "") },
       step: Math.max(FIRST_IN_APP_STEP, saved?.step ?? status?.step ?? FIRST_IN_APP_STEP),
     };
-  }, [tenant, businessMode]);
+  }, [tenant]);
 
-  if (isLoading || !initial || !tenantId || !branchId) {
+  // Wait for a fresh read: a persisted cache entry must not pick the business type.
+  if (isLoading || !isFetchedAfterMount || !initial || !tenantId || !branchId) {
     return <div className="grid min-h-screen place-items-center"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
 
   const saveStep = async (step: number, state: WizardState): Promise<WizardState> => {
     const key = WIZARD_STEPS[step].key;
+    if (key === "catalog") {
+      // The shop computer needs to be an activated terminal for opening stock and the first sale.
+      await ensureTerminalActivated();
+    }
     if (key === "catalog" && state.catalog.useSamples) {
       await applyStarterCatalog(tenantId, branchId, state.basics.vatRate, state.catalog.items);
       await qc.invalidateQueries({ queryKey: ["products"] });

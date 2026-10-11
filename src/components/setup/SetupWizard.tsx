@@ -75,7 +75,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
         await onFinish?.(state);
         return;
       }
-      const saved = (await onSaveStep?.(step, state)) ?? state;
+      const saved: WizardState = (await onSaveStep?.(step, state)) || state;
       setState({ ...saved, step: step + 1 });
       setErrors([]);
     } catch (error) {

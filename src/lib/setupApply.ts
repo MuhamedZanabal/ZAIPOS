@@ -94,7 +94,7 @@ export async function applyStarterCatalog(tenantId: string, branchId: string, va
     for (const item of toInsert) {
       const id = productIds.get(item.name.trim());
       if (id && item.barcode) {
-        await replaceProductBarcodes(tenantId, id, [{ barcode: item.barcode, barcode_type: "ean13", is_primary: true }], `setup-barcode-${id}`);
+        await replaceProductBarcodes(tenantId, id, [{ barcode: item.barcode, barcode_type: "ean_13", is_primary: true }], `setup-barcode-${id}` as Parameters<typeof replaceProductBarcodes>[3]);
       }
     }
   }
@@ -108,7 +108,7 @@ export async function applyStarterCatalog(tenantId: string, branchId: string, va
     productId,
     type: "purchase" as const,
     quantity: SAMPLE_OPENING_STOCK,
-    effectKey: "manual",
+    effectKey: `opening-${productId}`,
   }));
   if (movements.length) {
     await recordInventoryBatchV2({
