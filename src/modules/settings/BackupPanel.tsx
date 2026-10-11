@@ -8,6 +8,7 @@ import {
   backupJobStatus, downloadBackup, formatBytes, isLocalBackupAvailable, listBackups, startBackup, startRestore, uploadBackup,
   type BackupJob, type LocalBackup,
 } from "@/lib/localBackups";
+import { translate as tx } from "@/i18n";
 
 const KIND_LABEL: Record<string, string> = { automatic: "Automatic (daily)", manual: "Manual", imported: "Imported file", "before-restore": "Safety copy (before restore)" };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -66,7 +67,7 @@ export function BackupPanel() {
       a.download = `ZAIPOS-backup-${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}-${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}.dump`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-      toast.success("Backup copy saved (checksum verified)");
+      toast.success(tx("Backup copy saved (checksum verified)"));
     } catch (e: any) { toast.error(e?.message ?? "Download failed"); }
     finally { setBusy(null); setProgress(null); }
   };
@@ -108,7 +109,7 @@ export function BackupPanel() {
         </div>
         <div className="flex gap-2">
           <input ref={fileInput} type="file" accept=".dump" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFile(f); }} />
-          <Button variant="outline" disabled={!!busy} onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4 mr-2" />Import backup file</Button>
+          <Button variant="outline" disabled={!!busy} onClick={() => fileInput.current?.click()}><Upload className="h-4 w-4 mr-2" />{tx("Import backup file")}</Button>
           <Button disabled={!!busy} onClick={() => void create()}>
             {busy === "create" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <DatabaseBackup className="h-4 w-4 mr-2" />}Create backup now
           </Button>
@@ -116,7 +117,7 @@ export function BackupPanel() {
       </div>
       {progress && <div className="h-meta flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />{progress}</div>}
       <div className="flex flex-col divide-y divide-[var(--hairline)]">
-        {backups.length === 0 && <div className="h-meta py-3 text-center">No backups yet</div>}
+        {backups.length === 0 && <div className="h-meta py-3 text-center">{tx("No backups yet")}</div>}
         {backups.map((b) => (
           <div key={b.name} className="flex items-center justify-between gap-3 py-2.5 text-sm">
             <div className="flex items-center gap-2.5">
@@ -127,8 +128,8 @@ export function BackupPanel() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => void saveCopy(b)}><Download className="h-4 w-4 mr-1" />Save copy</Button>
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setConfirmText(""); setRestoreTarget(b); }}><RotateCcw className="h-4 w-4 mr-1" />Restore…</Button>
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => void saveCopy(b)}><Download className="h-4 w-4 mr-1" />{tx("Save copy")}</Button>
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setConfirmText(""); setRestoreTarget(b); }}><RotateCcw className="h-4 w-4 mr-1" />{tx("Restore…")}</Button>
             </div>
           </div>
         ))}
@@ -136,7 +137,7 @@ export function BackupPanel() {
       <Dialog open={!!restoreTarget} onOpenChange={(o) => { if (!o) setRestoreTarget(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Restore this backup?</DialogTitle>
+            <DialogTitle>{tx("Restore this backup?")}</DialogTitle>
             <DialogDescription>
               All current data on this ZAIPOS server will be replaced with the backup from{" "}
               {restoreTarget ? new Date(restoreTarget.created_at_ms).toLocaleString("en-BH") : ""}. Sales made after that time will be removed.

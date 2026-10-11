@@ -19,6 +19,7 @@ import { Truck, Plus, Pencil, Trash2, Search, ShoppingBag, CheckCircle2 } from "
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import { productMatchesCatalogueQuery, type ProductBarcode } from "@/lib/productBarcodes";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 type Supplier = { id: string; name: string; tax_id: string | null; contact_name: string | null; phone: string | null; email: string | null; payment_terms: string | null; notes: string | null; status: string };
 type Product = { id: string; name: string; sku: string | null; barcode?: string | null; cost: number; product_barcodes: ProductBarcode[] };
@@ -29,6 +30,7 @@ type SupplierForm = { name: string; tax_id: string; contact_name: string; phone:
 const emptySupplier: SupplierForm = { name: "", tax_id: "", contact_name: "", phone: "", email: "", payment_terms: "", notes: "" };
 
 export default function Suppliers() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId } = useTenantContext();
   const { defaultCenter } = useInventoryCenters();
   const qc = useQueryClient();
@@ -107,7 +109,7 @@ export default function Suppliers() {
       const { error } = await supabase.from("suppliers").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Supplier deleted"); qc.invalidateQueries({ queryKey: ["suppliers"] }); },
+    onSuccess: () => { toast.success(tx("Supplier deleted")); qc.invalidateQueries({ queryKey: ["suppliers"] }); },
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 
@@ -128,7 +130,7 @@ export default function Suppliers() {
       }
     },
     onSuccess: () => {
-      toast.success("Purchase order created");
+      toast.success(tx("Purchase order created"));
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       setOrderOpen(false); setOrderSupplierId(""); setOrderNotes(""); setOrderItems([]);
     },
@@ -147,7 +149,7 @@ export default function Suppliers() {
       });
     },
     onSuccess: () => {
-      toast.success("Order received · Inventory updated exactly once");
+      toast.success(tx("Order received · Inventory updated exactly once"));
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       qc.invalidateQueries({ queryKey: ["stocks"] });
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
@@ -183,8 +185,8 @@ export default function Suppliers() {
             <Truck className="h-5 w-5" />
           </div>
           <div>
-            <div className="h-meta g-page-subtitle text-ink-400">INVENTORY · SUPPLIERS</div>
-            <h1 className="h-display g-page-title">Suppliers</h1>
+            <div className="h-meta g-page-subtitle text-ink-400">{tx("INVENTORY · SUPPLIERS")}</div>
+            <h1 className="h-display g-page-title">{tx("Suppliers")}</h1>
             <div className="h-meta g-page-subtitle text-ink-500">
               {suppliers.length} supplier{suppliers.length !== 1 ? "s" : ""}
             </div>
@@ -197,7 +199,7 @@ export default function Suppliers() {
             onClick={() => { setOrderOpen(true); setTab("orders"); }}
           >
             <ShoppingBag className="h-4 w-4" />
-            New purchase order
+            {tx("New purchase order")}
           </button>
           <button
             type="button"
@@ -205,7 +207,7 @@ export default function Suppliers() {
             onClick={() => { setEditingSupplier(null); setSupplierForm(emptySupplier); setSupplierOpen(true); }}
           >
             <Plus className="h-4 w-4" />
-            New supplier
+            {tx("New supplier")}
           </button>
         </div>
       </div>
@@ -233,7 +235,7 @@ export default function Suppliers() {
         <div className="space-y-4">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
-            <Input className="pl-9" placeholder="Search supplier..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input className="pl-9" placeholder={tx("Search supplier...")} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
 
           {filteredSuppliers.length === 0 ? (
@@ -241,9 +243,9 @@ export default function Suppliers() {
               <div className="orb mx-auto mb-4">
                 <Truck className="h-7 w-7" />
               </div>
-              <h2 className="h-display font-semibold text-lg">No suppliers</h2>
+              <h2 className="h-display font-semibold text-lg">{tx("No suppliers")}</h2>
               <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-                Register suppliers to manage purchasing and inventory.
+                {tx("Register suppliers to manage purchasing and inventory.")}
               </p>
             </div>
           ) : (
@@ -269,7 +271,7 @@ export default function Suppliers() {
                   <div className="flex gap-1 justify-end">
                     <button
                       type="button"
-                      aria-label="Edit supplier"
+                      aria-label={tx("Edit supplier")}
                       className="g-btn g-btn-ghost h-8 w-8 p-0 flex items-center justify-center"
                       onClick={() => {
                         setEditingSupplier(s);
@@ -281,7 +283,7 @@ export default function Suppliers() {
                     </button>
                     <button
                       type="button"
-                      aria-label="Delete supplier"
+                      aria-label={tx("Delete supplier")}
                       className="g-btn g-btn-ghost h-8 w-8 p-0 flex items-center justify-center text-g-bad"
                       onClick={() => { if (confirm("Delete supplier?")) removeSupplier.mutate(s.id); }}
                     >
@@ -302,9 +304,9 @@ export default function Suppliers() {
             <div className="orb mx-auto mb-4">
               <ShoppingBag className="h-7 w-7" />
             </div>
-            <h2 className="h-display font-semibold text-lg">No purchase orders</h2>
+            <h2 className="h-display font-semibold text-lg">{tx("No purchase orders")}</h2>
             <p className="h-meta g-page-subtitle text-ink-500 mt-1">
-              Create purchase orders to record purchases from suppliers.
+              {tx("Create purchase orders to record purchases from suppliers.")}
             </p>
           </div>
         ) : (
@@ -325,9 +327,9 @@ export default function Suppliers() {
                 <span className="text-sm tabular-nums text-ink-500">{new Date(o.created_at).toLocaleDateString("en-BH")}</span>
                 <span className="font-medium text-sm text-ink-900">{o.suppliers?.name ?? "No supplier"}</span>
                 <span>
-                  {o.status === "received" && <span className="g-pill g-pill-ok">Received</span>}
-                  {o.status === "cancelled" && <span className="g-pill g-pill-bad">Cancelled</span>}
-                  {o.status === "draft" && <span className="g-pill g-pill-ghost">Borrador</span>}
+                  {o.status === "received" && <span className="g-pill g-pill-ok">{tx("Received")}</span>}
+                  {o.status === "cancelled" && <span className="g-pill g-pill-bad">{tx("Cancelled")}</span>}
+                  {o.status === "draft" && <span className="g-pill g-pill-ghost">{tx("Draft")}</span>}
                 </span>
                 <span className="text-sm text-ink-500">{o.notes ?? "—"}</span>
                 <span className="text-right font-semibold tabular-nums text-sm text-ink-900">{formatCurrency(Number(o.total))}</span>
@@ -339,7 +341,7 @@ export default function Suppliers() {
                       onClick={() => { if (confirm("Mark as received? This will update inventory.")) receiveOrder.mutate(o); }}
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Recibir
+                      {tx("Receive")}
                     </button>
                   )}
                 </div>
@@ -356,7 +358,7 @@ export default function Suppliers() {
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label>Name / Legal name *</Label>
-              <Input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))} placeholder="Distribuidora XYZ" />
+              <Input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))} placeholder={tx("Distribuidora XYZ")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -364,27 +366,27 @@ export default function Suppliers() {
                 <Input value={supplierForm.tax_id} onChange={(e) => setSupplierForm((f) => ({ ...f, tax_id: e.target.value }))} placeholder="900000000-1" />
               </div>
               <div className="space-y-1.5">
-                <Label>Phone</Label>
+                <Label>{tx("Phone")}</Label>
                 <Input value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))} placeholder="310 000 0000" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Contact</Label>
-                <Input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))} placeholder="John Smith" />
+                <Label>{tx("Contact")}</Label>
+                <Input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))} placeholder={tx("John Smith")} />
               </div>
               <div className="space-y-1.5">
-                <Label>Email</Label>
-                <Input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))} placeholder="sales@supplier.com" />
+                <Label>{tx("Email")}</Label>
+                <Input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))} placeholder={tx("sales@supplier.com")} />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label>Payment terms</Label>
-              <Input value={supplierForm.payment_terms} onChange={(e) => setSupplierForm((f) => ({ ...f, payment_terms: e.target.value }))} placeholder="E.g. Net 30, cash, 15-day credit" />
+              <Input value={supplierForm.payment_terms} onChange={(e) => setSupplierForm((f) => ({ ...f, payment_terms: e.target.value }))} placeholder={tx("E.g. Net 30, cash, 15-day credit")} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notes</Label>
-              <Input value={supplierForm.notes} onChange={(e) => setSupplierForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Observaciones adicionales" />
+              <Label>{tx("Notes")}</Label>
+              <Input value={supplierForm.notes} onChange={(e) => setSupplierForm((f) => ({ ...f, notes: e.target.value }))} placeholder={tx("Additional notes")} />
             </div>
             <button
               type="button"
@@ -401,21 +403,21 @@ export default function Suppliers() {
       {/* Purchase order dialog */}
       <Dialog open={orderOpen} onOpenChange={(v) => { setOrderOpen(v); if (!v) { setOrderSupplierId(""); setOrderNotes(""); setOrderItems([]); } }}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>New purchase order</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{tx("New purchase order")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Supplier</Label>
+                <Label>{tx("Supplier")}</Label>
                 <Select value={orderSupplierId} onValueChange={setOrderSupplierId}>
-                  <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={tx("Select supplier")} /></SelectTrigger>
                   <SelectContent>
                     {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Input value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Order notes" />
+                <Label>{tx("Notes")}</Label>
+                <Input value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder={tx("Order notes")} />
               </div>
             </div>
 
@@ -427,25 +429,25 @@ export default function Suppliers() {
                   <Input
                     value={itemProductSearch}
                     onChange={(event) => setItemProductSearch(event.target.value)}
-                    placeholder="Search name, SKU, or supplier barcode"
+                    placeholder={tx("Search name, SKU, or supplier barcode")}
                     className="mb-2"
                   />
                   <Select value={itemProductId} onValueChange={(v) => { setItemProductId(v); const p = products.find((x) => x.id === v); if (p) setItemCost(String(p.cost)); }}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={tx("Select")} /></SelectTrigger>
                     <SelectContent>{matchingProducts.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}{p.sku ? ` · ${p.sku}` : ""}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1 w-24">
-                  <Label className="text-xs">Quantity</Label>
+                  <Label className="text-xs">{tx("Quantity")}</Label>
                   <Input type="number" step="0.001" min="0.001" value={itemQty} onChange={(e) => setItemQty(e.target.value)} placeholder="0" />
                 </div>
                 <div className="space-y-1 w-28">
-                  <Label className="text-xs">Unit cost</Label>
+                  <Label className="text-xs">{tx("Unit cost")}</Label>
                   <Input type="number" step="0.001" min="0" value={itemCost} onChange={(e) => setItemCost(e.target.value)} placeholder="0" />
                 </div>
                 <button
                   type="button"
-                  aria-label="Add product"
+                  aria-label={tx("Add product")}
                   className="g-btn g-btn-ghost"
                   onClick={addOrderItem}
                   disabled={!itemProductId || !itemQty}
@@ -475,7 +477,7 @@ export default function Suppliers() {
                         <TableCell>
                           <button
                             type="button"
-                            aria-label="Remove product"
+                            aria-label={tx("Remove product")}
                             className="g-btn g-btn-ghost h-7 w-7 p-0 flex items-center justify-center text-g-bad"
                             onClick={() => setOrderItems((prev) => prev.filter((_, j) => j !== idx))}
                           >

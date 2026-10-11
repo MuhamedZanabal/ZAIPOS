@@ -1,3 +1,5 @@
+import { AR_SCREENS } from "./ar.screens";
+
 /**
  * Arabic UI strings keyed by the English source text. Missing keys fall back to English,
  * so screens stay usable while translation coverage grows.
@@ -37,4 +39,5 @@ export const AR: Record<string, string> = {
   "Could not complete the sale": "تعذر إتمام البيع",
   "You must open the register before making in-person sales": "يجب فتح الصندوق قبل البيع",
   "The ZAIPOS server is unreachable. This sale is stored on this terminal and will sync automatically.": "خادم ZAIPOS غير متاح. تم حفظ هذا البيع على الجهاز وستتم مزامنته تلقائيًا.",
+  ...AR_SCREENS,
 };

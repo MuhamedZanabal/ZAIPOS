@@ -4,7 +4,7 @@ ZAIPOS user-facing interface text is authored in English. English is the source 
 
 Arabic is available as a second UI language (Sidebar → Language). Arabic strings live in `src/i18n/ar.ts`, keyed by the English source text; `translate()` / `useT()` fall back to English for any string not yet translated, so partial coverage never blanks a screen. Selecting Arabic sets `<html dir="rtl" lang="ar-BH">`.
 
-Coverage today: navigation, POS register/search/ticket, payment dialog, cash register tabs and Z-report. Other screens still render English.
+Coverage: navigation, POS, payment, cash, Z-report, products, categories, catalog, inventory, reports, settings, customers, suppliers, expenses, tables, KDS, delivery and the setup wizard. `scripts/audit-arabic.mjs` (run by the localization audit) fails CI when a translated string has no Arabic entry or is Spanish residue. Strings built in module-level constants are not yet covered.
 
 Receipts and tax invoices stay English (permitted by the NBR VAT regulations, which accept Arabic or English) because the ESC/POS text path cannot print Arabic glyphs; bilingual printed receipts need raster printing.
 

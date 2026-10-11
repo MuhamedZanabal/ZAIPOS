@@ -109,3 +109,4 @@ if (failures.length) {
 }
 
 console.log("PASS: active repository surfaces are ZAIPOS-branded, English-facing, and Bahrain-native.");
+await import("./audit-arabic.mjs");

@@ -11,6 +11,7 @@ import {
   normalizeBahrainChannels,
   type SalesChannel,
 } from "@/lib/channels";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const ICONS: Record<SalesChannel, React.ReactNode> = {
   pos: <Store className="h-4 w-4" />,
@@ -29,6 +30,7 @@ const DESCRIPTIONS: Record<SalesChannel, string> = {
 };
 
 export default function SalesChannelsSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, hasRole, businessMode } = useTenantContext();
   const qc = useQueryClient();
   const isSuperAdmin = hasRole("super_admin");
@@ -61,7 +63,7 @@ export default function SalesChannelsSettings() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Bahrain sales channels updated");
+      toast.success(tx("Bahrain sales channels updated"));
       qc.invalidateQueries({ queryKey: ["tenant-channels"] });
       qc.invalidateQueries({ queryKey: ["my-roles"] });
     },
@@ -70,7 +72,7 @@ export default function SalesChannelsSettings() {
 
   const toggleChannel = (channel: SalesChannel, enabled: boolean) => {
     if (!isSuperAdmin) {
-      toast.error("Only a super administrator can change sales channels.");
+      toast.error(tx("Only a super administrator can change sales channels."));
       return;
     }
 
@@ -85,7 +87,7 @@ export default function SalesChannelsSettings() {
     updateChannels.mutate(normalized);
   };
 
-  if (isLoading) return <div className="h-meta">Loading...</div>;
+  if (isLoading) return <div className="h-meta">{tx("Loading...")}</div>;
 
   return (
     <div className="space-y-6">
@@ -93,10 +95,10 @@ export default function SalesChannelsSettings() {
         <div>
           <h2 className="font-bold flex items-center gap-2 text-ink-900">
             <Store className="h-5 w-5 text-brand-600" />
-            Bahrain Sales Channels
+            {tx("Bahrain Sales Channels")}
           </h2>
           <p className="h-meta mt-1 max-w-3xl">
-            ZAIPOS exposes only Bahrain-relevant active channels in the Bahrain-native interface.
+            {tx("ZAIPOS exposes only Bahrain-relevant active channels in the Bahrain-native interface.")}
           </p>
         </div>
 
@@ -124,7 +126,7 @@ export default function SalesChannelsSettings() {
                 <p className="h-meta">{DESCRIPTIONS[channel.id]}</p>
                 {channel.id === "talabat" && (
                   <p className="text-xs text-muted-foreground">
-                    ZAIPOS does not fabricate marketplace API access. Configure external connectivity only after Talabat provides the required partner contract and credentials.
+                    {tx("ZAIPOS does not fabricate marketplace API access. Configure external connectivity only after Talabat provides the required partner contract and credentials.")}
                   </p>
                 )}
               </div>

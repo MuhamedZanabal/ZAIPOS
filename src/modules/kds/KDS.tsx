@@ -7,6 +7,7 @@ import { ChefHat, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { transitionTableItem } from "@/lib/tableKitchen";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 type TableItemStatus = Database["public"]["Enums"]["table_item_status"];
 
@@ -154,10 +155,10 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
                 )}
                 {item.notes && <div className="g-kds-item-mods">{item.notes}</div>}
               </div>
-              {ready && <span className="pill pill-ok g-kds-pill-micro">Ready</span>}
-              {preparing && <span className="pill pill-warn g-kds-pill-micro">Prep.</span>}
+              {ready && <span className="pill pill-ok g-kds-pill-micro">{tx("Ready")}</span>}
+              {preparing && <span className="pill pill-warn g-kds-pill-micro">{tx("Prep.")}</span>}
               {item.status === "pending" && (
-                <span className="pill pill-ghost g-kds-pill-micro">Pending</span>
+                <span className="pill pill-ghost g-kds-pill-micro">{tx("Pending")}</span>
               )}
             </div>
           );
@@ -186,6 +187,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
 }
 
 export default function KDS() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId } = useTenantContext();
   const qc = useQueryClient();
   const [station, setStation] = useState(() => localStorage.getItem("kds_station") || "Todas");
@@ -284,7 +286,7 @@ export default function KDS() {
   }, [filtered, now, soundOn]);
 
   const markPreparing = async (itemId: string) => {
-    if (!tenantId || !branchId) return toast.error("Kitchen branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Kitchen branch scope is unavailable"));
     try {
       await transitionTableItem({ tenantId, branchId, itemId, action:"start_preparing" });
       qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
@@ -292,7 +294,7 @@ export default function KDS() {
   };
 
   const markDispatched = async (itemId: string) => {
-    if (!tenantId || !branchId) return toast.error("Kitchen branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Kitchen branch scope is unavailable"));
     try {
       await transitionTableItem({ tenantId, branchId, itemId, action:"mark_ready" });
       qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
@@ -310,7 +312,7 @@ export default function KDS() {
       {/* Header */}
       <div className="g-kds-header">
         <div className="g-kds-header-info">
-          <div className="h-display g-page-title">Kitchen KDS</div>
+          <div className="h-display g-page-title">{tx("Kitchen KDS")}</div>
           <div className="h-meta g-page-subtitle">Active station · {STATIONS.find((s) => s.value === station)?.label ?? station}</div>
         </div>
 
@@ -334,7 +336,7 @@ export default function KDS() {
 
         <div className="glass g-kds-header-stat">
           <div className="g-kds-header-stat-inner">
-            <div className="g-kds-header-stat-label">In progress</div>
+            <div className="g-kds-header-stat-label">{tx("In progress")}</div>
             <div className="h-num g-kds-count-val">{orderCount}</div>
           </div>
         </div>
@@ -374,8 +376,8 @@ export default function KDS() {
           <div className="orb g-kds-empty-orb">
             <ChefHat size={32} />
           </div>
-          <p className="h-display g-kds-empty-title">No pending orders</p>
-          <p className="h-meta">Kitchen is up to date</p>
+          <p className="h-display g-kds-empty-title">{tx("No pending orders")}</p>
+          <p className="h-meta">{tx("Kitchen is up to date")}</p>
         </div>
       )}
 

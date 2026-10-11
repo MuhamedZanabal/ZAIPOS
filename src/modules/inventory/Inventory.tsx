@@ -21,6 +21,7 @@ import { InvoiceOCRDialog } from "./components/InvoiceOCRDialog";
 import { TransferDialog } from "./components/TransferDialog";
 import { EanImportDialog } from "./components/EanImportDialog";
 import "./inventory.css";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const MOVE_TYPES = ["purchase", "adjustment", "waste", "return"] as const;
 
@@ -72,6 +73,7 @@ function Sparkline({ data }: { data: number[] }) {
 type TabId = "stock" | "forecast" | "history" | "centers";
 
 export default function Inventory() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId } = useTenantContext();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -179,9 +181,9 @@ export default function Inventory() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="h-label mb-1 inv-eyebrow">
-            Inventory · Stock
+            {tx("Inventory · Stock")}
           </div>
-          <h1 className="h-display inv-page-title">Inventory</h1>
+          <h1 className="h-display inv-page-title">{tx("Inventory")}</h1>
           <div className="h-meta mt-1">
             {activeStocks.length} active products
             {lowStock.length > 0 && <> · <span className="inv-warn-text">{lowStock.length} below minimum</span></>}
@@ -194,7 +196,7 @@ export default function Inventory() {
           {/* EAN */}
           <Dialog open={openEAN} onOpenChange={setOpenEAN}>
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpenEAN(true)}>
-              <Barcode size={15} /> Cargar por EAN
+              <Barcode size={15} /> {tx("Load by EAN")}
             </button>
             <EanImportDialog
               tenantId={tenantId!} branchId={branchId!} userId={user!.id}
@@ -213,7 +215,7 @@ export default function Inventory() {
           {/* OCR Invoice */}
           <Dialog open={openOCR} onOpenChange={setOpenOCR}>
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpenOCR(true)}>
-              <FileText size={15} /> Upload Invoice (AI)
+              <FileText size={15} /> {tx("Upload Invoice (AI)")}
             </button>
             <InvoiceOCRDialog
               tenantId={tenantId!} branchId={branchId!} userId={user!.id}
@@ -230,7 +232,7 @@ export default function Inventory() {
           {/* Transfer */}
           <Dialog open={openTransfer} onOpenChange={setOpenTransfer}>
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setOpenTransfer(true)}>
-              <ArrowRightLeft size={15} /> Transferir
+              <ArrowRightLeft size={15} /> {tx("Transfer")}
             </button>
             <TransferDialog
               tenantId={tenantId!} branchId={branchId!} userId={user!.id}
@@ -247,7 +249,7 @@ export default function Inventory() {
           {/* Provision */}
           <Dialog open={open} onOpenChange={setOpen}>
             <button type="button" className="g-btn g-btn-primary" onClick={() => setOpen(true)}>
-              <PackagePlus size={15} /> Receive stock
+              <PackagePlus size={15} /> {tx("Receive stock")}
             </button>
             <MovementDialog
               tenantId={tenantId!} branchId={branchId!} userId={user!.id}
@@ -269,7 +271,7 @@ export default function Inventory() {
         {/* Total SKUs */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
-            <span className="h-label">Total SKUs</span>
+            <span className="h-label">{tx("Total SKUs")}</span>
             <div className="orb g-orb-38 orb-sq"><Package size={16} /></div>
           </div>
           <div className="g-num-28">{activeStocks.length}</div>
@@ -279,7 +281,7 @@ export default function Inventory() {
         {/* Low stock */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
-            <span className="h-label">Low stock</span>
+            <span className="h-label">{tx("Low stock")}</span>
             <div className="orb g-orb-38 orb-sq inv-orb-warn">
               <AlertTriangle size={15} />
             </div>
@@ -293,7 +295,7 @@ export default function Inventory() {
         {/* Out of stock */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
-            <span className="h-label">Out of stock</span>
+            <span className="h-label">{tx("Out of stock")}</span>
             <div className="orb g-orb-38 orb-sq inv-orb-bad">
               <Package size={15} />
             </div>
@@ -307,7 +309,7 @@ export default function Inventory() {
         {/* Inventory value */}
         <div className="glass g-kpi">
           <div className="flex items-center justify-between">
-            <span className="h-label">Unidades totales</span>
+            <span className="h-label">{tx("Total units")}</span>
             <div className="orb g-orb-38 orb-sq"><TrendingUp size={15} /></div>
           </div>
           <div className="g-num-28">{totalValue.toLocaleString("en-BH", { maximumFractionDigits: 0 })}</div>
@@ -317,16 +319,16 @@ export default function Inventory() {
         {/* Transfer card — wide */}
         <div className="glass g-kpi inv-card-transfer">
           <div className="flex items-center justify-between">
-            <span className="h-label">Quick transfer</span>
+            <span className="h-label">{tx("Quick transfer")}</span>
             <div className="orb g-orb-38 orb-sq"><ArrowRightLeft size={15} /></div>
           </div>
-          <div className="g-num-20 text-ink-700">Move stock between centers</div>
+          <div className="g-num-20 text-ink-700">{tx("Move stock between centers")}</div>
           <div className="flex gap-2 mt-1">
             <button type="button" className="g-btn g-btn-primary inv-btn-sm" onClick={() => setOpenTransfer(true)}>
-              <ArrowRightLeft size={13} /> Transferir ahora
+              <ArrowRightLeft size={13} /> {tx("Transfer now")}
             </button>
             <button type="button" className="g-btn g-btn-ghost inv-btn-sm" onClick={() => setActiveTab("centers")}>
-              <Settings2 size={13} /> Ver centros
+              <Settings2 size={13} /> {tx("View centers")}
             </button>
           </div>
         </div>
@@ -365,10 +367,10 @@ export default function Inventory() {
           <span className="h-label hidden md:block">Center:</span>
           <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
             <SelectTrigger className="h-8 text-xs bg-white/60 border-white/70 inv-select-trigger">
-              <SelectValue placeholder="All centers" />
+              <SelectValue placeholder={tx("All centers")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All centers</SelectItem>
+              <SelectItem value="all">{tx("All centers")}</SelectItem>
               {centers.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
@@ -388,7 +390,7 @@ export default function Inventory() {
               <Search size={14} className="inv-ink-400 flex-shrink-0" />
               <input
                 className="bg-transparent border-none outline-none text-sm flex-1 inv-search-input"
-                placeholder="Search product..."
+                placeholder={tx("Search product...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -507,9 +509,9 @@ export default function Inventory() {
                     {/* Status badge */}
                     <div>
                       {isOut ? (
-                        <span className="g-pill g-pill-bad inv-text-10">Out of stock</span>
+                        <span className="g-pill g-pill-bad inv-text-10">{tx("Out of stock")}</span>
                       ) : isLow ? (
-                        <span className="g-pill g-pill-warn inv-text-10">Bajo</span>
+                        <span className="g-pill g-pill-warn inv-text-10">{tx("Low")}</span>
                       ) : (
                         <span className="g-pill g-pill-ok inv-text-10">OK</span>
                       )}
@@ -642,11 +644,11 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
   return (
     <div className="glass overflow-hidden">
       <div className="grid items-center px-5 py-3 inv-forecast-grid inv-table-header">
-        <span className="h-label">Product</span>
-        <span className="h-label">Current stock</span>
-        <span className="h-label">Sales/day (30d)</span>
-        <span className="h-label">Days remaining</span>
-        <span className="h-label">Alerta</span>
+        <span className="h-label">{tx("Product")}</span>
+        <span className="h-label">{tx("Current stock")}</span>
+        <span className="h-label">{tx("Sales/day (30d)")}</span>
+        <span className="h-label">{tx("Days remaining")}</span>
+        <span className="h-label">{tx("Alert")}</span>
       </div>
 
       {rows.map((r: any) => {
@@ -668,9 +670,9 @@ function ForecastTab({ branchId, stocks }: { branchId: string; stocks: any[] }) 
             </span>
             <span>
               {urgent ? (
-                <span className="g-pill g-pill-bad inv-text-10">Urgente ≤7d</span>
+                <span className="g-pill g-pill-bad inv-text-10">{tx("Urgent ≤7d")}</span>
               ) : warning ? (
-                <span className="g-pill g-pill-warn inv-text-10">≤14 days</span>
+                <span className="g-pill g-pill-warn inv-text-10">{tx("≤14 days")}</span>
               ) : (
                 <span className="g-pill g-pill-ok inv-text-10">OK</span>
               )}
@@ -705,9 +707,9 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productId) return toast.error("Select a product");
-    if (!centerId) return toast.error("Select the inventory center");
-    if (!qty || Number(qty) <= 0) return toast.error("Invalid quantity");
+    if (!productId) return toast.error(tx("Select a product"));
+    if (!centerId) return toast.error(tx("Select the inventory center"));
+    if (!qty || Number(qty) <= 0) return toast.error(tx("Invalid quantity"));
     setSaving(true);
     try {
       await recordInventoryBatchV2({
@@ -724,7 +726,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
         reason: reason.trim() || `Entrada manual — ${MOVE_TYPE_LABELS[type]}`,
       });
       setClientMutationId(createInventoryMutationId("manual-inventory"));
-      toast.success("Movement recorded successfully");
+      toast.success(tx("Movement recorded successfully"));
       onClose();
     } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
@@ -766,7 +768,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search by name or SKU..."
+              placeholder={tx("Search by name or SKU...")}
               value={productSearch}
               onChange={(e) => { setProductSearch(e.target.value); setProductId(""); }}
             />
@@ -781,7 +783,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
           ) : productSearch.length > 0 && (
             <div className="border rounded-md max-h-48 overflow-y-auto">
               {filteredProducts.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-muted-foreground text-center">No results</p>
+                <p className="px-3 py-4 text-sm text-muted-foreground text-center">{tx("No results")}</p>
               ) : filteredProducts.slice(0, 20).map((p: any) => (
                 <button
                   key={p.id} type="button"
@@ -800,7 +802,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
         <div className="space-y-1.5">
           <Label>Inventory center</Label>
           <Select value={centerId} onValueChange={setCenterId}>
-            <SelectTrigger><SelectValue placeholder="Select the center..." /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={tx("Select the center...")} /></SelectTrigger>
             <SelectContent>
               {(centers as any[]).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
@@ -823,7 +825,7 @@ function MovementDialog({ tenantId, branchId, products, centers, defaultCenterId
           <Label>Reason <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Textarea
             value={reason} onChange={(e) => setReason(e.target.value)}
-            placeholder="E.g. Supplier purchase, physical count, etc."
+            placeholder={tx("E.g. Supplier purchase, physical count, etc.")}
             rows={2}
           />
         </div>

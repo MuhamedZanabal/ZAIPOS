@@ -22,6 +22,7 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { hasCapability } from "@/lib/business-modes";
 import { isWeighedProduct, WEIGHT_UNIT } from "@/lib/weighedItems";
 import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
+import { translate as tx } from "@/i18n";
 
 
 const TYPES = ["simple", "composite", "production", "combo", "ingredient", "modifier"] as const;
@@ -140,7 +141,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             <div className="flex items-center gap-2">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium text-sm">{g.name}</span>
-              {g.required && <span className="g-pill g-pill-bad g-pill-h22">Required</span>}
+              {g.required && <span className="g-pill g-pill-bad g-pill-h22">{tx("Required")}</span>}
               <span className="g-pill g-pill-ghost g-pill-h22">max {g.max_selections}</span>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -171,7 +172,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             {addingOption === g.id ? (
               <div className="flex gap-2 mt-1">
                 <Input
-                  placeholder="Option name"
+                  placeholder={tx("Option name")}
                   value={optionName}
                   onChange={e => setOptionName(e.target.value)}
                   className="h-7 text-sm"
@@ -180,7 +181,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
                 />
                 <Input
                   type="number"
-                  placeholder="+ price"
+                  placeholder={tx("+ price")}
                   value={optionPrice}
                   onChange={e => setOptionPrice(e.target.value)}
                   className="h-7 text-sm w-24"
@@ -192,7 +193,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             ) : (
               <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground"
                 onClick={() => setAddingOption(g.id)}>
-                <Plus className="h-3 w-3 mr-1" /> Add option
+                <Plus className="h-3 w-3 mr-1" /> {tx("Add option")}
               </Button>
             )}
           </div>
@@ -204,7 +205,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
         <p className="text-xs font-medium text-muted-foreground">New modifier group</p>
         <div className="flex gap-2">
           <Input
-            placeholder="Group name (e.g. Add-ons)"
+            placeholder={tx("Group name (e.g. Add-ons)")}
             value={newGroupName}
             onChange={e => setNewGroupName(e.target.value)}
             className="h-8 text-sm"
@@ -216,16 +217,16 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             value={newMax}
             onChange={e => setNewMax(Number(e.target.value))}
             className="h-8 text-sm w-20"
-            title="Maximum selections"
+            title={tx("Maximum selections")}
           />
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Switch checked={newRequired} onCheckedChange={setNewRequired} id="req-switch" />
-            <Label htmlFor="req-switch" className="text-xs">Required</Label>
+            <Label htmlFor="req-switch" className="text-xs">{tx("Required")}</Label>
           </div>
           <Button size="sm" onClick={addGroup} disabled={!newGroupName.trim()} className="h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" /> Create group
+            <Plus className="h-3 w-3 mr-1" /> {tx("Create group")}
           </Button>
         </div>
       </div>
@@ -282,8 +283,8 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
         When this product is added to the cart, the POS will suggest these complementary products.
       </p>
       <div className="space-y-1.5">
-        <Label className="text-xs">Search product to add</Label>
-        <Input placeholder="Product name..." value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
+        <Label className="text-xs">{tx("Search product to add")}</Label>
+        <Input placeholder={tx("Product name...")} value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
         {searchResults.length > 0 && (
           <div className="border rounded-lg divide-y">
             {searchResults.map((p: any) => (
@@ -300,7 +301,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
       </div>
 
       {linked.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">No complementary products defined.</p>
+        <p className="text-xs text-muted-foreground text-center py-4">{tx("No complementary products defined.")}</p>
       ) : (
         <div className="space-y-1.5">
           <Label className="text-xs">Complementarios actuales</Label>
@@ -344,10 +345,10 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const handleImageUpload = async (file: File) => {
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      return toast.error("Only JPEG, PNG, or WebP images are allowed");
+      return toast.error(tx("Only JPEG, PNG, or WebP images are allowed"));
     }
     if (file.size > 5 * 1024 * 1024) {
-      return toast.error("The image cannot exceed 5 MB");
+      return toast.error(tx("The image cannot exceed 5 MB"));
     }
     setUploadingImage(true);
     try {
@@ -361,7 +362,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         .from('product-images')
         .getPublicUrl(path);
       setForm((f: any) => ({ ...f, image_url: publicUrl }));
-      toast.success("Image uploaded");
+      toast.success(tx("Image uploaded"));
     } catch (err: any) {
       toast.error(err.message ?? "Error uploading image");
     } finally {
@@ -515,15 +516,15 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
       <Tabs defaultValue="basic">
         <TabsList>
           <TabsTrigger value="basic">Information</TabsTrigger>
-          {showRecipe && <TabsTrigger value="recipe">Recipe</TabsTrigger>}
-          {showModifiers && <TabsTrigger value="modifiers">Modifiers</TabsTrigger>}
-          {showComplementaries && <TabsTrigger value="complementaries">Upselling</TabsTrigger>}
-          {editing?.id && <TabsTrigger value="financial-history">Price history</TabsTrigger>}
+          {showRecipe && <TabsTrigger value="recipe">{tx("Recipe")}</TabsTrigger>}
+          {showModifiers && <TabsTrigger value="modifiers">{tx("Modifiers")}</TabsTrigger>}
+          {showComplementaries && <TabsTrigger value="complementaries">{tx("Upselling")}</TabsTrigger>}
+          {editing?.id && <TabsTrigger value="financial-history">{tx("Price history")}</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="basic" className="mt-4">
           <form onSubmit={submit} className="space-y-3">
-            <div className="space-y-1.5"><Label>Name</Label>
+            <div className="space-y-1.5"><Label>{tx("Name")}</Label>
               <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
 
@@ -535,8 +536,8 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="hidden"
-                aria-label="Upload product photo"
-                title="Upload product photo"
+                aria-label={tx("Upload product photo")}
+                title={tx("Upload product photo")}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
               />
               {form.image_url ? (
@@ -546,7 +547,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                     type="button"
                     onClick={() => setForm((f: any) => ({ ...f, image_url: null }))}
                     className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
-                    title="Remove image"
+                    title={tx("Remove image")}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -579,7 +580,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               <Textarea
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="E.g. Double burger with cheddar cheese, lettuce, and tomato..."
+                placeholder={tx("E.g. Double burger with cheddar cheese, lettuce, and tomato...")}
                 rows={2}
               />
             </div>
@@ -587,12 +588,12 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               <div className="space-y-1.5">
                 <Label>Category</Label>
                 <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v || null })}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={tx("Select...")} /></SelectTrigger>
                   <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Type</Label>
+                <Label>{tx("Type")}</Label>
                 <Select value={form.product_type} onValueChange={(v) => setForm({ ...form, product_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
@@ -606,13 +607,13 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                   financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
                 }} />
               </div>
-              <div className="space-y-1.5"><Label>Cost</Label>
+              <div className="space-y-1.5"><Label>{tx("Cost")}</Label>
                 <Input type="number" step="0.001" min="0" value={form.cost} onChange={(e) => {
                   setForm({ ...form, cost: e.target.value });
                   financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
                 }} />
               </div>
-              <div className="space-y-1.5"><Label>VAT %</Label>
+              <div className="space-y-1.5"><Label>{tx("VAT %")}</Label>
                 <Input type="number" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
               </div>
             </div>
@@ -625,27 +626,27 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                     setFinancialReason(event.target.value);
                     financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
                   }}
-                  placeholder="Required when selling price or cost changes"
+                  placeholder={tx("Required when selling price or cost changes")}
                   rows={2}
                 />
-                <p className="text-xs text-muted-foreground">Price and cost changes are retained in the exact-fils history ledger.</p>
+                <p className="text-xs text-muted-foreground">{tx("Price and cost changes are retained in the exact-fils history ledger.")}</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>SKU</Label>
                 <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
               </div>
-              <div className="space-y-1.5"><Label>Minimum stock</Label>
+              <div className="space-y-1.5"><Label>{tx("Minimum stock")}</Label>
                 <Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
               </div>
             </div>
             {hasCapability(businessMode, "weighed_items") && (
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <Label htmlFor="sold-by-weight">Sold by weight (kg)</Label>
+                  <Label htmlFor="sold-by-weight">{tx("Sold by weight (kg)")}</Label>
                   <p className="text-xs text-muted-foreground">Price is per kg; the cashier enters the weight (up to 3 decimals) at the till.</p>
                 </div>
-                <Switch id="sold-by-weight" aria-label="Sold by weight" checked={isWeighedProduct(form)}
+                <Switch id="sold-by-weight" aria-label={tx("Sold by weight")} checked={isWeighedProduct(form)}
                   onCheckedChange={(on) => setForm({ ...form, unit_code: on ? WEIGHT_UNIT : "unit" })} />
               </div>
             )}
@@ -654,9 +655,9 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             <div className="space-y-1.5">
               <Label>KDS station</Label>
               <Select value={form.station ?? "none"} onValueChange={(v) => setForm({ ...form, station: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Unassigned (Kitchen by default)" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx("Unassigned (Kitchen by default)")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
+                  <SelectItem value="none">{tx("Unassigned")}</SelectItem>
                   {KDS_STATIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -686,7 +687,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               <Switch checked={!!form.requires_detail} onCheckedChange={(c) => setForm({ ...form, requires_detail: c })} />
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label>Active</Label>
+              <Label>{tx("Active")}</Label>
               <Switch checked={form.status === "active"} onCheckedChange={(c) => setForm({ ...form, status: c ? "active" : "inactive" })} />
             </div>
             <Button type="submit" className="w-full h-12" disabled={saving}>
@@ -719,7 +720,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         {editing?.id && (
           <TabsContent value="financial-history" className="mt-4 space-y-2">
             {financialHistory.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">No financial history is available.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">{tx("No financial history is available.")}</p>
             ) : financialHistory.map((entry) => (
               <div key={entry.id} className="rounded-lg border p-3 text-sm flex items-start justify-between gap-4">
                 <div>

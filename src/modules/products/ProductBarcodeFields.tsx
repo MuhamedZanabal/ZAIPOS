@@ -10,6 +10,7 @@ import {
   type ProductBarcode,
   type ProductBarcodeType,
 } from "@/lib/productBarcodes";
+import { translate as tx } from "@/i18n";
 
 const TYPE_LABELS: Record<ProductBarcodeType, string> = {
   ean_8: "EAN-8",
@@ -59,13 +60,13 @@ export function ProductBarcodeFields({ barcodes, issues, scanning, onChange, onS
             <ScanBarcode className="h-4 w-4 mr-1" />{scanning ? "Waiting…" : "Scan"}
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={add}>
-            <Plus className="h-4 w-4 mr-1" />Add code
+            <Plus className="h-4 w-4 mr-1" />{tx("Add code")}
           </Button>
         </div>
       </div>
 
       {barcodes.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground text-center">No barcode assigned.</div>
+        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground text-center">{tx("No barcode assigned.")}</div>
       ) : barcodes.map((entry, index) => {
         const issue = issues.find((candidate) => candidate.input_index === index && candidate.state !== "valid");
         return (
@@ -74,7 +75,7 @@ export function ProductBarcodeFields({ barcodes, issues, scanning, onChange, onS
               <Input
                 aria-label={`Barcode ${index + 1}`}
                 className="font-mono"
-                placeholder="Type or scan a code"
+                placeholder={tx("Type or scan a code")}
                 value={entry.barcode}
                 onBlur={() => update(index, { barcode: normalizeBarcode(entry.barcode) })}
                 onChange={(event) => update(index, { barcode: event.target.value })}

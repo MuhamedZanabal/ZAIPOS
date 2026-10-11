@@ -10,6 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { translate as tx } from "@/i18n";
 
 const FEATURE_LABEL: Record<string, string> = {
   tables: "tables", waiter: "waiter screen", kds: "kitchen screen", recipes: "recipes", modifiers: "modifiers",
@@ -62,12 +63,12 @@ export function BusinessTypeSettings() {
               <div className="space-y-2 text-sm">
                 {target && gained(target).length > 0 && <p>Adds: {gained(target).join(", ")}.</p>}
                 {target && lost(target).length > 0 && <p>Hides: {lost(target).join(", ")}. Nothing is deleted; switching back shows them again.</p>}
-                <p>Open table orders must be closed before switching to a type without tables.</p>
+                <p>{tx("Open table orders must be closed before switching to a type without tables.")}</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving}>{tx("Cancel")}</AlertDialogCancel>
             <AlertDialogAction disabled={saving} onClick={(e) => { e.preventDefault(); void confirm(); }}>Change business type</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

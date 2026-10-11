@@ -27,6 +27,7 @@ import {
   MonitorCog,
   ChevronRight,
 } from "lucide-react";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const TABS = [
   { id: "business", label: "My Business", icon: Building2 },
@@ -46,6 +47,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function Settings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const [active, setActive] = useState<TabId>("business");
 
   return (
@@ -69,7 +71,7 @@ export default function Settings() {
           );
         })}
         <div className="g-cfg-nav-hint glass-thin">
-          Changes are applied to this branch in real time.
+          {tx("Changes are applied to this branch in real time.")}
         </div>
       </div>
 

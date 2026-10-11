@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { formatCurrency } from "@/lib/format";
 import { TrendingUp, Receipt, ShoppingBag, Package, Download, Calendar, Banknote } from "lucide-react";
 import { toast } from "sonner";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 interface CashTillSession {
   id: string;
@@ -39,6 +40,7 @@ interface CashTillIntelligence {
 const filsToBhd = (fils: number | null | undefined) => (fils ?? 0) / 1000;
 
 export default function Reports() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { branchId } = useTenantContext();
   const [dateFrom, setDateFrom] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
@@ -132,7 +134,7 @@ export default function Reports() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("File exported successfully");
+    toast.success(tx("File exported successfully"));
   };
 
   const cashTill = data?.cashTill;
@@ -141,8 +143,8 @@ export default function Reports() {
     <div className="flex flex-col gap-4">
       <PageHeader
         eyebrow="SYSTEM · ANALYTICS"
-        title="Advanced Reports"
-        description="Analyze branch performance and authoritative till close evidence"
+        title={tx("Advanced Reports")}
+        description={tx("Analyze branch performance and authoritative till close evidence")}
         actions={
           <div className="flex items-center gap-2 glass rounded-xl px-3 py-1.5">
             <Calendar className="h-4 w-4 text-ink-500" />
@@ -175,15 +177,15 @@ export default function Reports() {
           <div className="flex items-center gap-2.5">
             <div className="orb g-orb-32"><Banknote size={14} /></div>
             <div>
-              <div className="h-meta uppercase tracking-wider">AUTHORITATIVE · CLOSED SESSIONS</div>
-              <div className="h-label font-semibold text-ink-900 text-sm">Cash / Till Intelligence</div>
+              <div className="h-meta uppercase tracking-wider">{tx("AUTHORITATIVE · CLOSED SESSIONS")}</div>
+              <div className="h-label font-semibold text-ink-900 text-sm">{tx("Cash / Till Intelligence")}</div>
             </div>
           </div>
           <div className="h-meta">{cashTill?.closed_session_count ?? 0} closes</div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 border-b border-[var(--hairline)]">
           <div className="glass-thin rounded-xl p-3">
-            <div className="h-meta uppercase tracking-wider">Expected total</div>
+            <div className="h-meta uppercase tracking-wider">{tx("Expected total")}</div>
             <div className="h-num g-val-20 mt-1">{formatCurrency(filsToBhd(cashTill?.expected_amount_fils))}</div>
           </div>
           <div className="glass-thin rounded-xl p-3">
@@ -196,7 +198,7 @@ export default function Reports() {
           </div>
         </div>
         <div className="grid grid-cols-[1fr_130px_130px_120px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]">
-          <div>Closed</div><div className="text-right">Expected</div><div className="text-right">Counted cash</div><div className="text-right">Variance</div>
+          <div>{tx("Closed")}</div><div className="text-right">{tx("Expected")}</div><div className="text-right">{tx("Counted cash")}</div><div className="text-right">{tx("Variance")}</div>
         </div>
         <div className="divide-y divide-[var(--hairline)]">
           {(cashTill?.sessions ?? []).map((session) => (
@@ -214,10 +216,10 @@ export default function Reports() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="glass rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
-            <div className="flex items-center gap-2.5"><div className="orb g-orb-32"><TrendingUp size={14} /></div><div><div className="h-meta uppercase tracking-wider">SELECTED PERIOD</div><div className="h-label font-semibold text-ink-900 text-sm">Sales by day</div></div></div>
-            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => exportCSV("days")} disabled={!data?.days.length}><Download size={13} className="mr-1" /> Export</button>
+            <div className="flex items-center gap-2.5"><div className="orb g-orb-32"><TrendingUp size={14} /></div><div><div className="h-meta uppercase tracking-wider">{tx("SELECTED PERIOD")}</div><div className="h-label font-semibold text-ink-900 text-sm">{tx("Sales by day")}</div></div></div>
+            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => exportCSV("days")} disabled={!data?.days.length}><Download size={13} className="mr-1" /> {tx("Export")}</button>
           </div>
-          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]"><div>Date</div><div className="text-right">Tickets</div><div className="text-right">Total</div></div>
+          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]"><div>{tx("Date")}</div><div className="text-right">{tx("Tickets")}</div><div className="text-right">{tx("Total")}</div></div>
           <div className="divide-y divide-[var(--hairline)]">
             {(data?.days ?? []).map((day) => <div key={day.date} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm"><div className="font-medium text-ink-900">{new Date(day.date).toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short" })}</div><div className="text-right tabular-nums text-ink-500">{day.tickets}</div><div className="text-right tabular-nums font-bold text-ink-900">{formatCurrency(day.total)}</div></div>)}
             {(!data?.days.length) && <div className="px-5 py-10 text-center h-meta italic">{isLoading ? "Loading…" : "No activity in this period"}</div>}
@@ -226,10 +228,10 @@ export default function Reports() {
 
         <div className="glass rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--hairline)]">
-            <div className="flex items-center gap-2.5"><div className="orb g-orb-32"><Package size={14} /></div><div><div className="h-meta uppercase tracking-wider">RANKING</div><div className="h-label font-semibold text-ink-900 text-sm">Top-selling products</div></div></div>
-            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => exportCSV("products")} disabled={!data?.top.length}><Download size={13} className="mr-1" /> Export</button>
+            <div className="flex items-center gap-2.5"><div className="orb g-orb-32"><Package size={14} /></div><div><div className="h-meta uppercase tracking-wider">{tx("RANKING")}</div><div className="h-label font-semibold text-ink-900 text-sm">{tx("Top-selling products")}</div></div></div>
+            <button type="button" className="g-btn g-btn-ghost g-btn-sm" onClick={() => exportCSV("products")} disabled={!data?.top.length}><Download size={13} className="mr-1" /> {tx("Export")}</button>
           </div>
-          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]"><div>Product</div><div className="text-right">Units</div><div className="text-right">Total</div></div>
+          <div className="grid grid-cols-[1fr_80px_110px] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500 border-b border-[var(--hairline)]"><div>{tx("Product")}</div><div className="text-right">{tx("Units")}</div><div className="text-right">{tx("Total")}</div></div>
           <div className="divide-y divide-[var(--hairline)]">
             {(data?.top ?? []).map((product) => <div key={product.name} className="grid grid-cols-[1fr_80px_110px] items-center px-5 py-3 text-sm"><div className="font-medium text-ink-900 truncate">{product.name}</div><div className="text-right tabular-nums text-ink-500 font-bold">{product.qty.toFixed(0)}</div><div className="text-right tabular-nums font-bold text-brand-600">{formatCurrency(product.total)}</div></div>)}
             {(!data?.top.length) && <div className="px-5 py-10 text-center h-meta italic">{isLoading ? "Loading…" : "No products sold"}</div>}
@@ -242,16 +244,16 @@ export default function Reports() {
           <div className="h-meta uppercase tracking-wider mb-4">MIX · PAYMENT METHODS</div>
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(data?.byMethod ?? {}).map(([method, total]) => <div key={method} className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{method}</div><div className="h-num g-val-18">{formatCurrency(total)}</div></div>)}
-            {Object.keys(data?.byMethod ?? {}).length === 0 && <div className="col-span-full text-center h-meta py-6">No payments recorded</div>}
-            {(data?.refundTotal ?? 0) > 0 && <div className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">Refunds</div><div className="h-num g-val-18">−{formatCurrency(data?.refundTotal ?? 0)}</div></div>}
+            {Object.keys(data?.byMethod ?? {}).length === 0 && <div className="col-span-full text-center h-meta py-6">{tx("No payments recorded")}</div>}
+            {(data?.refundTotal ?? 0) > 0 && <div className="glass-thin rounded-xl p-3"><div className="h-meta uppercase tracking-wider mb-1">{tx("Refunds")}</div><div className="h-num g-val-18">−{formatCurrency(data?.refundTotal ?? 0)}</div></div>}
           </div>
         </div>
         <div className="glass rounded-2xl p-5 relative overflow-hidden">
           <div className="h-meta uppercase tracking-wider mb-4">TAX SUMMARY</div>
           <div className="space-y-4">
-            <div className="flex justify-between items-baseline"><span className="h-label">Net subtotal</span><span className="h-num g-val-22 tabular-nums">{formatCurrency((data?.totals ?? 0) - (data?.taxTotal ?? 0))}</span></div>
+            <div className="flex justify-between items-baseline"><span className="h-label">{tx("Net subtotal")}</span><span className="h-num g-val-22 tabular-nums">{formatCurrency((data?.totals ?? 0) - (data?.taxTotal ?? 0))}</span></div>
             <div className="flex justify-between items-baseline"><span className="h-label">VAT</span><span className="h-num g-val-22 tabular-nums">{formatCurrency(data?.taxTotal ?? 0)}</span></div>
-            <div className="flex justify-between items-baseline pt-2 border-t border-[var(--hairline)]"><span className="h-label font-semibold">Gross total</span><span className="h-num g-val-28 tabular-nums">{formatCurrency(data?.totals ?? 0)}</span></div>
+            <div className="flex justify-between items-baseline pt-2 border-t border-[var(--hairline)]"><span className="h-label font-semibold">{tx("Gross total")}</span><span className="h-num g-val-28 tabular-nums">{formatCurrency(data?.totals ?? 0)}</span></div>
           </div>
           <div className="absolute bottom-4 right-4 opacity-5 pointer-events-none"><TrendingUp className="h-28 w-28" /></div>
         </div>

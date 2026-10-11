@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Coffee, Croissant, Loader2, ShoppingBasket } from "lucide-react";
 import { BAHRAIN_CURRENCY, BAHRAIN_STANDARD_VAT } from "@/lib/bahrain";
+import { translate as tx } from "@/i18n";
 
 export type BahrainPresetKey = "supermarket" | "cafeteria" | "bakery";
 
@@ -142,8 +143,8 @@ export function DemoPresets() {
   const [confirmKind, setConfirmKind] = useState<BahrainPresetKey | null>(null);
 
   const applyPreset = async (kind: BahrainPresetKey) => {
-    if (!tenantId) return toast.error("Select a business first");
-    if (!branchId) return toast.error("Select a branch first");
+    if (!tenantId) return toast.error(tx("Select a business first"));
+    if (!branchId) return toast.error(tx("Select a branch first"));
 
     const preset = BAHRAIN_PRESETS[kind];
     setPending(kind);
@@ -299,7 +300,7 @@ export function DemoPresets() {
   return (
     <div className="glass p-6 space-y-4 border-dashed">
       <div>
-        <h3 className="font-semibold">Bahrain demo templates</h3>
+        <h3 className="font-semibold">{tx("Bahrain demo templates")}</h3>
         <p className="text-sm text-muted-foreground">
           Apply Bahrain-native BHD/10% starter data to the active business and branch. Demo data adds catalogue and stock only; it does not fabricate historical sales or accounting records.
         </p>

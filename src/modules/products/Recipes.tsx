@@ -5,6 +5,7 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ChefHat, Pencil } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
@@ -16,6 +17,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function Recipes() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId } = useTenantContext();
 
   const { data: recipes } = useQuery({
@@ -36,8 +38,8 @@ export default function Recipes() {
       {/* Page header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1">
-          <div className="h-display g-page-title">Recipes</div>
-          <div className="h-meta g-page-subtitle">Products with defined ingredients/components · CATALOG</div>
+          <div className="h-display g-page-title">{tx("Recipes")}</div>
+          <div className="h-meta g-page-subtitle">{tx("Products with defined ingredients/components · CATALOG")}</div>
         </div>
         <Link to="/products" className="g-btn g-btn-ghost">
           Go to products
@@ -47,9 +49,9 @@ export default function Recipes() {
       {!recipes || recipes.length === 0 ? (
         <EmptyState
           icon={ChefHat}
-          title="No recipes yet"
-          description="Create or edit a product of type 'composite', 'production', or 'combo' and add its components from the Recipe tab."
-          action={<Link to="/products" className="g-btn g-btn-primary">Go to products</Link>}
+          title={tx("No recipes yet")}
+          description={tx("Create or edit a product of type 'composite', 'production', or 'combo' and add its components from the Recipe tab.")}
+          action={<Link to="/products" className="g-btn g-btn-primary">{tx("Go to products")}</Link>}
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -73,8 +75,8 @@ export default function Recipes() {
                   <Link
                     to="/products"
                     className="g-btn g-btn-ghost g-btn-icon"
-                    title="Edit product"
-                    aria-label="Edit product"
+                    title={tx("Edit product")}
+                    aria-label={tx("Edit product")}
                   >
                     <Pencil className="h-4 w-4" />
                   </Link>
@@ -96,7 +98,7 @@ export default function Recipes() {
                 {/* Cost / price / margin KPIs */}
                 <div className="border-t mt-3 pt-3 grid grid-cols-3 gap-2 text-sm">
                   <div>
-                    <div className="h-label text-xs">Cost</div>
+                    <div className="h-label text-xs">{tx("Cost")}</div>
                     <div className="font-semibold tabular-nums">{formatCurrency(totalCost)}</div>
                   </div>
                   <div>

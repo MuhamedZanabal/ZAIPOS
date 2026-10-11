@@ -15,6 +15,8 @@ import {
   type WizardState,
 } from "@/lib/setupWizard";
 import { paymentMethodLabel } from "@/modules/pos/PaymentDialog";
+import { translate as tx, useLanguageStore } from "@/i18n";
+import { LanguageToggle } from "@/components/shared/LanguageToggle";
 
 const MODE_ICONS: Record<BusinessMode, typeof Store> = {
   RESTAURANT: UtensilsCrossed,
@@ -41,6 +43,7 @@ const field = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text
 export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onExit, exitLabel, initial }: SetupWizardProps) {
   const [state, setState] = useState<WizardState>(() => initial ?? loadWizard() ?? initialWizardState());
   const [errors, setErrors] = useState<string[]>([]);
+  useLanguageStore((s) => s.language); // re-render on language change
   const [busy, setBusy] = useState(false);
   const inApp = !onCreateBusiness;
   const step = inApp ? Math.max(state.step, FIRST_IN_APP_STEP) : Math.min(state.step, FIRST_IN_APP_STEP - 1);
@@ -90,7 +93,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
 
   return (
     <div className="w-full max-w-3xl rounded-2xl bg-white p-6 text-slate-900 shadow-2xl sm:p-8" data-testid="setup-wizard">
-      <ol className="mb-6 grid grid-cols-6 gap-1" aria-label="Setup progress">
+      <ol className="mb-6 grid grid-cols-6 gap-1" aria-label={tx("Setup progress")}>
         {WIZARD_STEPS.map((entry, index) => {
           const done = index < step;
           const current = index === step;
@@ -104,13 +107,14 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
           );
         })}
       </ol>
-      <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-cyan-700">Step {step + 1} of {WIZARD_STEPS.length}</p>
+      <div className="flex justify-end"><LanguageToggle className="rounded-md py-1" /></div>
+      <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-cyan-700">{tx("Step")} {step + 1} {tx("of")} {WIZARD_STEPS.length}</p>
 
       {WIZARD_STEPS[step].key === "type" && (
         <section>
           <h1 className="mb-1 text-2xl font-bold">What kind of business is this?</h1>
           <p className="mb-5 text-slate-600">ZAIPOS shows the screens that fit your business. You can change this later in Settings.</p>
-          <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Business type">
+          <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={tx("Business type")}>
             {BUSINESS_MODES.map((mode) => {
               const Icon = MODE_ICONS[mode];
               const selected = state.mode === mode;
@@ -133,22 +137,22 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
         <section className="space-y-4">
           <h1 className="text-2xl font-bold">Business basics</h1>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block"><span className="mb-1 block text-sm font-medium">Business name</span>
+            <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Business name")}</span>
               <input className={field} maxLength={80} value={state.basics.businessName} onChange={(e) => update({ basics: { ...state.basics, businessName: e.target.value } })} /></label>
-            <label className="block"><span className="mb-1 block text-sm font-medium">First branch</span>
+            <label className="block"><span className="mb-1 block text-sm font-medium">{tx("First branch")}</span>
               <input className={field} maxLength={80} value={state.basics.branchName} onChange={(e) => update({ basics: { ...state.basics, branchName: e.target.value } })} /></label>
-            <label className="block"><span className="mb-1 block text-sm font-medium">Currency</span>
+            <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Currency")}</span>
               <input className={`${field} bg-slate-100`} value="BHD — Bahraini dinar" readOnly aria-readonly /></label>
-            <label className="block"><span className="mb-1 block text-sm font-medium">VAT rate (%)</span>
+            <label className="block"><span className="mb-1 block text-sm font-medium">{tx("VAT rate (%)")}</span>
               <input className={field} type="number" min={0} max={100} step="0.5" value={state.basics.vatRate} onChange={(e) => update({ basics: { ...state.basics, vatRate: Number(e.target.value) } })} /></label>
-            <label className="block sm:col-span-2"><span className="mb-1 block text-sm font-medium">VAT registration number (TRN) <span className="font-normal text-slate-500">— optional, 15 digits</span></span>
+            <label className="block sm:col-span-2"><span className="mb-1 block text-sm font-medium">{tx("VAT registration number (TRN)")} <span className="font-normal text-slate-500">— optional, 15 digits</span></span>
               <input className={field} inputMode="numeric" maxLength={15} value={state.basics.trn} onChange={(e) => update({ basics: { ...state.basics, trn: e.target.value.replace(/\D/g, "") } })} /></label>
           </div>
           {local && (
             <div className="grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
-              <label className="block"><span className="mb-1 block text-sm font-medium">Owner email</span>
+              <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Owner email")}</span>
                 <input className={field} type="email" autoComplete="username" value={state.account.email} onChange={(e) => update({ account: { ...state.account, email: e.target.value } })} /></label>
-              <label className="block"><span className="mb-1 block text-sm font-medium">Owner password</span>
+              <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Owner password")}</span>
                 <input className={field} type="password" autoComplete="new-password" value={state.account.password} onChange={(e) => update({ account: { ...state.account, password: e.target.value } })} /></label>
             </div>
           )}
@@ -163,7 +167,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
         <section className="space-y-4">
           <h1 className="text-2xl font-bold">Payments and receipt</h1>
           <fieldset>
-            <legend className="mb-2 text-sm font-medium">Payment methods you accept</legend>
+            <legend className="mb-2 text-sm font-medium">{tx("Payment methods you accept")}</legend>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {ALL_PAYMENT_METHODS.map((method) => {
                 const on = state.payments.methods.includes(method);
@@ -176,9 +180,9 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
               })}
             </div>
           </fieldset>
-          <label className="block"><span className="mb-1 block text-sm font-medium">Receipt header</span>
+          <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Receipt header")}</span>
             <textarea className={field} rows={2} maxLength={200} placeholder={state.basics.businessName || "Shop name, address, phone"} value={state.payments.receiptHeader} onChange={(e) => update({ payments: { ...state.payments, receiptHeader: e.target.value } })} /></label>
-          <label className="block"><span className="mb-1 block text-sm font-medium">Receipt footer</span>
+          <label className="block"><span className="mb-1 block text-sm font-medium">{tx("Receipt footer")}</span>
             <textarea className={field} rows={2} maxLength={200} value={state.payments.receiptFooter} onChange={(e) => update({ payments: { ...state.payments, receiptFooter: e.target.value } })} /></label>
         </section>
       )}
@@ -196,7 +200,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
             <li>{info && (state.mode === "SUPERMARKET" || state.mode === "RETAIL") ? "Scan a barcode or tap a sample item. Items sold by weight ask for the kg." : "Tap a sample item to add it to the order."}</li>
             <li>Press Charge, pick a payment method and complete the sale.</li>
           </ol>
-          <p className="text-sm text-slate-500">Sample items are marked "(sample)". Edit or delete them in Products whenever you like.</p>
+          <p className="text-sm text-slate-500">{tx("Sample items are marked \"(sample)\". Edit or delete them in Products whenever you like.")}</p>
         </section>
       )}
 
@@ -210,7 +214,7 @@ export function SetupWizard({ local, onCreateBusiness, onSaveStep, onFinish, onE
         <div className="flex gap-2">
           {canGoBack && (
             <button type="button" onClick={() => go(step - 1)} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 disabled:opacity-50">
-              <ChevronLeft className="h-4 w-4" /> Back
+              <ChevronLeft className="h-4 w-4" /> {tx("Back")}
             </button>
           )}
           {onExit && (
@@ -239,10 +243,10 @@ function CatalogStep({ state, update }: { state: WizardState; update: (patch: Pa
       </label>
       {state.catalog.useSamples && (
         <>
-          <p className="text-sm text-slate-600">These are <strong>samples</strong> with 50 in opening stock. Edit names and prices, untick what you don't want, or delete them later in Products.</p>
+          <p className="text-sm text-slate-600">{tx("These are")} <strong>samples</strong> {tx("with 50 in opening stock. Edit names and prices, untick what you don't want, or delete them later in Products.")}</p>
           <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-left text-slate-500"><tr><th className="p-2">Add</th><th className="p-2">Item</th><th className="p-2">Category</th><th className="p-2">Price (BHD)</th><th className="p-2">Unit</th></tr></thead>
+              <thead className="sticky top-0 bg-slate-50 text-left text-slate-500"><tr><th className="p-2">{tx("Add")}</th><th className="p-2">{tx("Item")}</th><th className="p-2">{tx("Category")}</th><th className="p-2">{tx("Price (BHD)")}</th><th className="p-2">{tx("Unit")}</th></tr></thead>
               <tbody>
                 {items.map((item, index) => (
                   <tr key={item.key} className="border-t border-slate-100" data-testid="starter-item">
@@ -271,14 +275,14 @@ function StaffStep({ state, update, local }: { state: WizardState; update: (patc
       <p className="text-slate-600">Give each person their own login so sales are tracked per person. You can skip this and add staff later in Settings → Users.</p>
       {state.staff.map((member, index) => (
         <div key={member.key} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]" data-testid="staff-row">
-          <input className={field} aria-label="Staff name" placeholder="Name" value={member.name} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, name: e.target.value } : m)))} />
-          <input className={field} aria-label="Staff login" placeholder={local ? "Login (email or name)" : "Email"} value={member.email} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, email: e.target.value } : m)))} />
-          <input className={field} aria-label="Staff password" type="password" placeholder={member.created ? "Created" : "Password (8+)"} value={member.password} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, password: e.target.value } : m)))} />
-          <select className={field} aria-label="Staff role" value={member.role} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, role: e.target.value as StaffDraft["role"] } : m)))}>
+          <input className={field} aria-label={tx("Staff name")} placeholder={tx("Name")} value={member.name} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, name: e.target.value } : m)))} />
+          <input className={field} aria-label={tx("Staff login")} placeholder={local ? "Login (email or name)" : "Email"} value={member.email} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, email: e.target.value } : m)))} />
+          <input className={field} aria-label={tx("Staff password")} type="password" placeholder={member.created ? "Created" : "Password (8+)"} value={member.password} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, password: e.target.value } : m)))} />
+          <select className={field} aria-label={tx("Staff role")} value={member.role} disabled={member.created} onChange={(e) => setStaff(state.staff.map((m, i) => (i === index ? { ...m, role: e.target.value as StaffDraft["role"] } : m)))}>
             {roles.map((role) => <option key={role} value={role}>{role[0].toUpperCase() + role.slice(1)}</option>)}
           </select>
-          {member.created ? <span className="self-center text-sm font-semibold text-emerald-600">Added</span> : (
-            <button type="button" aria-label="Remove staff member" className="rounded-lg border border-slate-200 px-3 text-slate-500" onClick={() => setStaff(state.staff.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></button>
+          {member.created ? <span className="self-center text-sm font-semibold text-emerald-600">{tx("Added")}</span> : (
+            <button type="button" aria-label={tx("Remove staff member")} className="rounded-lg border border-slate-200 px-3 text-slate-500" onClick={() => setStaff(state.staff.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></button>
           )}
         </div>
       ))}

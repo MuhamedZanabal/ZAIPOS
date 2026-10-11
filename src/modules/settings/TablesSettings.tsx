@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Pencil, Trash2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 export default function TablesSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId, branches } = useTenantContext();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -66,7 +68,7 @@ export default function TablesSettings() {
   };
 
   const save = async () => {
-    if (!tenantId || !scopeBranch || !name.trim()) return toast.error("Complete the required fields");
+    if (!tenantId || !scopeBranch || !name.trim()) return toast.error(tx("Complete the required fields"));
     const payload = {
       name: name.trim(), capacity, branch_id: scopeBranch,
       assigned_waiter_id: waiterId || null,
@@ -81,7 +83,7 @@ export default function TablesSettings() {
       });
       if (error) return toast.error(error.message);
     }
-    toast.success("Table saved");
+    toast.success(tx("Table saved"));
     setOpen(false);
     qc.invalidateQueries({ queryKey: ["tables-settings"] });
     qc.invalidateQueries({ queryKey: ["tables"] });
@@ -118,13 +120,13 @@ export default function TablesSettings() {
               </div>
               <div className="h-meta mt-1 truncate">{branch?.name ?? "—"}</div>
               <div className="flex gap-1 mt-2">
-                <button type="button" className="g-btn g-btn-ghost h-7 px-2" title="Edit table" onClick={() => openEdit(t)}>
+                <button type="button" className="g-btn g-btn-ghost h-7 px-2" title={tx("Edit table")} onClick={() => openEdit(t)}>
                   <Pencil className="h-3 w-3" />
                 </button>
-                <button type="button" className="g-btn g-btn-ghost h-7 px-2" title="Ver QR" onClick={() => setQrTable(t)}>
+                <button type="button" className="g-btn g-btn-ghost h-7 px-2" title={tx("View QR")} onClick={() => setQrTable(t)}>
                   <QrCode className="h-3 w-3" />
                 </button>
-                <button type="button" className="g-btn g-btn-ghost h-7 px-2 text-red-500 hover:text-red-600" title="Delete table" onClick={() => remove(t.id)}>
+                <button type="button" className="g-btn g-btn-ghost h-7 px-2 text-red-500 hover:text-red-600" title={tx("Delete table")} onClick={() => remove(t.id)}>
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
@@ -133,7 +135,7 @@ export default function TablesSettings() {
         })}
         {(tables ?? []).length === 0 && (
           <div className="col-span-full text-center py-12 h-meta">
-            No tables yet. Create the first one with "New table".
+            {tx("No tables yet. Create the first one with \"New table\".")}
           </div>
         )}
       </div>
@@ -145,28 +147,28 @@ export default function TablesSettings() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Branch</Label>
+              <Label>{tx("Branch")}</Label>
               <Select value={scopeBranch} onValueChange={setScopeBranch}>
-                <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx("Select branch")} /></SelectTrigger>
                 <SelectContent>
                   {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Name / Number</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Table 1" />
+              <Label>{tx("Name / Number")}</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={tx("Table 1")} />
             </div>
             <div className="space-y-1.5">
-              <Label>Capacity</Label>
+              <Label>{tx("Capacity")}</Label>
               <Input type="number" min={1} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
             </div>
             <div className="space-y-1.5">
-              <Label>Assigned waiter (optional)</Label>
+              <Label>{tx("Assigned waiter (optional)")}</Label>
               <Select value={waiterId || "none"} onValueChange={(v) => setWaiterId(v === "none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx("Unassigned")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Unassigned (any waiter can take it)</SelectItem>
+                  <SelectItem value="none">{tx("Unassigned (any waiter can take it)")}</SelectItem>
                   {(waiters ?? []).map((w) => (
                     <SelectItem key={w.id} value={w.id}>{w.full_name ?? w.email}</SelectItem>
                   ))}
@@ -196,7 +198,7 @@ export default function TablesSettings() {
                 <button
                   type="button"
                   className="g-btn g-btn-ghost"
-                  onClick={() => { navigator.clipboard.writeText(url); toast.success("URL copiada"); }}
+                  onClick={() => { navigator.clipboard.writeText(url); toast.success(tx("URL copied")); }}
                 >
                   Copiar URL
                 </button>

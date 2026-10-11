@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Mail, ShieldCheck, RefreshCcw, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { translate as tx } from "@/i18n";
 
 export function SystemMaintenance() {
   const { tenantId, branchId } = useTenantContext();
@@ -17,7 +18,7 @@ export function SystemMaintenance() {
       if (error) throw error;
       toast.success(`Cola de emails procesada: ${data?.processed || 0} enviados`);
     } catch (err: any) {
-      toast.error("Error processing emails: " + err.message);
+      toast.error(tx("Error processing emails: ") + err.message);
     } finally {
       setLoading(null);
     }
@@ -32,9 +33,9 @@ export function SystemMaintenance() {
         _branch_id: branchId
       });
       if (error) throw error;
-      toast.success("Inventory audit completed: stock synchronized");
+      toast.success(tx("Inventory audit completed: stock synchronized"));
     } catch (err: any) {
-      toast.error("Audit error: " + err.message);
+      toast.error(tx("Audit error: ") + err.message);
     } finally {
       setLoading(null);
     }
@@ -50,13 +51,13 @@ export function SystemMaintenance() {
       
       const config = data?.[0];
       if (!config || !config.is_active) {
-        toast.error("WhatsApp is not configured or active for this branch");
+        toast.error(tx("WhatsApp is not configured or active for this branch"));
         return;
       }
 
-      toast.success("WhatsApp configuration loaded successfully");
+      toast.success(tx("WhatsApp configuration loaded successfully"));
     } catch (err: any) {
-      toast.error("WhatsApp test error: " + err.message);
+      toast.error(tx("WhatsApp test error: ") + err.message);
     } finally {
       setLoading(null);
     }
@@ -71,7 +72,7 @@ export function SystemMaintenance() {
             <Mail className="h-5 w-5" />
             <div className="g-title-15">Messaging</div>
           </div>
-          <div className="h-meta">Manual processing of the pending email queue.</div>
+          <div className="h-meta">{tx("Manual processing of the pending email queue.")}</div>
           <Button
             variant="outline"
             className="w-full gap-2"
@@ -89,7 +90,7 @@ export function SystemMaintenance() {
             <ShieldCheck className="h-5 w-5" />
             <div className="g-title-15">Consistencia</div>
           </div>
-          <div className="h-meta">Ensures every product has valid stock records.</div>
+          <div className="h-meta">{tx("Ensures every product has valid stock records.")}</div>
           <Button
             variant="outline"
             className="w-full gap-2"
@@ -107,7 +108,7 @@ export function SystemMaintenance() {
             <RefreshCcw className="h-5 w-5" />
             <div className="g-title-15">Diagnostics</div>
           </div>
-          <div className="h-meta">Checks the connection status for the WhatsApp AI channel.</div>
+          <div className="h-meta">{tx("Checks the connection status for the WhatsApp AI channel.")}</div>
           <Button
             variant="outline"
             className="w-full gap-2"

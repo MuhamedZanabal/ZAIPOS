@@ -14,6 +14,7 @@ import { Users, Trash2, UserPlus, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { MANAGEABLE_ROLES, ROLE_LABEL } from "@/lib/roles";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 type AppRolee = Database["public"]["Enums"]["app_role"];
 const ROLES = MANAGEABLE_ROLES;
@@ -27,6 +28,7 @@ type Membership = {
 };
 
 export default function UsersSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branches, hasRole } = useTenantContext();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -78,14 +80,14 @@ export default function UsersSettings() {
   const changeRolee = async (m: Membership, newRoleeVal: AppRolee) => {
     if (m.role === newRoleeVal) return;
     if (m.role === "owner" && newRoleeVal !== "owner" && ownersCount <= 1) {
-      return toast.error("There must be at least one owner in the business");
+      return toast.error(tx("There must be at least one owner in the business"));
     }
     const { error } = await supabase
       .from("user_roles")
       .update({ role: newRoleeVal })
       .eq("id", m.id);
     if (error) return toast.error(error.message);
-    toast.success("Rolee updated");
+    toast.success(tx("Role updated"));
     qc.invalidateQueries({ queryKey: ["tenant-members"] });
   };
 
@@ -95,28 +97,28 @@ export default function UsersSettings() {
       .update({ branch_id: branchId })
       .eq("id", m.id);
     if (error) return toast.error(error.message);
-    toast.success("Branch updated");
+    toast.success(tx("Branch updated"));
     qc.invalidateQueries({ queryKey: ["tenant-members"] });
   };
 
   const removeMember = async (m: Membership) => {
     if (m.user_id === user?.id) {
-      return toast.error("You cannot remove your own access");
+      return toast.error(tx("You cannot remove your own access"));
     }
     if (m.role === "owner" && ownersCount <= 1) {
-      return toast.error("There must be at least one owner in the business");
+      return toast.error(tx("There must be at least one owner in the business"));
     }
     if (!confirm(`Remove access for ${m.profile?.email ?? "this user"}?`)) return;
     const { error } = await supabase.from("user_roles").delete().eq("id", m.id);
     if (error) return toast.error(error.message);
-    toast.success("Acceso revocado");
+    toast.success(tx("Access revoked"));
     qc.invalidateQueries({ queryKey: ["tenant-members"] });
   };
 
   const invite = async () => {
     if (!tenantId) return;
     const email = inviteEmail.trim().toLowerCase();
-    if (!email) return toast.error("Enter an email");
+    if (!email) return toast.error(tx("Enter an email"));
     setInviting(true);
     try {
       const { data: profile, error: pErr } = await supabase
@@ -126,7 +128,7 @@ export default function UsersSettings() {
         .maybeSingle();
       if (pErr) throw pErr;
       if (!profile) {
-        toast.error("That user does not exist yet. Use the 'Create new' tab to register them.");
+        toast.error(tx("That user does not exist yet. Use the 'Create new' tab to register them."));
         return;
       }
       const { data: existing } = await supabase
@@ -137,7 +139,7 @@ export default function UsersSettings() {
         .eq("role", inviteRolee)
         .maybeSingle();
       if (existing) {
-        toast.error("That user already has this role assigned");
+        toast.error(tx("That user already has this role assigned"));
         return;
       }
       const { error: insErr } = await supabase
@@ -149,7 +151,7 @@ export default function UsersSettings() {
           branch_id: inviteBranch === "__all__" ? null : inviteBranch,
         });
       if (insErr) throw insErr;
-      toast.success("User added to business");
+      toast.success(tx("User added to business"));
       setInviteEmail("");
       qc.invalidateQueries({ queryKey: ["tenant-members"] });
     } catch (e: any) {
@@ -162,7 +164,7 @@ export default function UsersSettings() {
   const createNew = async () => {
     if (!tenantId) return;
     if (!newEmail.trim() || newPassword.length < 6) {
-      return toast.error("Email and password (minimum 6 characters) are required");
+      return toast.error(tx("Email and password (minimum 6 characters) are required"));
     }
     setCreating(true);
     try {
@@ -203,43 +205,43 @@ export default function UsersSettings() {
 
           <Tabs defaultValue="create">
             <TabsList>
-              <TabsTrigger value="create">Create new</TabsTrigger>
-              <TabsTrigger value="invite">Invite existing user</TabsTrigger>
+              <TabsTrigger value="create">{tx("Create new")}</TabsTrigger>
+              <TabsTrigger value="invite">{tx("Invite existing user")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create" className="mt-4 space-y-3">
               <p className="h-meta">
-                Create the account and assign the role in one step. Share the email and password with the user.
+                {tx("Create the account and assign the role in one step. Share the email and password with the user.")}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Name</Label>
+                  <Label>{tx("Name")}</Label>
                   <Input
-                    placeholder="John Smith"
+                    placeholder={tx("John Smith")}
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email</Label>
+                  <Label>{tx("Email")}</Label>
                   <Input
                     type="email"
-                    placeholder="user@email.com"
+                    placeholder={tx("user@email.com")}
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Password</Label>
+                  <Label>{tx("Password")}</Label>
                   <Input
                     type="text"
-                    placeholder="Minimum 6 characters"
+                    placeholder={tx("Minimum 6 characters")}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Role</Label>
+                  <Label>{tx("Role")}</Label>
                   <Select value={newRolee} onValueChange={(v) => setNewRolee(v as AppRolee)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -250,11 +252,11 @@ export default function UsersSettings() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Branch</Label>
+                  <Label>{tx("Branch")}</Label>
                   <Select value={newBranch} onValueChange={setNewBranch}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__all__">All branches</SelectItem>
+                      <SelectItem value="__all__">{tx("All branches")}</SelectItem>
                       {branches.map((b) => (
                         <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                       ))}
@@ -277,13 +279,13 @@ export default function UsersSettings() {
                   <Label>Email</Label>
                   <Input
                     type="email"
-                    placeholder="user@email.com"
+                    placeholder={tx("user@email.com")}
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Role</Label>
+                  <Label>{tx("Role")}</Label>
                   <Select value={inviteRolee} onValueChange={(v) => setInviteRolee(v as AppRolee)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -294,11 +296,11 @@ export default function UsersSettings() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Branch</Label>
+                  <Label>{tx("Branch")}</Label>
                   <Select value={inviteBranch} onValueChange={setInviteBranch}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__all__">All</SelectItem>
+                      <SelectItem value="__all__">{tx("All")}</SelectItem>
                       {branches.map((b) => (
                         <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                       ))}
@@ -316,16 +318,16 @@ export default function UsersSettings() {
 
       <div className="glass rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-black/5">
-          <p className="font-semibold text-ink-900">Miembros del bar</p>
+          <p className="font-semibold text-ink-900">{tx("Bar members")}</p>
           <p className="h-meta">
             {memberships?.length ?? 0} {(memberships?.length ?? 0) === 1 ? "user" : "users"} with access
           </p>
         </div>
         {isLoading ? (
-          <div className="h-meta py-12 text-center">Loading…</div>
+          <div className="h-meta py-12 text-center">{tx("Loading…")}</div>
         ) : !memberships || memberships.length === 0 ? (
           <div className="p-6">
-            <EmptyState icon={Users} title="No users" description="There are no members in this business yet" />
+            <EmptyState icon={Users} title={tx("No users")} description={tx("There are no members in this business yet")} />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -335,7 +337,7 @@ export default function UsersSettings() {
                   <th className="text-left px-5 py-3 h-label">User</th>
                   <th className="text-left px-5 py-3 h-label">Role</th>
                   <th className="text-left px-5 py-3 h-label">Branch</th>
-                  {canManage && <th className="w-12 px-5 py-3 sr-only">Actions</th>}
+                  {canManage && <th className="w-12 px-5 py-3 sr-only">{tx("Actions")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -347,7 +349,7 @@ export default function UsersSettings() {
                         <div className="font-medium flex items-center gap-2 text-ink-900">
                           {m.profile?.full_name || m.profile?.email || m.user_id.slice(0, 8)}
                           {isSelf && (
-                            <span className="g-pill g-pill-brand g-pill-h20">You</span>
+                            <span className="g-pill g-pill-brand g-pill-h20">{tx("You")}</span>
                           )}
                         </div>
                         {m.profile?.email && (
@@ -381,7 +383,7 @@ export default function UsersSettings() {
                           >
                             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">All branches</SelectItem>
+                              <SelectItem value="all">{tx("All branches")}</SelectItem>
                               {branches.map((b) => (
                                 <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                               ))}

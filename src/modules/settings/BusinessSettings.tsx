@@ -20,10 +20,12 @@ import {
   BAHRAIN_CURRENCY,
   BAHRAIN_STANDARD_VAT,
 } from "@/lib/bahrain";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const CURRENCIES = [BAHRAIN_CURRENCY] as const;
 
 export default function BusinessSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, hasRole } = useTenantContext();
   const qc = useQueryClient();
   const canEdit = hasRole("owner", "admin");
@@ -61,7 +63,7 @@ export default function BusinessSettings() {
 
   const save = async () => {
     if (!tenantId) return;
-    if (!form.name.trim()) return toast.error("Business name is required");
+    if (!form.name.trim()) return toast.error(tx("Business name is required"));
 
     const { error } = await supabase
       .from("tenants")
@@ -74,21 +76,21 @@ export default function BusinessSettings() {
 
     if (error) return toast.error(error.message);
 
-    toast.success("Business information updated");
+    toast.success(tx("Business information updated"));
     qc.invalidateQueries({ queryKey: ["tenant"] });
     qc.invalidateQueries({ queryKey: ["my-roles"] });
   };
 
-  if (isLoading) return <div className="h-meta">Loading…</div>;
+  if (isLoading) return <div className="h-meta">{tx("Loading…")}</div>;
 
   return (
     <div className="space-y-6">
       <BusinessTypeSettings />
       <div className="glass p-6 rounded-2xl max-w-2xl space-y-5">
         <div className="space-y-1.5">
-          <Label>Business name</Label>
+          <Label>{tx("Business name")}</Label>
           <Input
-            placeholder="Amwaj Market"
+            placeholder={tx("Amwaj Market")}
             value={form.name}
             disabled={!canEdit}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -113,12 +115,12 @@ export default function BusinessSettings() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              ZAIPOS is configured for Bahrain and uses BHD with three-decimal precision.
+              {tx("ZAIPOS is configured for Bahrain and uses BHD with three-decimal precision.")}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Default VAT (%)</Label>
+            <Label>{tx("Default VAT (%)")}</Label>
             <Input
               type="number"
               min={0}
@@ -129,7 +131,7 @@ export default function BusinessSettings() {
               onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })}
             />
             <p className="text-xs text-muted-foreground">
-              Bahrain standard VAT is 10%. Use product-level tax treatment for zero-rated or exempt supplies.
+              {tx("Bahrain standard VAT is 10%. Use product-level tax treatment for zero-rated or exempt supplies.")}
             </p>
           </div>
         </div>
@@ -137,7 +139,7 @@ export default function BusinessSettings() {
         {canEdit ? (
           <div className="pt-2">
             <button type="button" className="g-btn g-btn-primary" onClick={save}>
-              <Save className="h-4 w-4" /> Save changes
+              <Save className="h-4 w-4" /> {tx("Save changes")}
             </button>
           </div>
         ) : (

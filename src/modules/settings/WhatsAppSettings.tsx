@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Copy, Bot, Webhook, Save, Loader2, Wifi, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 // Resolved lazily: the local desktop runtime has no hosted functions URL, and
 // reading it at import time crashed the whole Settings page.
@@ -37,6 +38,7 @@ const statusIcon = (status: DiagStep["status"]) => {
 };
 
 export default function WhatsAppSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId, branches } = useTenantContext();
   const qc = useQueryClient();
   const [selectedBranch, setSelectedBranch] = useState(branchId ?? "");
@@ -79,7 +81,7 @@ export default function WhatsAppSettings() {
   }, [branchId]);
 
   const save = async () => {
-    if (!instance.trim()) return toast.error("Enter the Evolution API instance name");
+    if (!instance.trim()) return toast.error(tx("Enter the Evolution API instance name"));
     if (!selectedBranch || !tenantId) return;
     setSaving(true);
     try {
@@ -98,7 +100,7 @@ export default function WhatsAppSettings() {
         : await supabase.from("ai_channel_configs").insert(payload);
       if (error) throw error;
       if (normalizedPhone) setPhone(normalizedPhone);
-      toast.success("WhatsApp settings saved");
+      toast.success(tx("WhatsApp settings saved"));
       qc.invalidateQueries({ queryKey: ["ai-channel-config"] });
     } catch (e: any) {
       toast.error(e.message);
@@ -109,7 +111,7 @@ export default function WhatsAppSettings() {
 
   const copyWebhook = async () => {
     await navigator.clipboard.writeText(evolutionWebhookUrl());
-    toast.success("Webhook URL copied");
+    toast.success(tx("Webhook URL copied"));
   };
 
   const runDiagnostics = async () => {
@@ -205,11 +207,11 @@ export default function WhatsAppSettings() {
           WhatsApp webhook URL
         </div>
         <p className="text-sm text-muted-foreground">
-          Configure this URL in Evolution API as the destination for <code className="bg-muted px-1 py-0.5 rounded text-xs">MESSAGES_UPSERT</code> events.
+          Configure this URL in Evolution API as the destination for <code className="bg-muted px-1 py-0.5 rounded text-xs">{tx("MESSAGES_UPSERT")}</code> events.
         </p>
         <div className="flex gap-2">
           <Input readOnly value={evolutionWebhookUrl()} className="font-mono text-xs" />
-          <Button variant="outline" size="icon" onClick={copyWebhook} title="Copy URL">
+          <Button variant="outline" size="icon" onClick={copyWebhook} title={tx("Copy URL")}>
             <Copy className="h-4 w-4" />
           </Button>
         </div>
@@ -227,9 +229,9 @@ export default function WhatsAppSettings() {
         </div>
 
         <div className="space-y-1.5">
-          <Label>Branch</Label>
+          <Label>{tx("Branch")}</Label>
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger><SelectValue placeholder="Select branch…" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={tx("Select branch…")} /></SelectTrigger>
             <SelectContent>
               {(branches ?? []).map((branch: any) => (
                 <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
@@ -246,12 +248,12 @@ export default function WhatsAppSettings() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Evolution API instance name</Label>
-              <Input placeholder="e.g. zaipos-manama" value={instance} onChange={(e) => setInstance(e.target.value)} />
-              <p className="text-xs text-muted-foreground">This must exactly match the instance configured in Evolution API.</p>
+              <Input placeholder={tx("e.g. zaipos-manama")} value={instance} onChange={(e) => setInstance(e.target.value)} />
+              <p className="text-xs text-muted-foreground">{tx("This must exactly match the instance configured in Evolution API.")}</p>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Bahrain WhatsApp number (optional)</Label>
+              <Label>{tx("Bahrain WhatsApp number (optional)")}</Label>
               <Input placeholder="+973 3600 0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
 

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -29,6 +30,7 @@ function isCategoryActive(cat: any): boolean {
 export { isCategoryActive };
 
 export default function Categories() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId } = useTenantContext();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -62,14 +64,14 @@ export default function Categories() {
       {/* Page header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1">
-          <div className="h-display g-page-title">Categories</div>
+          <div className="h-display g-page-title">{tx("Categories")}</div>
           <div className="h-meta g-page-subtitle">{categories?.length ?? 0} categories · CATALOG</div>
         </div>
 
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
             <button type="button" className="g-btn g-btn-primary" onClick={() => setEditing(null)}>
-              <Plus className="h-4 w-4" />New
+              <Plus className="h-4 w-4" />{tx("New")}
             </button>
           </DialogTrigger>
           <CategoryDialog
@@ -118,8 +120,8 @@ export default function Categories() {
                 <button
                   type="button"
                   className="g-btn g-btn-ghost g-btn-icon"
-                  title="Edit category"
-                  aria-label="Edit category"
+                  title={tx("Edit category")}
+                  aria-label={tx("Edit category")}
                   onClick={() => { setEditing(c); setOpen(true); }}
                 >
                   <Pencil className="h-4 w-4" />
@@ -127,8 +129,8 @@ export default function Categories() {
                 <button
                   type="button"
                   className="g-btn g-btn-ghost g-btn-icon g-btn-danger"
-                  title="Delete category"
-                  aria-label="Delete category"
+                  title={tx("Delete category")}
+                  aria-label={tx("Delete category")}
                   disabled={isDeleting}
                   onClick={() => handleDelete(c)}
                 >
@@ -166,7 +168,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
       };
       if (editing) await supabase.from("categories").update(payload).eq("id", editing.id);
       else await supabase.from("categories").insert(payload);
-      toast.success("Saved");
+      toast.success(tx("Saved"));
       onClose();
     } catch (err: any) { toast.error(err.message); }
   };
@@ -178,7 +180,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
       </DialogHeader>
       <form onSubmit={submit} className="space-y-3">
         <div className="space-y-1.5">
-          <Label>Name</Label>
+          <Label>{tx("Name")}</Label>
           <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -187,7 +189,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
             <Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label>Order</Label>
+            <Label>{tx("Order")}</Label>
             <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} />
           </div>
         </div>
@@ -197,7 +199,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-ink-400" />
-              <Label>Scheduled hours</Label>
+              <Label>{tx("Scheduled hours")}</Label>
             </div>
             <Switch checked={form.schedule_enabled} onCheckedChange={(v) => setForm({ ...form, schedule_enabled: v })} />
           </div>
@@ -209,7 +211,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
                   <Input type="time" value={form.schedule_from ?? "08:00"} onChange={(e) => setForm({ ...form, schedule_from: e.target.value })} className="h-8" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">To</Label>
+                  <Label className="text-xs">{tx("To")}</Label>
                   <Input type="time" value={form.schedule_until ?? "22:00"} onChange={(e) => setForm({ ...form, schedule_until: e.target.value })} className="h-8" />
                 </div>
               </div>
@@ -237,7 +239,7 @@ function CategoryDialog({ tenantId, editing, onClose }: { tenantId: string; edit
         </div>
 
         <div className="flex items-center justify-between p-3 border rounded-lg">
-          <Label>Active</Label>
+          <Label>{tx("Active")}</Label>
           <Switch checked={form.status === "active"} onCheckedChange={(c) => setForm({ ...form, status: c ? "active" : "inactive" })} />
         </div>
 

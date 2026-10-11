@@ -6,7 +6,7 @@ import { GearMark } from "@/components/shared/GearMark";
 
 export default function Forbidden() {
   useEffect(() => {
-    document.title = "Acceso Restringido (403) | ZAIPOS";
+    document.title = "Access restricted (403) | ZAIPOS";
   }, []);
 
   return (
@@ -20,7 +20,7 @@ export default function Forbidden() {
 
         <div>
           <div className="eyebrow eyebrow-muted mb-2">ERROR 403</div>
-          <h1 className="page-header-title">Acceso restringido</h1>
+          <h1 className="page-header-title">Access restricted</h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
             Your current role does not have permission to open this section.
             Contact the administrator if you believe this is an error.

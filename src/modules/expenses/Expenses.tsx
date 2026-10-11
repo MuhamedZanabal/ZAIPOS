@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingDown, Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 type Category = { id: string; name: string };
 type Expense = {
@@ -50,6 +51,7 @@ const PAY_METHODS = [
 ];
 
 export default function Expenses() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId } = useTenantContext();
   const qc = useQueryClient();
   const [tab, setTab] = useState("expenses");
@@ -126,7 +128,7 @@ export default function Expenses() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Expense deleted");
+      toast.success(tx("Expense deleted"));
       qc.invalidateQueries({ queryKey: ["expenses"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Error"),
@@ -140,7 +142,7 @@ export default function Expenses() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Category created");
+      toast.success(tx("Category created"));
       qc.invalidateQueries({ queryKey: ["expense-categories"] });
       setCatOpen(false);
       setCatName("");
@@ -171,8 +173,8 @@ export default function Expenses() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div className="g-page-hd">
-          <div className="g-page-hd-eyebrow">FINANCE · EXPENSES</div>
-          <div className="h-display g-page-title">Expenses</div>
+          <div className="g-page-hd-eyebrow">{tx("FINANCE · EXPENSES")}</div>
+          <div className="h-display g-page-title">{tx("Expenses")}</div>
           <div className="g-page-hd-meta">This month: {formatCurrency(totalMonth)}</div>
         </div>
         <button type="button" className="g-btn g-btn-primary" onClick={openCreate}>
@@ -182,8 +184,8 @@ export default function Expenses() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="expenses">{tx("Expenses")}</TabsTrigger>
+          <TabsTrigger value="categories">{tx("Categories")}</TabsTrigger>
         </TabsList>
 
         {/* ── Expenses tab ── */}
@@ -191,8 +193,8 @@ export default function Expenses() {
           {expenses.length === 0 ? (
             <EmptyState
               icon={TrendingDown}
-              title="No expenses recorded"
-              description="Record rent, payroll, utilities, and other operating expenses."
+              title={tx("No expenses recorded")}
+              description={tx("Record rent, payroll, utilities, and other operating expenses.")}
             />
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
@@ -225,7 +227,7 @@ export default function Expenses() {
                   <span className="g-exp-actions">
                     <button
                       type="button"
-                      title="Edit expense"
+                      title={tx("Edit expense")}
                       className="g-exp-icon-btn"
                       onClick={() => openEdit(e)}
                     >
@@ -233,7 +235,7 @@ export default function Expenses() {
                     </button>
                     <button
                       type="button"
-                      title="Delete expense"
+                      title={tx("Delete expense")}
                       className="g-exp-icon-btn g-exp-icon-btn-del"
                       onClick={() => { if (confirm("Delete expense?")) removeExpense.mutate(e.id); }}
                     >
@@ -250,14 +252,14 @@ export default function Expenses() {
         <TabsContent value="categories" className="mt-4">
           <div className="flex gap-2 mb-4">
             <button type="button" className="g-btn g-btn-ghost" onClick={() => setCatOpen(true)}>
-              <Plus size={16} className="mr-1" />New category
+              <Plus size={16} className="mr-1" />{tx("New category")}
             </button>
           </div>
           {categories.length === 0 ? (
             <EmptyState
               icon={Tag}
-              title="Uncategorizeds"
-              description="Create categories such as Rent, Payroll, Utilities, etc."
+              title={tx("Uncategorized")}
+              description={tx("Create categories such as Rent, Payroll, Utilities, etc.")}
             />
           ) : (
             <div className="glass rounded-2xl overflow-hidden">
@@ -299,7 +301,7 @@ export default function Expenses() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Date *</Label>
+                <Label>{tx("Date *")}</Label>
                 <Input
                   type="date"
                   value={expenseForm.expense_date}
@@ -313,14 +315,14 @@ export default function Expenses() {
                 value={expenseForm.category_id}
                 onValueChange={(v) => setExpenseForm((f) => ({ ...f, category_id: v }))}
               >
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx("Select category")} /></SelectTrigger>
                 <SelectContent>
                   {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Payment method</Label>
+              <Label>{tx("Payment method")}</Label>
               <Select
                 value={expenseForm.payment_method}
                 onValueChange={(v) => setExpenseForm((f) => ({ ...f, payment_method: v }))}
@@ -332,11 +334,11 @@ export default function Expenses() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Description</Label>
+              <Label>{tx("Description")}</Label>
               <Input
                 value={expenseForm.description}
                 onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="E.g. Store rent, utility payment..."
+                placeholder={tx("E.g. Store rent, utility payment...")}
               />
             </div>
             <button
@@ -354,14 +356,14 @@ export default function Expenses() {
       {/* Category dialog */}
       <Dialog open={catOpen} onOpenChange={setCatOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>New category</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{tx("New category")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label>Name *</Label>
               <Input
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
-                placeholder="E.g. Rent, Payroll, Utilities..."
+                placeholder={tx("E.g. Rent, Payroll, Utilities...")}
               />
             </div>
             <button

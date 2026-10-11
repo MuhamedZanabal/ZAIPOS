@@ -21,6 +21,7 @@ import {
 } from "@/lib/bahrain";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/integrations/supabase/types";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 type DeliveryStatus = Database["public"]["Enums"]["delivery_status"];
 
@@ -66,6 +67,7 @@ function newMutationId() {
 }
 
 export default function Delivery() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId, branches } = useTenantContext();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -239,8 +241,8 @@ export default function Delivery() {
 
   const submit = async () => {
     if (!tenantId || !branchId) return;
-    if (!form.address.trim()) return toast.error("Bahrain delivery address is required");
-    if (lines.length === 0) return toast.error("Add products to the delivery");
+    if (!form.address.trim()) return toast.error(tx("Bahrain delivery address is required"));
+    if (lines.length === 0) return toast.error(tx("Add products to the delivery"));
 
     let exactDeliveryFeeFils: number;
     try {
@@ -275,7 +277,7 @@ export default function Delivery() {
       });
       if (error) throw error;
 
-      toast.success("Delivery recorded");
+      toast.success(tx("Delivery recorded"));
       qc.invalidateQueries({ queryKey: ["delivery-orders"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
@@ -304,7 +306,7 @@ export default function Delivery() {
     <div className="flex flex-col gap-4">
       <PageHeader
         eyebrow="OPERATIONS · DELIVERY"
-        title="In-house delivery"
+        title={tx("In-house delivery")}
         description={`Bahrain delivery order board · ${branchName}`}
         actions={
           <button
@@ -312,18 +314,18 @@ export default function Delivery() {
             className="g-btn g-btn-primary"
             onClick={() => { resetForm(); setOpen(true); }}
           >
-            <Plus size={15} className="mr-1" /> New delivery
+            <Plus size={15} className="mr-1" /> {tx("New delivery")}
           </button>
         }
       />
 
       {isLoading ? (
-        <div className="h-meta py-6">Loading…</div>
+        <div className="h-meta py-6">{tx("Loading…")}</div>
       ) : (orders?.length ?? 0) === 0 ? (
         <EmptyState
           icon={Bike}
-          title="No deliveries"
-          description="Create your first Bahrain delivery order to start using the board."
+          title={tx("No deliveries")}
+          description={tx("Create your first Bahrain delivery order to start using the board.")}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -335,7 +337,7 @@ export default function Delivery() {
               </div>
               <div className="flex flex-col gap-2 min-h-[80px]">
                 {grouped[column.id].length === 0 && (
-                  <div className="glass-thin rounded-xl px-3 py-6 text-center h-meta border border-dashed border-[var(--hairline)]">Empty</div>
+                  <div className="glass-thin rounded-xl px-3 py-6 text-center h-meta border border-dashed border-[var(--hairline)]">{tx("Empty")}</div>
                 )}
                 {grouped[column.id].map((order) => {
                   const next = NEXT_STATUS[order.status as DeliveryStatus];
@@ -359,7 +361,7 @@ export default function Delivery() {
                       </div>
                       {(column.id === "ready" || column.id === "assigned") && (couriers?.length ?? 0) > 0 && (
                         <Select value={order.courier_id ?? undefined} onValueChange={(value) => updateStatus(order.id, "assigned", value)}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Assign courier" /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={tx("Assign courier")} /></SelectTrigger>
                           <SelectContent>
                             {(couriers ?? []).map((courier) => <SelectItem key={courier.id} value={courier.id}>{courier.full_name}</SelectItem>)}
                           </SelectContent>
@@ -380,20 +382,20 @@ export default function Delivery() {
 
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
         <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle>New delivery</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{tx("New delivery")}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
-              <div><Label>Customer</Label><Input value={form.customer_name} onChange={(event) => setForm({ ...form, customer_name: event.target.value })} placeholder="Customer name" /></div>
-              <div><Label>Phone</Label><Input value={form.customer_phone} onChange={(event) => setForm({ ...form, customer_phone: event.target.value })} placeholder="+973 3600 1234" inputMode="tel" /></div>
-              <div><Label>Address</Label><Input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Building, road, block, Bahrain" /></div>
-              <div><Label>Area</Label><Input value={form.neighborhood} onChange={(event) => setForm({ ...form, neighborhood: event.target.value })} placeholder="Amwaj Islands, Juffair, Riffa, Seef..." /></div>
-              <div><Label>Delivery fee (BHD)</Label><Input type="text" inputMode="decimal" value={form.delivery_fee} onChange={(event) => setForm({ ...form, delivery_fee: event.target.value })} placeholder="0.500" /></div>
-              <div><Label>Notes</Label><Input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Landmark or delivery instructions" /></div>
+              <div><Label>{tx("Customer")}</Label><Input value={form.customer_name} onChange={(event) => setForm({ ...form, customer_name: event.target.value })} placeholder={tx("Customer name")} /></div>
+              <div><Label>{tx("Phone")}</Label><Input value={form.customer_phone} onChange={(event) => setForm({ ...form, customer_phone: event.target.value })} placeholder="+973 3600 1234" inputMode="tel" /></div>
+              <div><Label>{tx("Address")}</Label><Input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder={tx("Building, road, block, Bahrain")} /></div>
+              <div><Label>{tx("Area")}</Label><Input value={form.neighborhood} onChange={(event) => setForm({ ...form, neighborhood: event.target.value })} placeholder={tx("Amwaj Islands, Juffair, Riffa, Seef...")} /></div>
+              <div><Label>{tx("Delivery fee (BHD)")}</Label><Input type="text" inputMode="decimal" value={form.delivery_fee} onChange={(event) => setForm({ ...form, delivery_fee: event.target.value })} placeholder="0.500" /></div>
+              <div><Label>{tx("Notes")}</Label><Input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder={tx("Landmark or delivery instructions")} /></div>
             </div>
 
             <div className="space-y-2">
               <Label>Add products</Label>
-              <Input placeholder="Search product..." value={search} onChange={(event) => setSearch(event.target.value)} />
+              <Input placeholder={tx("Search product...")} value={search} onChange={(event) => setSearch(event.target.value)} />
               {search && (
                 <ScrollArea className="h-44 border rounded-lg">
                   <div className="divide-y">
@@ -408,7 +410,7 @@ export default function Delivery() {
               )}
 
               <div className="glass rounded-2xl p-3">
-                {lines.length === 0 ? <div className="h-meta py-3 text-center">No items yet</div> : (
+                {lines.length === 0 ? <div className="h-meta py-3 text-center">{tx("No items yet")}</div> : (
                   <div className="space-y-2 max-h-44 overflow-auto">
                     {lines.map((line) => (
                       <div key={line.product_id} className="flex items-center gap-2 text-sm">
@@ -432,7 +434,7 @@ export default function Delivery() {
                     ))}
                   </div>
                 )}
-                <div className="mt-3 pt-3 border-t border-[var(--hairline)] flex justify-between font-bold"><span>Total estimate</span><span>{formatFils(totalFils)}</span></div>
+                <div className="mt-3 pt-3 border-t border-[var(--hairline)] flex justify-between font-bold"><span>{tx("Total estimate")}</span><span>{formatFils(totalFils)}</span></div>
                 <div className="h-meta mt-1">Final price and tax are re-resolved by the server at commit.</div>
               </div>
             </div>

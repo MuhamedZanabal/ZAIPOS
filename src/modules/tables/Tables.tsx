@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { deriveOrderState, ORDER_STATE_META, countByStatus } from "./itemStatus";
 import { Table } from "@/types/table";
 import "./tables.css";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ function TablePanel({
             onClick={onOpen}
             className="g-btn g-btn-primary g-btn-touch tbl-panel-cta-btn"
           >
-            Open table
+            {tx("Open table")}
             <ChevronRight size={16} />
           </button>
         </div>
@@ -202,7 +203,7 @@ function TablePanel({
           {/* Waiter + state */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col gap-0.5">
-              <div className="h-label">Waiter</div>
+              <div className="h-label">{tx("Waiter")}</div>
               <div className="g-num-14 tbl-panel-waiter-name">
                 {waiterName ?? "—"}
               </div>
@@ -248,7 +249,7 @@ function TablePanel({
               counts.preparing === 0 &&
               counts.ready === 0 &&
               counts.dispatched === 0 && (
-                <span className="h-meta">No active items</span>
+                <span className="h-meta">{tx("No active items")}</span>
               )}
           </div>
 
@@ -268,7 +269,7 @@ function TablePanel({
             onClick={onOpen}
             className="g-btn g-btn-primary g-btn-touch tbl-panel-cta-btn"
           >
-            View order
+            {tx("View order")}
             <ChevronRight size={16} />
           </button>
         </div>
@@ -312,6 +313,7 @@ function ViewToggle({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Tables() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId, branches, hasRole } = useTenantContext();
   const { user } = useAuth();
   const { devMode } = useDevMode();
@@ -430,7 +432,7 @@ export default function Tables() {
       navigate(`/tables/${existing.id}`);
       return;
     }
-    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Table branch scope is unavailable"));
     let data: {id:string};
     try {
       data=await openTableOrder(createTableOrderOpenPayload({tenantId,branchId,tableId}));
@@ -453,7 +455,7 @@ export default function Tables() {
       qc.invalidateQueries({ queryKey: ["branches-admin"] });
     } catch (err) {
       console.error(err);
-      toast.error("Error saving view preference");
+      toast.error(tx("Error saving view preference"));
       setLocalViewMode(branch?.table_view_mode || "cards");
     }
   };
@@ -497,7 +499,7 @@ export default function Tables() {
       .from("tables")
       .update({ x_pos: xPos, y_pos: yPos })
       .eq("id", tableId);
-    if (error) toast.error("Error saving position");
+    if (error) toast.error(tx("Error saving position"));
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -534,7 +536,7 @@ export default function Tables() {
   if (!tenantId || !branchId || !user) {
     return (
       <div className="flex items-center justify-center p-8 tbl-page-loading">
-        Loading…
+        {tx("Loading…")}
       </div>
     );
   }
@@ -563,7 +565,7 @@ export default function Tables() {
           </div>
         </div>
         <div className="glass flex flex-col items-center justify-center gap-4 rounded-3xl tbl-empty-card">
-          <div className="h-label">No tables are configured for this branch.</div>
+          <div className="h-label">{tx("No tables are configured for this branch.")}</div>
           <button
             type="button"
             className="g-btn g-btn-ghost"
@@ -585,7 +587,7 @@ export default function Tables() {
         <div className="flex items-center gap-3">
           <div>
             <div className="h-display tbl-page-title">
-              Tables
+              {tx("Tables")}
             </div>
             <div className="h-meta tbl-page-meta">
               {branchName} · {tables?.length ?? 0} tables
@@ -602,11 +604,11 @@ export default function Tables() {
               >
                 {editMode ? (
                   <>
-                    <Check size={14} /> Ready
+                    <Check size={14} /> {tx("Ready")}
                   </>
                 ) : (
                   <>
-                    <Edit2 size={14} /> Edit floor plan
+                    <Edit2 size={14} /> {tx("Edit floor plan")}
                   </>
                 )}
               </button>
@@ -683,7 +685,7 @@ export default function Tables() {
       <div className="flex items-center gap-3">
         <div>
           <div className="h-display tbl-page-title">
-            Tables
+            {tx("Tables")}
           </div>
           <div className="h-meta tbl-page-meta">
             {branchName} · {tables?.length ?? 0} tables
@@ -729,7 +731,7 @@ export default function Tables() {
         <div className="tbl-flex-1" />
         <div className="flex items-center gap-1.5 h-meta tbl-page-meta">
           <Clock size={12} />
-          <span>Auto-refresh every 15 s</span>
+          <span>{tx("Auto-refresh every 15 s")}</span>
         </div>
       </div>
 

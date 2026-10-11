@@ -9,8 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Image, Layout, Save, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 export default function ReceiptSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId } = useTenantContext();
   const qc = useQueryClient();
   const [config, setConfig] = useState({
@@ -44,7 +46,7 @@ export default function ReceiptSettings() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Receipt settings saved");
+      toast.success(tx("Receipt settings saved"));
       qc.invalidateQueries({ queryKey: ["tenant-receipt-config"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -59,26 +61,26 @@ export default function ReceiptSettings() {
       <div className="space-y-6">
         <div className="glass p-6 rounded-2xl space-y-6">
           <div className="flex items-center gap-2 font-bold text-ink-900">
-            <Layout className="h-5 w-5 text-brand-600" /> Receipt Layout
+            <Layout className="h-5 w-5 text-brand-600" /> {tx("Receipt Layout")}
           </div>
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label>Header text</Label>
+              <Label>{tx("Header text")}</Label>
               <Input
-                placeholder="CR: 123456-1 | Manama, Kingdom of Bahrain | +973 1700 0000"
+                placeholder={tx("CR: 123456-1 | Manama, Kingdom of Bahrain | +973 1700 0000")}
                 value={config.header_text}
                 onChange={(e) => setConfig({ ...config, header_text: e.target.value })}
               />
               <p className="h-meta">
-                Use this for the commercial registration number, Bahrain address, VAT account number when applicable, and contact details.
+                {tx("Use this for the commercial registration number, Bahrain address, VAT account number when applicable, and contact details.")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Footer text</Label>
+              <Label>{tx("Footer text")}</Label>
               <Textarea
-                placeholder="Thank you for shopping with us."
+                placeholder={tx("Thank you for shopping with us.")}
                 value={config.footer_text}
                 onChange={(e) => setConfig({ ...config, footer_text: e.target.value })}
                 className="min-h-[100px]"
@@ -88,8 +90,8 @@ export default function ReceiptSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <Label>Show logo</Label>
-                  <p className="h-meta">Include the business logo on the receipt.</p>
+                  <Label>{tx("Show logo")}</Label>
+                  <p className="h-meta">{tx("Include the business logo on the receipt.")}</p>
                 </div>
                 <Switch
                   checked={config.show_logo}
@@ -123,7 +125,7 @@ export default function ReceiptSettings() {
 
           <div className="pt-4 border-t border-black/5 flex justify-end">
             <button type="button" className="g-btn g-btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
-              <Save className="h-4 w-4" /> Save changes
+              <Save className="h-4 w-4" /> {tx("Save changes")}
             </button>
           </div>
         </div>
@@ -148,25 +150,25 @@ export default function ReceiptSettings() {
 
           <div className="border-t border-b border-dashed py-2 mb-2 space-y-1">
             <div className="flex justify-between">
-              <span>RECEIPT #1234</span>
+              <span>{tx("RECEIPT #1234")}</span>
               <span>04/09/2026 13:00</span>
             </div>
-            {config.show_customer_info && <div className="text-[9px]">CUSTOMER: WALK-IN CUSTOMER</div>}
+            {config.show_customer_info && <div className="text-[9px]">{tx("CUSTOMER: WALK-IN CUSTOMER")}</div>}
           </div>
 
           <div className="space-y-1 mb-4">
-            <div className="flex justify-between"><span>2 × PRODUCT A</span><span>{formatCurrency(6)}</span></div>
-            <div className="flex justify-between"><span>1 × PRODUCT B</span><span>{formatCurrency(4)}</span></div>
+            <div className="flex justify-between"><span>{tx("2 × PRODUCT A")}</span><span>{formatCurrency(6)}</span></div>
+            <div className="flex justify-between"><span>{tx("1 × PRODUCT B")}</span><span>{formatCurrency(4)}</span></div>
           </div>
 
           <div className="border-t border-dashed pt-2 space-y-1">
             <div className="flex justify-between font-bold text-xs">
-              <span>TOTAL</span><span>{formatCurrency(sampleTotal)}</span>
+              <span>{tx("TOTAL")}</span><span>{formatCurrency(sampleTotal)}</span>
             </div>
             {config.show_tax_details && (
               <div className="text-[8px] opacity-60">
-                <div className="flex justify-between"><span>Taxable amount:</span><span>{formatCurrency(sampleSubtotal)}</span></div>
-                <div className="flex justify-between"><span>VAT (10%):</span><span>{formatCurrency(sampleVat)}</span></div>
+                <div className="flex justify-between"><span>{tx("Taxable amount:")}</span><span>{formatCurrency(sampleSubtotal)}</span></div>
+                <div className="flex justify-between"><span>{tx("VAT (10%):")}</span><span>{formatCurrency(sampleVat)}</span></div>
               </div>
             )}
           </div>
