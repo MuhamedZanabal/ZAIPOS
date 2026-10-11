@@ -238,6 +238,8 @@ pub async fn bootstrap_owner(db: &Database, body: &Value) -> Result<Value, AuthE
     let business_mode = match body.get("business_mode").and_then(Value::as_str) {
         None | Some("RETAIL") => "RETAIL",
         Some("RESTAURANT") => "RESTAURANT",
+        Some("CAFE") => "CAFE",
+        Some("SUPERMARKET") => "SUPERMARKET",
         Some(_) => return Err(AuthError::Rejected),
     };
     if username.is_empty()
@@ -430,6 +432,119 @@ pub async fn bootstrap_owner(db: &Database, body: &Value) -> Result<Value, AuthE
             "user": { "id": user_id, "email": username }
         }
     }))
+}
+
+/// Owner/admin adds a staff login on this computer (Settings → Users and the
+/// setup wizard's staff step). The account rows are written by the service; the
+/// role grant runs as the caller through `assign_staff_role_v1`, so the
+/// database decides whether the caller may add staff. Everything is one
+/// transaction: a refused role leaves no orphan login behind.
+pub async fn create_staff_user(
+    db: &Database,
+    caller_id: &str,
+    body: &Value,
+) -> Result<Value, String> {
+    let text = |key: &str| body.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    let username = normalize_username(&text("email"));
+    let password = body.get("password").and_then(Value::as_str).unwrap_or("");
+    let full_name = text("full_name");
+    let role = text("role");
+    let tenant_id = text("tenant_id");
+    let branch_id = text("branch_id");
+    if username.is_empty() || username.len() > 254 {
+        return Err("A login name is required".into());
+    }
+    if !(8..=1024).contains(&password.len()) {
+        return Err("Password must be at least 8 characters".into());
+    }
+    if !is_uuid(&tenant_id) || (!branch_id.is_empty() && !is_uuid(&branch_id)) {
+        return Err("Invalid business or branch".into());
+    }
+    let hash = hash_password(password).map_err(|_| "Could not create the user".to_string())?;
+    let unavailable = |_| "The local database is unavailable".to_string();
+    let mut tx = db.pool().begin().await.map_err(unavailable)?;
+    let caller: Option<(String, String)> = sqlx::query_as(
+        "select tenant_id::text, branch_id::text from public.zaipos_local_users where id = $1::uuid and active",
+    )
+    .bind(caller_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(unavailable)?;
+    let Some((caller_tenant, caller_branch)) = caller else {
+        return Err("Only an owner or admin can add staff".into());
+    };
+    if caller_tenant != tenant_id {
+        return Err("Only an owner or admin can add staff".into());
+    }
+    let exists: (bool,) = sqlx::query_as(
+        "select exists(select 1 from public.zaipos_local_users where username = $1)
+             or exists(select 1 from auth.users where lower(email) = $1)",
+    )
+    .bind(&username)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(unavailable)?;
+    if exists.0 {
+        return Err("That login name is already in use".into());
+    }
+    let login_branch = if branch_id.is_empty() { caller_branch } else { branch_id.clone() };
+    let (user_id,): (String,) = sqlx::query_as("select gen_random_uuid()::text")
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(unavailable)?;
+    let display = if full_name.is_empty() { username.clone() } else { full_name };
+    sqlx::query(
+        "insert into auth.users (id, email, raw_user_meta_data)
+         values ($1::uuid, $2, jsonb_build_object('full_name', $3::text))",
+    )
+    .bind(&user_id)
+    .bind(&username)
+    .bind(&display)
+    .execute(&mut *tx)
+    .await
+    .map_err(unavailable)?;
+    sqlx::query(
+        "insert into public.zaipos_local_users (id, tenant_id, branch_id, username, password_hash, active)
+         values ($1::uuid, $2::uuid, $3::uuid, $4, $5, true)",
+    )
+    .bind(&user_id)
+    .bind(&tenant_id)
+    .bind(&login_branch)
+    .bind(&username)
+    .bind(&hash)
+    .execute(&mut *tx)
+    .await
+    .map_err(|_| "Could not create the user for that branch".to_string())?;
+    sqlx::query("select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claim.role', 'authenticated', true)")
+        .bind(caller_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(unavailable)?;
+    let can_assume: (bool,) = sqlx::query_as(
+        "select exists(select 1 from pg_roles where rolname = 'authenticated') and pg_has_role(current_user, 'authenticated', 'MEMBER')",
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(unavailable)?;
+    if can_assume.0 {
+        sqlx::query("set local role authenticated")
+            .execute(&mut *tx)
+            .await
+            .map_err(unavailable)?;
+    }
+    sqlx::query("select public.assign_staff_role_v1($1::uuid, $2::uuid, $3, nullif($4, '')::uuid)")
+        .bind(&tenant_id)
+        .bind(&user_id)
+        .bind(&role)
+        .bind(&branch_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| match error {
+            sqlx::Error::Database(db_error) => db_error.message().to_string(),
+            _ => "The local database is unavailable".to_string(),
+        })?;
+    tx.commit().await.map_err(unavailable)?;
+    Ok(json!({ "user_id": user_id, "email": username, "role": role }))
 }
 
 fn slug_for(username: &str, tenant_id: &str) -> String {

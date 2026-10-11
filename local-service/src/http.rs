@@ -129,6 +129,19 @@ async fn backend(
             )?),
             None => None,
         };
+    if value.get("kind").and_then(Value::as_str) == Some("function")
+        && value.get("name").and_then(Value::as_str) == Some("create-user")
+    {
+        let Some(caller) = user_id.as_deref() else {
+            return Err(StatusCode::UNAUTHORIZED);
+        };
+        return Ok(
+            match auth::create_staff_user(database, caller, value.get("body").unwrap_or(&Value::Null)).await {
+                Ok(data) => (StatusCode::OK, Json(serde_json::json!({ "data": data }))),
+                Err(message) => (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": message }))),
+            },
+        );
+    }
     match execute_backend(database, &value, user_id.as_deref()).await {
         Ok(Value::Object(mut data)) if data.contains_key("__zaipos_count") => {
             let count = data.remove("__zaipos_count").unwrap_or(Value::Null);

@@ -1,3 +1,4 @@
+import { hasCapability, type Capability } from "@/lib/business-modes";
 import { useRef, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -23,7 +24,7 @@ type Item = {
   icon: LucideIcon;
   roles?: AppRole[];
   channel?: Database["public"]["Enums"]["sales_channel"];
-  modes?: Array<"RETAIL" | "RESTAURANT">;
+  capability?: Capability;
 };
 type Section = { label: string; items: Item[] };
 
@@ -38,10 +39,10 @@ const sections: Section[] = [
     items: [
       { title: "Dashboard",   url: "/dashboard",      icon: LayoutDashboard, roles: ["owner","admin","manager","cashier","waiter","kitchen","inventory","courier","staff"] },
       { title: "POS",         url: "/pos",            icon: ShoppingCart,    roles: ["owner","admin","manager","cashier"], channel: "pos" },
-      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables", modes: ["RESTAURANT"] },
-      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables", modes: ["RESTAURANT"] },
-      { title: "Delivery",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery" },
-      { title: "Courier",     url: "/courier",        icon: Bike,            roles: ["courier","staff"], channel: "delivery" },
+      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables", capability: "tables" },
+      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables", capability: "waiter" },
+      { title: "Delivery",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery", capability: "delivery_platforms" },
+      { title: "Courier",     url: "/courier",        icon: Bike,            roles: ["courier","staff"], channel: "delivery", capability: "delivery_platforms" },
       { title: "Cash Register",        url: "/cash",           icon: Wallet,          roles: ["owner","admin","manager","cashier"] },
       { title: "Sales",      url: "/sales",          icon: Receipt,         roles: ["owner","admin","manager","cashier"] },
       { title: "Customers",    url: "/customers",      icon: UserRound,       roles: ["owner","admin","manager","cashier"] },
@@ -52,16 +53,16 @@ const sections: Section[] = [
     items: [
       { title: "Products",   url: "/products",   icon: Package,   roles: ["owner","admin","manager"] },
       { title: "Pricing policies", url: "/pricing-policy", icon: BarChart3, roles: ["owner","admin","manager"] },
-      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], modes: ["RESTAURANT"] },
+      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], capability: "recipes" },
     ],
   },
   {
     label: "Stock",
     items: [
-      { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"] },
+      { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"], capability: "inventory" },
       { title: "Production",  url: "/production", icon: Factory,   roles: ["owner","admin","manager","kitchen"] },
-      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], modes: ["RESTAURANT"] },
-      { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"] },
+      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], capability: "kds" },
+      { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"], capability: "suppliers" },
     ],
   },
   {
@@ -105,7 +106,7 @@ export function AppSidebar() {
   const initials = userRole.slice(0, 2).toUpperCase() || "U";
 
   const canSee = (item: Item) => {
-    if (item.modes && !item.modes.includes(businessMode)) return false;
+    if (item.capability && !hasCapability(businessMode, item.capability)) return false;
     if (item.channel && !activeChannels.includes(item.channel)) return false;
     return canAccessRoles(roles, item.roles);
   };

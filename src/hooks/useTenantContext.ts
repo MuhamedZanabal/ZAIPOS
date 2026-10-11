@@ -1,3 +1,4 @@
+import { normalizeBusinessMode } from "@/lib/business-modes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantStore } from "@/stores/tenant";
@@ -12,7 +13,7 @@ type TenantSummary = {
   currency: string | null;
   tax_rate: number | null;
   active_channels: string[] | null;
-  business_mode: "RETAIL" | "RESTAURANT";
+  business_mode: string;
 };
 
 function isTenantSummary(value: unknown): value is TenantSummary {
@@ -90,7 +91,7 @@ export function useTenantContext() {
 
   const businessMode = useMemo(() => {
     const tenantObj = memberships?.find((membership) => membership.tenant_id === tenantId)?.tenants;
-    return isTenantSummary(tenantObj) && tenantObj.business_mode === "RESTAURANT" ? "RESTAURANT" : "RETAIL";
+    return normalizeBusinessMode(isTenantSummary(tenantObj) ? tenantObj.business_mode : undefined);
   }, [memberships, tenantId]);
 
   return {

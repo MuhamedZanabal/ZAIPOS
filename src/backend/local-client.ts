@@ -113,7 +113,7 @@ export function createLocalClient() {
         writeSession(null);
         return { error: null };
       },
-      bootstrapOwner: async ({ email, password, tenantName, branchName, businessMode = 'RETAIL' }: { email: string; password: string; tenantName: string; branchName: string; businessMode?: 'RETAIL' | 'RESTAURANT' }) => {
+      bootstrapOwner: async ({ email, password, tenantName, branchName, businessMode = 'RETAIL' }: { email: string; password: string; tenantName: string; branchName: string; businessMode?: string }) => {
         const result = await localDispatch('/v1/auth/bootstrap', { kind: 'auth', action: 'bootstrap', email, password, tenant_name: tenantName, branch_name: branchName, business_mode: businessMode });
         const session = (result.data as { session?: LocalSession } | null)?.session;
         if (result.error || !session?.access_token || session.access_token === password) {
