@@ -2687,84 +2687,6 @@ export type Database = {
           },
         ]
       }
-      ai_channel_configs: {
-        Row: {
-          id: string
-          tenant_id: string
-          branch_id: string
-          channel: string
-          phone_number: string | null
-          is_active: boolean
-          config: Json
-          system_prompt: string | null
-          ai_model: string | null
-          temperature: number | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          branch_id: string
-          channel: string
-          phone_number?: string | null
-          is_active?: boolean
-          config?: Json
-          system_prompt?: string | null
-          ai_model?: string | null
-          temperature?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          branch_id?: string
-          channel?: string
-          phone_number?: string | null
-          is_active?: boolean
-          config?: Json
-          system_prompt?: string | null
-          ai_model?: string | null
-          temperature?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      ai_knowledge_docs: {
-        Row: {
-          id: string
-          tenant_id: string
-          branch_id: string
-          title: string
-          content: string
-          embedding: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          branch_id: string
-          title: string
-          content: string
-          embedding?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          branch_id?: string
-          title?: string
-          content?: string
-          embedding?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -3081,20 +3003,6 @@ export type Database = {
         }
       }
       mark_table_order_ready: { Args: { _order_id: string }; Returns: number }
-      match_knowledge_docs: {
-        Args: {
-          _branch_id: string
-          _embedding: string
-          _match_count?: number
-          _tenant_id: string
-        }
-        Returns: {
-          content: string
-          id: string
-          similarity: number
-          title: string
-        }[]
-      }
 
       recalc_table_order: { Args: { _order_id: string }; Returns: undefined }
       register_delivery_order_v2: {
@@ -3328,6 +3236,7 @@ export type Database = {
       sales_channel:
         | "pos"
         | "rappi"
+        | "talabat"
         | "delivery"
         | "tables"
         | "didi"
@@ -3513,7 +3422,7 @@ export const Constants = {
       ],
       production_status: ["draft", "in_progress", "completed", "cancelled"],
       sale_status: ["completed", "cancelled", "refunded", "partially_refunded"],
-      sales_channel: ["pos", "rappi", "delivery", "tables", "didi", "uber", "whatsapp", "qr"],
+      sales_channel: ["pos", "rappi", "talabat", "delivery", "tables", "didi", "uber", "whatsapp", "qr"],
       table_item_status: [
         "pending",
         "preparing",

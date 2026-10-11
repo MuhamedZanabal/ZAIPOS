@@ -16,14 +16,14 @@ import { useWhatsAppNotifs } from "@/contexts/WhatsAppNotifsContext";
 import { cn } from "@/lib/utils";
 import { signOutFully } from "@/lib/signOut";
 import type { LucideIcon } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
+import type { SalesChannel } from "@/lib/channels";
 
 type Item = {
   title: string;
   url: string;
   icon: LucideIcon;
   roles?: AppRole[];
-  channel?: Database["public"]["Enums"]["sales_channel"];
+  channel?: SalesChannel;
   capability?: Capability;
 };
 type Section = { label: string; items: Item[] };

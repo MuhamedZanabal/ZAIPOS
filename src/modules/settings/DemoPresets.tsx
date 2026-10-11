@@ -188,7 +188,8 @@ export function DemoPresets() {
         .eq("tenant_id", tenantId);
       if (existingProductsError) throw existingProductsError;
 
-      const productByName = new Map((existingProducts ?? []).map((product) => [product.name, product]));
+      type PresetProductRow = { id: string; name: string; price: number; tax_rate: number; product_type: string };
+      const productByName = new Map<string, PresetProductRow>((existingProducts ?? []).map((product: PresetProductRow) => [product.name, product]));
       const productsToInsert = preset.products
         .filter((product) => !productByName.has(product.name))
         .map((product) => ({

@@ -135,7 +135,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
       {/* Items */}
       <div className="g-kds-items">
         {items.map((item) => {
-          const mods = (item.modifiers as Modifier[]) ?? [];
+          const mods = (item.modifiers as unknown as Modifier[] | null) ?? [];
           const ready = item.status === "ready" || item.status === "dispatched";
           const preparing = item.status === "preparing";
           return (

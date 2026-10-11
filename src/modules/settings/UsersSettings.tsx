@@ -27,10 +27,10 @@ type Membership = {
 };
 
 export default function UsersSettings() {
-  const { tenantId, branches, hasRolee } = useTenantContext();
+  const { tenantId, branches, hasRole } = useTenantContext();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const canManage = hasRolee("owner", "admin");
+  const canManage = hasRole("owner", "admin");
 
   // Invite (existing user)
   const [inviteEmail, setInviteEmail] = useState("");
