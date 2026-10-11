@@ -162,6 +162,27 @@ async fn backend(
             },
         );
     }
+    if value.get("kind").and_then(Value::as_str) == Some("function")
+        && value.get("name").and_then(Value::as_str) == Some("pos-pin")
+    {
+        let Some(caller) = user_id.as_deref() else {
+            return Err(StatusCode::UNAUTHORIZED);
+        };
+        let (status, body) =
+            crate::pos_pin::handle(database, caller, value.get("body").unwrap_or(&Value::Null))
+                .await;
+        let status = StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_REQUEST);
+        // Errors keep the app's `{ error }` shape; success bodies go under `data`.
+        return Ok(if status == StatusCode::OK {
+            (status, Json(serde_json::json!({ "data": body })))
+        } else {
+            let mut body = body;
+            if body.get("error").is_none() {
+                body = serde_json::json!({"error": "PIN incorrect", "detail": body});
+            }
+            (status, Json(body))
+        });
+    }
     match execute_backend(database, &value, user_id.as_deref()).await {
         Ok(Value::Object(mut data)) if data.contains_key("__zaipos_count") => {
             let count = data.remove("__zaipos_count").unwrap_or(Value::Null);

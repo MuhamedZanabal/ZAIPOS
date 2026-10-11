@@ -44,6 +44,7 @@ async fn business_types_on_real_postgres() {
                 unknown_type_is_rejected_and_direct_type_updates_are_blocked().await;
                 owner_changes_type_and_adds_staff_who_can_sign_in().await;
                 product_photos_are_stored_locally_per_tenant().await;
+                cashier_pins_are_hashed_locked_and_audited().await;
             })
             .await
         })
@@ -395,5 +396,78 @@ async fn product_photos_are_stored_locally_per_tenant() {
     let (status, _) = call("upload", upload(&jpeg, &tenant), None).await;
     assert_eq!(status, axum::http::StatusCode::UNAUTHORIZED);
     let _ = std::fs::remove_dir_all(&media);
+    database.close().await;
+}
+
+async fn cashier_pins_are_hashed_locked_and_audited() {
+    let Some(database) = migrated().await else {
+        return;
+    };
+    let app = build_router(AppState::ready(database.database().clone()));
+    let token = bootstrap(&app, "CAFE").await;
+    let pool = database.database().pool_for_tests();
+    let tenant = scalar(&database, "select id::text from public.tenants").await;
+    let branch = scalar(&database, "select id::text from public.branches").await;
+    let employee: String = sqlx::query_scalar(
+        "insert into public.employees (tenant_id, branch_id, full_name, status) values ($1::uuid, $2::uuid, 'Fatima', 'active') returning id::text",
+    )
+    .bind(&tenant)
+    .bind(&branch)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    sqlx::query("insert into public.devices (tenant_id, branch_id, device_uid, app_version, os) values ($1::uuid, $2::uuid, 'till-device-0001', '1.0.0', 'linux')")
+        .bind(&tenant)
+        .bind(&branch)
+        .execute(pool)
+        .await
+        .unwrap();
+    let pin = |action: &str, value: &str| {
+        let app = app.clone();
+        let token = token.clone();
+        let body = format!(
+            r#"{{"kind":"function","name":"pos-pin","body":{{"action":"{action}","tenant_id":"{tenant}","branch_id":"{branch}","employee_id":"{employee}","pin":"{value}","device_uid":"till-device-0001"}}}}"#
+        );
+        async move {
+            let response = app
+                .oneshot(post("/v1/backend", &body, Some(&token)))
+                .await
+                .unwrap();
+            (response.status().as_u16(), text(response).await)
+        }
+    };
+    let (status, body) = pin("set", "4821").await;
+    assert_eq!(status, 200, "{body}");
+    let stored = scalar(
+        &database,
+        "select pin_hash from public.employee_pos_credentials",
+    )
+    .await;
+    assert!(stored.starts_with("$argon2id$v=19$m=19456,t=2,p=1$") && !stored.contains("4821"));
+    let (status, body) = pin("verify", "4821").await;
+    assert_eq!(status, 200, "{body}");
+    for _ in 0..5 {
+        let (status, _) = pin("verify", "0000").await;
+        assert!(status == 401 || status == 423);
+    }
+    let (status, _) = pin("verify", "4821").await;
+    assert_eq!(
+        status, 423,
+        "locked after five failures even with the right PIN"
+    );
+    let attempts = scalar(
+        &database,
+        "select count(*)::text from public.employee_pos_pin_attempts",
+    )
+    .await;
+    assert!(attempts.parse::<i32>().unwrap() >= 6);
+    let audited = scalar(
+        &database,
+        "select count(*)::text from public.audit_logs where action = 'pos.pin_verified'",
+    )
+    .await;
+    assert_eq!(audited, "1");
+    let (status, _) = pin("verify", "12").await;
+    assert_eq!(status, 400);
     database.close().await;
 }

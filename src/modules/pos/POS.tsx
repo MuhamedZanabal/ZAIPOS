@@ -44,6 +44,8 @@ import { FIRST_SALE_GUIDE_KEY } from "@/hooks/useSetupInProgress";
 import { isWeighedProduct, parseWeightKg } from "@/lib/weighedItems";
 import { translate as t, useLanguageStore } from "@/i18n";
 import { LanguageToggle } from "@/components/shared/LanguageToggle";
+import { CashierSwitch } from "./CashierSwitch";
+import { useActiveCashier } from "@/stores/activeCashier";
 
 export default function POS() {
   // Re-render the whole register (and its children) when the language changes.
@@ -59,6 +61,7 @@ export default function POS() {
   const { devMode } = useDevMode();
   const { lines, total, clear, add, addQuantity, replace, setPriceOverride, clearPriceOverrides } = useCart();
   const { data: openSession } = useOpenSession(branchId);
+  const activeCashier = useActiveCashier((state) => state.cashier);
   const { onBarcodeScanned, printTicket, openDrawer } = useHardware();
 
   const [activeCat, setActiveCat] = useState<string | "all">("all");
@@ -458,6 +461,7 @@ export default function POS() {
             ticketNumber: sale?.ticket_number ?? saleId.slice(0, 8),
             businessName: tenant?.name ?? "ZAIPOS",
             branchName,
+            cashierName: activeCashier && activeCashier.branchId === branchId ? activeCashier.name : undefined,
             items: lines.map((line) => ({
               name: line.product.name,
               quantity: line.quantity,
@@ -563,6 +567,7 @@ export default function POS() {
             showSync={!!openSession}
           />
         </div>
+        <CashierSwitch tenantId={tenantId} branchId={branchId} cashSessionId={openSession?.id ?? null} />
         <LanguageToggle className="border-l self-stretch" />
         <Link
           to="/dashboard"

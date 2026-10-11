@@ -1,4 +1,4 @@
-mod password;
+pub(crate) mod password;
 
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};

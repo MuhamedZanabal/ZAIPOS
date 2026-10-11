@@ -15,6 +15,7 @@ pub mod device;
 pub mod events;
 pub mod http;
 pub mod import;
+pub mod pos_pin;
 pub mod provisioning;
 
 pub use config::{ConfigError, ServiceConfig, ServicePaths};
