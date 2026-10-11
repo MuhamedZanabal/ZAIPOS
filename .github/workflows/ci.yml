@@ -140,6 +140,9 @@ jobs:
       - name: Test price override and manager approval
         run: npm run test:migrations:price-override
 
+      - name: Test discount approval threshold
+        run: npm run test:migrations:discount-threshold
+
       - name: Test POS PIN security
         run: npm run test:migrations:pos-pin
 

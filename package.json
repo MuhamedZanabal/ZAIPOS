@@ -55,6 +55,7 @@
     "test:migrations:receipt-reprint": "node scripts/test-receipt-reprint.mjs",
     "test:migrations:held-carts": "node scripts/test-held-carts.mjs",
     "test:migrations:price-override": "node scripts/test-price-override.mjs",
+    "test:migrations:discount-threshold": "node scripts/test-discount-threshold.mjs",
     "test:migrations:pos-pin": "node scripts/test-pos-pin.mjs && node scripts/test-pos-pin-edge-contract.mjs",
     "test:migrations:product-barcodes": "node scripts/test-product-barcodes.mjs",
     "test:migrations:product-financial-history": "node scripts/test-product-financial-history.mjs",
