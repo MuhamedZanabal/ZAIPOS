@@ -32,7 +32,7 @@ export function LabelPrintDialog({ products }: { products: LabelProduct[] }) {
   const [copies, setCopies] = useState<Record<string, number>>({});
   const labelled = useMemo(() => products.filter((p) => labelCode(p)), [products]);
   const chosen = labelled.filter((p) => (copies[p.id] ?? 0) > 0);
-  const sheet = chosen.flatMap((p) => Array.from({ length: copies[p.id] }, () => p));
+  const sheet = chosen.flatMap((p) => new Array<LabelProduct>(copies[p.id]).fill(p));
 
   const downloadEscPos = () => {
     const parts = chosen.map((p) => escPosLabel({ name: p.name, priceText: priceText(p.price), code: labelCode(p)!, copies: copies[p.id] }));
