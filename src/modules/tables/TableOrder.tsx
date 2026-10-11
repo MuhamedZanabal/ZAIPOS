@@ -306,8 +306,9 @@ export default function TableOrder() {
       const baseTotal = Number(order?.total ?? 0);
       const payableTotal = Math.max(0, baseTotal - discountAmount + tipAmount);
       if (!tenantId || !branchId) throw new Error('Table checkout scope is unavailable');
-      await checkoutTableOrderOnDevice({ tenantId, branchId, orderId, allocations, tipAmount, discountAmount, couponCode });
-      toast.success(tx("Payment recorded"));
+      const result = await checkoutTableOrderOnDevice({ tenantId, branchId, orderId, allocations, tipAmount, discountAmount, couponCode });
+      if (typeof result === "object" && result.queued) toast.warning(tx("Server unreachable · Checkout saved offline and will sync automatically"), { duration: 10_000 });
+      else toast.success(tx("Payment recorded"));
       setPayOpen(false);
       qc.invalidateQueries({ queryKey: ["table-orders-open"] });
       qc.invalidateQueries({ queryKey: ["tables"] });

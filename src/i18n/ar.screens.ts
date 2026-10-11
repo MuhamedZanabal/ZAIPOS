@@ -420,4 +420,5 @@ export const AR_SCREENS: Record<string, string> = {
   "ZAIPOS uses the brand's light glassmorphism design. Dark mode is disabled to maintain the system’s visual consistency.": "يستخدم ZAIPOS تصميم العلامة الفاتح. الوضع الداكن معطّل للحفاظ على تناسق الواجهة.",
   "Step": "الخطوة",
   "of": "من",
+  "Server unreachable · Checkout saved offline and will sync automatically": "الخادم غير متاح · حُفظ الدفع دون اتصال وستتم مزامنته تلقائيًا",
 };

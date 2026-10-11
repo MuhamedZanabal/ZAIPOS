@@ -13,7 +13,7 @@ export function useOfflineReplay(): void {
         const [outbox, cash] = await Promise.all([replayOutbox(), replayPendingCashMovements()]);
         const synced = outbox.synced + cash;
         if (synced > 0) toast.success(`${synced} offline operation${synced === 1 ? "" : "s"} synced to the server`);
-        if (outbox.conflicts > 0) toast.error(`${outbox.conflicts} offline refund${outbox.conflicts === 1 ? "" : "s"} were rejected by the server and need manager review`);
+        if (outbox.conflicts > 0) toast.error(`${outbox.conflicts} offline operation${outbox.conflicts === 1 ? "" : "s"} (refund or table checkout) were rejected by the server and need manager review`);
       } finally {
         running = false;
       }

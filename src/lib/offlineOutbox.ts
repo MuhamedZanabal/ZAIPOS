@@ -8,7 +8,7 @@ import { executeCashMovement, readCashMovement } from "@/lib/cashMovementRecover
  * server idempotency key (client_mutation_id / reference), so replaying an
  * entry that actually reached the server is harmless.
  */
-export type OutboxKind = "sale-return";
+export type OutboxKind = "sale-return" | "table-checkout";
 export interface OutboxEntry {
   id: string; kind: OutboxKind; payload: Record<string, unknown>;
   tenantId: string; branchId: string; createdAt: string;
@@ -57,6 +57,11 @@ const executors: Record<OutboxKind, Executor> = {
   "sale-return": (entry, accessToken) => {
     if (!window.electron?.returnSale) throw new Error("LOCAL_RUNTIME_UNAVAILABLE");
     return window.electron.returnSale(entry.payload, { accessToken, tenantId: entry.tenantId, branchId: entry.branchId });
+  },
+  // Idempotent: the payload carries _client_mutation_id "table-checkout:<orderId>".
+  "table-checkout": (entry, accessToken) => {
+    if (!window.electron?.checkoutTableOrder) throw new Error("LOCAL_RUNTIME_UNAVAILABLE");
+    return window.electron.checkoutTableOrder(entry.payload as never, { accessToken, tenantId: entry.tenantId, branchId: entry.branchId });
   },
 };
 
