@@ -52,6 +52,15 @@ export function useTenantContext() {
     },
   });
 
+  // A staff member who signs in on an existing install never passes through
+  // onboarding, and the pre-login tenant lookup runs anonymously (no rows), so
+  // adopt the tenant from the user's own memberships when none is selected.
+  useEffect(() => {
+    if (!memberships || memberships.length === 0) return;
+    if (tenantId && memberships.some((membership) => membership.tenant_id === tenantId)) return;
+    setTenant(memberships[0].tenant_id);
+  }, [memberships, tenantId, setTenant]);
+
   const tenantMemberships = useMemo(
     () => (memberships ?? []).filter((membership) => membership.tenant_id === tenantId),
     [memberships, tenantId],
@@ -114,7 +123,8 @@ export function useTenantContext() {
     roles,
     hasRole,
     isAuthorizedForDomain,
-    isLoading: loadingRoles,
+    // Not ready until a tenant from the memberships is selected (see effect above).
+    isLoading: loadingRoles || ((memberships?.length ?? 0) > 0 && tenantMemberships.length === 0),
     needsOnboarding: !loadingRoles && (memberships?.length ?? 0) === 0,
     activeChannels,
     businessMode,
