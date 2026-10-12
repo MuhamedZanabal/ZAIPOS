@@ -65,7 +65,7 @@ export default function Settings() {
               onClick={() => setActive(tab.id)}
             >
               <Icon size={15} />
-              <span className="flex-1 text-left">{tab.label}</span>
+              <span className="flex-1 text-start">{tx(tab.label)}</span>
               {isActive && <ChevronRight size={12} />}
             </button>
           );

@@ -589,4 +589,13 @@ export const AR_SCREENS: Record<string, string> = {
   "Print / Save PDF": "طباعة / حفظ PDF",
   "Print labels": "طباعة الملصقات",
   "EAN-13 is used for valid EAN codes; other barcodes and SKUs print as Code 128.": "يُستخدم EAN-13 للرموز الصحيحة؛ وتُطبع الرموز الأخرى ورموز SKU بصيغة Code 128.",
+  "My Business": "نشاطي التجاري",
+  "Branches": "الفروع",
+  "Users & Permissions": "المستخدمون والصلاحيات",
+  "Sales Channels": "قنوات البيع",
+  "WhatsApp AI": "واتساب الذكي",
+  "AI Agent": "المساعد الذكي",
+  "Receipt": "الإيصال",
+  "Data": "البيانات",
+  "Devices": "الأجهزة",
 };
