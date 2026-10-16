@@ -88,6 +88,8 @@ const exactReferencePolicy = new Map([
   ["public.stocktake_items.stocktake_items_product_id_fkey[product_id]", POLICY.STATE_DEPENDENT],
   ["public.supplier_product_operations.supplier_product_operations_tenant_product_fkey[tenant_id,product_id]", POLICY.HISTORICAL_RETAIN],
   ["public.supplier_products.supplier_products_tenant_product_fkey[tenant_id,product_id]", POLICY.STATE_DEPENDENT],
+  // WhatsApp-only search aliases; harmless to leave on a merged (inactive) source product. Owner may re-alias the canonical one.
+  ["public.wa_product_aliases.wa_product_aliases_product_id_fkey[product_id]", POLICY.HISTORICAL_RETAIN],
 ]);
 
 const manifestIds = new Set(manifest.map((row) => row.identity));
