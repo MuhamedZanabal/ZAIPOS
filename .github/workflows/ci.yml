@@ -353,6 +353,8 @@ jobs:
           name: ZAIPOS-${{ github.sha }}-windows-runtime-diagnostics
           path: |
             C:\ProgramData\ZAIPOS\postgres.log
+            C:\ProgramData\ZAIPOS\database\postgres.log
+            C:\ProgramData\ZAIPOS\bootstrap-error.log
             C:\ProgramData\ZAIPOS\desktop\server-profile.json
             C:\ProgramData\ZAIPOS\desktop\server-status.json
             C:\ProgramData\ZAIPOS\health-error.log

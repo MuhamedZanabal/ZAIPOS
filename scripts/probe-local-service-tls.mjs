@@ -1,6 +1,7 @@
 import tls from 'node:tls';
 
-const [origin, expectedFingerprint] = process.argv.slice(2);
+const [origin, expectedFingerprint, mode] = process.argv.slice(2);
+const bootstrap = mode === 'bootstrap';
 if (!origin || !/^[a-f0-9]{64}$/i.test(expectedFingerprint ?? '')) {
   console.error('LOCAL_TLS_PROBE_ARGUMENTS_INVALID');
   process.exit(2);
@@ -55,6 +56,11 @@ socket.once('secureConnect', () => {
     const header = raw.slice(0, split);
     const body = raw.slice(split + 4);
     const status = Number(header.split('\r\n')[0]?.split(' ')[1]);
+    if (bootstrap) {
+      process.stdout.write(`${status} ${body.replace(/"access_token":"[^"]*"/, '"access_token":"<redacted>"')}`);
+      if (status !== 200) process.exitCode = 1;
+      return;
+    }
     if (status !== 200) return fail(`LOCAL_TLS_PROBE_HTTP_STATUS:${status}`);
     try {
       const health = JSON.parse(body);
@@ -64,5 +70,11 @@ socket.once('secureConnect', () => {
       fail(`LOCAL_TLS_PROBE_JSON_INVALID:${error.message}`);
     }
   });
+  if (bootstrap) {
+    const payload = JSON.stringify({ kind: 'auth', action: 'bootstrap', email: 'owner@ci.zaipos.local', password: 'Ci-Owner-Pass-2026',
+      tenant_name: 'CI \u0623\u0645\u0648\u0627\u062c Supermarket', branch_name: 'Main Branch', business_mode: 'SUPERMARKET' });
+    socket.write(`POST /v1/auth/bootstrap HTTP/1.1\r\nHost: ${expectedHost}\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(payload)}\r\n\r\n${payload}`);
+    return;
+  }
   socket.write(`GET /v1/health HTTP/1.1\r\nHost: ${expectedHost}\r\nConnection: close\r\nAccept: application/json\r\n\r\n`);
 });

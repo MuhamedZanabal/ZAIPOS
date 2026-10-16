@@ -149,6 +149,12 @@ impl PostgresProvisioner {
                 .arg(&data_dir)
                 .arg("-U")
                 .arg("zaipos_owner_bootstrap")
+                // Always UTF-8 with the neutral C locale. Without this, initdb on Windows
+                // inherits the system ANSI code page (WIN1252 on English, WIN1256 on
+                // Arabic/Bahrain), which cannot store Arabic names or the accented text
+                // in older migrations, so setup fails on Arabic-locale PCs.
+                .arg("--encoding=UTF8")
+                .arg("--locale=C")
                 .arg("--auth-local=reject")
                 .arg("--auth-host=scram-sha-256")
                 .arg("--pwfile")
