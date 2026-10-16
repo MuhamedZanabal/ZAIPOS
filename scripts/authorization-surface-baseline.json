@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "meaning": "Census fingerprint only; this is NOT an authorization approval. Owner Zanabal Muhamed signed off all drift on PR #100 (2026-10-11 Bahrain) and the 11 surfaces in the \"New since owner sign-off (98bb351)\" table (2026-10-12 Bahrain: diagnostics IPC, cashier-switch employees read, label export, discount-approval SQL), including local-runtime grants, offline-sales IPC, backup export, wizard/setup surfaces, Z-report/Reports/KDS table clients, and related verification/migration fingerprints. Runtime authority remains declared separately in authorization-runtime-contract.mjs.",
+  "meaning": "Census fingerprint only; this is NOT an authorization approval. Owner Zanabal Muhamed signed off all drift on PR #100 (2026-10-11 Bahrain) and the 11 surfaces in the \"New since owner sign-off (98bb351)\" table (2026-10-12 Bahrain: diagnostics IPC, cashier-switch employees read, label export, discount-approval SQL), including local-runtime grants, offline-sales IPC, backup export, wizard/setup surfaces, Z-report/Reports/KDS table clients, and related verification/migration fingerprints. Runtime authority remains declared separately in authorization-runtime-contract.mjs. Owner Zanabal Muhamed also signed off (2026-10-16 Bahrain) the WhatsApp AI ordering migration 20261012120000_whatsapp_ai_ordering.sql on PR #101: rls-policy +10, security-definer +8, sql-function +9, sql-grant +13, sql-revoke +11, sql-trigger +1.",
   "kinds": {
     "application-route": {
       "count": 37,
@@ -35,8 +35,8 @@
       "sha256": "5913ffd888199b4a360b36f1dc46917e9736f4c1331cacc24aa48b64c9ce5720"
     },
     "rls-policy": {
-      "count": 180,
-      "sha256": "e87caa1d23f74ef2e2cc1af963272b29d971e3d92af3dd1578d983195786e22c"
+      "count": 190,
+      "sha256": "13fc54405df5b7652e65fb06cf487b2bdb9f01902630e3f93fc122f9763e0476"
     },
     "rpc-client": {
       "count": 70,
@@ -47,24 +47,24 @@
       "sha256": "fb67b68e6831a60ac15cb7578fe453ebc6edc638ee13f0c885ddcd16d9172cb4"
     },
     "security-definer": {
-      "count": 270,
-      "sha256": "d2ee2f24ea0a052a8a4c77b2f88bcee9bcf800cb4ca3f885160eba7420a9fef9"
+      "count": 278,
+      "sha256": "dda9b4dc16692b656e34e1bd0b6ea7aba781ce43552fba508da9fd0e7fcb7c3a"
     },
     "sql-function": {
-      "count": 340,
-      "sha256": "e4ca036ccfc4d1c03546b0e373bc3f57ce1e482c50c70b6a3649f43108dd2a0a"
+      "count": 349,
+      "sha256": "3e57a9ad436a0c5e960df3cbc5c9d934b4a3d35e207fee25746c6ee890a1fd2c"
     },
     "sql-grant": {
-      "count": 222,
-      "sha256": "95f8d1cd724210edd9953cf74b6fa184e3aaa0267baf004f9bbcc3895a4272f3"
+      "count": 235,
+      "sha256": "8b21af93ca29f95942e9aa355f85faa90d71ba4a4461b165152feb29936c01f8"
     },
     "sql-revoke": {
-      "count": 341,
-      "sha256": "6fdb66dfae72dd904faaef68f51560121626e7be6d66a886d24ec0fb390de476"
+      "count": 352,
+      "sha256": "86337d8a1432d2682b666dba66d217863b9c0d7ea471a64b7aace2475e009f28"
     },
     "sql-trigger": {
-      "count": 81,
-      "sha256": "615bce4704e9e434fd1099c18726d1c0d3520a171c9025bae8ccb8778d077fcd"
+      "count": 82,
+      "sha256": "2a226d704af6b1511f6465e449f2a8d70742f7c8ec5bd4b64a03597ce25d9e60"
     },
     "table-client": {
       "count": 305,
