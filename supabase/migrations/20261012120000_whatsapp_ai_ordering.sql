@@ -16,6 +16,7 @@ CREATE TABLE public.wa_ordering_settings (
   default_eta_minutes integer NOT NULL DEFAULT 35 CHECK (default_eta_minutes BETWEEN 5 AND 240),
   orders_open boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (tenant_id, branch_id) REFERENCES public.branches(tenant_id, id) ON DELETE CASCADE,
   PRIMARY KEY (tenant_id, branch_id)
 );
 
@@ -68,7 +69,8 @@ CREATE TABLE public.wa_orders (
   digital_order_id uuid,
   sale_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (tenant_id, branch_id) REFERENCES public.branches(tenant_id, id)
 );
 -- One active order per chat.
 CREATE UNIQUE INDEX wa_orders_one_active_per_chat ON public.wa_orders(tenant_id, chat_id)

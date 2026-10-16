@@ -49,7 +49,7 @@ export class OrderEngine {
     return this.store.withChat(msg.chatId, async (tx) => {
       if (!(await tx.claimMessage(msg))) return { status: "duplicate" as const };
       const now = this.now();
-      let conv = (await tx.getConversation(msg.chatId)) ?? {
+      const conv = (await tx.getConversation(msg.chatId)) ?? {
         chatId: msg.chatId, lang: "en" as Lang, step: "idle" as const, activeOrderId: null, handoff: false, optedOut: false,
         lastMenu: null, handoffReason: null, updatedAt: now.toISOString(),
       };
@@ -59,7 +59,7 @@ export class OrderEngine {
       const cart = order?.lines ?? [];
       const it = await interpret(msg.text || (msg.location ? "location" : ""), catalog, conv.step, cart, this.cfg.llm, this.cfg.fetchImpl);
       if (it.fallbackReason && it.fallbackReason !== "llm_not_configured") this.cfg.log?.("llm_fallback", { reason: it.fallbackReason, chat: msg.chatId });
-      if (msg.text.trim()) conv.lang = it.lang;
+      if (/\p{L}/u.test(msg.text)) conv.lang = it.lang; // bare digits keep the chat language
       const lang = conv.lang;
       const say = (text: string) => tx.enqueueOutbound({ chatId: msg.chatId, text });
 

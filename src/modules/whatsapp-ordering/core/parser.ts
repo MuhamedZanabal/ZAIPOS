@@ -47,7 +47,7 @@ const KW: [Intent, RegExp][] = [
   ["pay_benefit", /\bbenefit(pay)?\b|بنفت|بنفيت/],
   ["pay_card", /\b(card|visa|mada)\b|بطاقه|كارت|فيزا/],
   ["pay_cash", /\b(cash|cod)\b|كاش|نقد/],
-  ["checkout", /\b(done|checkout|that'?s all|finish|nothing else)\b|خلاص بس|بس كذا|خلصت|هذا كل|لا شي ثاني/],
+  ["checkout", /^(خلاص|اطلب|كمل|اكمل)$|\b(done|checkout|that'?s all|finish|nothing else)\b|خلاص بس|بس كذا|خلصت|هذا كل|لا شي ثاني/],
   ["yes", /^(yes|y|ok|okay|confirm|sure|yep|yeah|تمام|اوكي|ايوه|اي|نعم|اكيد|اكد|موافق|ok confirm)$/],
   ["no", /^(no|n|nope|change|edit|لا|تعديل|غير)$/],
   ["greeting", /^(hi|hello|hey|salam|salaam|good (morning|evening))\b|^(السلام|سلام|مرحبا|هلا|هلو|صباح|مساء)/],

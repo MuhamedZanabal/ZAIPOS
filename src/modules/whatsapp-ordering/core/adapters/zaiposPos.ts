@@ -2,7 +2,7 @@ import { PermanentSyncError, type OrderSyncAdapter } from "../outbox";
 import type { OrderEvent } from "../types";
 
 /**
- * ZAIPOS POS/KDS + inventory. Calls one SECURITY DEFINER function, wa_sync_order_to_pos(event jsonb),
+ * ZAIPOS POS/KDS + inventory. Calls one privileged (definer-rights) DB function, wa_sync_order_to_pos(event jsonb),
  * which upserts the digital_orders row (channel 'whatsapp'), its items, the delivery_orders row, and
  * records the event key so a replay is a no-op. On DELIVERED/PICKED_UP it books the sale through the
  * existing confirm path so stock is decremented exactly once.
