@@ -72,7 +72,7 @@ socket.once('secureConnect', () => {
   });
   if (bootstrap) {
     const payload = JSON.stringify({ kind: 'auth', action: 'bootstrap', email: 'owner@ci.zaipos.local', password: 'Ci-Owner-Pass-2026',
-      tenant_name: 'CI Supermarket', branch_name: 'Main Branch', business_mode: 'SUPERMARKET' });
+      tenant_name: 'CI \u0623\u0645\u0648\u0627\u062c Supermarket', branch_name: 'Main Branch', business_mode: 'SUPERMARKET' });
     socket.write(`POST /v1/auth/bootstrap HTTP/1.1\r\nHost: ${expectedHost}\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(payload)}\r\n\r\n${payload}`);
     return;
   }
