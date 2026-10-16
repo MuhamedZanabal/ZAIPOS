@@ -2,7 +2,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { effectiveCartUnitPrice, useCart, type CartLine } from "@/stores/cart";
 import { formatCurrency } from "@/lib/format";
+import { formatQuantity, isWeighedProduct } from "@/lib/weighedItems";
 import { Archive, Minus, Plus, Trash2, ShoppingBag, X, Send, RotateCcw, ShieldCheck } from "lucide-react";
+import { translate as t } from "@/i18n";
+import { LineDiscount } from "./LineDiscount";
+import { TicketDiscount } from "./TicketDiscount";
+import { linesWithTicketDiscount } from "@/stores/cart";
 
 interface TicketPanelProps {
   canCharge: boolean;
@@ -22,30 +27,32 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
   const totalNum = total();
 
   const isTableOrder = !!onSendToTable;
+  const ticketDiscount = useCart((s) => s.ticketDiscount);
+  const discountNum = linesWithTicketDiscount(lines, ticketDiscount).reduce((sum, l) => sum + l.discount, 0);
 
   return (
     <aside className="flex flex-col glass-strong g-ticket-panel h-full max-lg:max-h-[45vh] max-lg:border-t max-lg:border-l-0">
       <header className="px-4 py-3 border-b flex items-center justify-between bg-muted/30">
         <div className="flex items-center gap-2">
           <ShoppingBag className="h-4 w-4 text-primary" />
-          <span className="font-semibold">Current ticket</span>
+          <span className="font-semibold">{t("Current ticket")}</span>
           {lines.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + l.quantity, 0)} items</span>
+            <span className="text-xs text-muted-foreground tabular-nums">· {lines.reduce((s, l) => s + (isWeighedProduct(l.product as { unit_code?: string | null }) ? 1 : l.quantity), 0)} items</span>
           )}
         </div>
         <div className="flex items-center gap-1">
           {onOpenPriceApprovals && (
             <Button variant="ghost" size="sm" onClick={onOpenPriceApprovals} className="h-8" aria-label="Open price override approvals">
-              <ShieldCheck className="h-4 w-4 mr-1" /> Approvals
+              <ShieldCheck className="h-4 w-4 mr-1" /> {t("Approvals")}
             </Button>
           )}
           {onOpenHeldCarts && (
-            <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label="Open held carts">
-              <RotateCcw className="h-4 w-4 mr-1" /> Held
+            <Button variant="ghost" size="sm" onClick={onOpenHeldCarts} className="h-8" aria-label={t("Open held carts")}>
+              <RotateCcw className="h-4 w-4 mr-1" /> {t("Held")}
             </Button>
           )}
           {lines.length > 0 && onHold && (
-            <Button variant="ghost" size="sm" onClick={onHold} className="h-8" aria-label="Hold current cart">
+            <Button variant="ghost" size="sm" onClick={onHold} className="h-8" aria-label={t("Hold current cart")}>
               <Archive className="h-4 w-4 mr-1" /> Hold
             </Button>
           )}
@@ -61,7 +68,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
         {lines.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">
             <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            Tap a product to add it to the ticket
+            {t("Tap a product to add it to the ticket")}
           </div>
         ) : (
           <ul className="divide-y">
@@ -89,16 +96,20 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                         {l.priceOverride ? "Replace price override" : "Request price override"}
                       </button>
                     )}
+                    {!isTableOrder && <LineDiscount line={l} />}
                   </div>
                   <button
                     onClick={() => remove(l.id)}
                     className="text-muted-foreground hover:text-destructive p-1 -m-1"
-                    aria-label="Remove"
+                    aria-label={t("Remove")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="flex items-center justify-between mt-2.5">
+                  {isWeighedProduct(l.product as { unit_code?: string | null }) ? (
+                    <span className="font-semibold tabular-nums" data-testid="weighed-qty">{formatQuantity(l.quantity, "kg")}</span>
+                  ) : (
                   <div className="flex items-center gap-1.5 bg-muted rounded-lg p-0.5">
                     <Button size="icon" variant="ghost" className="h-9 w-9 rounded-md" onClick={() => setQty(l.id, l.quantity - 1)}>
                       <Minus className="h-4 w-4" />
@@ -108,6 +119,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
+                  )}
                   <div className="font-bold tabular-nums">{formatCurrency(effectiveCartUnitPrice(l) * l.quantity)}</div>
                 </div>
               </li>
@@ -117,10 +129,16 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
       </ScrollArea>
 
       <footer className="border-t bg-muted/30 p-4 space-y-1.5">
+        {!isTableOrder && (
+          <div className="flex items-center justify-between text-sm">
+            <TicketDiscount />
+            {discountNum > 0 && <span className="tabular-nums text-destructive" data-testid="discount-total">-{formatCurrency(discountNum)}</span>}
+          </div>
+        )}
         <Row label="Subtotal" value={formatCurrency(subtotalNum)} />
         <Row label="VAT" value={formatCurrency(taxNum)} />
         <div className="flex items-baseline justify-between pt-2 border-t mt-2">
-          <span className="font-semibold">Total</span>
+          <span className="font-semibold">{t("Total")}</span>
           <span className="text-3xl font-bold text-primary tabular-nums">{formatCurrency(totalNum)}</span>
         </div>
         {reasonDisabled && (
@@ -143,7 +161,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
             disabled={lines.length === 0 || !canCharge}
             onClick={onCharge}
           >
-            CHARGE {formatCurrency(totalNum)}
+            {t("CHARGE")} {formatCurrency(totalNum)}
           </Button>
         )}
       </footer>
@@ -154,7 +172,7 @@ export function TicketPanel({ canCharge, onCharge, onSendToTable, onHold, onOpen
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground">{t(label)}</span>
       <span className="tabular-nums">{value}</span>
     </div>
   );

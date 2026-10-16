@@ -18,12 +18,13 @@ describe('local server setup', () => {
     expect(status).not.toHaveTextContent(/secret/);
   });
 
-  it('shows the owner form once the installed service profile is visible', async () => {
+  it('shows the setup wizard once the installed service profile is visible', async () => {
     window.electron = {
       localStatus: vi.fn(async () => ({ state: 'configured' as const, origin: 'https://127.0.0.1:58321' })),
     } as unknown as Window['electron'];
     render(<LocalServerSetup configured={false} onReady={() => undefined} />);
-    expect(await screen.findByLabelText('Shop name')).toBeInTheDocument();
+    expect(await screen.findByRole('radiogroup', { name: 'Business type' })).toBeInTheDocument();
+    expect(screen.getByText('Step 1 of 6')).toBeInTheDocument();
     expect(screen.queryByText(/not ready/)).not.toBeInTheDocument();
   });
 

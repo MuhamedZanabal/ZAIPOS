@@ -10,6 +10,7 @@ build = "build.rs"
 
 [dependencies]
 aes-gcm = "0.10"
+base64 = "0.22"
 argon2 = "0.5"
 axum = "0.8"
 axum-server = { version = "0.8", features = ["tls-rustls"] }
@@ -50,4 +51,8 @@ required-features = ["test-utils"]
 
 [[test]]
 name = "local_reads"
+required-features = ["test-utils"]
+
+[[test]]
+name = "backup_restore"
 required-features = ["test-utils"]

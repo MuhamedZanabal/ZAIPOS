@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import { canAccessPathInMode, type BusinessMode } from "@/lib/business-modes";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -54,6 +55,7 @@ export const ROUTE_ROLES: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/shifts",        roles: ["owner", "admin", "manager"] },
   { prefix: "/reports",       roles: ["owner", "admin", "manager"] },
   { prefix: "/settings",      roles: ["owner", "admin"] },
+  { prefix: "/setup",         roles: ["owner", "admin"] },
   { prefix: "/dashboard", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
   { prefix: "/ai", roles: ["owner", "admin", "manager", "cashier", "waiter", "kitchen", "inventory", "courier", "staff"] },
   // Dashboard: todos los roles autenticados pueden aterrizar aquí
@@ -80,9 +82,6 @@ export function canAccessProtectedPath(userRoles: string[], pathname: string): b
   return requiredRoles !== undefined && requiredRoles.length > 0 && canAccessRoles(userRoles, requiredRoles);
 }
 
-const RESTAURANT_PATHS = ["/tables", "/waiter", "/kds", "/recipes"];
-
-export function canAccessBusinessMode(mode: "RETAIL" | "RESTAURANT", pathname: string): boolean {
-  if (mode === "RESTAURANT") return true;
-  return !RESTAURANT_PATHS.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+export function canAccessBusinessMode(mode: BusinessMode | string, pathname: string): boolean {
+  return canAccessPathInMode(mode, pathname);
 }

@@ -8,7 +8,7 @@ const files = (await readdir(migrationsDir))
   .sort();
 
 if (files.length === 0) {
-  console.error("No se encontraron migraciones en supabase/migrations");
+  console.error("No migrations found in supabase/migrations");
   process.exit(1);
 }
 
@@ -17,11 +17,11 @@ const seen = new Set();
 
 for (const file of files) {
   if (!filenameRegex.test(file)) {
-    console.error(`Nombre de migración inválido: ${file}`);
+    console.error(`Invalid migration name: ${file}`);
     process.exit(1);
   }
   if (seen.has(file)) {
-    console.error(`Migración duplicada: ${file}`);
+    console.error(`Duplicate migration: ${file}`);
     process.exit(1);
   }
   seen.add(file);
@@ -29,9 +29,9 @@ for (const file of files) {
   const fullPath = path.join(migrationsDir, file);
   const content = await readFile(fullPath, "utf8");
   if (!content.trim()) {
-    console.error(`Migración vacía: ${file}`);
+    console.error(`Empty migration: ${file}`);
     process.exit(1);
   }
 }
 
-console.log(`OK: ${files.length} migraciones validadas.`);
+console.log(`OK: ${files.length} migrations validated.`);

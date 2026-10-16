@@ -224,7 +224,7 @@ describe("offline mutation helpers", () => {
       createElement(QueryClientProvider, { client: queryClient }, children);
     setNavigatorOnline(online);
     useNetworkStore.setState({ isOnline: online });
-    const mutationFn = vi.fn(async () => "sale-id");
+    const mutationFn = vi.fn(async (_variables: unknown) => "sale-id");
     const { result } = renderHook(() => useOfflineMutation({ type, mutationFn }), { wrapper });
     await act(async () => {
       await expect(result.current.mutateAsync({ _client_mutation_id: "safe-operation-id" }))
@@ -239,7 +239,7 @@ describe("offline mutation helpers", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children);
-    const mutationFn = vi.fn(async () => { throw new TypeError("Failed to fetch"); });
+    const mutationFn = vi.fn(async (_variables: unknown) => { throw new TypeError("Failed to fetch"); });
     const { result } = renderHook(() => useOfflineMutation({
       type: "CHECKOUT_SALE_V2",
       nativeDeviceCheckout: true,

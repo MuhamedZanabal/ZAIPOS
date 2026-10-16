@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { channelAllowedInMode } from "@/lib/business-modes";
 import { Switch } from "@/components/ui/switch";
 import { Store, UtensilsCrossed, Bike, MessageCircle, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import {
   normalizeBahrainChannels,
   type SalesChannel,
 } from "@/lib/channels";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const ICONS: Record<SalesChannel, React.ReactNode> = {
   pos: <Store className="h-4 w-4" />,
@@ -28,7 +30,8 @@ const DESCRIPTIONS: Record<SalesChannel, string> = {
 };
 
 export default function SalesChannelsSettings() {
-  const { tenantId, hasRole } = useTenantContext();
+  useLanguageStore((state) => state.language); // re-render on language change
+  const { tenantId, hasRole, businessMode } = useTenantContext();
   const qc = useQueryClient();
   const isSuperAdmin = hasRole("super_admin");
   const [activeChannels, setActiveChannels] = useState<SalesChannel[]>([]);
@@ -60,7 +63,7 @@ export default function SalesChannelsSettings() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Bahrain sales channels updated");
+      toast.success(tx("Bahrain sales channels updated"));
       qc.invalidateQueries({ queryKey: ["tenant-channels"] });
       qc.invalidateQueries({ queryKey: ["my-roles"] });
     },
@@ -69,7 +72,7 @@ export default function SalesChannelsSettings() {
 
   const toggleChannel = (channel: SalesChannel, enabled: boolean) => {
     if (!isSuperAdmin) {
-      toast.error("Only a super administrator can change sales channels.");
+      toast.error(tx("Only a super administrator can change sales channels."));
       return;
     }
 
@@ -84,7 +87,7 @@ export default function SalesChannelsSettings() {
     updateChannels.mutate(normalized);
   };
 
-  if (isLoading) return <div className="h-meta">Loading...</div>;
+  if (isLoading) return <div className="h-meta">{tx("Loading...")}</div>;
 
   return (
     <div className="space-y-6">
@@ -92,15 +95,15 @@ export default function SalesChannelsSettings() {
         <div>
           <h2 className="font-bold flex items-center gap-2 text-ink-900">
             <Store className="h-5 w-5 text-brand-600" />
-            Bahrain Sales Channels
+            {tx("Bahrain Sales Channels")}
           </h2>
           <p className="h-meta mt-1 max-w-3xl">
-            ZAIPOS exposes only Bahrain-relevant active channels in the Bahrain-native interface.
+            {tx("ZAIPOS exposes only Bahrain-relevant active channels in the Bahrain-native interface.")}
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {CHANNELS.map((channel) => {
+          {CHANNELS.filter((channel) => channelAllowedInMode(businessMode, channel.id)).map((channel) => {
             const active = channel.id === "pos" || activeChannels.includes(channel.id);
             const locked = channel.id === "pos";
 
@@ -123,7 +126,7 @@ export default function SalesChannelsSettings() {
                 <p className="h-meta">{DESCRIPTIONS[channel.id]}</p>
                 {channel.id === "talabat" && (
                   <p className="text-xs text-muted-foreground">
-                    ZAIPOS does not fabricate marketplace API access. Configure external connectivity only after Talabat provides the required partner contract and credentials.
+                    {tx("ZAIPOS does not fabricate marketplace API access. Configure external connectivity only after Talabat provides the required partner contract and credentials.")}
                   </p>
                 )}
               </div>

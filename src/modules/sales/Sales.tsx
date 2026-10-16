@@ -1,3 +1,4 @@
+import { paymentMethodLabel, type PayMethod } from "@/modules/pos/PaymentDialog";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,7 +158,7 @@ export default function Sales() {
                 {s.sale_items?.length ?? 0} products
               </span>
               <span className="g-sales-pay">
-                {s.payments?.map((p) => p.method).join(", ") || "—"}
+                {s.payments?.map((p) => paymentMethodLabel(p.method as PayMethod) ?? p.method).join(", ") || "—"}
               </span>
               <span className="g-sales-total">
                 {formatCurrency(Number(s.total))}

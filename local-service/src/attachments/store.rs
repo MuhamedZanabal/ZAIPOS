@@ -43,6 +43,7 @@ impl AttachmentStore {
     }
 }
 
+#[derive(Debug)]
 pub struct DurableAttachmentStore {
     root: PathBuf,
 }
@@ -101,6 +102,38 @@ impl DurableAttachmentStore {
     }
 }
 
+/// Largest product photo accepted (decoded). The renderer downsizes photos
+/// before upload so requests stay under the 1 MiB transport limit.
+pub const MAX_IMAGE_BYTES: usize = 700 * 1024;
+
+/// Content type detected from the file signature; the client-declared type is never trusted.
+pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("image/jpeg")
+    } else if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("image/png")
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some("image/webp")
+    } else {
+        None
+    }
+}
+
+/// Validates an upload: signature must be JPEG/PNG/WebP and size within limits.
+pub fn check_image(bytes: &[u8]) -> Result<&'static str, &'static str> {
+    if bytes.is_empty() {
+        return Err("Photo is empty");
+    }
+    if bytes.len() > MAX_IMAGE_BYTES {
+        return Err("Photo is too large (max 700 KB after resizing)");
+    }
+    sniff_image(bytes).ok_or("Only JPEG, PNG or WebP photos are allowed")
+}
+
+pub fn is_safe_segment(value: &str) -> bool {
+    safe_segment(value)
+}
+
 fn unsafe_path(path: &str) -> bool {
     path.is_empty() || path.contains("..") || path.starts_with('/') || path.contains('\\')
 }
@@ -116,6 +149,26 @@ fn safe_segment(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn images_are_checked_by_signature_and_size() {
+        assert_eq!(
+            check_image(&[0xFF, 0xD8, 0xFF, 0xE0, 1, 2]),
+            Ok("image/jpeg")
+        );
+        let png = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0];
+        assert_eq!(check_image(&png), Ok("image/png"));
+        assert_eq!(check_image(b"RIFF\0\0\0\0WEBPVP8 "), Ok("image/webp"));
+        assert!(check_image(b"<svg onload=alert(1)>").is_err());
+        assert!(check_image(b"GIF89a....").is_err());
+        assert!(check_image(&[]).is_err());
+        let mut big = vec![0xFF, 0xD8, 0xFF];
+        big.resize(MAX_IMAGE_BYTES + 1, 0);
+        assert!(check_image(&big).is_err());
+        assert!(is_safe_segment("3f2c9a1e-0000-4000-8000-000000000001"));
+        assert!(!is_safe_segment("../etc"));
+        assert!(!is_safe_segment("A/B"));
+    }
 
     #[test]
     fn traversal_and_cross_tenant_reads_fail() {

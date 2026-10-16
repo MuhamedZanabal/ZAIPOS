@@ -134,7 +134,7 @@ export default function Branches() {
           <div className="g-branches-eyebrow">BUSINESS · BRANCHES</div>
           <h1 className="g-branches-title">Branches</h1>
           <div className="h-meta">
-            {branches?.length ?? 0} registradas · {activeCount} activas
+            {branches?.length ?? 0} registered · {activeCount} active
           </div>
         </div>
         {canManage && (
@@ -224,7 +224,7 @@ export default function Branches() {
                     className="g-btn g-btn-ghost g-branch-toggle-btn"
                     onClick={() => toggleStatus(b)}
                   >
-                    {isActive ? "Desactivar" : "Activar"}
+                    {isActive ? "Deactivate" : "Activate"}
                   </button>
                 )}
               </div>

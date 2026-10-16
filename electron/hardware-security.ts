@@ -21,11 +21,13 @@ function deviceName(value: unknown, kind: 'printer' | 'serial'): string {
   throw new Error('Unsupported hardware device path');
 }
 export function validatePrinterConfig(value: unknown): PrinterConfig {
-  const c = record(value, ['connectionType','devicePath','host','port','bluetoothAddress','width','characterSet']);
+  const c = record(value, ['connectionType','devicePath','host','port','bluetoothAddress','width','characterSet','receiptLanguage']);
   if (c.connectionType !== 'usb' && c.connectionType !== 'network') throw new Error('Unsupported printer connection; Bluetooth requires a reviewed transport');
   const result: PrinterConfig = { connectionType: c.connectionType, width: boundedInteger(c.width ?? 42, 16, 80) };
   if (c.characterSet !== undefined && (typeof c.characterSet !== 'string' || !/^[A-Z0-9_]{1,40}$/.test(c.characterSet))) throw new Error('Invalid printer character set');
   result.characterSet = c.characterSet ?? 'SLOVENIA';
+  if (c.receiptLanguage !== undefined && c.receiptLanguage !== 'bilingual' && c.receiptLanguage !== 'english') throw new Error('Invalid receipt language');
+  result.receiptLanguage = c.receiptLanguage ?? 'bilingual';
   if (c.connectionType === 'usb') result.devicePath = deviceName(c.devicePath, 'printer');
   else {
     if (typeof c.host !== 'string' || isIP(c.host) !== 4) throw new Error('Printer requires an explicit private IPv4 address');

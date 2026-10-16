@@ -13,6 +13,7 @@ vi.mock('electron', () => ({ safeStorage: {
 } }));
 
 import { createDeviceCredentialService } from '../../../electron/services/device-credentials';
+import { callArg } from "@/test/mockArgs";
 
 describe('native device credential custody', () => {
   const values = new Map<string, unknown>();
@@ -144,7 +145,7 @@ describe('native device credential custody', () => {
     const payload = {
       _tenant_id: tenantId, _branch_id: branchId,
       _customer_id: '66666666-6666-4666-8666-666666666666',
-      _amount_fils: '1250', _payment_method: 'cash',
+      _amount_fils: '1250', _payment_method: 'cash' as const,
       _payment_reference: 'CREDIT-RECEIPT-001', _operation_id: 'credit-payment-001',
     };
 
@@ -173,7 +174,7 @@ describe('native device credential custody', () => {
     const payload = {
       _tenant_id: tenantId, _branch_id: branchId,
       _supplier_id: '66666666-6666-4666-8666-666666666666',
-      _amount_fils: '800', _payment_method: 'bank_transfer',
+      _amount_fils: '800', _payment_method: 'bank_transfer' as const,
       _payment_reference: 'BANK-REF-111', _note: 'Part payment',
       _operation_id: 'supplier-payment-001',
     };
@@ -270,7 +271,7 @@ describe('native device credential custody', () => {
       _tenant_id: tenantId, _branch_id: branchId,
       _sale_id: '55555555-5555-4555-8555-555555555555',
       _items: [{ sale_item_id: '66666666-6666-4666-8666-666666666666', quantity: 1 }],
-      _reason_code: 'customer_request', _client_mutation_id: 'return-operation-001',
+      _reason_code: 'customer_request' as const, _client_mutation_id: 'return-operation-001',
       _cash_session_id: '99999999-9999-4999-8999-999999999999',
       _reason: null, _evidence_url: null,
     };
@@ -313,7 +314,7 @@ describe('native device credential custody', () => {
       _reason: 'Verified reason',
     };
 
-    await expect(service.returnSale({ ...common, _items: [{ sale_item_id: '66666666-6666-4666-8666-666666666666', quantity: 1 }], _reason_code: 'customer_request', _evidence_url: null }, authorization)).rejects.toThrow(/scope/i);
+    await expect(service.returnSale({ ...common, _items: [{ sale_item_id: '66666666-6666-4666-8666-666666666666', quantity: 1 }], _reason_code: 'customer_request' as const, _evidence_url: null }, authorization)).rejects.toThrow(/scope/i);
     await expect(service.voidSale(common, authorization)).rejects.toThrow(/scope/i);
     expect(mocks.decryptString).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -364,7 +365,7 @@ describe('native device credential custody', () => {
 
     await expect(service.rotate('rotation-approval', authorization)).resolves.toEqual({ deviceUid: 'terminal-1', provisioned: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/v1/commands/rotate-device-credential');
+    expect(String(callArg(fetchMock, 0, 0))).toContain('/v1/commands/rotate-device-credential');
     const request = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>)[0][1];
     expect(JSON.parse(String(request.body))).toEqual({ approval_id: 'rotation-approval', device_uid: 'terminal-1' });
     expect(request.headers).toMatchObject({ authorization: 'Bearer operator-token' });
@@ -403,7 +404,7 @@ describe('native device credential custody', () => {
     await expect(service.supplierPayment({
       _tenant_id: tenantId, _branch_id: branchId,
       _supplier_id: '66666666-6666-4666-8666-666666666666',
-      _amount_fils: '800', _payment_method: 'bank_transfer',
+      _amount_fils: '800', _payment_method: 'bank_transfer' as const,
       _payment_reference: 'BANK-REF-111', _note: null,
       _operation_id: 'supplier-payment-unprovisioned',
     }, authorization)).rejects.toThrow(/not provisioned/);

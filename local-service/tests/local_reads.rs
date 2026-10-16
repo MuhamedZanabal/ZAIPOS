@@ -43,7 +43,7 @@ async fn enrolled_read_returns_rows_and_rejects_mutation() {
         ))
         .await
         .unwrap();
-    assert_eq!(rejected.status(), axum::http::StatusCode::BAD_REQUEST);
+    assert_eq!(rejected.status(), axum::http::StatusCode::UNAUTHORIZED);
     database.close().await;
 }
 
@@ -234,6 +234,192 @@ async fn first_owner_login_and_command_do_not_echo_secrets() {
     database.close().await;
 }
 
+#[tokio::test]
+async fn session_table_api_supports_app_mutations_embeds_and_single_rows() {
+    let Some(database) = EphemeralDatabase::open().await else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        return;
+    };
+    auth::ensure_identity(database.database()).await.unwrap();
+    database
+        .database()
+        .exec(
+            "create table categories (id uuid primary key default gen_random_uuid(), name text not null);
+             create table products (id uuid primary key default gen_random_uuid(), name text not null,
+               price numeric(12,3) not null, active boolean not null default true,
+               category_id uuid references categories(id), tags text[] not null default '{}');
+             do $$ begin
+               if exists (select 1 from pg_roles where rolname = 'authenticated') then
+                 grant select, insert, update, delete on categories, products to authenticated;
+               end if;
+             end $$;",
+        )
+        .await
+        .unwrap();
+    let app = build_router(AppState::ready(database.database().clone()));
+    let created = app
+        .clone()
+        .oneshot(post(
+            "/v1/auth/bootstrap",
+            r#"{"kind":"auth","email":"owner@shop.test","password":"owner-password","tenant_name":"Karama","branch_name":"Front"}"#,
+        ))
+        .await
+        .unwrap();
+    let created_body = body(created).await;
+    let token = created_body
+        .split("\"access_token\":\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .expect("session token")
+        .to_string();
+    let call = |steps: &str, table: &str| {
+        post_auth(
+            "/v1/backend",
+            &format!(r#"{{"kind":"table","table":"{table}","steps":{steps}}}"#),
+            &token,
+        )
+    };
+
+    let category = body(
+        app.clone()
+            .oneshot(call(
+                r#"[["insert",[{"name":"Hot drinks"}]],["select",["id,name"]],["single",[]]]"#,
+                "categories",
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let category_id = category
+        .split("\"id\":\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .expect("category id")
+        .to_string();
+    let inserted = app
+        .clone()
+        .oneshot(call(
+            &format!(
+                r#"[["insert",[[{{"name":"Karak tea","price":"0.200","category_id":"{category_id}","tags":["hot"]}},{{"name":"Chicken machboos","price":"2.750","category_id":"{category_id}"}}]]]]"#
+            ),
+            "products",
+        ))
+        .await
+        .unwrap();
+    let inserted_status = inserted.status();
+    let inserted_body = body(inserted).await;
+    assert_eq!(
+        inserted_status,
+        axum::http::StatusCode::OK,
+        "{inserted_body}"
+    );
+    assert_eq!(inserted_body, r#"{"data":null}"#);
+
+    let embedded = body(
+        app.clone()
+            .oneshot(call(
+                r#"[["select",["name, price, categories(name)"]],["gte",["price","1"]],["order",["name"]]]"#,
+                "products",
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert!(
+        embedded.contains(r#""name":"Chicken machboos""#),
+        "{embedded}"
+    );
+    assert!(
+        embedded.contains(r#""categories":{"name":"Hot drinks"}"#),
+        "{embedded}"
+    );
+    assert!(embedded.contains(r#""price":2.75"#), "{embedded}");
+    assert!(!embedded.contains("Karak"), "{embedded}");
+
+    let nested = body(
+        app.clone()
+            .oneshot(call(
+                r#"[["select",["name, products(name)"]],["maybeSingle",[]]]"#,
+                "categories",
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert!(
+        nested.contains("Karak tea") && nested.contains("Chicken machboos"),
+        "{nested}"
+    );
+
+    let updated = body(
+        app.clone()
+            .oneshot(call(
+                r#"[["update",[{"price":"0.250","active":false}]],["eq",["name","Karak tea"]],["select",["price,active"]],["single",[]]]"#,
+                "products",
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(updated, r#"{"data":{"active":false,"price":0.25}}"#);
+
+    let inactive = body(
+        app.clone()
+            .oneshot(call(
+                r#"[["select",["id",{"count":"exact","head":true}]],["is",["active",false]],["in",["name",["Karak tea","Missing"]]]]"#,
+                "products",
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(inactive, r#"{"count":1,"data":null}"#);
+
+    let missing = body(
+        app.clone()
+            .oneshot(call(
+                r#"[["select",["id"]],["eq",["name","None"]],["maybeSingle",[]]]"#,
+                "products",
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(missing, r#"{"data":null}"#);
+
+    let blanket = app
+        .clone()
+        .oneshot(call(r#"[["delete",[]]]"#, "products"))
+        .await
+        .unwrap();
+    assert_eq!(blanket.status(), axum::http::StatusCode::BAD_REQUEST);
+    let deleted = app
+        .clone()
+        .oneshot(call(
+            r#"[["delete",[]],["eq",["name","Karak tea"]]]"#,
+            "products",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(deleted.status(), axum::http::StatusCode::OK);
+    let violation = body(
+        app.clone()
+            .oneshot(call(r#"[["insert",[{"price":"1.000"}]]]"#, "products"))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert!(violation.contains("23502"), "{violation}");
+    let credentials = app
+        .oneshot(call(r#"[["select",["*"]]]"#, "zaipos_local_users"))
+        .await
+        .unwrap();
+    assert_eq!(credentials.status(), axum::http::StatusCode::BAD_REQUEST);
+    database.close().await;
+}
+
 fn post(path: &str, body: &str) -> axum::http::Request<axum::body::Body> {
     axum::http::Request::builder()
         .method("POST")
@@ -259,4 +445,69 @@ async fn body(response: axum::response::Response) -> String {
         .unwrap()
         .to_bytes();
     String::from_utf8(bytes.to_vec()).unwrap()
+}
+
+#[tokio::test]
+async fn session_rpc_runs_named_argument_functions_with_fractional_bhd() {
+    let Some(database) = EphemeralDatabase::open().await else {
+        if std::env::var_os("ZAIPOS_REQUIRE_DATABASE_TESTS").is_some() {
+            panic!("ZAIPOS_TEST_DATABASE_URL is required");
+        }
+        return;
+    };
+    auth::ensure_identity(database.database()).await.unwrap();
+    database
+        .database()
+        .exec(
+            "create function net_after_commission(_gross numeric, _commission numeric default 0)
+               returns numeric language sql as $$ select _gross - _commission $$;
+             do $$ begin
+               if exists (select 1 from pg_roles where rolname = 'authenticated') then
+                 grant execute on function net_after_commission(numeric, numeric) to authenticated;
+               end if;
+             end $$;",
+        )
+        .await
+        .unwrap();
+    let app = build_router(AppState::ready(database.database().clone()));
+    let created = body(
+        app.clone()
+            .oneshot(post(
+                "/v1/auth/bootstrap",
+                r#"{"kind":"auth","email":"owner@shop.test","password":"owner-password","tenant_name":"Karama","branch_name":"Front"}"#,
+            ))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let token = created
+        .split("\"access_token\":\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .expect("session token")
+        .to_string();
+
+    let anonymous = app
+        .clone()
+        .oneshot(post(
+            "/v1/backend",
+            r#"{"kind":"rpc","fn":"net_after_commission","args":{"_gross":5.83,"_commission":1.042}}"#,
+        ))
+        .await
+        .unwrap();
+    assert_ne!(anonymous.status(), axum::http::StatusCode::OK);
+
+    let response = app
+        .clone()
+        .oneshot(post_auth(
+            "/v1/backend",
+            r#"{"kind":"rpc","fn":"net_after_commission","args":{"_gross":5.83,"_commission":1.042}}"#,
+            &token,
+        ))
+        .await
+        .unwrap();
+    let status = response.status();
+    let text = body(response).await;
+    assert_eq!(status, axum::http::StatusCode::OK, "{text}");
+    assert!(text.contains("4.788"), "{text}");
 }

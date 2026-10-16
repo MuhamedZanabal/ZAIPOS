@@ -10,7 +10,9 @@ use serde_json::Value;
 use tower::ServiceExt;
 use tower_http::limit::RequestBodyLimitLayer;
 
+use crate::attachments::{self, DurableAttachmentStore};
 use crate::auth::{self, AuthError};
+use crate::backup::{BackupError, BackupStore};
 use crate::commands::{self, ExecError, execute_backend, execute_command};
 use crate::db::Database;
 
@@ -26,6 +28,8 @@ pub struct HealthResponse {
 pub struct AppState {
     health: HealthResponse,
     database: Option<Database>,
+    backups: Option<BackupStore>,
+    media: Option<std::sync::Arc<DurableAttachmentStore>>,
 }
 
 impl AppState {
@@ -36,6 +40,8 @@ impl AppState {
                 database: "unavailable",
             },
             database: None,
+            backups: None,
+            media: None,
         }
     }
 
@@ -46,7 +52,21 @@ impl AppState {
                 database: "ready",
             },
             database: Some(database),
+            backups: None,
+            media: None,
         }
+    }
+
+    /// Enables local product-photo storage under `root`.
+    pub fn with_media(mut self, root: impl Into<std::path::PathBuf>) -> Self {
+        self.media = Some(std::sync::Arc::new(DurableAttachmentStore::open(root)));
+        self
+    }
+
+    /// Enables owner backups/restore of the local database.
+    pub fn with_backups(mut self, backups: BackupStore) -> Self {
+        self.backups = Some(backups);
+        self
     }
 }
 
@@ -58,6 +78,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v1/auth/bootstrap", post(bootstrap))
         .route("/v1/auth/logout", post(logout))
         .route("/v1/commands/{name}", post(command))
+        .route("/v1/admin/backups/{action}", post(backups))
+        .route("/v1/storage/{action}", post(storage))
         .fallback(not_found)
         .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BYTES))
         .with_state(state)
@@ -108,10 +130,85 @@ async fn backend(
             };
         }
     }
-    match execute_backend(database, &value).await {
+    let user_id =
+        match bearer_token(&headers) {
+            Some(token) => Some(auth::session_user_id(database, &token).await.map_err(
+                |error| match error {
+                    AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+                    _ => StatusCode::UNAUTHORIZED,
+                },
+            )?),
+            None => None,
+        };
+    if value.get("kind").and_then(Value::as_str) == Some("function")
+        && value.get("name").and_then(Value::as_str) == Some("create-user")
+    {
+        let Some(caller) = user_id.as_deref() else {
+            return Err(StatusCode::UNAUTHORIZED);
+        };
+        return Ok(
+            match auth::create_staff_user(
+                database,
+                caller,
+                value.get("body").unwrap_or(&Value::Null),
+            )
+            .await
+            {
+                Ok(data) => (StatusCode::OK, Json(serde_json::json!({ "data": data }))),
+                Err(message) => (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": message })),
+                ),
+            },
+        );
+    }
+    if value.get("kind").and_then(Value::as_str) == Some("function")
+        && value.get("name").and_then(Value::as_str) == Some("pos-pin")
+    {
+        let Some(caller) = user_id.as_deref() else {
+            return Err(StatusCode::UNAUTHORIZED);
+        };
+        let (status, body) =
+            crate::pos_pin::handle(database, caller, value.get("body").unwrap_or(&Value::Null))
+                .await;
+        let status = StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_REQUEST);
+        // Errors keep the app's `{ error }` shape; success bodies go under `data`.
+        return Ok(if status == StatusCode::OK {
+            (status, Json(serde_json::json!({ "data": body })))
+        } else {
+            let mut body = body;
+            if body.get("error").is_none() {
+                body = serde_json::json!({"error": "PIN incorrect", "detail": body});
+            }
+            (status, Json(body))
+        });
+    }
+    match execute_backend(database, &value, user_id.as_deref()).await {
+        Ok(Value::Object(mut data)) if data.contains_key("__zaipos_count") => {
+            let count = data.remove("__zaipos_count").unwrap_or(Value::Null);
+            Ok((
+                StatusCode::OK,
+                Json(serde_json::json!({"data": null, "count": count})),
+            ))
+        }
         Ok(data) => Ok((StatusCode::OK, Json(serde_json::json!({"data": data})))),
-        Err(ExecError::Rejected) => Err(StatusCode::BAD_REQUEST),
-        Err(ExecError::Unavailable | ExecError::Failed { .. }) => Ok(unavailable()),
+        // A JSON error lets the app report the failure instead of treating the
+        // local service as unreachable.
+        Err(ExecError::Rejected) => Ok((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "Request rejected by the local service", "code": "PGRST100"}),
+            ),
+        )),
+        Err(ExecError::Unauthorized) => Ok((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error": "UNAUTHORIZED"})),
+        )),
+        Err(ExecError::Failed { code, message }) => Ok((
+            status_for_code(&code),
+            Json(serde_json::json!({"error": message, "code": code})),
+        )),
+        Err(ExecError::Unavailable) => Ok(unavailable()),
     }
 }
 
@@ -220,7 +317,12 @@ async fn execute_named_command(
             | AuthError::Rejected
             | AuthError::SetupRequired => StatusCode::UNAUTHORIZED,
         })?;
-    match execute_command(database, name, arguments, &user_id).await {
+    let outcome = if name == "activate_device" {
+        commands::activate_device(database, arguments, &user_id).await
+    } else {
+        execute_command(database, name, arguments, &user_id).await
+    };
+    match outcome {
         Ok(data) => {
             if secret.is_some_and(|secret| !secret.is_empty() && data.to_string().contains(secret))
             {
@@ -229,6 +331,7 @@ async fn execute_named_command(
             Ok((StatusCode::OK, Json(data)))
         }
         Err(ExecError::Rejected) => Err(StatusCode::BAD_REQUEST),
+        Err(ExecError::Unauthorized) => Err(StatusCode::UNAUTHORIZED),
         Err(ExecError::Unavailable) => Ok((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(serde_json::json!({"error":"LOCAL_COMMAND_FAILED"})),
@@ -237,16 +340,20 @@ async fn execute_named_command(
             if secret.is_some_and(|secret| !secret.is_empty() && message.contains(secret)) {
                 return Ok(unavailable());
             }
-            let status = match code.as_str() {
-                "42501" => StatusCode::FORBIDDEN,
-                "23505" | "P0001" => StatusCode::CONFLICT,
-                _ => StatusCode::BAD_REQUEST,
-            };
+            let status = status_for_code(&code);
             Ok((
                 status,
                 Json(serde_json::json!({"code": code, "message": message})),
             ))
         }
+    }
+}
+
+fn status_for_code(code: &str) -> StatusCode {
+    match code {
+        "42501" => StatusCode::FORBIDDEN,
+        "23505" | "P0001" => StatusCode::CONFLICT,
+        _ => StatusCode::BAD_REQUEST,
     }
 }
 
@@ -318,6 +425,221 @@ async fn limited_body(request: axum::extract::Request) -> Result<Vec<u8>, Status
         return Err(StatusCode::PAYLOAD_TOO_LARGE);
     }
     Ok(bytes.to_vec())
+}
+
+/// Product photos stored on this server. Upload/remove: owner, admin or
+/// manager of the tenant; download: any member of the tenant. Files are
+/// content-addressed (sha256) under <media>/<tenant>/<bucket>/ and the type is
+/// taken from the file signature, never from the client.
+async fn storage(
+    State(state): State<AppState>,
+    Path(action): Path<String>,
+    headers: axum::http::HeaderMap,
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    use base64::Engine as _;
+    let value = json_body(request).await?;
+    let (Some(database), Some(media)) = (state.database.as_ref(), state.media.as_ref()) else {
+        return Ok(unavailable());
+    };
+    let token = bearer_token(&headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user_id = auth::session_user_id(database, &token)
+        .await
+        .map_err(|error| match error {
+            AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+            _ => StatusCode::UNAUTHORIZED,
+        })?;
+    let field = |key: &str| {
+        value
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
+    let (bucket, tenant) = (field("bucket"), field("tenant_id"));
+    let reject = |message: &str| {
+        Ok((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": message})),
+        ))
+    };
+    if bucket != "product-images" || !crate::pos_pin::uuid_like(&tenant) {
+        return reject("Invalid photo location");
+    }
+    let writer = action == "upload";
+    // Membership is checked for the session's verified user id through the
+    // SECURITY DEFINER role helpers, inside the caller's transaction.
+    let mut tx = commands::caller_transaction(database, Some(&user_id))
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    let allowed: bool = sqlx::query_scalar(
+        "select case when $2 then public.has_any_role($3::uuid, $1::uuid, array['owner','admin','manager']::public.app_role[]) else public.is_tenant_member($3::uuid, $1::uuid) end",
+    )
+    .bind(&tenant)
+    .bind(writer)
+    .bind(user_id.to_string())
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    drop(tx);
+    if !allowed {
+        return Ok((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error": "You do not have access to this business's photos"})),
+        ));
+    }
+    let b64 = base64::engine::general_purpose::STANDARD;
+    match action.as_str() {
+        "upload" => {
+            let Ok(bytes) = b64.decode(field("data_base64")) else {
+                return reject("Photo data is not valid");
+            };
+            let content_type = match attachments::check_image(&bytes) {
+                Ok(kind) => kind,
+                Err(message) => return reject(message),
+            };
+            match media.put(&tenant, &bucket, "photo", &bytes) {
+                Ok(hash) => Ok((
+                    StatusCode::OK,
+                    Json(
+                        serde_json::json!({"data": {"path": format!("{tenant}/{hash}"), "content_type": content_type}}),
+                    ),
+                )),
+                Err(_) => Ok((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Photo could not be saved"})),
+                )),
+            }
+        }
+        "download" => {
+            let hash = field("hash");
+            match media.read(&tenant, &bucket, &hash) {
+                Ok(Some(bytes)) => Ok((
+                    StatusCode::OK,
+                    Json(serde_json::json!({"data": {
+                        "content_type": attachments::sniff_image(&bytes).unwrap_or("application/octet-stream"),
+                        "data_base64": b64.encode(&bytes),
+                    }})),
+                )),
+                Ok(None) => Ok((
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": "Photo not found"})),
+                )),
+                Err(_) => reject("Invalid photo location"),
+            }
+        }
+        _ => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+/// Owner/admin-only local database backups. Chunked so every request and
+/// response stays under the 1 MiB transport limit.
+async fn backups(
+    State(state): State<AppState>,
+    Path(action): Path<String>,
+    headers: axum::http::HeaderMap,
+    request: axum::extract::Request,
+) -> Result<(StatusCode, Json<Value>), StatusCode> {
+    use base64::Engine as _;
+    let value = json_body(request).await?;
+    let (Some(database), Some(store)) = (state.database.as_ref(), state.backups.as_ref()) else {
+        return Ok(unavailable());
+    };
+    let token = bearer_token(&headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user_id = auth::session_user_id(database, &token)
+        .await
+        .map_err(|error| match error {
+            AuthError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+            _ => StatusCode::UNAUTHORIZED,
+        })?;
+    // Checked as the caller (row-level security applies), like every other read.
+    let mut tx = commands::caller_transaction(database, Some(&user_id))
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    let allowed: bool = sqlx::query_scalar(
+        "select exists(select 1 from public.user_roles where user_id = auth.uid() and role::text in ('owner','admin'))",
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    drop(tx);
+    if !allowed {
+        return Ok((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error": "Only an owner or admin can manage backups"})),
+        ));
+    }
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let str_field = |key: &str| {
+        value
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
+    let result: Result<Value, BackupError> = match action.as_str() {
+        "create" => store.start("create", None),
+        "status" => store.job_status(),
+        "schedule" => Ok(store.last_scheduled()),
+        "list" => store.list().await.map(|items| serde_json::json!(items)),
+        "read" => {
+            let offset = value.get("offset").and_then(Value::as_u64).unwrap_or(0);
+            store.read_chunk(&str_field("name"), offset).await.map(|(bytes, total)| {
+                let next = offset + bytes.len() as u64;
+                serde_json::json!({"data": b64.encode(&bytes), "offset": offset, "next": next, "total": total, "done": next >= total})
+            })
+        }
+        "import-begin" => store
+            .import_begin()
+            .await
+            .map(|id| serde_json::json!({"upload_id": id})),
+        "import-chunk" => {
+            let bytes = b64
+                .decode(str_field("data"))
+                .map_err(|_| StatusCode::BAD_REQUEST)?;
+            let offset = value.get("offset").and_then(Value::as_u64).unwrap_or(0);
+            store
+                .import_chunk(&str_field("upload_id"), offset, &bytes)
+                .await
+                .map(|next| serde_json::json!({"next": next}))
+        }
+        "import-finish" => store
+            .import_finish(&str_field("upload_id"))
+            .await
+            .map(|info| serde_json::json!(info)),
+        "restore" => {
+            if str_field("confirm") != "RESTORE" {
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"error": "Type RESTORE to confirm"})),
+                ));
+            }
+            let name = str_field("name");
+            if !crate::backup::database::valid_name(&name) {
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"error": "backup name is invalid"})),
+                ));
+            }
+            store.start("restore", Some(name))
+        }
+        _ => return Err(StatusCode::NOT_FOUND),
+    };
+    match result {
+        Ok(data) => Ok((StatusCode::OK, Json(serde_json::json!({"data": data})))),
+        Err(error) => {
+            let status = match error {
+                BackupError::NotFound | BackupError::UnknownUpload => StatusCode::NOT_FOUND,
+                BackupError::InvalidName => StatusCode::BAD_REQUEST,
+                BackupError::Corrupt => StatusCode::UNPROCESSABLE_ENTITY,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            Ok((
+                status,
+                Json(serde_json::json!({"error": error.to_string()})),
+            ))
+        }
+    }
 }
 
 async fn not_found() -> impl IntoResponse {

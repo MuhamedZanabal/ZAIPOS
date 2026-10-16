@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, type TableItemStatus } from "./itemStatus";
+import { translate as tx } from "@/i18n";
 
 type Tab = "products" | "order";
 
@@ -35,6 +36,8 @@ interface Props {
   onSendToCashier: () => void;
   onCancel: () => void;
   onPay: () => void;
+  servedTotal: number;
+  unservedCount: number;
 }
 
 export function TableOrderMobile(props: Props) {
@@ -80,7 +83,7 @@ export function TableOrderMobile(props: Props) {
       {devMode && (
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 text-white text-[11px] font-semibold">
           <FlaskConical className="h-3 w-3 shrink-0" />
-          DEV MODE · No stock or register validation
+          {tx("DEV MODE · No stock or register validation")}
         </div>
       )}
 
@@ -97,7 +100,7 @@ export function TableOrderMobile(props: Props) {
             !isOpen && "opacity-40"
           )}
         >
-          <Grid3x3 className="h-4 w-4" /> Products
+          <Grid3x3 className="h-4 w-4" /> {tx("Products")}
         </button>
         <button
           onClick={() => setTab("order")}
@@ -124,7 +127,7 @@ export function TableOrderMobile(props: Props) {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search product..."
+                placeholder={tx("Search product...")}
                 className="pl-9 h-11"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -174,7 +177,7 @@ export function TableOrderMobile(props: Props) {
               ))}
               {filtered.length === 0 && (
                 <div className="col-span-full text-center py-12 text-muted-foreground text-sm">
-                  No products
+                  {tx("No products")}
                 </div>
               )}
             </div>
@@ -197,7 +200,7 @@ export function TableOrderMobile(props: Props) {
 
       {tab === "products" && !isOpen && (
         <div className="flex-1 grid place-items-center text-muted-foreground p-8 text-center text-sm">
-          Order sent to register. Awaiting payment.
+          {tx("Order sent to register. Awaiting payment.")}
         </div>
       )}
 
@@ -208,7 +211,7 @@ export function TableOrderMobile(props: Props) {
             <div className="p-3 space-y-2 pb-2">
               {items.length === 0 && (
                 <div className="text-center text-muted-foreground py-16 text-sm">
-                  No products. Add them from the Products tab.
+                  {tx("No products. Add them from the Products tab.")}
                 </div>
               )}
               {items.map((it: any) => {
@@ -296,7 +299,7 @@ export function TableOrderMobile(props: Props) {
                         )}
                         {dispatched && isOpen && (
                           <Button size="sm" variant="ghost" className="h-9 text-xs" onClick={() => onUndispatch(it)}>
-                            <RotateCcw className="h-4 w-4 mr-1" /> Revertir
+                            <RotateCcw className="h-4 w-4 mr-1" /> {tx("Revert")}
                           </Button>
                         )}
                       </div>
@@ -310,15 +313,15 @@ export function TableOrderMobile(props: Props) {
           {/* Footer fijo */}
           <div className="border-t p-3 space-y-2 bg-card">
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
+              <span className="text-muted-foreground">{tx("Subtotal")}</span>
               <span className="tabular-nums">{formatCurrency(Number(order.subtotal))}</span>
             </div>
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-muted-foreground">Impuestos</span>
+              <span className="text-muted-foreground">VAT</span>
               <span className="tabular-nums">{formatCurrency(Number(order.tax_total))}</span>
             </div>
             <div className="flex items-baseline justify-between border-t pt-2">
-              <span className="font-bold">Total</span>
+              <span className="font-bold">{tx("Total")}</span>
               <span className="text-2xl font-black text-primary tabular-nums">
                 {formatCurrency(Number(order.total))}
               </span>
@@ -326,14 +329,14 @@ export function TableOrderMobile(props: Props) {
             {isOpen && (
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" className="h-11" onClick={onCancel}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Cancel
+                  <Trash2 className="h-4 w-4 mr-1" /> {tx("Cancel")}
                 </Button>
                 <Button
                   className="h-11"
                   onClick={onSendToCashier}
                   disabled={pendingCount === 0 && itemCount === 0}
                 >
-                  <Send className="h-4 w-4 mr-1" /> Send to register
+                  <Send className="h-4 w-4 mr-1" /> {tx("Send to register")}
                 </Button>
               </div>
             )}
@@ -342,10 +345,10 @@ export function TableOrderMobile(props: Props) {
                 size="lg"
                 className="w-full h-13 min-h-[52px]"
                 onClick={onPay}
-                disabled={Number(order.total) <= 0}
+                disabled={props.servedTotal <= 0}
               >
                 <CreditCard className="h-5 w-5 mr-2" />
-                Cobrar {formatCurrency(Number(order.total))}
+                Charge {formatCurrency(props.servedTotal)}
               </Button>
             )}
           </div>

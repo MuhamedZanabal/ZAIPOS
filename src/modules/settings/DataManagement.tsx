@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { BackupPanel } from "./BackupPanel";
+import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,7 @@ import {
   importProductCatalogue,
   type CatalogueImportRow,
 } from "@/lib/catalogueImportCommands";
+import { translate as tx } from "@/i18n";
 
 export function DataManagement() {
   const { tenantId, branchId } = useTenantContext();
@@ -56,7 +59,7 @@ export function DataManagement() {
     if (!file) return;
 
     if (!tenantId) {
-      toast.error("Tenant context is required");
+      toast.error(tx("Tenant context is required"));
       event.target.value = "";
       return;
     }
@@ -154,7 +157,7 @@ export function DataManagement() {
         `Import complete: ${result.processed} products processed (${result.created} created, ${result.updated} updated)`,
       );
     } catch (err: any) {
-      toast.error("Import error: " + err.message);
+      toast.error(tx("Import error: ") + err.message);
     } finally {
       setLoading(false);
       setProgress(null);
@@ -167,13 +170,13 @@ export function DataManagement() {
     if (!file) return;
 
     if (!tenantId || !branchId) {
-      toast.error("Tenant and branch context are required");
+      toast.error(tx("Tenant and branch context are required"));
       event.target.value = "";
       return;
     }
 
     if (!selectedCenterId) {
-      toast.error("You must select an inventory center");
+      toast.error(tx("You must select an inventory center"));
       event.target.value = "";
       return;
     }
@@ -219,7 +222,7 @@ export function DataManagement() {
 
       toast.success(`Inventory reconciliation complete: ${targets.length} product(s) set to their physical counts`);
     } catch (err: any) {
-      toast.error("Error importing inventory: " + err.message);
+      toast.error(tx("Error importing inventory: ") + err.message);
     } finally {
       setLoading(false);
       setProgress(null);
@@ -234,7 +237,7 @@ export function DataManagement() {
           <div>
             <div className="flex items-center gap-2 text-brand-600">
               <FileSpreadsheet className="h-5 w-5" />
-              <div className="g-title-16">Product Catalog</div>
+              <div className="g-title-16">{tx("Product Catalog")}</div>
             </div>
             <div className="h-meta mt-1">
               Export base catalogue prices, costs, categories and barcodes. JSON preserves original field values; CSV is for spreadsheets.
@@ -252,7 +255,7 @@ export function DataManagement() {
           <Button variant="outline" disabled={loading} onClick={() => downloadExport('catalogue', 'json')}>Export Catalog Snapshot (.json)</Button>
 
           <div className="space-y-2">
-            <Label htmlFor="import-products">Import / Update Catalog</Label>
+            <Label htmlFor="import-products">{tx("Import / Update Catalog")}</Label>
             <div className="relative">
               <Input
                 id="import-products"
@@ -264,7 +267,7 @@ export function DataManagement() {
               />
             </div>
             <p className="text-[10px] text-muted-foreground">
-              * Existing products are matched by 'id' or 'sku'. New product identities and retry IDs are deterministic for the same file.
+              {tx("* Existing products are matched by 'id' or 'sku'. New product identities and retry IDs are deterministic for the same file.")}
             </p>
           </div>
         </div>
@@ -273,10 +276,10 @@ export function DataManagement() {
           <div>
             <div className="flex items-center gap-2 text-brand-600">
               <Box className="h-5 w-5" />
-              <div className="g-title-16">Stock and Inventory</div>
+              <div className="g-title-16">{tx("Stock and Inventory")}</div>
             </div>
             <div className="h-meta mt-1">
-              Bulk-adjust physical quantities in your inventory centers.
+              {tx("Bulk-adjust physical quantities in your inventory centers.")}
             </div>
           </div>
           <Button
@@ -292,10 +295,10 @@ export function DataManagement() {
 
           <div className="space-y-3 pt-2 border-t">
             <div className="space-y-1.5">
-              <Label>Destination center for import</Label>
+              <Label>{tx("Destination center for import")}</Label>
               <Select value={selectedCenterId} onValueChange={setSelectedCenterId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a center..." />
+                  <SelectValue placeholder={tx("Select a center...")} />
                 </SelectTrigger>
                 <SelectContent>
                   {centers.map((center) => (
@@ -306,7 +309,7 @@ export function DataManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="import-inventory">Import Stock (Physical Adjustment)</Label>
+              <Label htmlFor="import-inventory">{tx("Import Stock (Physical Adjustment)")}</Label>
               <Input
                 id="import-inventory"
                 type="file"
@@ -326,18 +329,21 @@ export function DataManagement() {
       {progress && (
         <Alert className="bg-primary/5 border-primary/20 animate-pulse">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <AlertTitle>Processing data...</AlertTitle>
+          <AlertTitle>{tx("Processing data...")}</AlertTitle>
           <AlertDescription>
             Processing row {progress.current} of {progress.total}
           </AlertDescription>
         </Alert>
       )}
 
+      <BackupPanel />
+      <DiagnosticsPanel />
+
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Recommendation</AlertTitle>
+        <AlertTitle>{tx("Recommendation")}</AlertTitle>
         <AlertDescription>
-          Create a verified database backup before bulk changes. These catalogue and stock exports are scoped snapshots, not disaster-recovery backups.
+          {tx("Create a full backup (above) before bulk changes. The catalogue and stock exports are scoped snapshots, not disaster-recovery backups.")}
         </AlertDescription>
       </Alert>
     </div>

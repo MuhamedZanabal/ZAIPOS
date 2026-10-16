@@ -334,6 +334,11 @@
 }
 .dark .s-pill-green { color: #6EE7B7; }
 .s-pill-green.light { color: #047857; background: hsl(160 84% 39% / 0.08); border-color: hsl(160 84% 39% / 0.25); }
+.s-pill-amber {
+  border: 1px solid hsl(38 92% 50% / 0.35);
+  background: hsl(38 92% 50% / 0.12);
+  color: #B45309;
+}
 .s-pill-blue {
   border: 1px solid hsl(213 100% 50% / 0.3);
   background: hsl(213 100% 50% / 0.1);
@@ -2371,7 +2376,7 @@
 .g-cash-hist-head,
 .g-cash-hist-row {
   display: grid;
-  grid-template-columns: 1fr 80px 130px 130px 130px;
+  grid-template-columns: 1fr 80px 130px 130px 130px 72px;
   align-items: center;
   gap: 16px;
   padding: 12px 20px;
@@ -2875,4 +2880,28 @@
 /* Branch grid single column on mobile */
 @media (max-width: 479px) {
   .g-branches-grid { grid-template-columns: 1fr; }
+}
+
+/* Z-report: print only the report text */
+@media print {
+  body * { visibility: hidden; }
+  .z-report-print, .z-report-print * { visibility: visible; }
+  .z-report-print { position: absolute; inset: 0 auto auto 0; max-height: none; overflow: visible; background: #fff; color: #000; }
+}
+
+/* Arabic UI uses the bundled Noto Sans Arabic face first. */
+html[dir="rtl"] body { font-family: "Noto Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif; }
+
+/* Arabic runs inside otherwise English screens (customer display). */
+.font-arabic { font-family: "Noto Sans Arabic", system-ui, sans-serif; }
+
+/* Barcode label sheet: 50 x 30 mm labels, A4 grid when printing to PDF. */
+.label-print { display: none; }
+@media print {
+  .label-print, .label-print * { visibility: visible; }
+  .label-print { display: grid; position: absolute; inset: 0 0 auto 0; grid-template-columns: repeat(auto-fill, 50mm); gap: 2mm; background: #fff; color: #000; padding: 4mm; }
+  .label-print-item { width: 50mm; height: 30mm; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; break-inside: avoid; font-family: "Plus Jakarta Sans", sans-serif; }
+  .label-print-name { font-size: 8pt; font-weight: 600; max-width: 48mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .label-print-price { font-size: 10pt; font-weight: 700; }
+  .label-print-code svg { width: 46mm; height: auto; }
 }

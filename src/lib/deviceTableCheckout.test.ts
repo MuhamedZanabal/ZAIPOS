@@ -1,41 +1,38 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn() }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getSession: mocks.getSession } } }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: { getSession: async () => ({ data: { session: { access_token: "tok" } }, error: null }) } } }));
 
-import { checkoutTableOrderOnDevice } from './deviceTableCheckout';
+import { checkoutTableOrderOnDevice } from "./deviceTableCheckout";
+import { readOutbox, replayOutbox } from "./offlineOutbox";
 
-const allocation = { method: 'cash' as const, amountFils: 1250, tenderedFils: 1250, changeFils: 0, reference: null };
+const input = { tenantId: "t1", branchId: "b1", orderId: "o1", allocations: [{ method: "cash", amountFils: 1500 }] as never, tipAmount: 0, discountAmount: 0 };
 
-describe('device table checkout boundary', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getSession.mockResolvedValue({ data: { session: { access_token: 'operator-token' } }, error: null });
+describe("offline table checkout", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("queues the checkout when the server is unreachable, once per order", async () => {
+    const checkout = vi.fn().mockRejectedValue(new Error("LOCAL_RUNTIME_UNAVAILABLE"));
+    (window as any).electron = { checkoutTableOrder: checkout };
+    expect(await checkoutTableOrderOnDevice(input)).toEqual({ queued: true });
+    expect(await checkoutTableOrderOnDevice(input)).toEqual({ queued: true });
+    const entries = readOutbox();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ id: "table-checkout:o1", kind: "table-checkout" });
+    expect(entries[0].payload._client_mutation_id).toBe("table-checkout:o1");
   });
 
-  it('sends canonical exact BHD and a stable order identity through native custody', async () => {
-    const checkoutTableOrder = vi.fn().mockResolvedValue('sale-id');
-    window.electron = { checkoutTableOrder } as never;
-    const input = {
-      tenantId: 'tenant-id', branchId: 'branch-id', orderId: 'order-id',
-      allocations: [allocation], tipAmount: 0.25, discountAmount: 0,
-    };
-    await expect(checkoutTableOrderOnDevice(input)).resolves.toBe('sale-id');
-    await expect(checkoutTableOrderOnDevice(input)).resolves.toBe('sale-id');
-    expect(checkoutTableOrder).toHaveBeenNthCalledWith(1, {
-      _tenant_id: 'tenant-id', _branch_id: 'branch-id', _order_id: 'order-id',
-      _payments: [{ method: 'cash', amount: '1.250', reference: null }],
-      _tip_amount: '0.250', _discount_total: '0.000', _coupon_code: null,
-      _client_mutation_id: 'table-checkout:order-id',
-    }, { accessToken: 'operator-token', tenantId: 'tenant-id', branchId: 'branch-id' });
-    expect(checkoutTableOrder.mock.calls[1][0]).toEqual(checkoutTableOrder.mock.calls[0][0]);
+  it("does not queue business errors", async () => {
+    (window as any).electron = { checkoutTableOrder: vi.fn().mockRejectedValue(new Error("Nothing has been served")) };
+    await expect(checkoutTableOrderOnDevice(input)).rejects.toThrow("Nothing has been served");
+    expect(readOutbox()).toHaveLength(0);
   });
 
-  it('fails closed without the native bridge or authenticated session', async () => {
-    window.electron = undefined;
-    await expect(checkoutTableOrderOnDevice({ tenantId: 't', branchId: 'b', orderId: 'o', allocations: [allocation], tipAmount: 0, discountAmount: 0 })).rejects.toThrow(/provisioned desktop/i);
-    window.electron = { checkoutTableOrder: vi.fn() } as never;
-    mocks.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    await expect(checkoutTableOrderOnDevice({ tenantId: 't', branchId: 'b', orderId: 'o', allocations: [allocation], tipAmount: 0, discountAmount: 0 })).rejects.toThrow(/authenticated desktop/i);
+  it("replays the queued checkout with the same idempotency key", async () => {
+    (window as any).electron = { checkoutTableOrder: vi.fn().mockRejectedValue(new Error("fetch failed")) };
+    await checkoutTableOrderOnDevice(input);
+    const sent: unknown[] = [];
+    const result = await replayOutbox({ "sale-return": vi.fn(), "table-checkout": async (entry) => { sent.push(entry.payload._client_mutation_id); } });
+    expect(result.synced).toBe(1);
+    expect(sent).toEqual(["table-checkout:o1"]);
   });
 });

@@ -23,10 +23,14 @@ import { TableOrderMobile } from "./TableOrderMobile";
 import { ITEM_STATUS_META, deriveOrderState, ORDER_STATE_META, countByStatus, type TableItemStatus } from "./itemStatus";
 import { db } from "@/lib/db";
 import { checkoutTableOrderOnDevice } from "@/lib/deviceTableCheckout";
+import { englishServerMessage } from "@/lib/serverMessages";
+import { servedTotals } from "./servedTotals";
 import { mutateTableOrderItem } from "@/lib/tableOrderItems";
 import { createTableOrderLifecyclePayload, createTableOrderTransitionPayload, transitionTableItem, transitionTableOrder, transitionTableOrderLifecycle } from "@/lib/tableKitchen";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 export default function TableOrder() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { id: orderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -66,6 +70,11 @@ export default function TableOrder() {
   const { data: items, refetch: refetchItems } = useQuery({
     queryKey: ["table-order-items", orderId],
     enabled: !!orderId,
+    // Kitchen status changes come from the KDS on another screen/terminal;
+    // without this the stepper stays stale for the 5-minute default and
+    // checkout reports that nothing has been served.
+    staleTime: 0,
+    refetchInterval: 10000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("table_order_items").select("*").eq("order_id", orderId!).order("created_at");
@@ -180,31 +189,31 @@ export default function TableOrder() {
   };
 
   const startPreparing = async (item: any) => {
-    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Table branch scope is unavailable"));
     try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"start_preparing" }); }
     catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const markReady = async (item: any) => {
-    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Table branch scope is unavailable"));
     try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"mark_ready" }); }
     catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const dispatchItem = async (item: any) => {
-    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Table branch scope is unavailable"));
     try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"dispatch" }); }
     catch (error: any) { return toast.error(error.message); }
     await refetchItems();
   };
 
   const undispatchItem = async (item: any) => {
-    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Table branch scope is unavailable"));
     try { await transitionTableItem({ tenantId, branchId, itemId:item.id, action:"undispatch" }); }
     catch (error: any) { return toast.error(error.message); }
-    toast.success("Reverted to pending");
+    toast.success(tx("Reverted to pending"));
     await refetchItems();
   };
 
@@ -263,7 +272,7 @@ export default function TableOrder() {
   const sendToCashier = async () => {
     if (!tenantId || !branchId || !orderId) return;
     const activeItems = (items ?? []).filter((i: any) => i.status !== "cancelled");
-    if (activeItems.length === 0) return toast.error("Add at least one product");
+    if (activeItems.length === 0) return toast.error(tx("Add at least one product"));
     const ready = activeItems.some((i: any) => i.status === "ready" || i.status === "dispatched");
     if (!ready) {
       const ok = confirm("No items are marked ready or served yet. Send to the register anyway?");
@@ -274,7 +283,7 @@ export default function TableOrder() {
       await sendCashierMutation.mutateAsync(createTableOrderLifecyclePayload({
         tenantId,branchId,orderId,action:"send_to_cashier",
       }));
-      toast.success("Sent to register · The cashier can charge from their screen");
+      toast.success(tx("Sent to register · The cashier can charge from their screen"));
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -297,27 +306,28 @@ export default function TableOrder() {
       const baseTotal = Number(order?.total ?? 0);
       const payableTotal = Math.max(0, baseTotal - discountAmount + tipAmount);
       if (!tenantId || !branchId) throw new Error('Table checkout scope is unavailable');
-      await checkoutTableOrderOnDevice({ tenantId, branchId, orderId, allocations, tipAmount, discountAmount, couponCode });
-      toast.success("Cobro registrado");
+      const result = await checkoutTableOrderOnDevice({ tenantId, branchId, orderId, allocations, tipAmount, discountAmount, couponCode });
+      if (typeof result === "object" && result.queued) toast.warning(tx("Server unreachable · Checkout saved offline and will sync automatically"), { duration: 10_000 });
+      else toast.success(tx("Payment recorded"));
       setPayOpen(false);
       qc.invalidateQueries({ queryKey: ["table-orders-open"] });
       qc.invalidateQueries({ queryKey: ["tables"] });
       navigate("/tables");
     } catch (err: any) {
-      toast.error(err.message ?? "Checkout error");
+      toast.error(englishServerMessage(err?.message ?? "Checkout failed"), { duration: 10_000 });
     } finally { setSubmitting(false); }
   };
 
   const cancelOrder = async () => {
     if (!orderId || !order) return;
     if (!confirm("Cancel this order? Dispatched items will be reverted.")) return;
-    if (!tenantId || !branchId) return toast.error("Table branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Table branch scope is unavailable"));
     try {
       await transitionTableOrderLifecycle(createTableOrderLifecyclePayload({
         tenantId,branchId,orderId,action:"cancel",
       }));
     } catch (error:any) { return toast.error(error.message); }
-    toast.success("Order cancelled");
+    toast.success(tx("Order cancelled"));
     qc.invalidateQueries({ queryKey: ["table-orders-open"] });
     qc.invalidateQueries({ queryKey: ["tables"] });
     navigate("/tables");
@@ -330,7 +340,7 @@ export default function TableOrder() {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-3 text-[var(--ink-400)]">
         <div className="h-8 w-8 rounded-full border-4 border-[var(--brand-600)] border-t-transparent animate-spin" />
-        <p className="h-meta">Opening order...</p>
+        <p className="h-meta">{tx("Opening order...")}</p>
       </div>
     );
   }
@@ -339,12 +349,12 @@ export default function TableOrder() {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
         <div className="text-4xl">⚠️</div>
-        <p className="font-semibold text-[var(--ink-900)]">Could not load the order</p>
+        <p className="font-semibold text-[var(--ink-900)]">{tx("Could not load the order")}</p>
         <p className="h-meta">
           {(orderError as any)?.message ?? "The order does not exist or was cancelled."}
         </p>
         <button type="button" className="g-btn g-btn-ghost" onClick={() => navigate("/tables")}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to tables
+          <ArrowLeft className="h-4 w-4 mr-2" /> {tx("Back to tables")}
         </button>
       </div>
     );
@@ -352,11 +362,15 @@ export default function TableOrder() {
 
   const isOpen = order.status === "open";
   const sent = order.status === "sent_to_cashier";
+  // Only served (dispatched) items are charged by checkout; unserved items stay on the order.
+  const { servedTotal, unservedCount } = servedTotals(items ?? []);
 
   if (isMobile) {
     return (
       <>
         <TableOrderMobile
+          servedTotal={servedTotal}
+          unservedCount={unservedCount}
           order={order}
           items={items ?? []}
           filtered={filtered}
@@ -382,7 +396,7 @@ export default function TableOrder() {
         <PaymentDialog
           open={payOpen}
           onOpenChange={setPayOpen}
-          total={Number(order.total)}
+          total={servedTotal}
           tenantId={tenantId}
           submitting={submitting}
           onConfirm={charge}
@@ -393,9 +407,9 @@ export default function TableOrder() {
               <DialogTitle>Details for {pendingDetailProduct?.name}</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
-              <p className="h-meta">This product requires details that will be sent to the kitchen KDS.</p>
+              <p className="h-meta">{tx("This product requires details that will be sent to the kitchen KDS.")}</p>
               <Textarea
-                placeholder="E.g. Medium-well, no onion, extra sauce…"
+                placeholder={tx("E.g. Medium-well, no onion, extra sauce…")}
                 value={detailInput}
                 onChange={e => setDetailInput(e.target.value)}
                 autoFocus
@@ -404,7 +418,7 @@ export default function TableOrder() {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setPendingDetailProduct(null)}>Cancel</Button>
-              <Button onClick={confirmDetail} disabled={!detailInput.trim()}>Add to order</Button>
+              <Button onClick={confirmDetail} disabled={!detailInput.trim()}>{tx("Add to order")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -417,24 +431,24 @@ export default function TableOrder() {
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--g-hairline)] glass-thin shrink-0">
         <button type="button" className="g-btn g-btn-ghost" onClick={() => navigate("/tables")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Tables
+          <ArrowLeft className="h-4 w-4 mr-1" /> {tx("Tables")}
         </button>
         <div className="g-title-18">{(order as any).tables?.name ?? "Table"}</div>
-        {sent && <span className="g-pill g-pill-warn g-pill-h22">Sent to register</span>}
-        {isOpen && <span className="g-pill g-pill-brand g-pill-h22">Abierto</span>}
+        {sent && <span className="g-pill g-pill-warn g-pill-h22">{tx("Sent to register")}</span>}
+        {isOpen && <span className="g-pill g-pill-brand g-pill-h22">{tx("Open")}</span>}
         {waiterName ? (
           <span className="h-meta">
-            Waiter: <span className="font-semibold text-[var(--ink-700)]">{waiterName}</span>
+            {tx("Waiter:")} <span className="font-semibold text-[var(--ink-700)]">{waiterName}</span>
           </span>
         ) : !(order as any)?.waiter_id ? (
-          <span className="text-xs font-semibold text-[var(--brand-600)]">📱 QR Order</span>
+          <span className="text-xs font-semibold text-[var(--brand-600)]">{tx("📱 QR Order")}</span>
         ) : null}
         <div className="flex-1" />
         {isOpen && (
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--ink-400)]" />
             <Input
-              placeholder="Search product..."
+              placeholder={tx("Search product...")}
               className="pl-9 h-10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -490,14 +504,14 @@ export default function TableOrder() {
                     </button>
                   ))}
                   {filtered.length === 0 && (
-                    <div className="col-span-full text-center py-12 h-meta">No products</div>
+                    <div className="col-span-full text-center py-12 h-meta">{tx("No products")}</div>
                   )}
                 </div>
               </ScrollArea>
             </>
           ) : (
             <div className="flex-1 grid place-items-center h-meta p-8 text-center">
-              Order sent to register. Awaiting cashier payment.
+              {tx("Order sent to register. Awaiting cashier payment.")}
             </div>
           )}
         </div>
@@ -509,7 +523,7 @@ export default function TableOrder() {
           <div className="px-4 py-3 border-b border-[var(--g-hairline)] space-y-2 shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <div className="h-label uppercase tracking-wider">Order</div>
+                <div className="h-label uppercase tracking-wider">{tx("Order")}</div>
                 <div className="text-sm text-[var(--ink-700)]">
                   {(items ?? []).length} items ·{" "}
                   <span className={cn("inline-block px-1.5 py-0.5 rounded text-[10px] font-bold", ORDER_STATE_META[deriveOrderState(order.status, items ?? [])].tone)}>
@@ -543,7 +557,7 @@ export default function TableOrder() {
                     disabled={c.pending === 0}
                     onClick={sendAllToKitchen}
                   >
-                    <ChefHat className="h-3 w-3 mr-1" /> To kitchen
+                    <ChefHat className="h-3 w-3 mr-1" /> {tx("To kitchen")}
                   </button>
                   <button
                     type="button"
@@ -551,7 +565,7 @@ export default function TableOrder() {
                     disabled={c.preparing === 0 && c.pending === 0}
                     onClick={markAllReady}
                   >
-                    <Bell className="h-3 w-3 mr-1" /> Mark ready
+                    <Bell className="h-3 w-3 mr-1" /> {tx("Mark ready")}
                   </button>
                 </div>
               );
@@ -563,7 +577,7 @@ export default function TableOrder() {
             <div className="p-3 space-y-2">
               {(items ?? []).length === 0 && (
                 <div className="text-center h-meta py-12">
-                  No products. Add them from the left.
+                  {tx("No products. Add them from the left.")}
                 </div>
               )}
               {(items ?? []).map((it) => {
@@ -634,14 +648,14 @@ export default function TableOrder() {
                     {/* Qty / delete / revert controls */}
                     {isOpen && !cancelled && status !== "dispatched" && (
                       <div className="flex items-center justify-end gap-1">
-                        <button type="button" aria-label="Decrease quantity" className="g-btn g-btn-ghost h-7 w-7 p-0" onClick={() => setQty(it, Number(it.quantity) - 1)}>
+                        <button type="button" aria-label={tx("Decrease quantity")} className="g-btn g-btn-ghost h-7 w-7 p-0" onClick={() => setQty(it, Number(it.quantity) - 1)}>
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="w-6 text-center font-semibold text-sm text-[var(--ink-900)]">{Number(it.quantity)}</span>
-                        <button type="button" aria-label="Increase quantity" className="g-btn g-btn-ghost h-7 w-7 p-0" onClick={() => setQty(it, Number(it.quantity) + 1)}>
+                        <button type="button" aria-label={tx("Increase quantity")} className="g-btn g-btn-ghost h-7 w-7 p-0" onClick={() => setQty(it, Number(it.quantity) + 1)}>
                           <Plus className="h-3 w-3" />
                         </button>
-                        <button type="button" aria-label="Remove item" className="g-btn g-btn-ghost h-7 w-7 p-0 text-[var(--g-bad)]" onClick={() => setQty(it, 0)}>
+                        <button type="button" aria-label={tx("Remove item")} className="g-btn g-btn-ghost h-7 w-7 p-0 text-[var(--g-bad)]" onClick={() => setQty(it, 0)}>
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
@@ -649,7 +663,7 @@ export default function TableOrder() {
                     {dispatched && isOpen && (
                       <div className="flex justify-end">
                         <button type="button" className="g-btn g-btn-ghost h-7 text-xs" onClick={() => undispatchItem(it)}>
-                          <RotateCcw className="h-3 w-3 mr-1" /> Revertir
+                          <RotateCcw className="h-3 w-3 mr-1" /> {tx("Revert")}
                         </button>
                       </div>
                     )}
@@ -662,21 +676,21 @@ export default function TableOrder() {
           {/* Totals & action footer */}
           <div className="border-t border-[var(--g-hairline)] p-4 space-y-3 glass-thin shrink-0">
             <div className="flex items-baseline justify-between">
-              <span className="h-label">Subtotal</span>
+              <span className="h-label">{tx("Subtotal")}</span>
               <span className="tabular-nums text-[var(--ink-700)]">{formatCurrency(Number(order.subtotal))}</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="h-label">Impuestos</span>
+              <span className="h-label">VAT</span>
               <span className="tabular-nums text-[var(--ink-700)]">{formatCurrency(Number(order.tax_total))}</span>
             </div>
             <div className="flex items-baseline justify-between border-t border-[var(--g-hairline)] pt-2">
-              <span className="font-bold text-[var(--ink-900)]">Total</span>
+              <span className="font-bold text-[var(--ink-900)]">{tx("Total")}</span>
               <span className="h-num text-2xl text-[var(--brand-600)]">{formatCurrency(Number(order.total))}</span>
             </div>
             {isOpen && (
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" className="g-btn g-btn-ghost" onClick={cancelOrder}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Cancel
+                  <Trash2 className="h-4 w-4 mr-2" /> {tx("Cancel")}
                 </button>
                 <button
                   type="button"
@@ -684,7 +698,7 @@ export default function TableOrder() {
                   onClick={sendToCashier}
                   disabled={(items ?? []).length === 0}
                 >
-                  <Send className="h-4 w-4 mr-2" /> Send to register
+                  <Send className="h-4 w-4 mr-2" /> {tx("Send to register")}
                 </button>
               </div>
             )}
@@ -693,9 +707,10 @@ export default function TableOrder() {
                 type="button"
                 className="g-btn g-btn-primary g-btn-touch w-full"
                 onClick={() => setPayOpen(true)}
-                disabled={Number(order.total) <= 0}
+                disabled={servedTotal <= 0}
+                title={unservedCount > 0 ? `${unservedCount} item(s) not served yet are not charged` : undefined}
               >
-                <CreditCard className="h-5 w-5 mr-2" /> Cobrar {formatCurrency(Number(order.total))}
+                <CreditCard className="h-5 w-5 mr-2" /> Charge {formatCurrency(servedTotal)}
               </button>
             )}
           </div>
@@ -705,7 +720,7 @@ export default function TableOrder() {
       <PaymentDialog
         open={payOpen}
         onOpenChange={setPayOpen}
-        total={Number(order.total)}
+        total={servedTotal}
         tenantId={tenantId}
         submitting={submitting}
         onConfirm={charge}
@@ -717,9 +732,9 @@ export default function TableOrder() {
             <DialogTitle>Details for {pendingDetailProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <p className="h-meta">This product requires details that will be sent to the kitchen KDS.</p>
+            <p className="h-meta">{tx("This product requires details that will be sent to the kitchen KDS.")}</p>
             <Textarea
-              placeholder="E.g. Medium-well, no onion, extra sauce…"
+              placeholder={tx("E.g. Medium-well, no onion, extra sauce…")}
               value={detailInput}
               onChange={e => setDetailInput(e.target.value)}
               autoFocus
@@ -728,7 +743,7 @@ export default function TableOrder() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setPendingDetailProduct(null)}>Cancel</Button>
-            <Button onClick={confirmDetail} disabled={!detailInput.trim()}>Add to order</Button>
+            <Button onClick={confirmDetail} disabled={!detailInput.trim()}>{tx("Add to order")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

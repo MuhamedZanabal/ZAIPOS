@@ -208,7 +208,7 @@ pub fn render_postgres_policy(port: u16) -> Result<PostgresPolicy, ProvisionErro
     Ok(rendered)
 }
 
-fn resolve_bin_dir(explicit: Option<&Path>) -> Result<PathBuf, ProvisionError> {
+pub fn resolve_bin_dir(explicit: Option<&Path>) -> Result<PathBuf, ProvisionError> {
     if let Some(path) = explicit {
         return Ok(path.to_path_buf());
     }
@@ -229,7 +229,7 @@ fn resolve_bin_dir(explicit: Option<&Path>) -> Result<PathBuf, ProvisionError> {
     Err(ProvisionError::BinariesMissing)
 }
 
-fn find_binary(bin_dir: &Path, name: &str) -> Option<PathBuf> {
+pub fn find_binary(bin_dir: &Path, name: &str) -> Option<PathBuf> {
     let direct = bin_dir.join(name);
     if direct.is_file() {
         return Some(direct);
@@ -475,8 +475,30 @@ async fn bootstrap_roles_and_database(
             .await
             .map_err(|_| ProvisionError::CommandFailed)?;
     }
+    owner.close().await.ok();
+    let mut database = PgConnection::connect(&provisioned.owner_url("zaipos"))
+        .await
+        .map_err(|_| ProvisionError::CommandFailed)?;
+    sqlx::raw_sql(SUPABASE_DEFAULT_PRIVILEGES)
+        .execute(&mut database)
+        .await
+        .map_err(|_| ProvisionError::CommandFailed)?;
     Ok(())
 }
+
+/// Hosted Supabase gives the API roles privileges on every new object in
+/// `public`; the project's migrations then REVOKE where RPCs must be the only
+/// write path and rely on RLS for the rest. A plain PostgreSQL has no such
+/// defaults, so they are set here, before any migration runs, so the
+/// migrations' REVOKEs keep exactly the meaning they have on Supabase.
+const SUPABASE_DEFAULT_PRIVILEGES: &str = "
+    GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES FOR ROLE zaipos_owner_bootstrap IN SCHEMA public
+      GRANT ALL ON TABLES TO anon, authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES FOR ROLE zaipos_owner_bootstrap IN SCHEMA public
+      GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES FOR ROLE zaipos_owner_bootstrap IN SCHEMA public
+      GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;";
 
 #[cfg(test)]
 mod tests {

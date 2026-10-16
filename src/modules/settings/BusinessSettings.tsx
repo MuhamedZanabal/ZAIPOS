@@ -14,15 +14,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { BusinessTypeSettings } from "./BusinessTypeSettings";
 import { Save, FlaskConical } from "lucide-react";
 import {
   BAHRAIN_CURRENCY,
   BAHRAIN_STANDARD_VAT,
 } from "@/lib/bahrain";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const CURRENCIES = [BAHRAIN_CURRENCY] as const;
 
 export default function BusinessSettings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, hasRole } = useTenantContext();
   const qc = useQueryClient();
   const canEdit = hasRole("owner", "admin");
@@ -34,7 +37,7 @@ export default function BusinessSettings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tenants")
-        .select("id, name, currency, tax_rate")
+        .select("id, name, currency, tax_rate, discount_approval_threshold_pct")
         .eq("id", tenantId!)
         .single();
       if (error) throw error;
@@ -46,6 +49,7 @@ export default function BusinessSettings() {
     name: "",
     currency: BAHRAIN_CURRENCY as string,
     tax_rate: BAHRAIN_STANDARD_VAT as number,
+    discount_threshold: 10,
   });
 
   useEffect(() => {
@@ -54,13 +58,15 @@ export default function BusinessSettings() {
         name: tenant.name ?? "",
         currency: tenant.currency || BAHRAIN_CURRENCY,
         tax_rate: Number(tenant.tax_rate ?? BAHRAIN_STANDARD_VAT),
+        discount_threshold: Number((tenant as { discount_approval_threshold_pct?: number | null }).discount_approval_threshold_pct ?? 10),
       });
     }
   }, [tenant]);
 
   const save = async () => {
     if (!tenantId) return;
-    if (!form.name.trim()) return toast.error("Business name is required");
+    if (!form.name.trim()) return toast.error(tx("Business name is required"));
+    if (!(form.discount_threshold >= 0 && form.discount_threshold <= 100)) return toast.error(tx("Discount approval limit must be between 0 and 100%"));
 
     const { error } = await supabase
       .from("tenants")
@@ -68,25 +74,27 @@ export default function BusinessSettings() {
         name: form.name.trim(),
         currency: BAHRAIN_CURRENCY,
         tax_rate: form.tax_rate,
-      })
+        discount_approval_threshold_pct: form.discount_threshold,
+      } as never)
       .eq("id", tenantId);
 
     if (error) return toast.error(error.message);
 
-    toast.success("Business information updated");
+    toast.success(tx("Business information updated"));
     qc.invalidateQueries({ queryKey: ["tenant"] });
     qc.invalidateQueries({ queryKey: ["my-roles"] });
   };
 
-  if (isLoading) return <div className="h-meta">Loading…</div>;
+  if (isLoading) return <div className="h-meta">{tx("Loading…")}</div>;
 
   return (
     <div className="space-y-6">
+      <BusinessTypeSettings />
       <div className="glass p-6 rounded-2xl max-w-2xl space-y-5">
         <div className="space-y-1.5">
-          <Label>Business name</Label>
+          <Label>{tx("Business name")}</Label>
           <Input
-            placeholder="Amwaj Market"
+            placeholder={tx("Amwaj Market")}
             value={form.name}
             disabled={!canEdit}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -95,7 +103,7 @@ export default function BusinessSettings() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Currency</Label>
+            <Label>{tx("Currency")}</Label>
             <Select
               value={BAHRAIN_CURRENCY}
               disabled
@@ -111,12 +119,12 @@ export default function BusinessSettings() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              ZAIPOS is configured for Bahrain and uses BHD with three-decimal precision.
+              {tx("ZAIPOS is configured for Bahrain and uses BHD with three-decimal precision.")}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Default VAT (%)</Label>
+            <Label>{tx("Default VAT (%)")}</Label>
             <Input
               type="number"
               min={0}
@@ -127,7 +135,24 @@ export default function BusinessSettings() {
               onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })}
             />
             <p className="text-xs text-muted-foreground">
-              Bahrain standard VAT is 10%. Use product-level tax treatment for zero-rated or exempt supplies.
+              {tx("Bahrain standard VAT is 10%. Use product-level tax treatment for zero-rated or exempt supplies.")}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{tx("Cashier discount limit (%)")}</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="0.5"
+              disabled={!canEdit}
+              value={form.discount_threshold}
+              data-testid="discount-threshold"
+              onChange={(e) => setForm({ ...form, discount_threshold: Number(e.target.value) })}
+            />
+            <p className="text-xs text-muted-foreground">
+              {tx("Cashiers can discount up to this percentage. Larger discounts need a manager PIN.")}
             </p>
           </div>
         </div>
@@ -135,12 +160,12 @@ export default function BusinessSettings() {
         {canEdit ? (
           <div className="pt-2">
             <button type="button" className="g-btn g-btn-primary" onClick={save}>
-              <Save className="h-4 w-4" /> Save changes
+              <Save className="h-4 w-4" /> {tx("Save changes")}
             </button>
           </div>
         ) : (
           <p className="h-meta">
-            Only the owner or administrators can edit this information.
+            {tx("Only the owner or administrators can edit this information.")}
           </p>
         )}
       </div>
@@ -153,10 +178,9 @@ export default function BusinessSettings() {
                 <FlaskConical className="h-4 w-4 text-orange-500" />
               </span>
               <div className="space-y-1">
-                <p className="font-semibold text-sm text-ink-900">Development mode</p>
+                <p className="font-semibold text-sm text-ink-900">{tx("Development mode")}</p>
                 <p className="h-meta max-w-sm">
-                  Allows sales and orders to be recorded regardless of available stock.
-                  Use this only for testing and demonstrations.
+                  {tx("Allows sales and orders to be recorded regardless of available stock. Use this only for testing and demonstrations.")}
                 </p>
               </div>
             </div>

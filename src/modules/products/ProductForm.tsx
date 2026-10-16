@@ -18,7 +18,12 @@ import { ProductBarcodeFields } from "./ProductBarcodeFields";
 import { inspectProductBarcodes, replaceProductBarcodes, type ProductBarcodeInspection } from "@/lib/productBarcodeCommands";
 import { normalizeBarcode, type ProductBarcode, type ProductBarcodeType } from "@/lib/productBarcodes";
 import { bhdToFils, formatFils } from "@/lib/bahrain";
+import { useTenantContext } from "@/hooks/useTenantContext";
+import { hasCapability } from "@/lib/business-modes";
+import { isWeighedProduct, WEIGHT_UNIT } from "@/lib/weighedItems";
 import { createProductFinancialOperationId, setProductBaseFinancials } from "@/lib/productFinancialCommands";
+import { LocalImage } from "@/components/shared/LocalImage";
+import { translate as tx } from "@/i18n";
 
 
 const TYPES = ["simple", "composite", "production", "combo", "ingredient", "modifier"] as const;
@@ -137,7 +142,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             <div className="flex items-center gap-2">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium text-sm">{g.name}</span>
-              {g.required && <span className="g-pill g-pill-bad g-pill-h22">Required</span>}
+              {g.required && <span className="g-pill g-pill-bad g-pill-h22">{tx("Required")}</span>}
               <span className="g-pill g-pill-ghost g-pill-h22">max {g.max_selections}</span>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -168,7 +173,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             {addingOption === g.id ? (
               <div className="flex gap-2 mt-1">
                 <Input
-                  placeholder="Option name"
+                  placeholder={tx("Option name")}
                   value={optionName}
                   onChange={e => setOptionName(e.target.value)}
                   className="h-7 text-sm"
@@ -177,7 +182,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
                 />
                 <Input
                   type="number"
-                  placeholder="+ price"
+                  placeholder={tx("+ price")}
                   value={optionPrice}
                   onChange={e => setOptionPrice(e.target.value)}
                   className="h-7 text-sm w-24"
@@ -189,7 +194,7 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             ) : (
               <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground"
                 onClick={() => setAddingOption(g.id)}>
-                <Plus className="h-3 w-3 mr-1" /> Add option
+                <Plus className="h-3 w-3 mr-1" /> {tx("Add option")}
               </Button>
             )}
           </div>
@@ -198,10 +203,10 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
 
       {/* New grupo */}
       <div className="glass p-3 space-y-2 border-dashed">
-        <p className="text-xs font-medium text-muted-foreground">New modifier group</p>
+        <p className="text-xs font-medium text-muted-foreground">{tx("New modifier group")}</p>
         <div className="flex gap-2">
           <Input
-            placeholder="Group name (e.g. Add-ons)"
+            placeholder={tx("Group name (e.g. Add-ons)")}
             value={newGroupName}
             onChange={e => setNewGroupName(e.target.value)}
             className="h-8 text-sm"
@@ -213,16 +218,16 @@ function ModifierGroupEditor({ tenantId, productId }: { tenantId: string; produc
             value={newMax}
             onChange={e => setNewMax(Number(e.target.value))}
             className="h-8 text-sm w-20"
-            title="Maximum selections"
+            title={tx("Maximum selections")}
           />
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Switch checked={newRequired} onCheckedChange={setNewRequired} id="req-switch" />
-            <Label htmlFor="req-switch" className="text-xs">Required</Label>
+            <Label htmlFor="req-switch" className="text-xs">{tx("Required")}</Label>
           </div>
           <Button size="sm" onClick={addGroup} disabled={!newGroupName.trim()} className="h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" /> Create group
+            <Plus className="h-3 w-3 mr-1" /> {tx("Create group")}
           </Button>
         </div>
       </div>
@@ -276,11 +281,11 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        When this product is added to the cart, the POS will suggest these complementary products.
+        {tx("When this product is added to the cart, the POS will suggest these complementary products.")}
       </p>
       <div className="space-y-1.5">
-        <Label className="text-xs">Search product to add</Label>
-        <Input placeholder="Product name..." value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
+        <Label className="text-xs">{tx("Search product to add")}</Label>
+        <Input placeholder={tx("Product name...")} value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
         {searchResults.length > 0 && (
           <div className="border rounded-lg divide-y">
             {searchResults.map((p: any) => (
@@ -297,10 +302,10 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
       </div>
 
       {linked.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">No complementary products defined.</p>
+        <p className="text-xs text-muted-foreground text-center py-4">{tx("No complementary products defined.")}</p>
       ) : (
         <div className="space-y-1.5">
-          <Label className="text-xs">Complementarios actuales</Label>
+          <Label className="text-xs">{tx("Current complementary products")}</Label>
           <div className="space-y-1">
             {linked.map((p: any) => (
               <div key={p.id} className="flex items-center justify-between px-3 py-2 border rounded-lg text-sm">
@@ -320,6 +325,7 @@ function ComplementariesEditor({ tenantId, productId }: { tenantId: string; prod
 
 export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const qc = useQueryClient();
+  const { businessMode } = useTenantContext();
   const [form, setForm] = useState<any>(
     editing ?? { name: "", product_type: "simple", price: 0, cost: 0, tax_rate: 10, min_stock: 0, status: "active", category_id: null, sku: "", color: "#c2410c", station: null, description: "", sort_order: 0, image_url: null, requires_detail: false }
   );
@@ -340,24 +346,25 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
   const handleImageUpload = async (file: File) => {
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      return toast.error("Only JPEG, PNG, or WebP images are allowed");
+      return toast.error(tx("Only JPEG, PNG, or WebP images are allowed"));
     }
     if (file.size > 5 * 1024 * 1024) {
-      return toast.error("The image cannot exceed 5 MB");
+      return toast.error(tx("The image cannot exceed 5 MB"));
     }
     setUploadingImage(true);
     try {
       const ext = file.name.split('.').pop() ?? 'jpg';
       const path = `${tenantId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
+      const { data: uploaded, error } = await supabase.storage
         .from('product-images')
         .upload(path, file, { upsert: true, contentType: file.type });
       if (error) throw error;
+      const storedPath = (uploaded as { path?: string } | null)?.path ?? path;
       const { data: { publicUrl } } = supabase.storage
         .from('product-images')
-        .getPublicUrl(path);
+        .getPublicUrl(storedPath);
       setForm((f: any) => ({ ...f, image_url: publicUrl }));
-      toast.success("Imagen subida correctamente");
+      toast.success(tx("Image uploaded"));
     } catch (err: any) {
       toast.error(err.message ?? "Error uploading image");
     } finally {
@@ -418,8 +425,8 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
     scanCleanupRef.current = () => { clearTimeout(timer); prev?.(); };
   };
 
-  const showRecipe = COMPOUND.has(form.product_type) && !!editing?.id;
-  const showModifiers = ["simple", "composite", "production", "combo"].includes(form.product_type) && !!editing?.id;
+  const showRecipe = COMPOUND.has(form.product_type) && !!editing?.id && hasCapability(businessMode, "recipes");
+  const showModifiers = ["simple", "composite", "production", "combo"].includes(form.product_type) && !!editing?.id && hasCapability(businessMode, "modifiers");
   const showComplementaries = !!editing?.id;
 
   const { data: financialHistory = [] } = useQuery({
@@ -510,39 +517,39 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
 
       <Tabs defaultValue="basic">
         <TabsList>
-          <TabsTrigger value="basic">Information</TabsTrigger>
-          {showRecipe && <TabsTrigger value="recipe">Recipe</TabsTrigger>}
-          {showModifiers && <TabsTrigger value="modifiers">Modificadores</TabsTrigger>}
-          {showComplementaries && <TabsTrigger value="complementaries">Upselling</TabsTrigger>}
-          {editing?.id && <TabsTrigger value="financial-history">Price history</TabsTrigger>}
+          <TabsTrigger value="basic">{tx("Information")}</TabsTrigger>
+          {showRecipe && <TabsTrigger value="recipe">{tx("Recipe")}</TabsTrigger>}
+          {showModifiers && <TabsTrigger value="modifiers">{tx("Modifiers")}</TabsTrigger>}
+          {showComplementaries && <TabsTrigger value="complementaries">{tx("Upselling")}</TabsTrigger>}
+          {editing?.id && <TabsTrigger value="financial-history">{tx("Price history")}</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="basic" className="mt-4">
           <form onSubmit={submit} className="space-y-3">
-            <div className="space-y-1.5"><Label>Name</Label>
+            <div className="space-y-1.5"><Label>{tx("Name")}</Label>
               <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
 
             {/* Product photo */}
             <div className="space-y-1.5">
-              <Label>Product photo</Label>
+              <Label>{tx("Product photo")}</Label>
               <input
                 ref={imageInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="hidden"
-                aria-label="Upload product photo"
-                title="Upload product photo"
+                aria-label={tx("Upload product photo")}
+                title={tx("Upload product photo")}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }}
               />
               {form.image_url ? (
                 <div className="relative w-full h-40 rounded-lg overflow-hidden border bg-muted">
-                  <img src={form.image_url} alt="Product photo" className="w-full h-full object-cover" />
+                  <LocalImage src={form.image_url} alt="Product photo" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setForm((f: any) => ({ ...f, image_url: null }))}
                     className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
-                    title="Quitar imagen"
+                    title={tx("Remove image")}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -558,7 +565,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
                     ? <Loader2 className="h-6 w-6 animate-spin" />
                     : <ImagePlus className="h-6 w-6" />}
                   <span className="text-sm">{uploadingImage ? "Subiendo…" : "Clic para subir foto"}</span>
-                  <span className="text-xs">JPEG, PNG o WebP · max. 5 MB</span>
+                  <span className="text-xs">{tx("JPEG, PNG or WebP · max. 5 MB")}</span>
                 </button>
               )}
               {form.image_url && (
@@ -571,24 +578,24 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
 
             {/* Description para el menú */}
             <div className="space-y-1.5">
-              <Label>Description <span className="text-muted-foreground font-normal">(visible in the QR menu)</span></Label>
+              <Label>{tx("Description")} <span className="text-muted-foreground font-normal">(visible in the QR menu)</span></Label>
               <Textarea
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="E.g. Double burger with cheddar cheese, lettuce, and tomato..."
+                placeholder={tx("E.g. Double burger with cheddar cheese, lettuce, and tomato...")}
                 rows={2}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <Label>{tx("Category")}</Label>
                 <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v || null })}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={tx("Select...")} /></SelectTrigger>
                   <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Type</Label>
+                <Label>{tx("Type")}</Label>
                 <Select value={form.product_type} onValueChange={(v) => setForm({ ...form, product_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
@@ -596,56 +603,68 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5"><Label>Price</Label>
+              <div className="space-y-1.5"><Label>{isWeighedProduct(form) ? "Price per kg" : "Price"}</Label>
                 <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => {
                   setForm({ ...form, price: e.target.value });
                   financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
                 }} />
               </div>
-              <div className="space-y-1.5"><Label>Cost</Label>
+              <div className="space-y-1.5"><Label>{tx("Cost")}</Label>
                 <Input type="number" step="0.001" min="0" value={form.cost} onChange={(e) => {
                   setForm({ ...form, cost: e.target.value });
                   financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
                 }} />
               </div>
-              <div className="space-y-1.5"><Label>VAT %</Label>
+              <div className="space-y-1.5"><Label>{tx("VAT %")}</Label>
                 <Input type="number" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
               </div>
             </div>
             {editing?.id && (
               <div className="space-y-1.5">
-                <Label>Financial change reason</Label>
+                <Label>{tx("Financial change reason")}</Label>
                 <Textarea
                   value={financialReason}
                   onChange={(event) => {
                     setFinancialReason(event.target.value);
                     financialOperationIdRef.current = createProductFinancialOperationId("product-base-financials");
                   }}
-                  placeholder="Required when selling price or cost changes"
+                  placeholder={tx("Required when selling price or cost changes")}
                   rows={2}
                 />
-                <p className="text-xs text-muted-foreground">Price and cost changes are retained in the exact-fils history ledger.</p>
+                <p className="text-xs text-muted-foreground">{tx("Price and cost changes are retained in the exact-fils history ledger.")}</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>SKU</Label>
                 <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
               </div>
-              <div className="space-y-1.5"><Label>Minimum stock</Label>
+              <div className="space-y-1.5"><Label>{tx("Minimum stock")}</Label>
                 <Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
               </div>
             </div>
+            {hasCapability(businessMode, "weighed_items") && (
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <Label htmlFor="sold-by-weight">{tx("Sold by weight (kg)")}</Label>
+                  <p className="text-xs text-muted-foreground">Price is per kg; the cashier enters the weight (up to 3 decimals) at the till.</p>
+                </div>
+                <Switch id="sold-by-weight" aria-label={tx("Sold by weight")} checked={isWeighedProduct(form)}
+                  onCheckedChange={(on) => setForm({ ...form, unit_code: on ? WEIGHT_UNIT : "unit" })} />
+              </div>
+            )}
             {/* KDS station */}
+            {hasCapability(businessMode, "kitchen_station") && (
             <div className="space-y-1.5">
-              <Label>KDS station</Label>
+              <Label>{tx("KDS station")}</Label>
               <Select value={form.station ?? "none"} onValueChange={(v) => setForm({ ...form, station: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Unassigned (Kitchen by default)" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx("Unassigned (Kitchen by default)")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
+                  <SelectItem value="none">{tx("Unassigned")}</SelectItem>
                   {KDS_STATIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            )}
             <ProductBarcodeFields
               barcodes={barcodes}
               issues={barcodeIssues}
@@ -664,13 +683,13 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
             </Button>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <Label>Requires details</Label>
-                <p className="text-xs text-muted-foreground">When added to an order, a comment is requested and sent to the KDS</p>
+                <Label>{tx("Requires details")}</Label>
+                <p className="text-xs text-muted-foreground">{tx("When added to an order, a comment is requested and sent to the KDS")}</p>
               </div>
               <Switch checked={!!form.requires_detail} onCheckedChange={(c) => setForm({ ...form, requires_detail: c })} />
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label>Active</Label>
+              <Label>{tx("Active")}</Label>
               <Switch checked={form.status === "active"} onCheckedChange={(c) => setForm({ ...form, status: c ? "active" : "inactive" })} />
             </div>
             <Button type="submit" className="w-full h-12" disabled={saving}>
@@ -688,7 +707,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         {showModifiers && (
           <TabsContent value="modifiers" className="mt-4">
             <p className="text-sm text-muted-foreground mb-3">
-              Define add-on or option groups that the cashier/waiter must select when adding this product.
+              {tx("Define add-on or option groups that the cashier/waiter must select when adding this product.")}
             </p>
             <ModifierGroupEditor tenantId={tenantId} productId={editing.id} />
           </TabsContent>
@@ -703,7 +722,7 @@ export function ProductForm({ tenantId, categories, editing, onClose }: Props) {
         {editing?.id && (
           <TabsContent value="financial-history" className="mt-4 space-y-2">
             {financialHistory.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">No financial history is available.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">{tx("No financial history is available.")}</p>
             ) : financialHistory.map((entry) => (
               <div key={entry.id} className="rounded-lg border p-3 text-sm flex items-start justify-between gap-4">
                 <div>

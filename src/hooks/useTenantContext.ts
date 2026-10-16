@@ -1,3 +1,4 @@
+import { normalizeBusinessMode } from "@/lib/business-modes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantStore } from "@/stores/tenant";
@@ -12,7 +13,7 @@ type TenantSummary = {
   currency: string | null;
   tax_rate: number | null;
   active_channels: string[] | null;
-  business_mode: "RETAIL" | "RESTAURANT";
+  business_mode: string;
 };
 
 function isTenantSummary(value: unknown): value is TenantSummary {
@@ -29,7 +30,7 @@ export function useTenantContext() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("tenant_id, role, branch_id, tenants(id, name, currency, tax_rate, active_channels, business_mode)")
+        .select("tenant_id, role, branch_id, tenants(id, name, currency, tax_rate, active_channels, business_mode, discount_approval_threshold_pct)")
         .eq("user_id", user!.id);
       if (error) throw error;
       return data ?? [];
@@ -50,6 +51,15 @@ export function useTenantContext() {
       return (data ?? []) as Branch[];
     },
   });
+
+  // A staff member who signs in on an existing install never passes through
+  // onboarding, and the pre-login tenant lookup runs anonymously (no rows), so
+  // adopt the tenant from the user's own memberships when none is selected.
+  useEffect(() => {
+    if (!memberships || memberships.length === 0) return;
+    if (tenantId && memberships.some((membership) => membership.tenant_id === tenantId)) return;
+    setTenant(memberships[0].tenant_id);
+  }, [memberships, tenantId, setTenant]);
 
   const tenantMemberships = useMemo(
     () => (memberships ?? []).filter((membership) => membership.tenant_id === tenantId),
@@ -90,12 +100,22 @@ export function useTenantContext() {
 
   const businessMode = useMemo(() => {
     const tenantObj = memberships?.find((membership) => membership.tenant_id === tenantId)?.tenants;
-    return isTenantSummary(tenantObj) && tenantObj.business_mode === "RESTAURANT" ? "RESTAURANT" : "RETAIL";
+    return normalizeBusinessMode(isTenantSummary(tenantObj) ? tenantObj.business_mode : undefined);
+  }, [memberships, tenantId]);
+
+  const discountThresholdPct = useMemo(() => {
+    const tenantObj = memberships?.find((membership) => membership.tenant_id === tenantId)?.tenants as
+      | { discount_approval_threshold_pct?: number | string | null }
+      | null
+      | undefined;
+    const value = Number(tenantObj?.discount_approval_threshold_pct ?? 10);
+    return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 10;
   }, [memberships, tenantId]);
 
   return {
     tenantId,
     branchId,
+    discountThresholdPct,
     setTenant,
     setBranch,
     memberships: memberships ?? [],
@@ -103,7 +123,8 @@ export function useTenantContext() {
     roles,
     hasRole,
     isAuthorizedForDomain,
-    isLoading: loadingRoles,
+    // Not ready until a tenant from the memberships is selected (see effect above).
+    isLoading: loadingRoles || ((memberships?.length ?? 0) > 0 && tenantMemberships.length === 0),
     needsOnboarding: !loadingRoles && (memberships?.length ?? 0) === 0,
     activeChannels,
     businessMode,

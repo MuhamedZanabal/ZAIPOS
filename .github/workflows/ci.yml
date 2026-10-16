@@ -140,6 +140,9 @@ jobs:
       - name: Test price override and manager approval
         run: npm run test:migrations:price-override
 
+      - name: Test discount approval threshold
+        run: npm run test:migrations:discount-threshold
+
       - name: Test POS PIN security
         run: npm run test:migrations:pos-pin
 
@@ -257,9 +260,24 @@ jobs:
     env:
       ZAIPOS_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
       ZAIPOS_REQUIRE_DATABASE_TESTS: "1"
+      ZAIPOS_TEST_PG_BIN: /usr/lib/postgresql/17/bin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install ZAIPOS compatibility extension stubs into the test server
+        # The desktop runtime ships stub pg_net/pg_cron/pgmq/vault extensions so
+        # the full migration chain applies on plain PostgreSQL; the Rust tests
+        # that migrate a real database (business_modes) need the same stubs.
+        run: docker cp local-service/postgres-compat/extension/. "${{ job.services.postgres.id }}:/usr/share/postgresql/17/extension/"
+
+      - name: Install PostgreSQL 17 client tools (backup/restore tests)
+        run: |
+          if [ ! -x /usr/lib/postgresql/17/bin/pg_dump ]; then
+            sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+            sudo apt-get install -y postgresql-client-17
+          fi
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

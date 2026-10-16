@@ -1,3 +1,4 @@
+import { hasCapability, type Capability } from "@/lib/business-modes";
 import { useRef, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -15,15 +16,16 @@ import { useWhatsAppNotifs } from "@/contexts/WhatsAppNotifsContext";
 import { cn } from "@/lib/utils";
 import { signOutFully } from "@/lib/signOut";
 import type { LucideIcon } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
+import type { SalesChannel } from "@/lib/channels";
+import { useLanguageStore, useT } from "@/i18n";
 
 type Item = {
   title: string;
   url: string;
   icon: LucideIcon;
   roles?: AppRole[];
-  channel?: Database["public"]["Enums"]["sales_channel"];
-  modes?: Array<"RETAIL" | "RESTAURANT">;
+  channel?: SalesChannel;
+  capability?: Capability;
 };
 type Section = { label: string; items: Item[] };
 
@@ -38,10 +40,10 @@ const sections: Section[] = [
     items: [
       { title: "Dashboard",   url: "/dashboard",      icon: LayoutDashboard, roles: ["owner","admin","manager","cashier","waiter","kitchen","inventory","courier","staff"] },
       { title: "POS",         url: "/pos",            icon: ShoppingCart,    roles: ["owner","admin","manager","cashier"], channel: "pos" },
-      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables", modes: ["RESTAURANT"] },
-      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables", modes: ["RESTAURANT"] },
-      { title: "Delivery",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery" },
-      { title: "Courier",     url: "/courier",        icon: Bike,            roles: ["courier","staff"], channel: "delivery" },
+      { title: "Tables",       url: "/tables",         icon: UtensilsCrossed, roles: ["owner","admin","manager","cashier","waiter"], channel: "tables", capability: "tables" },
+      { title: "Waiter",      url: "/waiter",         icon: UtensilsCrossed, roles: ["waiter"], channel: "tables", capability: "waiter" },
+      { title: "Delivery",  url: "/delivery",       icon: Bike,            roles: ["owner","admin","manager","cashier","courier","staff"], channel: "delivery", capability: "delivery_platforms" },
+      { title: "Courier",     url: "/courier",        icon: Bike,            roles: ["courier","staff"], channel: "delivery", capability: "delivery_platforms" },
       { title: "Cash Register",        url: "/cash",           icon: Wallet,          roles: ["owner","admin","manager","cashier"] },
       { title: "Sales",      url: "/sales",          icon: Receipt,         roles: ["owner","admin","manager","cashier"] },
       { title: "Customers",    url: "/customers",      icon: UserRound,       roles: ["owner","admin","manager","cashier"] },
@@ -52,16 +54,16 @@ const sections: Section[] = [
     items: [
       { title: "Products",   url: "/products",   icon: Package,   roles: ["owner","admin","manager"] },
       { title: "Pricing policies", url: "/pricing-policy", icon: BarChart3, roles: ["owner","admin","manager"] },
-      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], modes: ["RESTAURANT"] },
+      { title: "Recipes",     url: "/recipes",    icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], capability: "recipes" },
     ],
   },
   {
     label: "Stock",
     items: [
-      { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"] },
+      { title: "Inventory",  url: "/inventory",  icon: Boxes,     roles: ["owner","admin","manager","inventory","cashier"], capability: "inventory" },
       { title: "Production",  url: "/production", icon: Factory,   roles: ["owner","admin","manager","kitchen"] },
-      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], modes: ["RESTAURANT"] },
-      { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"] },
+      { title: "Kitchen KDS",  url: "/kds",        icon: ChefHat,   roles: ["owner","admin","manager","kitchen"], capability: "kds" },
+      { title: "Suppliers", url: "/suppliers",  icon: Truck,     roles: ["owner","admin","manager"], capability: "suppliers" },
     ],
   },
   {
@@ -96,6 +98,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const { roles, activeChannels, branchId, branches, businessMode } = useTenantContext();
+  const t = useT();
+  const { language, setLanguage } = useLanguageStore();
   const { unreadCount } = useWhatsAppNotifs();
   const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
@@ -105,7 +109,7 @@ export function AppSidebar() {
   const initials = userRole.slice(0, 2).toUpperCase() || "U";
 
   const canSee = (item: Item) => {
-    if (item.modes && !item.modes.includes(businessMode)) return false;
+    if (item.capability && !hasCapability(businessMode, item.capability)) return false;
     if (item.channel && !activeChannels.includes(item.channel)) return false;
     return canAccessRoles(roles, item.roles);
   };
@@ -121,7 +125,7 @@ export function AppSidebar() {
   }, [pathname]);
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0 bg-transparent">
+    <Sidebar collapsible="icon" side={language === "ar" ? "right" : "left"} className="border-r-0 border-l-0 bg-transparent">
       <SidebarContent className="bg-transparent p-0">
         <div className="g-sb-wrap">
           <div className="glass g-sb-card">
@@ -147,7 +151,7 @@ export function AppSidebar() {
                 return (
                   <div key={section.label}>
                     {!collapsed && (
-                      <div className="g-sb-section-label">{section.label}</div>
+                      <div className="g-sb-section-label">{t(section.label)}</div>
                     )}
                     {visible.map((item) => {
                       const active =
@@ -157,7 +161,7 @@ export function AppSidebar() {
                         <NavLink
                           key={item.url}
                           to={item.url}
-                          title={collapsed ? item.title : undefined}
+                          title={collapsed ? t(item.title) : undefined}
                           className={cn(
                             "g-sb-nav-item",
                             active && "is-active",
@@ -166,7 +170,7 @@ export function AppSidebar() {
                         >
                           <item.icon size={18} style={{ flexShrink: 0 }} />
                           {!collapsed && (
-                            <span className="truncate flex-1">{item.title}</span>
+                            <span className="truncate flex-1">{t(item.title)}</span>
                           )}
                           {item.url === "/whatsapp" && unreadCount > 0 && (
                             <span className={cn("g-sb-badge", collapsed && "g-sb-badge-float")}>
@@ -181,25 +185,14 @@ export function AppSidebar() {
               })}
             </nav>
 
-            {/* Plan card (only expanded) */}
+            {/* Language */}
             {!collapsed && (
-              <div className="glass-thin g-sb-plan">
-                <div className="g-sb-plan-row">
-                  <div className="g-sb-plan-orb">
-                    <Sparkles size={14} color="white" />
-                  </div>
-                  <div>
-                    <div className="g-sb-plan-title">Plan Premium</div>
-                    <div className="g-sb-plan-sub">Your plan is active</div>
-                  </div>
+              <div className="glass-thin g-sb-plan" role="group" aria-label={t("Language")}>
+                <div className="g-sb-plan-sub mb-1">{t("Language")}</div>
+                <div className="flex gap-1">
+                  <button type="button" className="g-sb-plan-btn flex-1" aria-pressed={language === "en"} onClick={() => setLanguage("en")}>English</button>
+                  <button type="button" className="g-sb-plan-btn flex-1" aria-pressed={language === "ar"} onClick={() => setLanguage("ar")} lang="ar">العربية</button>
                 </div>
-                <button
-                  type="button"
-                  className="g-sb-plan-btn"
-                  onClick={() => navigate("/settings")}
-                >
-                  View benefits <ChevronRight size={12} />
-                </button>
               </div>
             )}
 
@@ -215,7 +208,8 @@ export function AppSidebar() {
                   <button
                     type="button"
                     className="g-sb-logout-btn"
-                    title="Sign out"
+                    title={t("Sign out")}
+                    aria-label={t("Sign out")}
                     onClick={async () => {
                       await signOutFully();
                       navigate("/auth");

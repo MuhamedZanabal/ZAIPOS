@@ -1,8 +1,10 @@
+import { LabelPrintDialog, type LabelProduct } from "./LabelPrintDialog";
 import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Pencil, Search, Barcode, Trash2, Upload, FileDown, Download, HelpCircle, AlertTriangle } from "lucide-react";
@@ -14,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { analyzeBarcodeCandidates, parseBarcodeCell, productMatchesCatalogueQuery, type ProductBarcode } from "@/lib/productBarcodes";
 import { replaceProductBarcodes } from "@/lib/productBarcodeCommands";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const TYPE_LABELS: Record<string, string> = {
   simple: "Simple",
@@ -25,6 +28,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function Products() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId } = useTenantContext();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -199,7 +203,7 @@ export default function Products() {
         }
         const { error: insertError } = await supabase.from("products").insert(dataToInsert);
         if (insertError) {
-          console.error("Error al insertar:", insertError);
+          console.error("Insert failed:", insertError);
           throw new Error("The database was cleaned, but an error occurred while inserting the new products. Verify the category and other fields.");
         }
         for (const row of prepared) {
@@ -225,16 +229,16 @@ export default function Products() {
     <div className="flex flex-col gap-5">
       {/* Page header */}
       <div className="flex flex-col gap-1">
-        <div className="h-display g-page-title">Products</div>
+        <div className="h-display g-page-title">{tx("Products")}</div>
         <div className="h-meta g-page-subtitle">{products?.length ?? 0} products · CATALOG</div>
       </div>
 
       {barcodeConflicts.length > 0 && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3" role="alert">
           <div className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />Barcode collision review
+            <AlertTriangle className="h-4 w-4 text-amber-600" />{tx("Barcode collision review")}
           </div>
-          <p className="text-sm text-muted-foreground">Legacy duplicate or malformed codes were preserved here and removed from POS scanning until a manager resolves them.</p>
+          <p className="text-sm text-muted-foreground">{tx("Legacy duplicate or malformed codes were preserved here and removed from POS scanning until a manager resolves them.")}</p>
           <div className="space-y-2">
             {barcodeConflicts.map((conflict: any) => {
               const candidate = products?.find((product: any) => product.id === conflict.candidate_product_id);
@@ -268,44 +272,46 @@ export default function Products() {
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
-          <Input className="pl-9 w-48 lg:w-64" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9 w-48 lg:w-64" placeholder={tx("Search...")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
         <Select value={categoryId} onValueChange={setCategoryId}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Category" />
+            <SelectValue placeholder={tx("Category")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">{tx("All")}</SelectItem>
             {categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
 
         <Select value={productType} onValueChange={setProductType}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Type" />
+            <SelectValue placeholder={tx("Type")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="simple">Simple</SelectItem>
-            <SelectItem value="composite">Composite</SelectItem>
-            <SelectItem value="production">Production</SelectItem>
-            <SelectItem value="combo">Combo</SelectItem>
-            <SelectItem value="ingredient">Ingredient</SelectItem>
-            <SelectItem value="modifier">Modifier</SelectItem>
+            <SelectItem value="all">{tx("All")}</SelectItem>
+            <SelectItem value="simple">{tx("Simple")}</SelectItem>
+            <SelectItem value="composite">{tx("Composite")}</SelectItem>
+            <SelectItem value="production">{tx("Production")}</SelectItem>
+            <SelectItem value="combo">{tx("Combo")}</SelectItem>
+            <SelectItem value="ingredient">{tx("Ingredient")}</SelectItem>
+            <SelectItem value="modifier">{tx("Modifier")}</SelectItem>
           </SelectContent>
         </Select>
+
+        <LabelPrintDialog products={filtered as LabelProduct[]} />
 
         {/* Product type guide dialog */}
         <Dialog>
           <DialogTrigger asChild>
-            <button type="button" className="g-btn g-btn-ghost g-btn-icon" title="Product type explanation" aria-label="Product type guide">
+            <button type="button" className="g-btn g-btn-ghost g-btn-icon" title={tx("Product type explanation")} aria-label={tx("Product type guide")}>
               <HelpCircle className="h-5 w-5 text-ink-400" />
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>Product Type Guide</DialogTitle>
+              <DialogTitle>{tx("Product Type Guide")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="grid gap-4">
@@ -327,14 +333,14 @@ export default function Products() {
           </DialogContent>
         </Dialog>
 
-        <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileSelect} title="Import CSV file" aria-label="Import CSV file" />
+        <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileSelect} title={tx("Import CSV file")} aria-label={tx("Import CSV file")} />
 
-        <button type="button" className="g-btn g-btn-ghost" onClick={() => fileInputRef.current?.click()} title="Import CSV">
-          <Upload className="h-4 w-4" /> Import
+        <button type="button" className="g-btn g-btn-ghost" onClick={() => fileInputRef.current?.click()} title={tx("Import CSV")}>
+          <Upload className="h-4 w-4" /> {tx("Import")}
         </button>
 
-        <button type="button" className="g-btn g-btn-ghost" onClick={handleDownloadTemplate} title="Download CSV template">
-          <FileDown className="h-4 w-4" /> Template
+        <button type="button" className="g-btn g-btn-ghost" onClick={handleDownloadTemplate} title={tx("Download CSV template")}>
+          <FileDown className="h-4 w-4" /> {tx("Template")}
         </button>
 
         <button
@@ -347,18 +353,21 @@ export default function Products() {
             barcodes: (product.product_barcodes ?? []).map((entry: any) => entry.barcode).join("|"),
             product_barcodes: undefined,
           })))}
-          title="Export filtered results to CSV"
+          title={tx("Export filtered results to CSV")}
         >
-          <Download className="h-4 w-4" /> Export
+          <Download className="h-4 w-4" /> {tx("Export")}
         </button>
 
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
             <button type="button" className="g-btn g-btn-primary" onClick={() => setEditing(null)}>
-              <Plus className="h-4 w-4" />New
+              <Plus className="h-4 w-4" />{tx("New")}
             </button>
           </DialogTrigger>
           <ProductForm
+            // Remount per open so a new product never reuses the previous draft id
+            // (saving a second product used to overwrite the first one).
+            key={open ? (editing?.id ?? "new") : "closed"}
             tenantId={tenantId!}
             categories={categories ?? []}
             editing={editing}
@@ -376,14 +385,14 @@ export default function Products() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>SKU / Code</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Cost</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{tx("Name")}</TableHead>
+              <TableHead>{tx("Category")}</TableHead>
+              <TableHead>{tx("Type")}</TableHead>
+              <TableHead>{tx("SKU / Code")}</TableHead>
+              <TableHead className="text-right">{tx("Price")}</TableHead>
+              <TableHead className="text-right">{tx("Cost")}</TableHead>
+              <TableHead>{tx("Status")}</TableHead>
+              <TableHead className="text-right">{tx("Actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -417,8 +426,8 @@ export default function Products() {
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-icon"
-                      title="Edit product"
-                      aria-label="Edit product"
+                      title={tx("Edit product")}
+                      aria-label={tx("Edit product")}
                       onClick={() => { setEditing(p); setOpen(true); }}
                     >
                       <Pencil className="h-4 w-4" />
@@ -426,8 +435,8 @@ export default function Products() {
                     <button
                       type="button"
                       className="g-btn g-btn-ghost g-btn-icon g-btn-danger"
-                      title="Retire product"
-                      aria-label="Retire product"
+                      title={tx("Retire product")}
+                      aria-label={tx("Retire product")}
                       onClick={() => setDeletingId(p.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -439,7 +448,7 @@ export default function Products() {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12 text-ink-400">
-                  No products
+                  {tx("No products")}
                 </TableCell>
               </TableRow>
             )}
@@ -451,16 +460,15 @@ export default function Products() {
       <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Retire product?</AlertDialogTitle>
+            <AlertDialogTitle>{tx("Retire product?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              The product will become inactive and disappear from active selling lists.
-              Its barcodes, financial history, and transaction references will be preserved.
+              {tx("The product will become inactive and disappear from active selling lists. Its barcodes, financial history, and transaction references will be preserved.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tx("Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Retire
+              {tx("Retire")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -471,18 +479,18 @@ export default function Products() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive flex items-center gap-2">
-              ⚠️ Import Warning
+              {tx("⚠️ Import Warning")}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              <p>You are about to import <strong>{importFile?.name}</strong>.</p>
-              <p>This action <strong>will retire all current products</strong> and create the products in the file.</p>
-              <p className="font-semibold text-destructive">Existing product and financial history will remain immutable.</p>
+              <p>{tx("You are about to import")} <strong>{importFile?.name}</strong>.</p>
+              <p>{tx("This action")} <strong>{tx("will retire all current products")}</strong> {tx("and create the products in the file.")}</p>
+              <p className="font-semibold text-destructive">{tx("Existing product and financial history will remain immutable.")}</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tx("Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={executeImport} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Yes, Retire and Import
+              {tx("Yes, Retire and Import")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

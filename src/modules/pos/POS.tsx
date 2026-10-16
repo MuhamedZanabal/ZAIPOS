@@ -1,10 +1,13 @@
+import { useOfflineSalesStore } from "@/stores/offlineSales";
+import { roundBhd } from "@/lib/bahrain";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { useOpenSession } from "@/hooks/useOpenSession";
-import { effectiveCartUnitPrice, useCart, type CartLine, type PriceOverrideEvidence } from "@/stores/cart";
+import { useCustomerDisplayFeed, showPaidOnCustomerDisplay } from "./useCustomerDisplayFeed";
+import { effectiveCartUnitPrice, linesWithTicketDiscount, useCart, type CartLine, type PriceOverrideEvidence } from "@/stores/cart";
 import { useHardware } from "@/hooks/useHardware";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,14 +39,30 @@ import { LiveDot } from "@/components/shared/LiveDot";
 import { useDevMode } from "@/hooks/useDevMode";
 import { productMatchesBarcode, productMatchesCatalogueQuery } from "@/lib/productBarcodes";
 import { appendTableCart } from "@/lib/tableCart";
+import { channelAllowedInMode, hasCapability } from "@/lib/business-modes";
+import { enabledPaymentMethods } from "@/lib/setupWizard";
+import { FIRST_SALE_GUIDE_KEY } from "@/hooks/useSetupInProgress";
+import { isWeighedProduct, parseWeightKg } from "@/lib/weighedItems";
+import { translate as t, useLanguageStore } from "@/i18n";
+import { LanguageToggle } from "@/components/shared/LanguageToggle";
+import { CashierSwitch } from "./CashierSwitch";
+import { useActiveCashier } from "@/stores/activeCashier";
 
 export default function POS() {
+  // Re-render the whole register (and its children) when the language changes.
+  useLanguageStore((state) => state.language);
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { tenantId, branchId, branches, activeChannels } = useTenantContext();
+  const { tenantId, branchId, branches, activeChannels, businessMode } = useTenantContext();
+  const barcodeFirst = hasCapability(businessMode, "barcode_first");
+  const [weighProduct, setWeighProduct] = useState<any | null>(null);
+  const [weighKg, setWeighKg] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [showFirstSaleGuide, setShowFirstSaleGuide] = useState(() => localStorage.getItem(FIRST_SALE_GUIDE_KEY) === "1");
   const { devMode } = useDevMode();
-  const { lines, total, clear, add, replace, setPriceOverride, clearPriceOverrides } = useCart();
+  const { lines, ticketDiscount, discountApprovalId, total, clear, add, addQuantity, replace, setPriceOverride, clearPriceOverrides } = useCart();
   const { data: openSession } = useOpenSession(branchId);
+  const activeCashier = useActiveCashier((state) => state.cashier);
   const { onBarcodeScanned, printTicket, openDrawer } = useHardware();
 
   const [activeCat, setActiveCat] = useState<string | "all">("all");
@@ -77,18 +96,21 @@ export default function POS() {
   const { data: todayMetrics } = useQuery({
     queryKey: ["pos-today-metrics", branchId],
     enabled: !!branchId,
-    refetchInterval: 60_000,
+    // The persisted query cache otherwise keeps "Sales today" at 0 for minutes.
+    staleTime: 0,
+    refetchInterval: 15_000,
     queryFn: async () => {
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("sales")
         .select("id, total")
         .eq("branch_id", branchId!)
-        .eq("status", "completed")
+        .in("status", ["completed", "partially_refunded"])
         .gte("created_at", today.toISOString());
+      if (error) throw error; // keep the last figures while the server is unreachable
       const count      = data?.length ?? 0;
       const totalSales = data?.reduce((s, r) => s + Number(r.total), 0) ?? 0;
-      return { count, totalSales, avgTicket: count ? Math.round(totalSales / count) : 0 };
+      return { count, totalSales, avgTicket: count ? roundBhd(totalSales / count) : 0 };
     },
   });
 
@@ -134,6 +156,8 @@ export default function POS() {
       return data;
     },
   });
+  useCustomerDisplayFeed(tenant?.name ?? undefined);
+
 
   const { data: products } = useProducts(tenantId);
 
@@ -292,6 +316,15 @@ export default function POS() {
   }, [priced, activeCat, search]);
 
   const handleAddProduct = useCallback(async (product: any) => {
+    if (isWeighedProduct(product)) {
+      setWeighProduct(product);
+      setWeighKg("");
+      return;
+    }
+    if (!hasCapability(businessMode, "modifiers")) {
+      add(product);
+      return;
+    }
     const { data: groups } = await supabase
       .from("modifier_groups")
       .select("*, modifier_options(*)")
@@ -322,7 +355,7 @@ export default function POS() {
         setUpsellItems(items);
       }
     }
-  }, [add]);
+  }, [add, businessMode]);
 
   const confirmModifiers = async () => {
     if (!modifierProduct) return;
@@ -377,12 +410,13 @@ export default function POS() {
 
   const finalize = async (allocations: PaymentAllocation[], tipAmount: number, couponCode?: string, discountAmount = 0) => {
     if (!tenantId || !branchId) return;
-    if (lines.length === 0) return toast.error("Add products to the ticket");
-    if (isPos && !openSession) return toast.error("You must open the register before making in-person sales");
+    if (lines.length === 0) return toast.error(t("Add products to the ticket"));
+    if (isPos && !openSession) return toast.error(t("You must open the register before making in-person sales"));
     if (submitting) return;
 
     setSubmitting(true);
     try {
+      const saleLines = linesWithTicketDiscount(lines, ticketDiscount, discountApprovalId);
       if (!checkoutMutationIdRef.current) checkoutMutationIdRef.current = crypto.randomUUID();
       const command = buildPosCheckoutCommand({
         tenantId,
@@ -390,7 +424,7 @@ export default function POS() {
         cashSessionId: openSession?.id ?? null,
         customerId,
         channel,
-        lines,
+        lines: saleLines,
         allocations,
         discountAmountBhd: discountAmount,
         tipAmountBhd: tipAmount,
@@ -402,11 +436,23 @@ export default function POS() {
       const saleId = await checkoutMutation.mutateAsync(command.payload);
 
       const queuedOffline = !saleId || typeof saleId !== "string";
-      toast.success(
-        queuedOffline
-          ? `Sale queued · ${formatCurrency(payableTotal)}`
-          : `Sale recorded · ${formatCurrency(payableTotal)}`
-      );
+      if (queuedOffline) {
+        useOfflineSalesStore.getState().set({ pending: useOfflineSalesStore.getState().pending + 1, serverReachable: false });
+        toast.warning(`Saved offline · ${formatCurrency(payableTotal)}`, {
+          description: t("The ZAIPOS server is unreachable. This sale is stored on this terminal and will sync automatically."),
+          duration: 10_000,
+        });
+        // The customer still needs change: the drawer is local hardware.
+        if (command.hasCashPayment) await openDrawer().catch(() => undefined);
+      } else {
+        toast.success(`Sale recorded · ${formatCurrency(payableTotal)}`);
+        showPaidOnCustomerDisplay(Math.round(payableTotal * 1000), command.changeFils, tenant?.name ?? undefined);
+        if (localStorage.getItem(FIRST_SALE_GUIDE_KEY)) {
+          localStorage.removeItem(FIRST_SALE_GUIDE_KEY);
+          setShowFirstSaleGuide(false);
+          toast.success("First test sale done — you're all set!");
+        }
+      }
       if (saleId && typeof saleId === "string") {
         try {
           const { data: sale } = await supabase
@@ -420,11 +466,14 @@ export default function POS() {
             ticketNumber: sale?.ticket_number ?? saleId.slice(0, 8),
             businessName: tenant?.name ?? "ZAIPOS",
             branchName,
-            items: lines.map((line) => ({
+            cashierName: activeCashier && activeCashier.branchId === branchId ? activeCashier.name : undefined,
+            items: saleLines.map((line) => ({
               name: line.product.name,
               quantity: line.quantity,
               unitPrice: effectiveCartUnitPrice(line),
               total: effectiveCartUnitPrice(line) * line.quantity - (line.discount || 0),
+              discountAmount: line.discount || 0,
+              taxRate: Number(line.product.tax_rate ?? 0),
             })),
             subtotal: Number(sale?.subtotal ?? totalNum),
             discountTotal: Number(sale?.discount_total ?? discountAmount),
@@ -433,6 +482,7 @@ export default function POS() {
             total: Number(sale?.total ?? payableTotal),
             payments: command.receiptPayments,
             notes: receiptConfig.footer_text || undefined,
+            vatNumber: typeof receiptConfig.trn === "string" && receiptConfig.trn.trim() ? receiptConfig.trn.trim() : undefined,
             date: new Date().toISOString(),
           });
           if (command.hasCashPayment) await openDrawer();
@@ -453,18 +503,19 @@ export default function POS() {
       qc.invalidateQueries({ queryKey: ["pos-stocks"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      qc.invalidateQueries({ queryKey: ["pos-today-metrics"] });
     } catch (err: any) {
-      toast.error(err.message ?? "Could not complete the sale");
+      toast.error(err.message ?? t("Could not complete the sale"));
     } finally { setSubmitting(false); }
   };
 
   const handleSendToTable = async () => {
     if (!selectedTableId) return toast.error("Select a table first");
-    if (lines.length === 0) return toast.error("Add products to the ticket");
+    if (lines.length === 0) return toast.error(t("Add products to the ticket"));
 
     setSubmitting(true);
     try {
-      if (lines.some((line) => Number(line.discount || 0) !== 0)) {
+      if (ticketDiscount || lines.some((line) => Number(line.discount || 0) !== 0)) {
         throw new Error("Restaurant line discounts require an authoritative manager policy and cannot be sent yet");
       }
       const items = lines.map((l) => ({
@@ -521,13 +572,15 @@ export default function POS() {
             showSync={!!openSession}
           />
         </div>
+        <CashierSwitch tenantId={tenantId} branchId={branchId} cashSessionId={openSession?.id ?? null} />
+        <LanguageToggle className="border-l self-stretch" />
         <Link
           to="/dashboard"
           className="flex items-center gap-1.5 shrink-0 px-4 border-l text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
           title="Back to main dashboard"
         >
           <LayoutDashboard className="h-4 w-4" />
-          <span className="hidden sm:inline font-medium">Dashboard</span>
+          <span className="hidden sm:inline font-medium">{t("Dashboard")}</span>
         </Link>
       </div>
 
@@ -535,7 +588,7 @@ export default function POS() {
       <div className="flex items-center gap-2 px-4 py-2 border-b bg-card/60 flex-wrap shrink-0">
         <span className="eyebrow eyebrow-muted text-[9px] shrink-0">CHANNEL</span>
 
-        {CHANNELS.filter(c => activeChannels.includes(c.id)).map((c) => (
+        {CHANNELS.filter(c => activeChannels.includes(c.id) && channelAllowedInMode(businessMode, c.id)).map((c) => (
           <button
             key={c.id}
             type="button"
@@ -589,7 +642,7 @@ export default function POS() {
         )}
 
         {/* Pending tables badge */}
-        {(pendingTables ?? 0) > 0 && (
+        {hasCapability(businessMode, "tables") && (pendingTables ?? 0) > 0 && (
           <button
             type="button"
             onClick={() => navigate("/cash")}
@@ -612,11 +665,20 @@ export default function POS() {
         ))}
       </div>
 
+      {showFirstSaleGuide && (
+        <div className="bg-cyan-50 border-b border-cyan-200 px-4 py-2 flex items-center justify-between gap-3 shrink-0 text-cyan-950" data-testid="first-sale-guide" role="status">
+          <span className="text-sm">
+            <strong>First test sale:</strong> {openSession ? "✓ Register open" : "1. Open the register"} · 2. {barcodeFirst ? "Scan a barcode or tap a sample item" : "Tap a sample item"} · 3. Charge and pick a payment method
+          </span>
+          <button type="button" aria-label="Hide first sale guide" className="text-cyan-800" onClick={() => { localStorage.removeItem(FIRST_SALE_GUIDE_KEY); setShowFirstSaleGuide(false); }}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
       {/* ── No-session warning ───────────────────────────── */}
       {isPos && !openSession && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
-          <span className="text-sm"><strong>Register closed</strong> · Open the register to record in-person sales.</span>
-          <Button asChild size="sm" variant="default"><Link to="/cash">Open register</Link></Button>
+          <span className="text-sm"><strong>{t("Register closed")}</strong> · {t("Open the register to record in-person sales.")}</span>
+          <Button asChild size="sm" variant="default"><Link to="/cash">{t("Open register")}</Link></Button>
         </div>
       )}
 
@@ -632,11 +694,26 @@ export default function POS() {
             <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-[14px] border bg-card focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
+                ref={searchInputRef}
                 type="search"
-                placeholder="Search product, SKU, or barcode…"
-                className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+                aria-label={barcodeFirst ? t("Scan barcode") : t("Search products")}
+                autoFocus={barcodeFirst}
+                placeholder={barcodeFirst ? t("Scan barcode or type to search…") : t("Search product, SKU, or barcode…")}
+                className={cn("flex-1 bg-transparent outline-none placeholder:text-muted-foreground", barcodeFirst ? "text-lg font-semibold py-1" : "text-sm")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" || !search.trim()) return;
+                  e.preventDefault();
+                  const exact = priced.find((p) => productMatchesBarcode(p, search));
+                  const target = exact ?? (filtered.length === 1 ? filtered[0] : null);
+                  if (target) {
+                    void handleAddProduct(target);
+                    setSearch("");
+                  } else if (barcodeFirst) {
+                    toast.error(`No product with barcode ${search.trim()}`);
+                  }
+                }}
               />
               <kbd className="hidden sm:inline-flex h-5 px-1.5 items-center rounded border border-border font-mono text-[10px] text-muted-foreground bg-muted">F2</kbd>
             </div>
@@ -657,7 +734,7 @@ export default function POS() {
                       <Heart className="h-2 w-2 fill-current" /> {selectedCustomer.loyalty_points}
                     </Badge>
                   )}
-                  <button type="button" aria-label="Clear customer"
+                  <button type="button" aria-label={t("Clear customer")}
                     onClick={() => { setCustomerId(null); setCustomerSearch(""); }}
                     className="text-primary/60 hover:text-primary ml-0.5">
                     <X className="h-3 w-3" />
@@ -727,7 +804,7 @@ export default function POS() {
                   <Search className="h-3 w-3 ml-1 text-muted-foreground" />
                 </div>
                 <span className="text-[11px] text-muted-foreground hidden sm:block">
-                  This branch
+                  {t("This branch")}
                 </span>
               </div>
             </div>
@@ -747,7 +824,7 @@ export default function POS() {
         {/* RIGHT: ticket */}
         <TicketPanel
           canCharge={canCharge}
-          reasonDisabled={isPos && !openSession ? "Open register to charge" : undefined}
+          reasonDisabled={isPos && !openSession ? t("Open register to charge") : undefined}
           onCharge={() => setPaymentOpen(true)}
           onSendToTable={channel === "tables" ? handleSendToTable : undefined}
           onHold={() => {
@@ -798,7 +875,35 @@ export default function POS() {
         }}
       />
 
+      <Dialog open={!!weighProduct} onOpenChange={(open) => { if (!open) setWeighProduct(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Weigh {weighProduct?.name}</DialogTitle></DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const kg = parseWeightKg(weighKg);
+              if (kg === null) { toast.error("Enter a weight in kg, up to 3 decimals (e.g. 0.750)"); return; }
+              addQuantity(weighProduct, kg);
+              setWeighProduct(null);
+              searchInputRef.current?.focus();
+            }}
+          >
+            <label className="block text-sm font-medium" htmlFor="weigh-kg">{t("Weight (kg)")}</label>
+            <input id="weigh-kg" aria-label="Weight in kg" autoFocus inputMode="decimal" value={weighKg}
+              onChange={(e) => setWeighKg(e.target.value)} placeholder="0.000"
+              className="w-full rounded-lg border px-3 py-2 text-2xl font-semibold tabular-nums" />
+            <div className="text-sm text-muted-foreground">
+              {formatCurrency(Number(weighProduct?.price ?? 0))} per kg
+              {parseWeightKg(weighKg) !== null && <> · Line total {formatCurrency(roundBhd(Number(weighProduct?.price ?? 0) * (parseWeightKg(weighKg) ?? 0)))}</>}
+            </div>
+            <Button type="submit" className="w-full">{t("Add to sale")}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <PaymentDialog
+        enabledMethods={enabledPaymentMethods((tenant as any)?.receipt_config)}
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         total={totalNum}
@@ -881,3 +986,4 @@ export default function POS() {
     </div>
   );
 }
+

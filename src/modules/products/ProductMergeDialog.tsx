@@ -12,6 +12,7 @@ import {
   previewProductMerge,
   type ProductMergePreview,
 } from "@/lib/productMergeCommands";
+import { translate as tx } from "@/i18n";
 
 type MergeProduct = {
   id: string;
@@ -136,29 +137,29 @@ export function ProductMergeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Merge duplicate product</DialogTitle>
+          <DialogTitle>{tx("Merge duplicate product")}</DialogTitle>
           <DialogDescription>
-            Preserve historical evidence while consolidating current stock and barcode identity. The source product is retained as an inactive alias.
+            {tx("Preserve historical evidence while consolidating current stock and barcode identity. The source product is retained as an inactive alias.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="rounded-md border p-3 text-sm">
-            <div className="font-medium">Source product</div>
+            <div className="font-medium">{tx("Source product")}</div>
             <div>{sourceProduct.name}</div>
             {sourceProduct.sku ? <div className="text-muted-foreground">SKU {sourceProduct.sku}</div> : null}
           </div>
 
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Canonical product</span>
+            <span className="font-medium">{tx("Canonical product")}</span>
             <select
-              aria-label="Canonical product"
+              aria-label={tx("Canonical product")}
               className="w-full rounded-md border bg-background px-3 py-2"
               value={canonicalProductId}
               onChange={(event) => selectCanonical(event.target.value)}
               disabled={reviewing || merging}
             >
-              <option value="">Select the product to keep</option>
+              <option value="">{tx("Select the product to keep")}</option>
               {candidates.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}{product.sku ? ` — ${product.sku}` : ""}
@@ -178,11 +179,11 @@ export function ProductMergeDialog({
 
           {preview ? (
             <div className="space-y-2 rounded-md border p-3 text-sm">
-              <div className="font-medium">Authoritative preview</div>
+              <div className="font-medium">{tx("Authoritative preview")}</div>
               <div className="grid grid-cols-2 gap-2">
-                <span>Source stock</span><span>{preview.source_stock_quantity}</span>
-                <span>Canonical stock</span><span>{preview.canonical_stock_quantity}</span>
-                <span>Combined stock</span><span>{preview.combined_stock_quantity}</span>
+                <span>{tx("Source stock")}</span><span>{preview.source_stock_quantity}</span>
+                <span>{tx("Canonical stock")}</span><span>{preview.canonical_stock_quantity}</span>
+                <span>{tx("Combined stock")}</span><span>{preview.combined_stock_quantity}</span>
               </div>
               <div>{preview.source_barcode_count} source barcodes will resolve to the canonical product.</div>
               {!preview.can_merge ? (
@@ -196,21 +197,21 @@ export function ProductMergeDialog({
           {error ? <div role="alert" className="rounded-md border p-2 text-sm">{error}</div> : null}
 
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Merge reason</span>
+            <span className="font-medium">{tx("Merge reason")}</span>
             <input
-              aria-label="Merge reason"
+              aria-label={tx("Merge reason")}
               className="w-full rounded-md border bg-background px-3 py-2"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               disabled={merging}
-              placeholder="Describe how the duplicate was verified"
+              placeholder={tx("Describe how the duplicate was verified")}
             />
           </label>
 
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Type MERGE to confirm</span>
+            <span className="font-medium">{tx("Type MERGE to confirm")}</span>
             <input
-              aria-label="Type MERGE to confirm"
+              aria-label={tx("Type MERGE to confirm")}
               className="w-full rounded-md border bg-background px-3 py-2 font-mono"
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}

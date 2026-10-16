@@ -50,7 +50,7 @@ export async function replaceProductBarcodes(
   tenantId: string,
   productId: string,
   barcodes: ProductBarcode[],
-  operationId = crypto.randomUUID(),
+  operationId: string = crypto.randomUUID(),
 ): Promise<string> {
   const canonical = canonicalizeProductBarcodes(barcodes);
   const { data, error } = await supabase.rpc("replace_product_barcodes_v1", {

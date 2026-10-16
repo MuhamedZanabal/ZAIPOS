@@ -27,6 +27,7 @@ import {
   MonitorCog,
   ChevronRight,
 } from "lucide-react";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 const TABS = [
   { id: "business", label: "My Business", icon: Building2 },
@@ -46,12 +47,13 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function Settings() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const [active, setActive] = useState<TabId>("business");
 
   return (
     <div className="g-cfg-stage">
       <div className="glass g-cfg-nav-panel">
-        <div className="h-display g-cfg-nav-title">Settings</div>
+        <div className="h-display g-cfg-nav-title">{tx("Settings")}</div>
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = active === tab.id;
@@ -63,13 +65,13 @@ export default function Settings() {
               onClick={() => setActive(tab.id)}
             >
               <Icon size={15} />
-              <span className="flex-1 text-left">{tab.label}</span>
+              <span className="flex-1 text-start">{tx(tab.label)}</span>
               {isActive && <ChevronRight size={12} />}
             </button>
           );
         })}
         <div className="g-cfg-nav-hint glass-thin">
-          Changes are applied to this branch in real time.
+          {tx("Changes are applied to this branch in real time.")}
         </div>
       </div>
 

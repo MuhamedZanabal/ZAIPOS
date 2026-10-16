@@ -1,8 +1,12 @@
+mod device_activation;
 mod read_model;
+mod table_api;
 
 use serde_json::Value;
 use thiserror::Error;
 
+pub use device_activation::activate_device;
+pub(crate) use read_model::caller_transaction;
 pub use read_model::{ExecError, execute_backend, execute_command};
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -12,26 +16,57 @@ pub enum CommandError {
 }
 
 const TABLES: &[&str] = &[
+    "ai_action_requests",
+    "ai_channel_configs",
+    "ai_conversations",
+    "ai_messages",
     "attendance_logs",
+    "branch_products",
     "branches",
+    "cash_movements",
     "cash_registers",
     "cash_sessions",
     "categories",
+    "customers",
+    "delivery_orders",
+    "devices",
+    "digital_order_items",
+    "digital_orders",
+    "discount_codes",
     "employee_shifts",
     "employees",
+    "expense_categories",
+    "expenses",
+    "inventory_centers",
+    "inventory_movements",
+    "inventory_stocks",
     "modifier_groups",
     "modifier_options",
     "payments",
+    "pricing_policy_rules",
     "product_barcode_conflicts",
+    "product_barcodes",
+    "device_enrollment_approvals",
+    "product_channel_prices",
     "product_complementaries",
     "product_components",
-    "products",
+    "product_prices",
     "production_orders",
+    "products",
     "profiles",
+    "purchase_order_items",
+    "purchase_orders",
     "sale_items",
+    "sale_return_items",
+    "sale_returns",
     "sales",
+    "suppliers",
+    "table_order_items",
+    "table_orders",
+    "tables",
     "tenants",
     "user_roles",
+    "wa_quick_replies",
 ];
 
 pub fn validate_backend(value: &Value) -> Result<(), CommandError> {
@@ -45,7 +80,13 @@ pub fn validate_backend(value: &Value) -> Result<(), CommandError> {
     match object.get("kind").and_then(Value::as_str) {
         Some("table") => validate_table(object.get("table").and_then(Value::as_str).unwrap_or("")),
         Some("rpc") => validate_name(object.get("fn").and_then(Value::as_str).unwrap_or("")),
-        Some("function") => validate_name(object.get("name").and_then(Value::as_str).unwrap_or("")),
+        Some("function") => validate_name(
+            &object
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .replace('-', "_"),
+        ),
         Some("attachment") => validate_attachment(object),
         Some("auth") => Ok(()),
         _ => Err(CommandError::Invalid),

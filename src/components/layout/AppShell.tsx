@@ -1,5 +1,8 @@
+import { useOpenSession } from "@/hooks/useOpenSession";
 import { useState, type CSSProperties } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useLanguageStore } from "@/i18n";
+import { useOfflineReplay } from "@/hooks/useOfflineReplay";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { WhatsAppNotifsProvider } from "@/contexts/WhatsAppNotifsContext";
@@ -21,22 +24,12 @@ function Shell() {
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const { branchId, setBranch, branches, roles } = useTenantContext();
   const { devMode } = useDevMode();
+  const language = useLanguageStore((s) => s.language);
+  useOfflineReplay();
   const { toggleSidebar, isMobile, openMobile } = useSidebar();
 
-  const { data: openSession } = useQuery({
-    queryKey: ["open-session", branchId],
-    enabled: !!branchId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("cash_sessions")
-        .select("id")
-        .eq("branch_id", branchId!)
-        .eq("status", "open")
-        .maybeSingle();
-      return data;
-    },
-    refetchInterval: 15000,
-  });
+  // Same query (and cache entry) as the POS, so both always agree.
+  const { data: openSession } = useOpenSession(branchId);
 
   const today = new Date().toLocaleDateString("en-BH", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const roleInitials = (roles[0] ?? "U").slice(0, 2).toUpperCase();
@@ -121,7 +114,8 @@ function Shell() {
         )}
 
         <main className="g-content">
-          <Outlet />
+          {/* Remount routed screens when the language changes so every translated label refreshes. */}
+          <div key={language} className="contents"><Outlet /></div>
         </main>
       </div>
     </div>

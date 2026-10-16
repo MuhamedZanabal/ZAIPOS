@@ -24,9 +24,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { canAccessRoles } from "@/lib/roles";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  open: { label: "Abierta", className: "bg-success text-success-foreground" },
+  open: { label: "Open", className: "bg-success text-success-foreground" },
   handoff: { label: "With advisor", className: "bg-yellow-500 text-white" },
-  closed: { label: "Cerrada", className: "bg-muted text-muted-foreground" },
+  closed: { label: "Closed", className: "bg-muted text-muted-foreground" },
 };
 
 export default function WhatsAppInbox() {
@@ -303,7 +303,7 @@ export default function WhatsAppInbox() {
                 {(STATUS_BADGE[selectedConv.status] ?? STATUS_BADGE.open).label}
               </Badge>
               {selectedConv.status === "handoff" && (
-                <Button size="sm" variant="outline" onClick={retakeBot} title="Devolver al bot">
+                <Button size="sm" variant="outline" onClick={retakeBot} title="Hand back to bot">
                   <RefreshCw className="h-3.5 w-3.5 mr-1" /> Reactivar bot
                 </Button>
               )}
@@ -394,7 +394,7 @@ export default function WhatsAppInbox() {
                       <p className="text-xs text-muted-foreground py-2 text-center">No results</p>
                     )}
                     {productQuery.length <= 1 && (
-                      <p className="text-xs text-muted-foreground py-2 text-center">Escribe al menos 2 caracteres</p>
+                      <p className="text-xs text-muted-foreground py-2 text-center">Type at least 2 characters</p>
                     )}
                   </div>
                 </PopoverContent>
@@ -462,7 +462,7 @@ export default function WhatsAppInbox() {
             {/* Reply input */}
             <div className="flex gap-2">
               <Input
-                placeholder="Escribe una respuesta…"
+                placeholder="Write a reply…"
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}

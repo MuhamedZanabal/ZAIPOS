@@ -1,6 +1,11 @@
+import { OfflineSalesBanner } from "@/components/shared/OfflineSalesBanner";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, persister } from './lib/queryClient';
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
+
+// The packaged desktop app loads dist/index.html from disk, where the path is
+// the file location rather than an app route; hash routing keeps routes working.
+const AppRouter = typeof window !== "undefined" && window.location.protocol === "file:" ? HashRouter : BrowserRouter;
 import { lazy, Suspense } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -45,6 +50,7 @@ const ChannelPrices = lazy(() => import("./modules/channel-prices/ChannelPrices"
 const DigitalOrders = lazy(() => import("./modules/digital-orders/DigitalOrders"));
 const Delivery = lazy(() => import("./modules/delivery/Delivery"));
 const Settings = lazy(() => import("./modules/settings/Settings"));
+const Setup = lazy(() => import("./pages/Setup"));
 const Tables = lazy(() => import("./modules/tables/Tables"));
 const TableOrder = lazy(() => import("./modules/tables/TableOrder"));
 const WaiterDashboard = lazy(() => import("./modules/waiter/WaiterDashboard"));
@@ -94,8 +100,9 @@ const App = () => {
           <Toaster />
           <Sonner richColors closeButton />
           <PWAInstallPrompt />
-          <BrowserRouter>
+          <AppRouter>
             <OfflineBanner />
+            <OfflineSalesBanner />
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 {/* ── Rutas públicas ── */}
@@ -108,6 +115,7 @@ const App = () => {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/pos" element={<POS />} />
+                  <Route path="/setup" element={<Setup />} />
                   <Route path="/tables/:id" element={<TableOrder />} />
                   <Route element={<AppShell />}>
                     <Route path="/tables" element={<Tables />} />
@@ -142,7 +150,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
+          </AppRouter>
         </TooltipProvider>
       </TenantProvider>
     </PersistQueryClientProvider>

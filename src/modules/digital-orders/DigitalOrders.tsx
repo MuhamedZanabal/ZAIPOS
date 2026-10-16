@@ -48,7 +48,7 @@ type DigitalOrder = {
   table_id: string | null;
   created_at: string;
   digital_order_items: OrderItem[];
-  tables: { name: string } | null;
+  tables?: { name: string } | null;
 };
 
 const PLATFORMS: { value: SalesChannel; label: string }[] = [
@@ -221,7 +221,7 @@ export default function DigitalOrders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("digital_orders")
-        .select("*, digital_order_items(*), tables(name)")
+        .select("*, digital_order_items(*)")
         .eq("branch_id", branchId!)
         .order("created_at", { ascending: false })
         .limit(200);

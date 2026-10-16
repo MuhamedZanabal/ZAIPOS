@@ -10,10 +10,12 @@ export interface TicketData {
   items: TicketItem[]; subtotal: number; discountTotal: number; tipAmount: number; taxTotal: number; total: number;
   payments: TicketPayment[]; customerName?: string; cashierName?: string; notes?: string; qrData?: string; date?: string;
   isReprint?: boolean; saleStatus?: string; reprintEventId?: string;
+  /** Seller VAT registration number (TRN). When present the receipt is issued as an NBR (simplified) tax invoice. */
+  vatNumber?: string; customerVatNumber?: string;
 }
 export interface PrintResult { ok: boolean; error?: string; }
 export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth';
-export interface PrinterConfig { connectionType: PrinterConnectionType; devicePath?: string; host?: string; port?: number; bluetoothAddress?: string; width?: number; characterSet?: string; }
+export interface PrinterConfig { connectionType: PrinterConnectionType; devicePath?: string; host?: string; port?: number; bluetoothAddress?: string; width?: number; characterSet?: string; /** 'bilingual' prints Arabic+English as a raster image; 'english' uses text mode. */ receiptLanguage?: 'bilingual' | 'english'; }
 export type BarcodeScannerMode = 'hid' | 'serial';
 export interface BarcodeConfig { mode: BarcodeScannerMode; serialPort?: string; baudRate?: number; }
 export interface AppSettings { kiosk: boolean; updateChannel: 'stable' | 'beta'; printer: PrinterConfig; barcode: BarcodeConfig; }
@@ -27,7 +29,7 @@ export interface DeviceOfflineLease { leaseId: string; token: string; issuedAt: 
 
 export const IPC_EVENTS = { BARCODE_SCANNED: 'barcode-scanned', UPDATE_AVAILABLE: 'update-available', UPDATE_DOWNLOADED: 'update-downloaded', DOWNLOAD_PROGRESS: 'download-progress', LOCAL_SERVICE_EVENT: 'local-service-event' } as const;
 export const IPC_HANDLERS = {
-  PRINT_TICKET: 'print-ticket', OPEN_DRAWER: 'open-drawer', GET_SETTINGS: 'get-settings', SAVE_SETTINGS: 'save-settings', SET_KIOSK: 'set-kiosk', DOWNLOAD_UPDATE: 'download-update', INSTALL_UPDATE: 'install-update', OPEN_EXTERNAL: 'open-external', GET_APP_VERSION: 'get-app-version', GET_BACKEND_CONFIG: 'get-backend-config', SAVE_INITIAL_BACKEND_CONFIG: 'save-initial-backend-config', GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status', GET_DEVICE_IDENTITY: 'get-device-identity', ACTIVATE_DEVICE: 'activate-device', ROTATE_DEVICE_CREDENTIAL: 'rotate-device-credential', REVOKE_DEVICE: 'revoke-device', DEVICE_CHECKOUT: 'device-checkout', DEVICE_CASH_MOVEMENT: 'device-cash-movement', DEVICE_CASH_SESSION: 'device-cash-session', DEVICE_SALE_RETURN: 'device-sale-return', DEVICE_SALE_VOID: 'device-sale-void', DEVICE_DELIVERY_COLLECTION: 'device-delivery-collection', DEVICE_TABLE_CHECKOUT: 'device-table-checkout', DEVICE_INVENTORY_COMMAND: 'device-inventory-command', LOCAL_STATUS: 'local-status', LOCAL_ENROLL: 'local-enroll', LOCAL_REQUEST: 'local-request', LOCAL_SUBSCRIBE: 'local-subscribe'
+  PRINT_TICKET: 'print-ticket', OPEN_DRAWER: 'open-drawer', GET_SETTINGS: 'get-settings', SAVE_SETTINGS: 'save-settings', SET_KIOSK: 'set-kiosk', DOWNLOAD_UPDATE: 'download-update', INSTALL_UPDATE: 'install-update', OPEN_EXTERNAL: 'open-external', GET_APP_VERSION: 'get-app-version', GET_BACKEND_CONFIG: 'get-backend-config', SAVE_INITIAL_BACKEND_CONFIG: 'save-initial-backend-config', GET_DEVICE_CREDENTIAL_STATUS: 'get-device-credential-status', GET_DEVICE_IDENTITY: 'get-device-identity', ACTIVATE_DEVICE: 'activate-device', ROTATE_DEVICE_CREDENTIAL: 'rotate-device-credential', REVOKE_DEVICE: 'revoke-device', DEVICE_CHECKOUT: 'device-checkout', DEVICE_CASH_MOVEMENT: 'device-cash-movement', DEVICE_CASH_SESSION: 'device-cash-session', DEVICE_SALE_RETURN: 'device-sale-return', DEVICE_SALE_VOID: 'device-sale-void', DEVICE_DELIVERY_COLLECTION: 'device-delivery-collection', DEVICE_TABLE_CHECKOUT: 'device-table-checkout', DEVICE_INVENTORY_COMMAND: 'device-inventory-command', LOCAL_STATUS: 'local-status', LOCAL_ENROLL: 'local-enroll', LOCAL_REQUEST: 'local-request', LOCAL_SUBSCRIBE: 'local-subscribe', OFFLINE_SALES_STATUS: 'offline-sales-status', OFFLINE_SALES_REPLAY: 'offline-sales-replay', OFFLINE_SALES_RESOLVE: 'offline-sales-resolve', REPORT_RENDERER_ERROR: 'report-renderer-error', EXPORT_DIAGNOSTICS: 'export-diagnostics'
 } as const;
 export interface ManagerAuthorization { accessToken: string; tenantId: string; branchId: string; }
 export interface DeviceAuthorization extends ManagerAuthorization {}

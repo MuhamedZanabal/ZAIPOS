@@ -37,6 +37,8 @@ const oldCurrency = join("C", "OP");
 const oldMarketplaces = [join("Rap", "pi"), join("Di", "di Food"), join("Uber", " Eats")];
 
 const spanishUiTokens = [
+  // Added after the Oct 2026 local-runtime sweep so these do not come back.
+  "Cobrar", "Ver comanda", "Ocupadas", "Libres", "Impuestos", "Capacidad", "Aprovisionar", "Desactivar", "Tiempo real", "Agotado", "Entrada registrada", "Salida registrada", "Gasto registrado", "Quitar imagen", "Escribe una respuesta",
   "Guardar", "Cancelar", "Aplicar", "Cargando", "Apertura", "Cierre", "Sucursal",
   "Configuración", "Moneda", "Propina", "Domicilio", "Barrio", "Motivo", "Ingreso",
   "Egreso", "Seleccionar", "Buscar", "Eliminar", "Editar", "Nuevo", "No, gracias",
@@ -107,3 +109,4 @@ if (failures.length) {
 }
 
 console.log("PASS: active repository surfaces are ZAIPOS-branded, English-facing, and Bahrain-native.");
+await import("./audit-arabic.mjs");

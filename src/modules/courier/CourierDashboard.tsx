@@ -191,7 +191,7 @@ export default function CourierDashboard() {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="glass g-kpi">
-          <div className="h-label uppercase tracking-wider">Activos</div>
+          <div className="h-label uppercase tracking-wider">Active</div>
           <div className="h-num text-2xl text-[var(--brand-600)]">{grouped.active.length}</div>
         </div>
         <div className="glass g-kpi">

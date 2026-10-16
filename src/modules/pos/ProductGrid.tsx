@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
+import { translate as t } from "@/i18n";
 
 type Product = Database["public"]["Tables"]["products"]["Row"];
 
@@ -141,7 +142,7 @@ export function ProductGrid({
       </div>
 
       {products.length === 0 && (
-        <p className="text-center py-16 h-meta">No products found</p>
+        <p className="text-center py-16 h-meta">{t("No products found")}</p>
       )}
     </div>
   );

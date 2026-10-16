@@ -25,12 +25,17 @@ import {
   Wallet,
 } from "lucide-react";
 import { PendingTableOrders } from "./PendingTableOrders";
+import { ZReportDialog } from "./ZReportDialog";
+import { isServerUnreachable } from "@/lib/offlineOutbox";
+import type { ZSession } from "@/lib/zReport";
 import { cn } from "@/lib/utils";
 import { clearCompletedCashMovement, executeCashMovement, readCashMovement, type CashMovementDraft } from "@/lib/cashMovementRecovery";
 import { executeCashSession, readCashSessionDraft, type CashSessionDraft } from "@/lib/deviceCashSession";
+import { translate as t } from "@/i18n";
 
 export default function Cash() {
   const { tenantId, branchId, hasRole } = useTenantContext();
+  const [zSession, setZSession] = useState<ZSession | null>(null);
   const { user } = useAuth();
   const qc = useQueryClient();
   const [openAmount, setOpenAmount] = useState("0.000");
@@ -55,6 +60,12 @@ export default function Cash() {
       }
     } catch (error: any) { toast.error(error.message); }
   }, [user?.id]);
+
+  const { data: tenant } = useQuery({
+    queryKey: ["cash-tenant-name", tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => (await supabase.from("tenants").select("name").eq("id", tenantId!).maybeSingle()).data as { name: string } | null,
+  });
 
   const { data: history } = useQuery({
     queryKey: ["cash-history", branchId],
@@ -168,8 +179,8 @@ export default function Cash() {
 
       <Tabs defaultValue="current">
         <TabsList>
-          <TabsTrigger value="current">Current register</TabsTrigger>
-          <TabsTrigger value="history">Closing history</TabsTrigger>
+          <TabsTrigger value="current">{t("Current register")}</TabsTrigger>
+          <TabsTrigger value="history">{t("Closing history")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="current" className="mt-4 space-y-4">
@@ -305,6 +316,7 @@ export default function Cash() {
               <span className="text-right">Expected</span>
               <span className="text-right">Counted</span>
               <span className="text-right">Difference</span>
+              <span className="sr-only">Report</span>
             </div>
 
             {(history ?? []).map((row: any) => {
@@ -341,6 +353,11 @@ export default function Cash() {
                       ? `${difference > 0 ? "+" : ""}${formatCurrency(difference)}`
                       : "Hidden"}
                   </span>
+                  {canViewDifferences && row.status === "closed" && (
+                    <button type="button" className="text-xs font-semibold underline" onClick={() => setZSession(row)} aria-label={`Z-report for ${new Date(row.opened_at).toLocaleDateString(BAHRAIN_LOCALE)}`}>
+                      {t("Z-report")}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -374,6 +391,7 @@ export default function Cash() {
         </DialogContent>
       </Dialog>
 
+      <ZReportDialog session={zSession} businessName={tenant?.name ?? "ZAIPOS"} onClose={() => setZSession(null)} />
       <CashMovementDialog
         actorId={user?.id ?? null}
         tenantId={tenantId}
@@ -460,7 +478,8 @@ export function CashMovementDialog({
       else toast.success(completed.state === 'cancelled' ? 'Movement cancelled before recording cash' : 'Cash movement confirmed');
       // Retain the confirmed reference until an explicit new physical movement.
     } catch (error: any) {
-      toast.error(error.message ?? 'Cash movement response is uncertain; recover the original reference');
+      if (isServerUnreachable(error)) toast.warning('Server unreachable — movement saved on this till and will sync automatically.');
+      else toast.error(error.message ?? 'Cash movement response is uncertain; recover the original reference');
       try { if (actorId) setDraft(readCashMovement(actorId)); }
       catch (readError: any) { setRecoveryError(readError.message); }
     } finally { setSaving(false); }

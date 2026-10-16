@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Plus, ChefHat } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/format";
+import { translate as tx } from "@/i18n";
 
 interface RecipeEditorProps {
   tenantId: string;
@@ -51,7 +52,7 @@ export function RecipeEditor({ tenantId, parentProductId }: RecipeEditorProps) {
       waste_pct: Number(waste),
     });
     if (error) return toast.error(error.message);
-    toast.success("Component added");
+    toast.success(tx("Component added"));
     setComponentId(""); setQuantity("1"); setWaste("0");
     qc.invalidateQueries({ queryKey: ["product-components", parentProductId] });
   };
@@ -68,13 +69,13 @@ export function RecipeEditor({ tenantId, parentProductId }: RecipeEditorProps) {
       <div className="glass-thin p-4 rounded-2xl">
         <div className="flex items-center gap-2 h-label mb-3">
           <ChefHat size={14} className="g-recipe-add-icon" />
-          Add ingredient
+          {tx("Add ingredient")}
         </div>
         <div className="g-recipe-add-grid">
           <div className="space-y-1">
-            <Label className="text-xs">Componente</Label>
+            <Label className="text-xs">{tx("Component")}</Label>
             <Select value={componentId} onValueChange={setComponentId}>
-              <SelectTrigger><SelectValue placeholder="Product..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={tx("Product...")} /></SelectTrigger>
               <SelectContent>
                 {(candidates ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -85,16 +86,16 @@ export function RecipeEditor({ tenantId, parentProductId }: RecipeEditorProps) {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Quantity</Label>
+            <Label className="text-xs">{tx("Quantity")}</Label>
             <Input type="number" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Merma %</Label>
+            <Label className="text-xs">{tx("Waste %")}</Label>
             <Input type="number" value={waste} onChange={(e) => setWaste(e.target.value)} />
           </div>
           <button type="button" className="g-btn g-btn-primary g-recipe-add-btn"
             onClick={addComponent} disabled={!componentId}>
-            <Plus size={14} /> Add
+            <Plus size={14} /> {tx("Add")}
           </button>
         </div>
       </div>
@@ -104,12 +105,12 @@ export function RecipeEditor({ tenantId, parentProductId }: RecipeEditorProps) {
         <div className="g-recipe-head">
           <span className="font-semibold text-sm">Componentes ({components?.length ?? 0})</span>
           <span className="h-meta">
-            Total cost: <strong className="h-num g-recipe-cost-val">{formatCurrency(totalCost)}</strong>
+            {tx("Total cost:")} <strong className="h-num g-recipe-cost-val">{formatCurrency(totalCost)}</strong>
           </span>
         </div>
         {(components ?? []).length === 0 ? (
           <div className="px-4 py-8 text-center h-meta">
-            No components. Add ingredients that will be deducted from inventory during production.
+            {tx("No components. Add ingredients that will be deducted from inventory during production.")}
           </div>
         ) : (
           (components ?? []).map((c: any) => (
@@ -122,7 +123,7 @@ export function RecipeEditor({ tenantId, parentProductId }: RecipeEditorProps) {
                 </div>
               </div>
               <button type="button" className="g-btn g-btn-ghost g-recipe-del-btn"
-                title="Delete" onClick={() => removeComponent(c.id)}>
+                title={tx("Delete")} onClick={() => removeComponent(c.id)}>
                 <Trash2 size={14} className="g-recipe-del-icon" />
               </button>
             </div>

@@ -112,7 +112,7 @@ export function createDeviceCredentialService(store: CredentialStore, baseUrl: s
       const result = await callRpc(baseUrl, publishableKey, auth.accessToken, cancel ? 'cancel_cash_movement_v3_device' : 'record_cash_movement_v3_device', { ...request, _device_uid: record.deviceUid, _device_credential: credential });
       if (result !== null && (typeof result !== 'string' || !UUID.test(result))) throw new Error('Cash movement returned an invalid receipt');
       if (!cancel && result === null) throw new Error('Cash movement returned no receipt');
-      return result;
+      return result as string | null;
     },
     async cashSession(payload: DeviceCashSessionPayload, authorization: DeviceAuthorization, close = false): Promise<string> {
       const auth = validateAuthorization(authorization);

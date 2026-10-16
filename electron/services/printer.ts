@@ -12,6 +12,7 @@ import { IPC_HANDLERS } from '../types.js';
 import { printerInterface, validatePrinterConfig, validateTicket } from '../hardware-security.js';
 import { log } from '../logger.js';
 import { buildReceiptTextLines } from './receipt-format.js';
+import { renderBilingualReceipt } from './receipt-render.js';
 
 // Importamos de forma lazy para que el app arranque aunque la impresora no esté conectada
 let ThermalPrinter: any;
@@ -61,8 +62,16 @@ export async function printTicket(
     validateTicket(data);
     const printer = await createPrinterInstance(config);
     const width = config.width ?? 42;
-    printer.alignLeft();
-    for (const line of buildReceiptTextLines(data, width)) printer.println(line);
+    let raster: Buffer | null = null;
+    if ((config.receiptLanguage ?? 'bilingual') === 'bilingual') {
+      try { raster = await renderBilingualReceipt(data, width); }
+      catch { log('warn', 'bilingual_receipt_render_failed_using_text_mode'); }
+    }
+    if (raster) printer.raw(raster);
+    else {
+      printer.alignLeft();
+      for (const line of buildReceiptTextLines(data, width)) printer.println(line);
+    }
 
     // ── QR Code ──────────────────────────────────────────────────────────────
     if (data.qrData) {

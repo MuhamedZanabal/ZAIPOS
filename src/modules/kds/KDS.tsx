@@ -7,6 +7,7 @@ import { ChefHat, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { transitionTableItem } from "@/lib/tableKitchen";
+import { translate as tx, useLanguageStore } from "@/i18n";
 
 type TableItemStatus = Database["public"]["Enums"]["table_item_status"];
 
@@ -135,7 +136,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
       {/* Items */}
       <div className="g-kds-items">
         {items.map((item) => {
-          const mods = (item.modifiers as Modifier[]) ?? [];
+          const mods = (item.modifiers as unknown as Modifier[] | null) ?? [];
           const ready = item.status === "ready" || item.status === "dispatched";
           const preparing = item.status === "preparing";
           return (
@@ -154,10 +155,10 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
                 )}
                 {item.notes && <div className="g-kds-item-mods">{item.notes}</div>}
               </div>
-              {ready && <span className="pill pill-ok g-kds-pill-micro">Ready</span>}
-              {preparing && <span className="pill pill-warn g-kds-pill-micro">Prep.</span>}
+              {ready && <span className="pill pill-ok g-kds-pill-micro">{tx("Ready")}</span>}
+              {preparing && <span className="pill pill-warn g-kds-pill-micro">{tx("Prep.")}</span>}
               {item.status === "pending" && (
-                <span className="pill pill-ghost g-kds-pill-micro">Pending</span>
+                <span className="pill pill-ghost g-kds-pill-micro">{tx("Pending")}</span>
               )}
             </div>
           );
@@ -186,6 +187,7 @@ function KDSCard({ orderId, items, elapsed, onPreparing, onDispatched }: KDSCard
 }
 
 export default function KDS() {
+  useLanguageStore((state) => state.language); // re-render on language change
   const { tenantId, branchId } = useTenantContext();
   const qc = useQueryClient();
   const [station, setStation] = useState(() => localStorage.getItem("kds_station") || "Todas");
@@ -209,14 +211,30 @@ export default function KDS() {
       const { data, error } = await supabase
         .from("table_order_items")
         .select(`id, quantity, product_id, product_name, modifiers, status, created_at, notes, order_id,
-          products(station),
           table_orders!inner(status, branch_id, tables(name))`)
         .eq("table_orders.branch_id", branchId!)
         .in("table_orders.status", ["open", "sent_to_cashier"])
         .in("status", ["pending", "preparing"])
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data || []) as unknown as KDSItem[];
+      // table_order_items.product_id has no foreign key to products, so the
+      // station cannot be embedded (PGRST200); look it up separately.
+      const rows = (data || []) as unknown as Omit<KDSItem, "products">[];
+      const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean))];
+      const stations = new Map<string, string | null>();
+      if (productIds.length) {
+        type StationRows = { data: { id: string; station: string | null }[] | null; error: unknown };
+        const productsTable = supabase.from("products") as unknown as {
+          select: (columns: "id, station") => { in: (column: "id", values: string[]) => PromiseLike<StationRows> };
+        };
+        const { data: products, error: productsError } = await productsTable.select("id, station").in("id", productIds);
+        if (productsError) throw productsError;
+        for (const p of (products || []) as { id: string; station: string | null }[]) stations.set(p.id, p.station);
+      }
+      return rows.map((r) => ({
+        ...r,
+        products: stations.has(r.product_id) ? { station: stations.get(r.product_id) ?? null } : null,
+      })) as KDSItem[];
     },
   });
 
@@ -268,7 +286,7 @@ export default function KDS() {
   }, [filtered, now, soundOn]);
 
   const markPreparing = async (itemId: string) => {
-    if (!tenantId || !branchId) return toast.error("Kitchen branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Kitchen branch scope is unavailable"));
     try {
       await transitionTableItem({ tenantId, branchId, itemId, action:"start_preparing" });
       qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
@@ -276,7 +294,7 @@ export default function KDS() {
   };
 
   const markDispatched = async (itemId: string) => {
-    if (!tenantId || !branchId) return toast.error("Kitchen branch scope is unavailable");
+    if (!tenantId || !branchId) return toast.error(tx("Kitchen branch scope is unavailable"));
     try {
       await transitionTableItem({ tenantId, branchId, itemId, action:"mark_ready" });
       qc.invalidateQueries({ queryKey: ["kds-items", branchId] });
@@ -294,14 +312,14 @@ export default function KDS() {
       {/* Header */}
       <div className="g-kds-header">
         <div className="g-kds-header-info">
-          <div className="h-display g-page-title">Kitchen KDS</div>
+          <div className="h-display g-page-title">{tx("Kitchen KDS")}</div>
           <div className="h-meta g-page-subtitle">Active station · {STATIONS.find((s) => s.value === station)?.label ?? station}</div>
         </div>
 
         <div className="glass g-kds-header-stat">
           <span className="dot dot-ok" />
           <div className="g-kds-header-stat-inner">
-            <div className="g-kds-header-stat-label">Connected to POS</div>
+            <div className="g-kds-header-stat-label">{tx("Connected to POS")}</div>
             <div className="g-kds-header-stat-val">Avg. time {SLA_MINUTES} min</div>
           </div>
         </div>
@@ -310,7 +328,7 @@ export default function KDS() {
           <div className="glass g-kds-header-stat">
             <span className="dot dot-bad" />
             <div className="g-kds-header-stat-inner">
-              <div className="g-kds-header-stat-label">Delayed</div>
+              <div className="g-kds-header-stat-label">{tx("Delayed")}</div>
               <div className="g-kds-header-stat-val">{lateCount} order{lateCount !== 1 ? "s" : ""}</div>
             </div>
           </div>
@@ -318,7 +336,7 @@ export default function KDS() {
 
         <div className="glass g-kds-header-stat">
           <div className="g-kds-header-stat-inner">
-            <div className="g-kds-header-stat-label">In progress</div>
+            <div className="g-kds-header-stat-label">{tx("In progress")}</div>
             <div className="h-num g-kds-count-val">{orderCount}</div>
           </div>
         </div>
@@ -347,7 +365,7 @@ export default function KDS() {
         <div className="flex-1" />
         <div className="flex items-center gap-2 h-meta">
           <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> &lt; 10 min
-          <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block ml-2" /> 10–20 min
+          <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block ml-2" /> {tx("10–20 min")}
           <span className="w-3 h-3 rounded-full bg-red-500 inline-block ml-2" /> &gt; 20 min
         </div>
       </div>
@@ -358,8 +376,8 @@ export default function KDS() {
           <div className="orb g-kds-empty-orb">
             <ChefHat size={32} />
           </div>
-          <p className="h-display g-kds-empty-title">No pending orders</p>
-          <p className="h-meta">Kitchen is up to date</p>
+          <p className="h-display g-kds-empty-title">{tx("No pending orders")}</p>
+          <p className="h-meta">{tx("Kitchen is up to date")}</p>
         </div>
       )}
 

@@ -131,4 +131,12 @@ describe("PaymentDialog split payments", () => {
     expect(screen.getByPlaceholderText("Enter code...")).toBeDisabled();
     expect(screen.getByText(/remove payments to edit tip or coupon/i)).toBeInTheDocument();
   });
+
+  it("does not crash when the cart is cleared after a completed sale", () => {
+    const props = { open: true, onOpenChange: vi.fn(), tenantId: "10000000-0000-0000-0000-000000000001", submitting: false, onConfirm };
+    const { rerender } = render(<PaymentDialog {...props} total={3.465} />);
+    fireEvent.click(screen.getByRole("button", { name: /add cash payment/i }));
+    expect(balanceValue("Remaining").getByText("BHD 0.000")).toBeInTheDocument();
+    expect(() => rerender(<PaymentDialog {...props} total={0} />)).not.toThrow();
+  });
 });
