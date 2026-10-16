@@ -267,7 +267,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Conversation not found'; END IF;
   IF NOT _on THEN
     INSERT INTO public.wa_outbound_messages(tenant_id, chat_id, body, source)
-    VALUES (_tenant_id, _chat_id, CASE WHEN _lang = 'ar' THEN 'رجعت لمساعد الطلبات. اكتب *مساعدة* للخيارات.'
+    VALUES (_tenant_id, _chat_id, -- Arabic text is hex-encoded so this file stays ASCII: the local Windows runtime database may use WIN1252.
+      CASE WHEN _lang = 'ar' AND current_setting('server_encoding') = 'UTF8'
+        THEN convert_from(decode('d8b1d8acd8b9d8aa20d984d985d8b3d8a7d8b9d8af20d8a7d984d8b7d984d8a8d8a7d8aa2e20d8a7d983d8aad8a8202ad985d8b3d8a7d8b9d8afd8a92a20d984d984d8aed98ad8a7d8b1d8a7d8aa2e', 'hex'), 'UTF8')
       ELSE 'You''re back with our ordering assistant. Reply *help* for options.' END, 'staff');
   END IF;
 END; $$;
