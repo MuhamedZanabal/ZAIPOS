@@ -89,6 +89,14 @@ Wait-Until -Seconds 240 -Failure 'WINDOWS_ACCEPTANCE_HEALTH_NOT_READY' -Conditio
   }
 }
 
+# First-owner setup exactly as the wizard's "Create business" does it (regression: LOCAL_RUNTIME_NOT_CONFIGURED on Windows).
+$bootstrapResult = @(& node $probeScript $profile.origin $profile.caFingerprint bootstrap 2>&1) -join ' '
+Write-Host "Bootstrap: $bootstrapResult"
+if ($LASTEXITCODE -ne 0) {
+  $bootstrapResult | Set-Content -LiteralPath (Join-Path $dataRoot 'bootstrap-error.log') -Encoding utf8
+  throw "WINDOWS_ACCEPTANCE_OWNER_BOOTSTRAP_FAILED:$bootstrapResult"
+}
+
 if (-not (Get-Process -Name 'postgres' -ErrorAction SilentlyContinue)) {
   throw 'WINDOWS_ACCEPTANCE_POSTGRES_NOT_RUNNING'
 }
